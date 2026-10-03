@@ -10,6 +10,30 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: Thread-page hook owns the shared chat-route wiring
+
+Ticket `architecture-deepening` issue 05 (spec candidate 4, Q8=a). No test
+file was moved, renamed, or deleted. The shared chat-route wiring (stream
+wiring incl. thread adoption and finish notifications, welcome-mode state,
+empty-thread redirect, stop/branch/regenerate, view turn-submit controller)
+moved from the three chat routes into the new hook
+`frontend/src/core/threads/use-thread-page.ts`, and its behavior assertions
+moved to the hook interface. The two page test files were rewritten in place
+as adapter assertions over the page seam; the routes keep render/layout and
+page-increment assertions.
+
+| New owner | Absorbed behavior (previous home) | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/core/threads/use-thread-page.test.tsx` (new, 32 tests) | Welcome-mode init/send-flip/re-sync (`chats/[thread_id]/page.test.tsx` "onSend callback exits welcome mode", agents page "onSend callback sets welcome mode to false", both pages' welcome init via `isNewThread`); thread adoption on `onStart`/`onThreadCreated` with `setThreadId`/`setIsNewThread`/`history.replaceState` (chats page "onStart callback sets threadId and updates URL", agents page "onStart callback updates threadId and replaces URL" + encoded-segments variant); identity gating (`threadId` undefined while new, `displayThreadId` passthrough — chats page "passes displayThreadId so optimistic messages attach to the view"); finish notification policy (12 assertions across both page files: hidden/focused gating, default body, last-message body, 200-char truncation, empty/no-text messages); empty-thread redirect trigger, target and guards (page effects, previously untested at this strength); `handleStop`/`handleRegenerate`/`handleEditAndRegenerate`/`handleBranchTurn` incl. branch toast/navigation/no-op guards (chats + showcase page callbacks, agents page stop/regenerate); turn-submit dispatch and options forwarding (chats page "dispatches submitted messages through the turn-submit controller", "forwards the submit request options..."); fence invalidation on conversation switch (page-internal cleanup effects) | Stronger: each policy is now asserted once at the hook interface with real `turn-submit` wiring (gate/controller/fence interplay is exercised, not mocked), instead of duplicated per page behind a fully mocked stream module | `cd frontend && pnpm vitest run tests/unit/core/threads/use-thread-page.test.tsx --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/chats/[thread_id]/page.test.tsx` (rewritten in place, 1537 → 1117 lines, 46 → 38 tests) | Asserted stream wiring through a fully mocked `useThreadStream` | Adapter assertions over the page seam: the page fixture reaches InputBox/MessageList, the scenario binding flows through the seam's `admit`/`extraContext`/`prepareSubmit`/`threadPath` ports, `branchPending` gates edit/branch, identity forwarding; render/layout/scenario-selection assertions unchanged | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx` (rewritten in place, 867 → 614 lines, 43 → 35 tests) | Same mocked-stream page-plumbing assertions | Adapter assertions: agent-scoped `threadPath` encoding, agent binding context/pre-create ports, controller/stop/regenerate prop identity, welcome/status/disabled rendering; skill-closure, badge, navigation, and clarification assertions unchanged | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/chats/thread-page.test.tsx` (mock addition only) | — | `pathOfThread` added to the `@/core/threads/utils` mock because the route now resolves its URL policy through the seam; assertions unchanged | Same file run below |
+
+The showcase route component
+(`frontend/src/components/workspace/chats/chat-page.tsx`) had no dedicated
+test file before or after; its wiring behavior is owned by the hook tests
+above.
+
 ## Batch 2026-10-03: Turn-submit module owns the message submit chain
 
 Ticket `architecture-deepening` issue 04 (spec candidate 3, Q7=a). No test

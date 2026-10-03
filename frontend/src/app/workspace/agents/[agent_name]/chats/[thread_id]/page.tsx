@@ -2,7 +2,7 @@
 
 import { BotIcon, PlusSquare } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -43,22 +43,14 @@ import {
 } from "@/core/messages/human-input";
 import { isHiddenFromUIMessage } from "@/core/messages/utils";
 import { useModels } from "@/core/models/hooks";
-import { useNotification } from "@/core/notification/hooks";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
-import {
-  useThreadMetadata,
-  useThreadStream,
-  useThreadTokenUsage,
-} from "@/core/threads/hooks";
+import { useThreadTokenUsage } from "@/core/threads/hooks";
 import {
   selectContextUsage,
   threadTokenUsageToTokenUsage,
 } from "@/core/threads/token-usage";
-import {
-  createTurnSubmitGate,
-  useViewTurnSubmit,
-} from "@/core/threads/turn-submit";
-import { pathOfThread, textOfMessage } from "@/core/threads/utils";
+import { useThreadPage } from "@/core/threads/use-thread-page";
+import { pathOfThread } from "@/core/threads/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -77,10 +69,6 @@ export default function AgentChatPage() {
   // Prefills the composer from a `?prompt=` URL param on new threads
   // (e.g. workbench suggestion cards).
   useSpecificChatMode();
-  // `isNewThread` gates history/token-usage fetches until the backend creates
-  // the thread. `isWelcomeMode` controls only the centered welcome layout, so
-  // it can flip immediately on submit without triggering eager history loads.
-  const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
   const { enabled: browserControlEnabled } = useBrowserControlEnabled();
@@ -89,140 +77,46 @@ export default function AgentChatPage() {
     isNewThread || isMock ? undefined : threadId,
     { enabled: tokenUsageEnabled && !isMock },
   );
-  // Keep the canonical-title metadata GET on in mock mode too, so a rename
-  // reaches the agent chat header through the same query as production.
-  const threadMetadata = useThreadMetadata(threadId, {
-    enabled: !isNewThread,
-    isMock,
-  });
   const backendTokenUsage = threadTokenUsageToTokenUsage(threadTokenUsage.data);
   const contextUsage = selectContextUsage(threadTokenUsage.data);
 
-  const { showNotification } = useNotification();
-
-  useEffect(() => {
-    setIsWelcomeMode(isNewThread);
-  }, [isNewThread]);
-
-  // The shared turn-submit fence of this view: opened by the controller
-  // below (composer submit chain) and joined by useThreadStream's send
-  // paths, so duplicate submissions are fenced in exactly one place.
-  const turnSubmitGate = useMemo(() => createTurnSubmitGate(), []);
-
+  // The page-level wiring seam (stream, welcome state, redirect, stop/
+  // regenerate, turn-submit controller); this route contributes the agent
+  // binding as the lazy-thread pre-create metadata and the run-request
+  // context, and scopes every thread URL to the agent route.
   const {
     thread,
     pendingUsageMessages,
     sendMessage,
-    regenerateMessage,
-    editAndRegenerateMessage,
     isUploading,
     isHistoryLoading,
     hasMoreHistory,
     loadMoreHistory,
-  } = useThreadStream({
-    threadId: isNewThread ? undefined : threadId,
-    // Keep the client-visible thread id flowing into the stream hooks so
-    // optimistic messages and live-message attribution stay attached to the
-    // view while `threadId` itself is gated on backend thread creation.
-    displayThreadId: threadId,
-    turnSubmitGate,
+    isWelcomeMode,
+    threadMetadata,
+    turnSubmit,
+    handleStop,
+    handleRegenerate,
+    handleEditAndRegenerate,
+  } = useThreadPage({
+    threadId,
+    isNewThread,
+    isMock,
+    setThreadId,
+    setIsNewThread,
     context: {
       ...settings.context,
       agent_name: agent_name,
     },
-    isMock,
+    threadPath: (threadId: string) => pathOfThread(threadId, { agent_name }),
     prepareSubmit: async () => {
       const created = await getAPIClient().threads.create({
         metadata: { agent_name },
       });
       return { threadId: created.thread_id };
     },
-    onThreadCreated: (createdThreadId) => {
-      setThreadId(createdThreadId);
-      setIsNewThread(false);
-      history.replaceState(
-        null,
-        "",
-        pathOfThread(createdThreadId, { agent_name }),
-      );
-    },
-    // onSend only animates the UI; do NOT flip `isNewThread` here — the
-    // LangGraph SDK eagerly fetches /history the moment it receives a
-    // thread id and assumes the thread exists on the backend (issue #2746).
-    onSend: () => {
-      setIsWelcomeMode(false);
-    },
-    onStart: (createdThreadId) => {
-      setThreadId(createdThreadId);
-      setIsNewThread(false);
-      // ! Important: Never use next.js router for navigation in this case, otherwise it will cause the thread to re-mount and lose all states. Use native history API instead.
-      history.replaceState(
-        null,
-        "",
-        pathOfThread(createdThreadId, { agent_name }),
-      );
-    },
-    onFinish: (state) => {
-      if (document.hidden || !document.hasFocus()) {
-        let body = "Conversation finished";
-        const lastMessage = state.messages[state.messages.length - 1];
-        if (lastMessage) {
-          const textContent = textOfMessage(lastMessage);
-          if (textContent) {
-            body =
-              textContent.length > 200
-                ? textContent.substring(0, 200) + "..."
-                : textContent;
-          }
-        }
-        showNotification(state.title, { body });
-      }
-    },
-  });
-
-  const hasThreadMessages = thread.messages.length > 0;
-
-  // A bookmarked/expired expert thread id has no metadata; fall back to a
-  // fresh expert chat instead of an eternal empty transcript.
-  useEffect(() => {
-    if (
-      !isNewThread &&
-      !isMock &&
-      threadMetadata.data === null &&
-      !threadMetadata.isLoading &&
-      !threadMetadata.isFetching &&
-      !isHistoryLoading &&
-      !hasMoreHistory &&
-      !hasThreadMessages
-    ) {
-      router.replace(pathOfThread("new", { agent_name }));
-    }
-  }, [
-    agent_name,
-    hasMoreHistory,
-    hasThreadMessages,
-    isHistoryLoading,
-    isMock,
-    isNewThread,
-    router,
-    threadMetadata.data,
-    threadMetadata.isFetching,
-    threadMetadata.isLoading,
-  ]);
-
-  // Turn-submit controller: owns the message submit chain (duplicate fence,
-  // draft policy, attachment pre-uploads, lifecycle) on top of the stream
-  // module's send. The page contributes the agent binding as run context.
-  const turnSubmit = useViewTurnSubmit({
-    gate: turnSubmitGate,
-    sendMessage,
     extraContext: () => ({ agent_name }),
   });
-  useEffect(() => {
-    return () => {
-      turnSubmit.invalidate();
-    };
-  }, [turnSubmit, threadId]);
 
   const handleSubmitHumanInput = useMemo(
     () =>
@@ -232,20 +126,6 @@ export default function AgentChatPage() {
         agentName: agent_name,
       }),
     [agent_name, sendMessage, threadId],
-  );
-
-  const handleStop = useCallback(async () => {
-    await thread.stop();
-  }, [thread]);
-  const handleRegenerate = useCallback(
-    (messageId: string, supersededMessageIds: string[]) =>
-      regenerateMessage(threadId, messageId, supersededMessageIds),
-    [regenerateMessage, threadId],
-  );
-  const handleEditAndRegenerate = useCallback(
-    (messageId: string, replacementText: string) =>
-      editAndRegenerateMessage(threadId, messageId, replacementText),
-    [editAndRegenerateMessage, threadId],
   );
 
   const tokenUsageInlineMode = tokenUsageEnabled

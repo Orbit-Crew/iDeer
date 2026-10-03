@@ -3,8 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Folder } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -44,27 +44,20 @@ import {
 } from "@/core/messages/human-input";
 import { isHiddenFromUIMessage } from "@/core/messages/utils";
 import { useModels } from "@/core/models/hooks";
-import { useNotification } from "@/core/notification/hooks";
 import { useProject } from "@/core/projects";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
 import { resolveThreadContext } from "@/core/settings/store";
 import { createThread } from "@/core/threads/api";
 import {
-  useBranchThread,
   INFINITE_THREADS_QUERY_KEY_PREFIX,
-  useThreadMetadata,
-  useThreadStream,
   useThreadTokenUsage,
 } from "@/core/threads/hooks";
 import {
   selectContextUsage,
   threadTokenUsageToTokenUsage,
 } from "@/core/threads/token-usage";
-import {
-  createTurnSubmitGate,
-  useViewTurnSubmit,
-} from "@/core/threads/turn-submit";
-import { projectIdOfThread, textOfMessage } from "@/core/threads/utils";
+import { useThreadPage } from "@/core/threads/use-thread-page";
+import { pathOfThread, projectIdOfThread } from "@/core/threads/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -76,7 +69,6 @@ export default function ChatPage() {
   const { t } = useI18n();
   const { user } = useAuth();
   const canStopStreaming = hasPermission(user, PERMISSIONS.RUNS_CANCEL);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { threadId, setThreadId, isNewThread, setIsNewThread, isMock } =
     useThreadChat();
@@ -89,12 +81,6 @@ export default function ChatPage() {
   // materialized the URL is replaced with the thread route and the param is
   // gone. Invalid ids are dropped by backend admission.
   const projectParam = isNewThread ? searchParams.get("project") : null;
-  // `isNewThread` tracks whether the backend has the thread yet — gates the
-  // SDK's history fetch (see issue #2746).  `isWelcomeMode` is the visual
-  // welcome layout (centered input, hero, quick actions); we flip it to false
-  // the moment the user submits so the UI animates immediately, even though
-  // `isNewThread` stays true until the backend actually creates the thread.
-  const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
   const queryClient = useQueryClient();
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
@@ -104,14 +90,6 @@ export default function ChatPage() {
     isNewThread || isMock ? undefined : threadId,
     { enabled: !isMock },
   );
-  // The metadata GET is the header's canonical title source; keeping it on in
-  // mock mode is what lets a rename reach the header (the mock implements the
-  // single-thread GET and the rename's updateState write-back).
-  const threadMetadata = useThreadMetadata(threadId, {
-    enabled: !isNewThread,
-    isMock,
-  });
-  const branchThread = useBranchThread();
   const backendTokenUsage = threadTokenUsageToTokenUsage(threadTokenUsage.data);
   const contextUsage = selectContextUsage(threadTokenUsage.data);
   const mountedRef = useRef(false);
@@ -120,94 +98,6 @@ export default function ChatPage() {
   useEffect(() => {
     mountedRef.current = true;
   }, []);
-
-  // Keep welcome layout in sync when navigating between threads (sidebar
-  // clicks, "new chat" button).  Submitting in /chats/new flips the layout
-  // via onSend below — `isNewThread` stays true until onStart, so this effect
-  // is harmless during the submit transition.
-  useEffect(() => {
-    setIsWelcomeMode(isNewThread);
-  }, [isNewThread]);
-
-  const { showNotification } = useNotification();
-
-  // The shared turn-submit fence of this view: opened by the controller below
-  // (composer submit chain) and joined by useThreadStream's send paths, so
-  // duplicate submissions are fenced in exactly one place.
-  const turnSubmitGate = useMemo(() => createTurnSubmitGate(), []);
-
-  const {
-    thread,
-    pendingUsageMessages,
-    sendMessage,
-    regenerateMessage,
-    editAndRegenerateMessage,
-    isUploading,
-    isHistoryLoading,
-    hasMoreHistory,
-    loadMoreHistory,
-  } = useThreadStream({
-    threadId: isNewThread ? undefined : threadId,
-    displayThreadId: threadId,
-    context: settings.context,
-    isMock,
-    turnSubmitGate,
-    // onSend only animates the UI; do NOT flip `isNewThread` here — the
-    // LangGraph SDK eagerly fetches /history the moment it receives a
-    // thread id and assumes the thread exists on the backend (issue #2746).
-    onSend: () => {
-      setIsWelcomeMode(false);
-    },
-    onStart: (createdThreadId) => {
-      // ! Important: Never use next.js router for navigation in this case, otherwise it will cause the thread to re-mount and lose all states. Use native history API instead.
-      history.replaceState(null, "", `/workspace/chats/${createdThreadId}`);
-      setThreadId(createdThreadId);
-      setIsNewThread(false);
-    },
-    onFinish: (state) => {
-      if (document.hidden || !document.hasFocus()) {
-        let body = "Conversation finished";
-        const lastMessage = state.messages.at(-1);
-        if (lastMessage) {
-          const textContent = textOfMessage(lastMessage);
-          if (textContent) {
-            body =
-              textContent.length > 200
-                ? textContent.substring(0, 200) + "..."
-                : textContent;
-          }
-        }
-        showNotification(state.title, { body });
-      }
-    },
-  });
-
-  const hasThreadMessages = thread.messages.length > 0;
-
-  useEffect(() => {
-    if (
-      !isNewThread &&
-      !isMock &&
-      threadMetadata.data == null &&
-      !threadMetadata.isLoading &&
-      !threadMetadata.isFetching &&
-      !isHistoryLoading &&
-      !hasMoreHistory &&
-      !hasThreadMessages
-    ) {
-      router.replace("/workspace/chats/new");
-    }
-  }, [
-    hasMoreHistory,
-    hasThreadMessages,
-    isHistoryLoading,
-    isMock,
-    isNewThread,
-    router,
-    threadMetadata.data,
-    threadMetadata.isFetching,
-    threadMetadata.isLoading,
-  ]);
 
   // Born assigned: pre-create the thread row with its project so the sidebar
   // lists it under the project immediately. Idempotent server-side on
@@ -239,29 +129,38 @@ export default function ChatPage() {
     }
   }, [threadId, projectParam, queryClient, t]);
 
-  // Turn-submit controller: owns the message submit chain (duplicate fence,
-  // draft policy, attachment pre-uploads, staleness, lifecycle) on top of the
-  // stream module's send. The page contributes the project pre-create as the
-  // pre-dispatch prepare step; the composer and the stream module join the
-  // same fence.
-  const turnSubmit = useViewTurnSubmit({
-    gate: turnSubmitGate,
+  // The page-level wiring seam (stream, welcome state, redirect, stop/
+  // branch/regenerate, turn-submit controller); this route contributes the
+  // project pre-create as the pre-dispatch prepare step and tracks the
+  // project scope so a scope change invalidates an in-flight submission.
+  const {
+    thread,
+    pendingUsageMessages,
     sendMessage,
+    isUploading,
+    isHistoryLoading,
+    hasMoreHistory,
+    loadMoreHistory,
+    isWelcomeMode,
+    threadMetadata,
+    branchPending,
+    turnSubmit,
+    handleStop,
+    handleRegenerate,
+    handleEditAndRegenerate,
+    handleBranchTurn,
+  } = useThreadPage({
+    threadId,
+    isNewThread,
+    isMock,
+    setThreadId,
+    setIsNewThread,
+    context: settings.context,
+    threadPath: pathOfThread,
     prepare: ensureProjectThread,
+    scopeKey: projectParam,
   });
-  // The cleanup runs when `threadId` changes (conversation switch on a
-  // persisted page — sidebar navigation keeps this component mounted), when
-  // the new-chat project scope changes (the sidebar "New chat" link can drop
-  // `?project=` without a pathname change), or on unmount. A navigation
-  // during the pre-dispatch await must not let the stale continuation start
-  // a run for the abandoned conversation: its onStart would rewrite the
-  // newly selected conversation's URL and its completion would clear the
-  // new composer.
-  useEffect(() => {
-    return () => {
-      turnSubmit.invalidate();
-    };
-  }, [turnSubmit, threadId, projectParam]);
+
   const handleSubmitHumanInput = useCallback(
     async (request: HumanInputRequest, response: HumanInputResponse) => {
       let sent = false;
@@ -285,45 +184,6 @@ export default function ChatPage() {
       return sent;
     },
     [sendMessage, threadId],
-  );
-  const handleStop = useCallback(async () => {
-    await thread.stop();
-  }, [thread]);
-  const handleRegenerate = useCallback(
-    (messageId: string, supersededMessageIds: string[]) =>
-      regenerateMessage(threadId, messageId, supersededMessageIds),
-    [regenerateMessage, threadId],
-  );
-  const handleEditAndRegenerate = useCallback(
-    (messageId: string, replacementText: string) =>
-      editAndRegenerateMessage(threadId, messageId, replacementText),
-    [editAndRegenerateMessage, threadId],
-  );
-  const handleBranchTurn = useCallback(
-    async (messageId: string, messageIds: string[]) => {
-      if (
-        isNewThread ||
-        isMock ||
-        env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true"
-      ) {
-        return;
-      }
-
-      try {
-        const response = await branchThread.mutateAsync({
-          threadId,
-          messageId,
-          messageIds,
-        });
-        toast.success(t.conversation.branchCreated);
-        router.push(`/workspace/chats/${response.thread_id}`);
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : t.conversation.branchFailed,
-        );
-      }
-    },
-    [branchThread, isMock, isNewThread, router, t, threadId],
   );
 
   const tokenUsageInlineMode = tokenUsageEnabled
@@ -454,7 +314,7 @@ export default function ChatPage() {
                     env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" &&
                     !isUploading &&
                     !thread.isLoading &&
-                    !branchThread.isPending &&
+                    !branchPending &&
                     !hasGoal &&
                     !hasOpenHumanInputCard
                   }
@@ -470,7 +330,7 @@ export default function ChatPage() {
                     env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" &&
                     !isUploading &&
                     !thread.isLoading &&
-                    !branchThread.isPending
+                    !branchPending
                   }
                   onBranchTurn={handleBranchTurn}
                 />

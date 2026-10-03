@@ -180,6 +180,8 @@ vi.mock("@/core/threads/token-usage", () => ({
 
 vi.mock("@/core/threads/utils", () => ({
   textOfMessage: () => "",
+  pathOfThread: (thread: string | { thread_id: string }) =>
+    `/workspace/chats/${typeof thread === "string" ? thread : thread.thread_id}`,
 }));
 
 vi.mock("@/env", () => ({
