@@ -46,7 +46,7 @@ async def _make_env(
     async with factory() as session:
         session.add(current_user)
         await session.commit()
-    monkeypatch.setattr(resources, "get_session_factory", lambda: factory)
+    monkeypatch.setattr(resources, "_factory", lambda: factory)
     monkeypatch.setattr(
         resources,
         "get_paths",

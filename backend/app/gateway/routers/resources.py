@@ -10,7 +10,6 @@ import uuid
 import zipfile
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
-from functools import wraps
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Any
@@ -32,14 +31,11 @@ from app.agentplatform.fault_zeroing.kernel import (
 )
 from app.agentplatform.knowledge import models as knowledge_models  # noqa: F401 - register knowledge tables
 from app.agentplatform.knowledge.facade import KnowledgeFacade
-from app.agentplatform.knowledge.ragflow import configured_ragflow_provider
-from app.agentplatform.knowledge.revisions import KnowledgeRevisionService, execute_publish
 from app.agentplatform.rbac_models import UserModel, UserRole
 from app.agentplatform.resource_models import Resource, ResourceFavorite, ResourceNotification, ResourceVersion, RunResourceSnapshot
 from app.agentplatform.resource_runtime import (
     ResourcePublisher,
     ResourceStorage,
-    StorageConflict,
     StorageValidationError,
     build_retention_report,
     load_validated_agent_definition,
@@ -47,19 +43,16 @@ from app.agentplatform.resource_runtime import (
 )
 from app.agentplatform.resource_service import (
     ResourceActor,
-    ResourceApprovalRequired,
     ResourceConflict,
     ResourceNotFound,
     ResourcePermissionDenied,
     ResourceService,
-    VisibilityClosureError,
 )
 from app.agentplatform.resources.actors import actor_from_user
 from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
 from app.agentplatform.resources.skill_validation import _validate_skill_frontmatter
 from app.agentplatform.workflow_runtime import (
     WorkflowConcurrencyExceeded,
-    WorkflowRunError,
     WorkflowV2Store,
     collect_artifacts,
     make_host_resolver,
@@ -69,9 +62,10 @@ from app.agentplatform.workflow_runtime import (
 )
 from app.gateway.audit import record_audit
 from app.gateway.authz import get_current_rbac_user
+from app.gateway.knowledge_seam import knowledge_facade, translate_resource_errors
+from app.gateway.knowledge_seam import persistence_factory as _factory
 from deerflow.config.app_config import get_app_config
 from deerflow.config.paths import get_paths
-from deerflow.persistence.engine import get_session_factory
 from deerflow.persistence.models.workflow_v2 import WorkflowV2RunRow
 from deerflow.uploads.manager import claim_unique_filename, normalize_filename, open_upload_file_no_symlink
 
@@ -348,46 +342,6 @@ def _resource_actor(user: UserModel) -> ResourceActor:
     return actor_from_user(user)
 
 
-def _translate_resource_errors(handler):
-    @wraps(handler)
-    async def wrapped(*args, **kwargs):
-        try:
-            return await handler(*args, **kwargs)
-        except ResourceNotFound as exc:
-            raise HTTPException(404, str(exc)) from exc
-        except ResourcePermissionDenied as exc:
-            raise HTTPException(403, str(exc)) from exc
-        except VisibilityClosureError as exc:
-            raise HTTPException(
-                409,
-                detail={
-                    "code": "visibility_closure_violation",
-                    "message": str(exc),
-                    "violations": exc.violations,
-                },
-            ) from exc
-        except (ResourceConflict, ResourceApprovalRequired, StorageConflict) as exc:
-            raise HTTPException(409, str(exc)) from exc
-        except WorkflowRunError as exc:
-            raise HTTPException(400, detail=exc.api_detail()) from exc
-        except (StorageValidationError, ValueError) as exc:
-            raise HTTPException(400, str(exc)) from exc
-
-    return wrapped
-
-
-def _factory():
-    session_factory = get_session_factory()
-    if session_factory is None:
-        raise HTTPException(503, "Resource persistence is unavailable")
-    return session_factory
-
-
-def _knowledge_facade() -> KnowledgeFacade:
-    """Wire the knowledge-domain seam with this gateway's session factory and audit sink."""
-    return KnowledgeFacade(_factory(), audit=record_audit)
-
-
 def _resource_payload(
     resource: Resource,
     *,
@@ -551,7 +505,7 @@ def _required_canonical_resume_roles(
 
 
 @router.get("")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_resources(
     resource_type: str | None = Query(default=None, alias="type", pattern="^(skill|agent|workflow|knowledge_base)$"),
     offset: int = Query(default=0, ge=0),
@@ -692,7 +646,7 @@ async def mark_all_resource_notifications_read(
 
 
 @router.post("/import/agent", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def import_agent_resource(
     archive: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -786,7 +740,7 @@ async def import_agent_resource(
 
 
 @router.post("/import/skill", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def import_skill_resource(
     archive: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -853,7 +807,7 @@ async def import_skill_resource(
 
 
 @router.post("", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def create_resource(
     body: ResourceCreateRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -896,7 +850,7 @@ async def create_resource(
 
 
 @router.get("/{resource_id}/knowledge")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_knowledge_binding(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -914,45 +868,45 @@ async def get_knowledge_binding(
 
 
 @router.get("/{resource_id}/documents")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_knowledge_documents(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.list_documents(_resource_actor(current_user), resource_id)
 
 
 @router.post("/{resource_id}/documents", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def upload_knowledge_document(
     resource_id: str,
     file: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.upload_document(_resource_actor(current_user), resource_id, file)
 
 
 @router.get("/{resource_id}/documents/{document_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_knowledge_document(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.get_document(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.patch("/{resource_id}/documents/{document_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def update_knowledge_document(
     resource_id: str,
     document_id: str,
     body: KnowledgeDocumentUpdateRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.update_document(
         _resource_actor(current_user),
@@ -964,170 +918,111 @@ async def update_knowledge_document(
 
 
 @router.post("/{resource_id}/documents/{document_id}/retry")
-@_translate_resource_errors
+@translate_resource_errors
 async def retry_knowledge_document(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.request_document_retry(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.post("/{resource_id}/documents/{document_id}/rebuild-index")
-@_translate_resource_errors
+@translate_resource_errors
 async def rebuild_knowledge_document_index(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.request_document_rebuild(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.delete("/{resource_id}/documents/{document_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def delete_knowledge_document(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.request_document_delete(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.post("/{resource_id}/knowledge-revisions", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def create_knowledge_revision(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        revision = await KnowledgeRevisionService(session, _resource_actor(current_user)).create_revision(resource_id)
-        await session.commit()
-        await record_audit(
-            str(current_user.id),
-            "knowledge_revision_created",
-            "knowledge_revision",
-            str(revision["id"]),
-            {
-                "resource_id": resource_id,
-                "revision_no": revision["revision_no"],
-                "manifest_hash": revision["manifest_hash"],
-                "document_count": revision["document_count"],
-            },
-        )
-        return revision
+    return await knowledge.create_revision(_resource_actor(current_user), resource_id)
 
 
 @router.post("/{resource_id}/knowledge-revisions/{revision_id}/prepare")
-@_translate_resource_errors
+@translate_resource_errors
 async def prepare_knowledge_revision(
     resource_id: str,
     revision_id: str,
     background_tasks: BackgroundTasks,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     """Prepare an isolated candidate index without changing the published pointer."""
-    provider = configured_ragflow_provider()
-    if provider is None:
-        raise HTTPException(status_code=503, detail="No knowledge provider is configured")
-    async with _factory()() as session:
-        revision = await KnowledgeRevisionService(session, _resource_actor(current_user)).prepare_revision(
-            resource_id,
-            revision_id,
-            provider=provider,
-        )
-        await session.commit()
-    if revision["status"] == "indexing":
-        background_tasks.add_task(
-            execute_publish,
-            _factory(),
-            resource_id=resource_id,
-            revision_id=revision_id,
-            actor_id=str(current_user.id),
-            provider=provider,
-            execution_token=revision.get("publish_execution_token"),
-            activate=False,
-        )
-    await record_audit(
-        str(current_user.id),
-        "knowledge_revision_prepare_requested",
-        "knowledge_revision",
+    return await knowledge.prepare_revision(
+        _resource_actor(current_user),
+        resource_id,
         revision_id,
-        {"resource_id": resource_id, "revision_no": revision["revision_no"]},
+        schedule=background_tasks.add_task,
     )
-    return revision
 
 
 @router.get("/{resource_id}/knowledge-revisions")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_knowledge_revisions(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        revisions = await KnowledgeRevisionService(session, _resource_actor(current_user)).list_revisions(resource_id)
-        return {"items": revisions, "total": len(revisions)}
+    return await knowledge.list_revisions(_resource_actor(current_user), resource_id)
 
 
 @router.get("/{resource_id}/knowledge-revisions/{revision_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_knowledge_revision(
     resource_id: str,
     revision_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        return await KnowledgeRevisionService(session, _resource_actor(current_user)).get_revision(resource_id, revision_id)
+    return await knowledge.get_revision(_resource_actor(current_user), resource_id, revision_id)
 
 
 @router.post("/{resource_id}/knowledge-revisions/{revision_id}/publish")
-@_translate_resource_errors
+@translate_resource_errors
 async def publish_knowledge_revision(
     resource_id: str,
     revision_id: str,
     background_tasks: BackgroundTasks,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
-    provider = configured_ragflow_provider()
-    if provider is None:
-        # Environment readiness, not a client mistake: align with the admin
-        # reconciliation endpoint's 503 semantics.
-        raise HTTPException(status_code=503, detail="No knowledge provider is configured")
-    async with _factory()() as session:
-        revision = await KnowledgeRevisionService(session, _resource_actor(current_user)).publish_revision(
-            resource_id,
-            revision_id,
-            provider=provider,
-        )
-        await session.commit()
-    background_tasks.add_task(
-        execute_publish,
-        _factory(),
-        resource_id=resource_id,
-        revision_id=revision_id,
-        actor_id=str(current_user.id),
-        provider=provider,
-        execution_token=revision.get("publish_execution_token"),
-    )
-    await record_audit(
-        str(current_user.id),
-        "knowledge_revision_publish_requested",
-        "knowledge_revision",
+    return await knowledge.publish_revision(
+        _resource_actor(current_user),
+        resource_id,
         revision_id,
-        {"resource_id": resource_id, "revision_no": revision["revision_no"]},
+        schedule=background_tasks.add_task,
     )
-    return revision
 
 
 @router.post("/{resource_id}/eval-cases", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def create_eval_case(
     resource_id: str,
     body: EvalCaseCreateRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.create_eval_case(
         _resource_actor(current_user),
@@ -1139,45 +1034,45 @@ async def create_eval_case(
 
 
 @router.get("/{resource_id}/eval-cases")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_eval_cases(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.list_eval_cases(_resource_actor(current_user), resource_id)
 
 
 @router.get("/{resource_id}/eval-cases/revisions/{revision_id}/applicability")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_eval_case_revision_applicability(
     resource_id: str,
     revision_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.eval_case_revision_applicability(_resource_actor(current_user), resource_id, revision_id)
 
 
 @router.get("/{resource_id}/eval-cases/{case_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_eval_case(
     resource_id: str,
     case_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.get_eval_case(_resource_actor(current_user), resource_id, case_id)
 
 
 @router.patch("/{resource_id}/eval-cases/{case_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def update_eval_case(
     resource_id: str,
     case_id: str,
     body: EvalCaseUpdateRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.update_eval_case(
         _resource_actor(current_user),
@@ -1190,12 +1085,12 @@ async def update_eval_case(
 
 
 @router.delete("/{resource_id}/eval-cases/{case_id}", status_code=204)
-@_translate_resource_errors
+@translate_resource_errors
 async def delete_eval_case(
     resource_id: str,
     case_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> Response:
     """Delete one knowledge regression case."""
     await knowledge.delete_eval_case(_resource_actor(current_user), resource_id, case_id)
@@ -1203,7 +1098,7 @@ async def delete_eval_case(
 
 
 @router.put("/{resource_id}/knowledge-draft")
-@_translate_resource_errors
+@translate_resource_errors
 async def save_knowledge_draft(
     resource_id: str,
     body: KnowledgeDraftRequest,
@@ -1226,17 +1121,17 @@ async def save_knowledge_draft(
 
 
 @router.post("/{resource_id}/knowledge/initialize", status_code=202)
-@_translate_resource_errors
+@translate_resource_errors
 async def initialize_knowledge(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
-    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
 ) -> dict[str, Any]:
     return await knowledge.request_initialization(_resource_actor(current_user), resource_id)
 
 
 @router.post("/{resource_id}/knowledge", status_code=200)
-@_translate_resource_errors
+@translate_resource_errors
 async def bind_knowledge_dataset(
     resource_id: str,
     body: KnowledgeBindingRequest,
@@ -1265,7 +1160,7 @@ async def bind_knowledge_dataset(
 
 
 @router.delete("/{resource_id}/knowledge", status_code=200)
-@_translate_resource_errors
+@translate_resource_errors
 async def unbind_knowledge_dataset(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1289,7 +1184,7 @@ async def unbind_knowledge_dataset(
 
 
 @router.get("/aliases/{resource_type}/{slug}")
-@_translate_resource_errors
+@translate_resource_errors
 async def resolve_resource_alias(
     resource_type: str,
     slug: str,
@@ -1304,7 +1199,7 @@ async def resolve_resource_alias(
 
 
 @router.get("/{resource_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_resource(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1359,7 +1254,7 @@ async def get_resource(
 
 
 @router.get("/{resource_id}/dependencies")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_resource_dependencies(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1385,7 +1280,7 @@ async def get_resource_dependencies(
 
 
 @router.get("/{resource_id}/versions")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_resource_versions(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1399,7 +1294,7 @@ async def list_resource_versions(
 
 
 @router.get("/{resource_id}/published")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_published_resource(
     resource_id: str,
     version: int | None = Query(default=None, ge=1),
@@ -1480,7 +1375,7 @@ async def get_published_resource(
 
 
 @router.get("/{resource_id}/export")
-@_translate_resource_errors
+@translate_resource_errors
 async def export_resource(
     resource_id: str,
     version: int | None = Query(default=None, ge=1),
@@ -1518,7 +1413,7 @@ async def export_resource(
 
 
 @router.put("/{resource_id}/workflow-draft")
-@_translate_resource_errors
+@translate_resource_errors
 async def save_workflow_draft(
     resource_id: str,
     body: WorkflowDraftRequest,
@@ -1561,7 +1456,7 @@ async def save_workflow_draft(
 
 
 @router.put("/{resource_id}/agent-draft")
-@_translate_resource_errors
+@translate_resource_errors
 async def save_agent_draft(
     resource_id: str,
     body: AgentDraftRequest,
@@ -1615,7 +1510,7 @@ async def save_agent_draft(
 
 
 @router.put("/{resource_id}/skill-draft")
-@_translate_resource_errors
+@translate_resource_errors
 async def save_skill_draft(
     resource_id: str,
     body: SkillDraftRequest,
@@ -1657,7 +1552,7 @@ async def save_skill_draft(
 
 
 @router.put("/{resource_id}/archive-draft")
-@_translate_resource_errors
+@translate_resource_errors
 async def save_archive_draft(
     resource_id: str,
     archive: UploadFile = File(...),
@@ -1696,7 +1591,7 @@ async def save_archive_draft(
 
 
 @router.post("/{resource_id}/publish")
-@_translate_resource_errors
+@translate_resource_errors
 async def publish_resource(
     resource_id: str,
     body: PublishRequest,
@@ -1732,7 +1627,7 @@ async def publish_resource(
 
 
 @router.put("/{resource_id}/dependencies")
-@_translate_resource_errors
+@translate_resource_errors
 async def replace_dependencies(
     resource_id: str,
     body: DependencyRequest,
@@ -1762,7 +1657,7 @@ async def replace_dependencies(
 
 
 @router.post("/{resource_id}/fork", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def fork_resource(
     resource_id: str,
     body: ForkRequest,
@@ -1788,7 +1683,7 @@ async def fork_resource(
 
 
 @router.post("/{resource_id}/visibility-applications", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def request_visibility(
     resource_id: str,
     body: VisibilityApplicationRequest,
@@ -1818,7 +1713,7 @@ async def request_visibility(
 
 
 @router.get("/{resource_id}/visibility-impact")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_visibility_impact(
     resource_id: str,
     target_visibility: str = Query(pattern="^(private|department|public)$"),
@@ -1834,7 +1729,7 @@ async def get_visibility_impact(
 
 
 @router.put("/{resource_id}/visibility")
-@_translate_resource_errors
+@translate_resource_errors
 async def change_visibility(
     resource_id: str,
     body: VisibilityRequest,
@@ -1865,7 +1760,7 @@ async def change_visibility(
 
 
 @router.post("/{resource_id}/archive")
-@_translate_resource_errors
+@translate_resource_errors
 async def archive_resource(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1883,7 +1778,7 @@ async def archive_resource(
 
 
 @router.post("/{resource_id}/suspend")
-@_translate_resource_errors
+@translate_resource_errors
 async def suspend_resource(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1902,7 +1797,7 @@ async def suspend_resource(
 
 
 @router.post("/{resource_id}/restore")
-@_translate_resource_errors
+@translate_resource_errors
 async def restore_resource(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1921,7 +1816,7 @@ async def restore_resource(
 
 
 @router.post("/{resource_id}/transfer")
-@_translate_resource_errors
+@translate_resource_errors
 async def transfer_resource(
     resource_id: str,
     body: TransferRequest,
@@ -1949,7 +1844,7 @@ async def transfer_resource(
 
 
 @router.post("/{resource_id}/favorite", status_code=204)
-@_translate_resource_errors
+@translate_resource_errors
 async def favorite_resource(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -1960,7 +1855,7 @@ async def favorite_resource(
 
 
 @router.delete("/{resource_id}/favorite", status_code=204)
-@_translate_resource_errors
+@translate_resource_errors
 async def unfavorite_resource(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -2039,7 +1934,7 @@ def _intake_rejection(exc: EvidenceIntakeRejected) -> HTTPException:
 
 
 @router.post("/{resource_id}/workflow-runs", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def create_workflow_run(
     resource_id: str,
     body: WorkflowRunRequest,
@@ -2097,7 +1992,7 @@ async def create_workflow_run(
 
 
 @router.post("/{resource_id}/workflow-runs/with-files", status_code=201)
-@_translate_resource_errors
+@translate_resource_errors
 async def create_workflow_run_with_files(
     resource_id: str,
     inputs: str = Form("{}"),
@@ -2205,7 +2100,7 @@ async def create_workflow_run_with_files(
 
 
 @router.get("/{resource_id}/workflow-runs")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_canonical_workflow_runs(
     resource_id: str,
     offset: int = Query(default=0, ge=0),
@@ -2245,7 +2140,7 @@ async def _get_canonical_run(
 
 
 @router.get("/{resource_id}/workflow-runs/{run_id}")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_canonical_workflow_run(
     resource_id: str,
     run_id: str,
@@ -2255,7 +2150,7 @@ async def get_canonical_workflow_run(
 
 
 @router.get("/{resource_id}/workflow-runs/{run_id}/events")
-@_translate_resource_errors
+@translate_resource_errors
 async def stream_canonical_workflow_events(
     resource_id: str,
     run_id: str,
@@ -2383,7 +2278,7 @@ async def _run_artifacts(store: WorkflowV2Store, run) -> list[dict]:
 
 
 @router.get("/{resource_id}/workflow-runs/{run_id}/artifacts")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_canonical_run_artifacts(
     resource_id: str,
     run_id: str,
@@ -2396,7 +2291,7 @@ async def list_canonical_run_artifacts(
 
 
 @router.get("/{resource_id}/workflow-runs/{run_id}/artifacts/content")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_canonical_run_artifact_content(
     resource_id: str,
     run_id: str,
@@ -2419,7 +2314,7 @@ async def get_canonical_run_artifact_content(
 
 
 @router.get("/{resource_id}/workflow-runs/{run_id}/record")
-@_translate_resource_errors
+@translate_resource_errors
 async def download_canonical_run_record(
     resource_id: str,
     run_id: str,
@@ -2446,7 +2341,7 @@ async def download_canonical_run_record(
 
 
 @router.post("/{resource_id}/workflow-runs/{run_id}/commands")
-@_translate_resource_errors
+@translate_resource_errors
 async def submit_canonical_workflow_command(
     resource_id: str,
     run_id: str,
@@ -2513,7 +2408,7 @@ async def submit_canonical_workflow_command(
 
 
 @router.get("/admin/visibility-applications")
-@_translate_resource_errors
+@translate_resource_errors
 async def list_visibility_applications(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
@@ -2533,7 +2428,7 @@ async def list_visibility_applications(
 
 
 @router.get("/admin/retention-report")
-@_translate_resource_errors
+@translate_resource_errors
 async def get_retention_report(
     retention_days: int = Query(default=90, ge=1, le=3650),
     current_user: UserModel = Depends(get_current_rbac_user),
@@ -2554,7 +2449,7 @@ async def get_retention_report(
 
 
 @router.post("/admin/visibility-applications/{application_id}/review")
-@_translate_resource_errors
+@translate_resource_errors
 async def review_visibility_application(
     application_id: str,
     body: VisibilityReviewRequest,

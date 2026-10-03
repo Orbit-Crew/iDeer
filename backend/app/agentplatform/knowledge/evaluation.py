@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agentplatform.knowledge.eval_gate import load_eval_policy, normalize_case_ids, policy_payload, retrieval_profile_for_revision
 from app.agentplatform.knowledge.integrity import UNUSABLE_INTEGRITY
-from app.agentplatform.knowledge.models import KnowledgeBase, KnowledgeEvalCase, KnowledgeEvalComparison, KnowledgeEvalResult, KnowledgeEvalRun, KnowledgeRevision
+from app.agentplatform.knowledge.models import KnowledgeBase, KnowledgeEvalCase, KnowledgeEvalComparison, KnowledgeEvalResult, KnowledgeEvalRun, KnowledgeEvaluationPolicy, KnowledgeRevision
 from app.agentplatform.knowledge.retrieval_test import (
     DEFAULT_TEST_TOP_K,
     MAX_TEST_TOP_K,
@@ -164,6 +164,46 @@ class KnowledgeEvaluationService:
             raise KnowledgeEvaluationValidationError("unsupported retrieval profile")
         kb = await self.session.get(KnowledgeBase, revision.knowledge_base_id)
         return retrieval_profile_for_revision(kb.retrieval_profile_json if kb and isinstance(kb.retrieval_profile_json, dict) else {}, revision.manifest_json, profile_id)
+
+    async def get_policy(self, resource_id: str) -> dict[str, object]:
+        """Read the versioned publish-evaluation policy, if one is configured."""
+        await self._kb(resource_id)
+        policy = await self.session.get(KnowledgeEvaluationPolicy, resource_id)
+        return policy_payload(policy) or {"configured": False}
+
+    async def put_policy(
+        self,
+        resource_id: str,
+        *,
+        profile_id: str,
+        top_k: int,
+        case_ids: list[str],
+        min_expected_hit_rate: float,
+        min_recall_at_k: float,
+        min_mrr_at_k: float,
+    ) -> dict[str, object]:
+        """Replace the versioned publish-evaluation policy for one KnowledgeBase."""
+        resource = await self._kb(resource_id)
+        self.resource_service.assert_modify(resource)
+        normalized = normalize_case_ids(case_ids)
+        count = await self.session.scalar(select(func.count()).select_from(KnowledgeEvalCase).where(KnowledgeEvalCase.knowledge_base_id == resource_id, KnowledgeEvalCase.id.in_(normalized)))
+        if int(count or 0) != len(normalized):
+            raise KnowledgeEvaluationValidationError("one or more evaluation cases were not found")
+        policy = await self.session.get(KnowledgeEvaluationPolicy, resource_id)
+        if policy is None:
+            policy = KnowledgeEvaluationPolicy(knowledge_base_id=resource_id, version=1, updated_by=self.resource_service.actor.user_id)
+            self.session.add(policy)
+        else:
+            policy.version += 1
+            policy.updated_by = self.resource_service.actor.user_id
+        policy.profile_id = profile_id
+        policy.top_k = top_k
+        policy.case_ids_json = normalized
+        policy.min_expected_hit_rate = min_expected_hit_rate
+        policy.min_recall_at_k = min_recall_at_k
+        policy.min_mrr_at_k = min_mrr_at_k
+        await self.session.flush()
+        return policy_payload(policy) or {}
 
     async def start(self, resource_id: str, revision_id: str, *, profile_id: str = "frozen", top_k: int = DEFAULT_TEST_TOP_K, case_ids: list[str] | None = None) -> dict[str, object]:
         resource = await self._kb(resource_id, use=True)

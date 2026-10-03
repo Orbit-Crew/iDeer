@@ -55,6 +55,10 @@ class RetrievalTestUnavailable(RuntimeError):
     """The retrieval tooling is not configured in this deployment."""
 
 
+class RetrievalTestStorageUnavailable(RuntimeError):
+    """The retrieval test executed but storage refused to archive it."""
+
+
 class KnowledgeRetrievalTestValidationError(ValueError):
     """Raised when a retrieval test request violates documented bounds."""
 

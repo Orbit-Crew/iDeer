@@ -211,7 +211,7 @@ def test_document_upload_route_serves_through_the_injected_seam(tmp_path, monkey
     """FastAPI resolves the seam dependency and the route serves end to end.
 
     The direct-call tests above cover handler-to-facade delegation; this one
-    proves the production injection wiring (``Depends(_knowledge_facade)``)
+    proves the production injection wiring (``Depends(knowledge_facade)``)
     resolves and dispatches a real request. The facade is swapped through
     FastAPI's dependency-overrides seam, not by patching module globals.
     """
@@ -222,7 +222,7 @@ def test_document_upload_route_serves_through_the_injected_seam(tmp_path, monkey
 
     import app.agentplatform.knowledge.documents  # noqa: F401 - patch target
     from app.gateway.authz import get_current_rbac_user
-    from app.gateway.routers.resources import _knowledge_facade
+    from app.gateway.knowledge_seam import knowledge_facade
     from app.gateway.routers.resources import router as resources_router
 
     async def _prepare() -> tuple:
@@ -250,7 +250,7 @@ def test_document_upload_route_serves_through_the_injected_seam(tmp_path, monkey
     app = FastAPI()
     app.include_router(resources_router)
     app.dependency_overrides[get_current_rbac_user] = lambda: UserModel(id="owner", username="owner@test.com", role=UserRole.USER, department_id="dept-a", disabled=False)
-    app.dependency_overrides[_knowledge_facade] = lambda: KnowledgeFacade(factory, audit=audit)
+    app.dependency_overrides[knowledge_facade] = lambda: KnowledgeFacade(factory, audit=audit)
 
     with TestClient(app) as client:
         response = client.post(f"/api/resources/{kb_id}/documents", files={"file": ("guide.txt", b"hello knowledge", "text/plain")})

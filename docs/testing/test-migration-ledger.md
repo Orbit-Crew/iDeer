@@ -10,6 +10,50 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: Knowledge endpoints route through the facade seam
+
+Ticket `architecture-deepening` issue 03 (spec candidate 1, Q6=a). No test
+file was moved, renamed, or deleted; two gateway route-test files were
+rewritten in place from patching route-module globals to injecting the
+`KnowledgeFacade` seam, and the facade unit test file gained seam-level
+intent tests. Every replaced assertion retains an equal or stronger owner at
+the same path.
+
+| Rewritten in place | Replaced patching | Equal-or-stronger replacement at the same path | Validation |
+| --- | --- | --- | --- |
+| `backend/tests/unit/gateway/test_resources_api_knowledge_revisions.py` | `resources.get_session_factory`, `resources.get_paths`, `resources.record_audit`, `resources.configured_ragflow_provider` | Facade injected per test (`provider_factory` for the 503 case, `BackgroundTasks.add_task` as the build scheduler); audit payloads asserted through the injected sink; governance 403/404 and duplicate-publish 409 assertions retained | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/gateway/test_resources_api_knowledge_revisions.py tests/unit/knowledge/test_knowledge_facade.py -q` |
+| `backend/tests/unit/gateway/test_knowledge_tests_api.py` | `resources.get_session_factory`, `knowledge_tests.KnowledgeRetrievalTestService`, `knowledge_tests.record_audit` | Facade injected per test (`search`/`settings_factory` for provider states, facade subclass for the storage-refusal 503); execute/list/replay, provider-error state, 503/422/409/404 distinct safe states retained; adds policy endpoints classifying a non-KB resource as 404 (was 409 via `ResourceConflict`), policy round-trip, evaluation start/list/read/retry-guard, and comparison enqueue/read endpoint coverage that previously had no route-level owner | Same command as above plus `tests/unit/gateway/test_knowledge_tests_api.py` |
+| `backend/tests/unit/knowledge/test_knowledge_facade.py` | (additive) | New seam-level tests: revision/retrieval-test/evaluation/policy intents commit and audit exact payloads, `KnowledgeProviderUnavailable` on missing provider, `RetrievalTestStorageUnavailable` on storage refusal, non-KB resources raise `ResourceNotFound` (404) for policy intents | Same command as above |
+
+Two non-knowledge resources test files kept their environment wiring working
+after the session-factory helper moved to the shared seam module; their
+assertions are unchanged:
+
+| Adjusted wiring only | Change | Validation |
+| --- | --- | --- |
+| `backend/tests/unit/gateway/test_resources_api_audit.py` | patches `resources._factory` instead of the removed `resources.get_session_factory` import | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/gateway/test_resources_api_audit.py tests/unit/gateway/test_resources_api_canonical_drafts.py -q` |
+| `backend/tests/unit/gateway/test_resources_api_canonical_drafts.py` | same patch-target rename (5 sites) | Same command as above |
+
+Behavioral note recorded for reviewers: the two
+`ResourceConflict("KnowledgeBase not found")` raises in the evaluation-policy
+routes became `ResourceNotFound` via the evaluation service guard, so a
+non-KnowledgeBase resource now reads as 404 (unknown == invisible) instead of
+409; the comparison evaluation route's 422 detail code unified from
+`invalid_evaluation_comparison` to `invalid_evaluation` as part of collapsing
+the duplicate error-translation stack into one mapping
+(`app/gateway/knowledge_seam.py::translate_resource_errors`). No test or
+frontend consumer referenced the removed code.
+
+Validation of the wider blast radius (all green on the candidate revision):
+
+```bash
+cd backend
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/gateway tests/unit/knowledge tests/unit/resources -q
+# 2521 passed, 9 skipped
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/contracts/ tests/integration/persistence/ -q
+# 456 passed
+```
+
 ## Batch 2026-10-01: Exact backend test copies at upstream paths
 
 Removed the nested local-migration copy in each row and retained the identical
