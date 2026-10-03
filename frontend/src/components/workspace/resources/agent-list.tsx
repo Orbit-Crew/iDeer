@@ -90,7 +90,7 @@ export function AgentList() {
           {t.common.import}
         </Button>
         <Button asChild>
-          <Link href="/workspace/capabilities/agents/new">
+          <Link href="/workspace/agents/new">
             <PlusIcon className="mr-1.5 h-4 w-4" />
             {t.agents.newAgent}
           </Link>
@@ -115,7 +115,7 @@ export function AgentList() {
             {t.agents.emptyDescription}
           </p>
           <Button asChild variant="outline">
-            <Link href="/workspace/capabilities/agents/new">
+            <Link href="/workspace/agents/new">
               <PlusIcon className="mr-1.5 h-4 w-4" />
               {t.agents.newAgent}
             </Link>

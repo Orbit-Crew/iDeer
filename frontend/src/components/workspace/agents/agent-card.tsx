@@ -31,7 +31,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useDeleteAgent, useToggleAgentFavorite } from "@/core/agents";
+import {
+  useAgent,
+  useDeleteAgent,
+  useToggleAgentFavorite,
+} from "@/core/agents";
 import type { Agent } from "@/core/agents";
 import { exportAgent } from "@/core/agents/api";
 import { useI18n } from "@/core/i18n/hooks";
@@ -52,6 +56,10 @@ export function AgentCard({ agent }: AgentCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const resourceIdentity = agent.resource_id ?? agent.name;
   const chatIdentity = agent.slug ?? agent.name;
+  const { agent: publishedAgent } = useAgent(
+    agent.resource_id ?? agent.slug ?? agent.name,
+  );
+  const badgeAgent = publishedAgent ?? agent;
 
   function handleChat() {
     router.push(pathOfThread("new", { agent_name: chatIdentity }));
@@ -117,7 +125,7 @@ export function AgentCard({ agent }: AgentCardProps) {
               <div className="min-w-0">
                 <CardTitle className="type-body truncate">
                   <Link
-                    href={`/workspace/capabilities/agents/${resourceIdentity}`}
+                    href={`/workspace/agents/${resourceIdentity}`}
                     className="hover:underline"
                   >
                     {displayName}
@@ -157,11 +165,11 @@ export function AgentCard({ agent }: AgentCardProps) {
           )}
         </CardHeader>
 
-        {((agent.tool_groups?.length ?? 0) > 0 ||
-          (agent.skills?.length ?? 0) > 0) && (
+        {((badgeAgent.tool_groups?.length ?? 0) > 0 ||
+          (badgeAgent.skills?.length ?? 0) > 0) && (
           <CardContent className="pt-0 pb-3">
             <div className="flex flex-wrap gap-1">
-              {agent.tool_groups?.map((group) => (
+              {badgeAgent.tool_groups?.map((group) => (
                 <Badge
                   key={`tg:${group}`}
                   variant="outline"
@@ -170,7 +178,7 @@ export function AgentCard({ agent }: AgentCardProps) {
                   {group}
                 </Badge>
               ))}
-              {agent.skills?.map((skill) => (
+              {badgeAgent.skills?.map((skill) => (
                 <Badge
                   key={`sk:${skill}`}
                   variant="secondary"

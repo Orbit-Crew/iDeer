@@ -63,7 +63,7 @@ test.describe("Workflow management", () => {
         route.fulfill({ json: { items: [], total: 0 } }),
       );
       await page.goto("/workspace/agents");
-      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("link", { name: "Workflows" })).toBeVisible();
       await page.getByRole("link", { name: "Workflows" }).click();
       await expect(page).toHaveURL(/\/workspace\/workflows$/);
       await expect(page.getByTestId("workflow-card")).toBeVisible();
@@ -76,7 +76,16 @@ test.describe("Workflow management", () => {
       await expect(page.locator(".cm-editor")).toBeVisible({
         timeout: 30_000,
       });
-      await page.locator(".cm-content").fill(UPDATED_WORKFLOW_YAML);
+      const yamlEditor = page.locator(".cm-content");
+      await expect(yamlEditor).toContainText("name: test-workflow");
+      await yamlEditor.click();
+      await yamlEditor.press("ControlOrMeta+A");
+      await page.keyboard.insertText(UPDATED_WORKFLOW_YAML);
+      await expect
+        .poll(async () =>
+          (await yamlEditor.locator(".cm-line").allTextContents()).join("\n"),
+        )
+        .toBe(UPDATED_WORKFLOW_YAML);
       const saveRequest = page.waitForRequest(
         (request) =>
           request.method() === "PUT" &&

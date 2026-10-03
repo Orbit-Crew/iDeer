@@ -35,9 +35,9 @@ test.describe("Agent management", () => {
       mockLangGraphAPI(page, { agents: MOCK_AGENTS });
       await page.goto("/workspace/agents");
 
-      await expect(page.getByRole("link", { name: /new expert/i })).toBeVisible(
-        { timeout: 15_000 },
-      );
+      await expect(page.getByRole("link", { name: /new agent/i })).toBeVisible({
+        timeout: 15_000,
+      });
       await expect(page.getByRole("button", { name: /import/i })).toBeVisible();
     });
 
@@ -45,9 +45,9 @@ test.describe("Agent management", () => {
       mockLangGraphAPI(page, { agents: MOCK_AGENTS });
       await page.goto("/workspace/agents");
 
-      await page.getByRole("link", { name: /new expert/i }).click();
+      await page.getByRole("link", { name: /new agent/i }).click();
 
-      await expect(page).toHaveURL(/\/workspace\/capabilities\/experts\/new/);
+      await expect(page).toHaveURL(/\/workspace\/agents\/new/);
     });
 
     test("gallery shows empty state when no agents", async ({ page }) => {
@@ -181,10 +181,16 @@ test.describe("Agent management", () => {
       mockLangGraphAPI(page, { agents: MOCK_AGENTS });
       await page.goto("/workspace/agents/test-agent/edit");
 
-      // Name field should be disabled (find input with value "test-agent")
-      const nameInput = page.locator('input[value="test-agent"]');
+      // The immutable slug and editable display name may share the same value.
+      const nameInput = page
+        .getByText("Agent name cannot be changed after creation")
+        .locator("..")
+        .locator("input");
       await expect(nameInput).toBeVisible({ timeout: 15_000 });
       await expect(nameInput).toBeDisabled();
+      const displayNameInput = page.getByLabel("Display name");
+      await expect(displayNameInput).toHaveValue("test-agent");
+      await expect(displayNameInput).toBeEnabled();
     });
   });
 

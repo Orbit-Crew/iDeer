@@ -20,6 +20,17 @@ const MOCK_AGENTS = [
   },
 ];
 
+function mockAgentEditResources(page: Parameters<typeof mockLangGraphAPI>[0]) {
+  void page.route(/\/api\/resources\?type=knowledge_base/, (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    return route.fulfill({ json: { items: [], total: 0 } });
+  });
+  void page.route(/\/api\/resources\/[^/?]+\/dependencies$/, (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    return route.fulfill({ json: { dependencies: [] } });
+  });
+}
+
 test.describe("Agent chat", () => {
   test("expert tab lists experts and links to their chats", async ({
     page,
@@ -102,16 +113,25 @@ test.describe("Agent chat", () => {
     mockLangGraphAPI(page, { agents: MOCK_AGENTS });
 
     await page.goto("/workspace/agents/test-agent/chats/new");
+    await expect(page.getByText(MOCK_AGENTS[0]!.description)).toBeVisible({
+      timeout: 15_000,
+    });
     const firstAgentInput = page.getByPlaceholder(/how can i assist you/i);
     await expect(firstAgentInput).toBeVisible({ timeout: 15_000 });
     await firstAgentInput.fill("Draft for the first agent");
 
     await page.goto("/workspace/agents/second-agent/chats/new");
+    await expect(page.getByText(MOCK_AGENTS[1]!.description)).toBeVisible({
+      timeout: 15_000,
+    });
     const secondAgentInput = page.getByPlaceholder(/how can i assist you/i);
     await expect(secondAgentInput).toHaveValue("");
     await secondAgentInput.fill("Draft for the second agent");
 
     await page.goto("/workspace/agents/test-agent/chats/new");
+    await expect(page.getByText(MOCK_AGENTS[0]!.description)).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByPlaceholder(/how can i assist you/i)).toHaveValue(
       "Draft for the first agent",
     );
@@ -517,11 +537,14 @@ test.describe("Agent chat", () => {
 
   test("display name length counts emoji as code points", async ({ page }) => {
     mockLangGraphAPI(page, { agents: [MOCK_AGENTS[0]!] });
+    mockAgentEditResources(page);
     let savedName: string | undefined;
+    let saveAttempts = 0;
     await page.route(
       "**/api/resources/test-agent/agent-draft",
       async (route) => {
         if (route.request().method() !== "PUT") return route.fallback();
+        saveAttempts += 1;
         const body = route.request().postDataJSON() as {
           config?: { display_name?: string | null };
         };
@@ -537,6 +560,7 @@ test.describe("Agent chat", () => {
     await page.goto("/workspace/agents/test-agent/edit");
     const input = page.getByLabel("Display name", { exact: true });
     await input.fill("🦌".repeat(101));
+    await expect(page.getByText(/101\/100/)).toBeVisible();
     await page
       .getByRole("button", { name: "Save Changes", exact: true })
       .click();
@@ -544,13 +568,16 @@ test.describe("Agent chat", () => {
       page.getByText("Display name must be at most 100 Unicode code points."),
     ).toBeVisible();
     expect(savedName).toBeUndefined();
+    expect(saveAttempts).toBe(0);
 
     await input.fill("🦌".repeat(100));
     await expect(input).toHaveValue("🦌".repeat(100));
+    await expect(page.getByText(/100\/100/)).toBeVisible();
     await page
       .getByRole("button", { name: "Save Changes", exact: true })
       .click();
     await expect.poll(() => savedName).toBe("🦌".repeat(100));
+    expect(saveAttempts).toBe(1);
   });
 
   test("Unicode display names keep the stable agent route and run context", async ({
@@ -558,12 +585,40 @@ test.describe("Agent chat", () => {
   }, testInfo) => {
     let streamBody: Record<string, unknown> | undefined;
     const agent = { ...MOCK_AGENTS[0]!, display_name: "" };
+    let draftDisplayName = "";
     mockLangGraphAPI(page, {
       agents: [agent],
       runStreamHandler: async (route) => {
         streamBody = route.request().postDataJSON() as Record<string, unknown>;
         await handleRunStream(route);
       },
+    });
+    mockAgentEditResources(page);
+    const resource = () => ({
+      id: "00000000-0000-4000-8000-000000000004",
+      type: "agent" as const,
+      slug: agent.name,
+      display_name: agent.display_name || agent.name,
+      owner_id: "e2e-user",
+      visibility: "public",
+      scope_department_id: null,
+      latest_version: 2,
+      draft_revision: 2,
+      system_owned: false,
+      can_modify: true,
+    });
+    await page.route(/\/api\/resources\?.*/, (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      if (
+        request.method() === "GET" &&
+        url.pathname.endsWith("/api/resources") &&
+        url.searchParams.get("type") === "agent"
+      ) {
+        const item = resource();
+        return route.fulfill({ json: { items: [item], total: 1 } });
+      }
+      return route.fallback();
     });
     await page.route(
       "**/api/resources/test-agent/agent-draft",
@@ -573,7 +628,7 @@ test.describe("Agent chat", () => {
           config?: { display_name?: string | null };
         };
         expect(body.config?.display_name).toBe("代码审查助手");
-        agent.display_name = body.config?.display_name ?? "";
+        draftDisplayName = body.config?.display_name ?? "";
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -581,16 +636,65 @@ test.describe("Agent chat", () => {
         });
       },
     );
+    await page.route("**/api/resources/test-agent/publish", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      expect(route.request().postDataJSON()).toMatchObject({
+        expected_draft_revision: 2,
+      });
+      agent.display_name = draftDisplayName;
+      await route.fulfill({ status: 200, json: { version: 2 } });
+    });
+    await page.route(/\/api\/resources\/[^/?]+\/published$/, (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const resourceIdentity = new URL(route.request().url()).pathname
+        .split("/")
+        .at(-2);
+      if (![agent.name, resource().id].includes(resourceIdentity ?? ""))
+        return route.fallback();
+      return route.fulfill({
+        json: {
+          resource: resource(),
+          version: { version: 2 },
+          content: {
+            config: {
+              display_name: agent.display_name,
+              description: agent.description,
+              model: null,
+              tool_groups: null,
+              skills: [],
+            },
+            soul: agent.system_prompt,
+          },
+        },
+      });
+    });
 
     await page.goto("/workspace/agents/test-agent/edit");
     await page.getByLabel("Display name", { exact: true }).fill("代码审查助手");
     await page.screenshot({
       path: testInfo.outputPath("display-name-settings.png"),
     });
+    const draftRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "PUT" &&
+        request.url().includes("/api/resources/test-agent/agent-draft"),
+    );
+    const publishRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        request.url().includes("/api/resources/test-agent/publish"),
+    );
     await page
       .getByRole("button", { name: "Save Changes", exact: true })
       .click();
+    expect((await draftRequest).postDataJSON()).toMatchObject({
+      config: { display_name: "代码审查助手" },
+    });
+    expect((await publishRequest).postDataJSON()).toMatchObject({
+      expected_draft_revision: 2,
+    });
     await expect.poll(() => agent.display_name).toBe("代码审查助手");
+    await expect(page).toHaveURL(`/workspace/agents/${resource().id}`);
 
     await page.goto("/workspace/agents/test-agent/chats/new");
     await expect(
