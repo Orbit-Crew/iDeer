@@ -10,6 +10,71 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: Serialization test duplicate
+
+Removed `backend/tests/unit/runtime/test_serialize_message_content.py` and
+retained the upstream-path copy at `backend/tests/test_serialize_message_content.py`.
+The files have the same 13 pytest cases, fixtures, imports, markers, and execution
+semantics. Their only source difference was the GitHub issue URL in the module
+docstring. Both run from `backend/` and use the same `backend/tests/conftest.py`
+fixture context; neither uses `__file__`, package-relative imports, or path-based
+behavior. No marker or other execution option exists in either file. GitNexus
+could not resolve upstream callers for the removed test classes (`UNKNOWN`); a
+repository text search found no imports or calls to them. The remaining exact
+path references outside this ledger are this specification and its historical
+paired command.
+
+The 13 removed test cases map one-to-one to the cases retained in the upstream
+path:
+
+| Removed case | Retained case | Assertion retained |
+| --- | --- | --- |
+| `TestSerializeToolMessageContent.test_string_content` | Same case | `"ok"` content and `"tool"` type |
+| `test_list_of_blocks_content` | Same case | Extracted text, with no `[` or `{` repr artifacts |
+| `test_multiple_text_blocks` | Same case | Text blocks joined with a newline |
+| `test_string_chunks_are_joined_without_newlines` | Same case | String chunks joined contiguously |
+| `test_mixed_string_chunks_and_blocks` | Same case | String chunks contiguous; text block separated by newline |
+| `test_mixed_blocks_with_non_text` | Same case | Text retained while image block is skipped |
+| `test_empty_list_content` | Same case | Empty list serializes to empty text |
+| `test_plain_string_in_list` | Same case | Bare string in list is retained |
+| `test_unknown_content_type_falls_back` | Same case | Integer content falls back to `"42"` |
+| `TestExtractText.test_string_passthrough` | Same case | String passes through unchanged |
+| `test_list_text_blocks` | Same case | Text block content is extracted |
+| `test_empty_list` | Same case | Empty list extracts to empty text |
+| `test_fallback_non_iterable` | Same case | Non-iterable integer falls back to `"123"` |
+
+Current-candidate validation used the preconfigured backend Python 3.12
+environment, locked dependencies, and `UV_CACHE_DIR=/tmp/deer-flow-uv-cache`.
+The test-scope patch fingerprint is
+`a9d23fb8bdeb33713871702c2f2e3ab4069e4c9684397565578b6dfc92d2633f`,
+computed by `git diff --binary 83eaecb879e28d8f726cc7d114e59f5735e7da3f --
+backend/tests/unit/runtime/test_serialize_message_content.py | sha256sum`.
+The paired baseline command exited 0 with 26 passed in 7.66s:
+
+```bash
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/test_serialize_message_content.py \
+  tests/unit/runtime/test_serialize_message_content.py -q
+```
+
+After deletion, the keeper command exited 0 with 13 passed in 8.33s. The narrow
+static check, `UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run --no-sync ruff check
+tests/test_serialize_message_content.py`, exited 0 (`All checks passed!`).
+`python3 scripts/test_inventory.py --collect --json` exited 0 in 32.28s.
+Its JSON reported 13 collected keeper nodes at the upstream path and no
+duplicate-path entry. No other root-level test was moved or deleted.
+
+GitNexus impact for both deleted test classes returned `UNKNOWN` with zero
+resolved callers. Text search found no imports or calls; outside this ledger,
+the exact removed-path references remain only in the specification and its
+baseline command. Both
+MCP and CLI `detect_changes --scope all` completed without partial or
+truncated output and mapped 2 documentation files, 4 symbols, and 0 processes.
+The worktree diff contains 3 tracked files, including the removed test path;
+GitNexus did not list that deleted path. Its impact therefore remains
+`UNKNOWN`, not zero. The paired 26-to-13 run and one-to-one mapping above
+provide the behavior evidence for this deletion.
+
 ## Batch 2026-10-01: Exact backend test copies at upstream paths
 
 Removed the nested local-migration copy in each row and retained the identical

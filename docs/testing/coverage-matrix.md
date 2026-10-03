@@ -3,7 +3,7 @@
 > audience: testers, developers, release maintainers<br>
 > status: current<br>
 > owner: test maintainers<br>
-> last-verified: 2026-07-15<br>
+> last-verified: 2026-10-03<br>
 > canonical-path: `docs/testing/coverage-matrix.md`
 
 This matrix is the manual guardrail for the test-suite reorganization. Update it when moving or deleting tests, and do not delete a file until the same or stronger behavior assertion is listed in the target bucket.
@@ -17,6 +17,7 @@ This matrix is the manual guardrail for the test-suite reorganization. Update it
 
 | Capability | Unit | Integration | Contract | E2E | Notes |
 | --- | --- | --- | --- | --- | --- |
+| Message serialization | `backend/tests/test_serialize_message_content.py` | None | None | None | The upstream-path file owns 13 pytest cases for ToolMessage content normalization and `_extract_text`; the duplicate under `tests/unit/runtime/` was removed. See the migration ledger for case-by-case mapping and current-candidate validation. |
 | Agent | `backend/tests/unit/gateway/*agent*` | `backend/tests/integration/api/*agents*`, `test_agents_same_name.py` | `backend/tests/contracts/test_visibility_applications*.py`, `backend/tests/contracts/test_user_isolation.py`, `backend/tests/contracts/test_setup_agent_e2e_user_isolation.py`, `backend/tests/contracts/test_update_agent_e2e_user_isolation.py` | `frontend/tests/e2e/workflows/*agent*`, `frontend/tests/e2e/workflows/cross-feature-contracts.spec.ts` | Router, visibility, setup/update, same-name owner isolation, and frontend API-shape consumption are no longer in the backend root. |
 | Auth/RBAC/Admin | `backend/tests/unit/gateway/*auth*`, admin helpers | `backend/tests/integration/api/*auth*`, `*admin*`, `test_audit_logs.py`, `test_user_deletion.py` | `backend/tests/contracts/test_rbac_matrix.py`, `test_rbac_permission_matrix_extended.py`, `test_permission_model_edge_cases.py`, `test_rbac_security.py` | `frontend/tests/e2e/auth/`, admin workflow specs, `frontend/tests/e2e/real/role-access-boundaries.spec.ts` | The real lane is the primary browser-to-persistence responsibility for seeded super-admin, user, viewer, and department-admin boundaries; it verifies UI results against the isolated SQLite state. |
 | Runs/Threads/SSE | `backend/tests/unit/runtime/*run*`, `*thread*`, `*sse*` | `backend/tests/integration/api/test_runs_lifecycle.py`, `*runs*`, `*threads*` | `backend/tests/contracts/test_user_isolation.py`, `backend/tests/contracts/test_memory_thread_meta_isolation.py` | Chat/thread workflow specs | Lifecycle assertions cover run creation, SSE events, checkpoints, persisted run/thread state, cancel, and rollback recovery. |
