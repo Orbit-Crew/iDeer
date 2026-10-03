@@ -122,6 +122,8 @@ if ! mkdir -p "$ARTIFACT_DIR"; then
   exit 1
 fi
 printf 'lane=%s\ncommand=%q\nstarted=%s\n' "$LANE" "$0 $*" "$(date -u +%FT%TZ)" >"$ARTIFACT_DIR/run.meta"
+# Keep the full lane output next to the summary evidence so failures stay triageable.
+exec > >(tee -a "$ARTIFACT_DIR/run.log") 2>&1
 "$PYTHON_BIN" "$ROOT_DIR/scripts/test_lane_evidence.py" \
   --root "$ROOT_DIR" --output "$ARTIFACT_DIR/lane-evidence.json" \
   --lane "$LANE" --command "$0 $*"
