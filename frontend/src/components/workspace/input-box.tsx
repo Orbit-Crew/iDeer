@@ -84,6 +84,17 @@ import {
   type SidecarContext,
 } from "@/core/sidecar";
 import { useSkills } from "@/core/skills/hooks";
+import {
+  clearSelection,
+  fromDraft,
+  matchSkills,
+  offerableSkills,
+  select,
+  selectedSkillName,
+  submitTextFor,
+  type SkillSelection,
+  type SkillSuggestion,
+} from "@/core/skills/selection";
 import { DEFAULT_MAX_SUGGESTIONS } from "@/core/suggestions/api";
 import { useSuggestionsConfig } from "@/core/suggestions/hooks";
 import type { AgentThreadContext, GoalState } from "@/core/threads";
@@ -92,7 +103,6 @@ import {
   buildComposerDraftKey,
   getSessionComposerDraftStorage,
   readComposerDraft,
-  resolveComposerDraft,
   type ComposerDraft,
   writeComposerDraft,
 } from "@/core/threads/composer-draft";
@@ -135,18 +145,16 @@ import {
   createGoalRequestState,
   findSuggestionTemplatePlaceholder,
   finishGoalRequest,
-  filterSkillsForAgent,
   getGoalObjectiveCounter,
   getInputSubmitAction,
   getLeadingSlashSkillQuery,
-  getMatchingSkillSuggestions,
   type GoalCommand,
   isAbortError,
   isCurrentGoalRequest,
   isGoalObjectiveTooLong,
   MAX_GOAL_OBJECTIVE_CHARS,
+  MAX_SKILL_SUGGESTIONS,
   readGoalResponseError,
-  type SlashSuggestion,
 } from "./input-box-helpers";
 import { useThread } from "./messages/context";
 import { ModeHoverGuide } from "./mode-hover-guide";
@@ -159,7 +167,6 @@ import { InlineSelectedTag, type SelectedTag } from "./scenario/selected-tags";
 import { ReferenceAttachmentSummary, useMaybeSidecar } from "./sidecar";
 import { SkillPicker } from "./slash-overlay";
 import { SlashSkillChip } from "./slash-skill-chip";
-import { getMatchingSkillSuggestions as getPickerSkillSuggestions } from "./slash-suggestions";
 import { Tooltip } from "./tooltip";
 
 type InputMode = "flash" | "thinking" | "pro" | "ultra";
@@ -319,8 +326,6 @@ export function InputBox({
   turnSubmit,
   onStop,
   canStopStreaming = true,
-  agentSkillNames,
-  agentSkillsLoading = false,
   ...props
 }: Omit<ComponentProps<typeof PromptInput>, "onSubmit"> & {
   assistantId?: string | null;
@@ -344,8 +349,6 @@ export function InputBox({
   threadId: string;
   draftThreadId?: string;
   draftAgentName?: string | null;
-  agentSkillNames?: string[] | null;
-  agentSkillsLoading?: boolean;
   /**
    * The active custom agent's configured default model, if any. Used as the
    * auto-selection fallback so an agent chat honors the agent's own default
@@ -544,7 +547,7 @@ export function InputBox({
   const [textareaFocused, setTextareaFocused] = useState(false);
   const [skillSuggestionIndex, setSkillSuggestionIndex] = useState(0);
   const [selectedSlashSkill, setSelectedSlashSkill] =
-    useState<SlashSuggestion | null>(null);
+    useState<SkillSelection>(null);
   // Picker opened from the Skill trigger button (anchored SkillPicker
   // overlay, independent of the "/" typing flow below).
   const [skillPickerOpen, setSkillPickerOpen] = useState(false);
@@ -647,7 +650,7 @@ export function InputBox({
     }
     injectedTemplateRef.current = null;
   }, [clearInjectedTemplateKey, textInput]);
-  const builtinSlashCommands = useMemo<SlashSuggestion[]>(
+  const builtinSlashCommands = useMemo<SkillSuggestion[]>(
     () => [
       {
         name: "goal",
@@ -786,22 +789,13 @@ export function InputBox({
   currentDraftViewRef.current = {
     key: draftKey,
     text: textInput.value ?? "",
-    skillName:
-      selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+    skillName: selectedSkillName(selectedSlashSkill),
   };
-  const agentScopedSkills = useMemo(
-    () =>
-      agentSkillsLoading ? [] : filterSkillsForAgent(skills, agentSkillNames),
-    [agentSkillNames, agentSkillsLoading, skills],
-  );
-  const enabledSkillNames = useMemo(
-    () =>
-      new Set(
-        agentScopedSkills
-          .filter((skill) => skill.enabled)
-          .map((skill) => skill.name),
-      ),
-    [agentScopedSkills],
+  // The single gate: which skills this composer may offer at all (the active
+  // agent's closure when `allowedSkillNames` is set, otherwise the catalog).
+  const offerable = useMemo(
+    () => offerableSkills(skills, allowedSkillNames),
+    [allowedSkillNames, skills],
   );
   const cancelDraftSaveTimer = useCallback(() => {
     if (draftSaveTimerRef.current === null) {
@@ -895,7 +889,7 @@ export function InputBox({
     promptHistoryIndexRef.current = null;
     promptHistoryDraftRef.current = "";
     setTextInput("");
-    setSelectedSlashSkill(null);
+    setSelectedSlashSkill(clearSelection());
     setInputPolishUndo(null);
     setHydratedDraftKey(null);
     turnSubmit.releaseDraftHold();
@@ -917,7 +911,7 @@ export function InputBox({
   }, [flushLatestDraft]);
 
   useEffect(() => {
-    if (skillsLoading || agentSkillsLoading || hydratedDraftKey === draftKey) {
+    if (skillsLoading || hydratedDraftKey === draftKey) {
       return;
     }
 
@@ -933,31 +927,19 @@ export function InputBox({
       return;
     }
 
-    const resolvedDraft = resolveComposerDraft(savedDraft, enabledSkillNames);
-    setTextInput(resolvedDraft.text);
-    const restoredSkill = resolvedDraft.skillName
-      ? agentScopedSkills.find(
-          (skill) => skill.enabled && skill.name === resolvedDraft.skillName,
-        )
-      : undefined;
-    setSelectedSlashSkill(
-      restoredSkill
-        ? {
-            name: restoredSkill.name,
-            description: restoredSkill.description,
-            kind: "skill",
-          }
-        : null,
-    );
+    const restored = fromDraft(savedDraft.skillName, {
+      text: savedDraft.text,
+      skills: offerable,
+    });
+    setTextInput(restored.text);
+    setSelectedSlashSkill(restored.selected);
     setHydratedDraftKey(draftKey);
   }, [
     draftKey,
-    enabledSkillNames,
     hydratedDraftKey,
     initialValue,
+    offerable,
     setTextInput,
-    agentScopedSkills,
-    agentSkillsLoading,
     skillsLoading,
     textInput.value,
   ]);
@@ -969,8 +951,7 @@ export function InputBox({
 
     const draft: ComposerDraft = {
       text: textInput.value ?? "",
-      skillName:
-        selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+      skillName: selectedSkillName(selectedSlashSkill),
     };
     const timer = scheduleDraftSave(draft, draftKey);
     return () => {
@@ -1288,8 +1269,7 @@ export function InputBox({
       const quoteContexts = quotes.map((quote) => quote.context);
       const pendingDraft: ComposerDraft = {
         text: textInput.value ?? "",
-        skillName:
-          selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+        skillName: selectedSkillName(selectedSlashSkill),
       };
       const referenceIds = conversationReferences.map(
         (reference) => reference.threadId,
@@ -1367,9 +1347,7 @@ export function InputBox({
           },
           restore: (draft) => {
             setTextInput(draft.text);
-            setSelectedSlashSkill(
-              selectedSlashSkill?.kind === "skill" ? selectedSlashSkill : null,
-            );
+            setSelectedSlashSkill(selectedSlashSkill);
           },
         },
         onPreuploadError: notifyUploadError,
@@ -1451,7 +1429,7 @@ export function InputBox({
       const messageWithSlashSkill = selectedSlashSkill
         ? {
             ...message,
-            text: `/${selectedSlashSkill.name} ${message.text}`,
+            text: submitTextFor(message.text, selectedSlashSkill.name),
           }
         : message;
       const submitAction = getInputSubmitAction({
@@ -1536,7 +1514,7 @@ export function InputBox({
       }
       await submitThreadMessage(messageWithSlashSkill);
       if (selectedSlashSkill) {
-        setSelectedSlashSkill(null);
+        setSelectedSlashSkill(clearSelection());
       }
     },
     [
@@ -1617,11 +1595,14 @@ export function InputBox({
     if (slashSkillQuery === null) {
       return [];
     }
-    const matches = getMatchingSkillSuggestions(
-      agentScopedSkills,
+    const matches = matchSkills(
+      {
+        skills: offerable,
+        builtins: builtinSlashCommands,
+        limit: MAX_SKILL_SUGGESTIONS,
+      },
       slashSkillQuery,
-      builtinSlashCommands,
-      allowedSkillNames,
+      builtinSlashCommands.map(({ name }) => name),
     );
     // Builtin commands own the whole composer line, so they cannot be combined
     // with a skill activation: `/goal` behind a selected skill would submit as
@@ -1632,13 +1613,7 @@ export function InputBox({
     return selectedSlashSkill
       ? matches.filter(({ kind }) => kind === "skill")
       : matches;
-  }, [
-    agentScopedSkills,
-    allowedSkillNames,
-    builtinSlashCommands,
-    selectedSlashSkill,
-    slashSkillQuery,
-  ]);
+  }, [builtinSlashCommands, offerable, selectedSlashSkill, slashSkillQuery]);
   // A selected skill does not close the catalog: `/` reopens it so a skill can
   // be found by browsing and swapped without first clearing the chip.
   const showSkillSuggestions =
@@ -1653,11 +1628,8 @@ export function InputBox({
   // composer position). Kept separate from `skillSuggestions` so the typing
   // flow keeps its builtin-command entries and chip activation behavior.
   const skillPickerSuggestions = useMemo(
-    () =>
-      skillPickerOpen
-        ? getPickerSkillSuggestions(skills, "", allowedSkillNames)
-        : [],
-    [allowedSkillNames, skillPickerOpen, skills],
+    () => (skillPickerOpen ? matchSkills({ skills: offerable }, "") : []),
+    [offerable, skillPickerOpen],
   );
   const isComposerDisabled = disabled === true;
   const isMockThread = isMock === true;
@@ -1870,9 +1842,9 @@ export function InputBox({
   }, [slashSkillQuery, skillSuggestions.length]);
 
   const activateSkill = useCallback(
-    (suggestion: SlashSuggestion, clearInput: boolean) => {
+    (suggestion: SkillSuggestion, clearInput: boolean) => {
       if (suggestion.kind === "skill") {
-        setSelectedSlashSkill(suggestion);
+        setSelectedSlashSkill(select(suggestion));
         if (clearInput) {
           textInput.setInput("");
         }
@@ -1899,7 +1871,7 @@ export function InputBox({
   );
 
   const applySkillSuggestion = useCallback(
-    (suggestion: SlashSuggestion) => activateSkill(suggestion, true),
+    (suggestion: SkillSuggestion) => activateSkill(suggestion, true),
     [activateSkill],
   );
 
@@ -1997,14 +1969,7 @@ export function InputBox({
         const selected =
           skillPickerSuggestions[skillPickerIndex] ?? skillPickerSuggestions[0];
         if (selected) {
-          activateSkill(
-            {
-              name: selected.name,
-              description: selected.description,
-              kind: "skill",
-            },
-            false,
-          );
+          activateSkill(selected, false);
           closeSkillPicker();
         }
         return;
@@ -2217,7 +2182,7 @@ export function InputBox({
       }
 
       event.preventDefault();
-      setSelectedSlashSkill(null);
+      setSelectedSlashSkill(clearSelection());
       requestAnimationFrame(() => {
         textareaRef.current?.focus();
       });
@@ -2260,8 +2225,7 @@ export function InputBox({
       promptHistoryDraftRef.current = "";
       scheduleDraftSave({
         text: event.currentTarget.value,
-        skillName:
-          selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+        skillName: selectedSkillName(selectedSlashSkill),
       });
     },
     [
@@ -2284,8 +2248,7 @@ export function InputBox({
       textInput.setInput(nextText);
       scheduleDraftSave({
         text: nextText,
-        skillName:
-          selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+        skillName: selectedSkillName(selectedSlashSkill),
       });
     },
     [
@@ -2393,7 +2356,7 @@ export function InputBox({
   );
 
   const clearSelectedSlashSkill = useCallback(() => {
-    setSelectedSlashSkill(null);
+    setSelectedSlashSkill(clearSelection());
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
     });
@@ -2807,14 +2770,7 @@ export function InputBox({
               activeIndex={skillPickerIndex}
               title={t.inputBox.skill}
               onSelect={(skill) => {
-                activateSkill(
-                  {
-                    name: skill.name,
-                    description: skill.description,
-                    kind: "skill",
-                  },
-                  false,
-                );
+                activateSkill(skill, false);
                 closeSkillPicker();
               }}
               onClose={closeSkillPicker}

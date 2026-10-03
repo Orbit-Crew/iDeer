@@ -2,17 +2,20 @@
 
 import { useEffect, useRef } from "react";
 
+import {
+  matchSkills,
+  offerableSkills,
+  type SkillSuggestion,
+} from "@/core/skills/selection";
 import type { Skill } from "@/core/skills/type";
 import { cn } from "@/lib/utils";
-
-import { getMatchingSkillSuggestions } from "./slash-suggestions";
 
 export type SkillPickerProps = {
   skills: Skill[];
   allowedSkillNames?: readonly string[];
   query: string;
   activeIndex: number;
-  onSelect: (skill: Skill) => void;
+  onSelect: (skill: SkillSuggestion) => void;
   onClose: () => void;
   title?: string;
 };
@@ -27,10 +30,9 @@ export function SkillPicker({
   title,
 }: SkillPickerProps) {
   const listRef = useRef<HTMLDivElement>(null);
-  const suggestions = getMatchingSkillSuggestions(
-    skills,
+  const suggestions = matchSkills(
+    { skills: offerableSkills(skills, allowedSkillNames) },
     query,
-    allowedSkillNames,
   );
 
   useEffect(() => {

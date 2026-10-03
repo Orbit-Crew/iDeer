@@ -1,6 +1,3 @@
-import { RESERVED_SLASH_SKILL_NAMES, type Skill } from "@/core/skills";
-
-import { filterSkillsByAllowedNames } from "./slash-suggestions";
 export {
   SUGGESTION_TEMPLATE_PLACEHOLDER_PATTERN,
   findSuggestionTemplatePlaceholder,
@@ -53,12 +50,6 @@ export function getGoalObjectiveCounter(
     overLimit: length > MAX_GOAL_OBJECTIVE_CHARS,
   };
 }
-
-export type SlashSuggestion = {
-  name: string;
-  description: string;
-  kind: "builtin" | "skill";
-};
 
 export type GoalCommand =
   | { kind: "status" }
@@ -161,78 +152,6 @@ export function getLeadingSlashSkillQuery(value: string): string | null {
   }
 
   return query;
-}
-
-export function filterSkillsForAgent(
-  skills: Skill[],
-  agentSkillNames?: string[] | null,
-): Skill[] {
-  if (!agentSkillNames) {
-    return skills;
-  }
-
-  const allowedNames = new Set(agentSkillNames);
-  return skills.filter((skill) => allowedNames.has(skill.name));
-}
-
-export function getMatchingSkillSuggestions(
-  skills: Skill[],
-  query: string,
-  builtinCommands: SlashSuggestion[],
-  allowedSkillNames?: readonly string[],
-): SlashSuggestion[] {
-  const normalizedQuery = query.toLowerCase();
-  // A name the slash parsers refuse must not be offered here either. Both
-  // parsers drop `RESERVED_SLASH_SKILL_NAMES` (the shared contract), and the
-  // builtin commands own their own names in the composer, so a skill carrying
-  // either one is unreachable: submitting it either runs the command or
-  // reaches the model as literal text with nothing activated.
-  const reservedNames = new Set([
-    ...RESERVED_SLASH_SKILL_NAMES,
-    ...builtinCommands.map(({ name }) => name.toLowerCase()),
-  ]);
-
-  const builtinMatches = builtinCommands.filter(({ name, description }) => {
-    if (!normalizedQuery) {
-      return true;
-    }
-    return (
-      name.toLowerCase().includes(normalizedQuery) ||
-      description.toLowerCase().includes(normalizedQuery)
-    );
-  });
-
-  const skillMatches = filterSkillsByAllowedNames(skills, allowedSkillNames)
-    .map((skill, index) => ({
-      skill,
-      index,
-      name: skill.name.toLowerCase(),
-    }))
-    .filter(({ skill, name }) => {
-      if (!skill.enabled) {
-        return false;
-      }
-      if (reservedNames.has(name)) {
-        return false;
-      }
-      return !normalizedQuery || name.includes(normalizedQuery);
-    })
-    .sort((a, b) => {
-      const aStartsWith = a.name.startsWith(normalizedQuery);
-      const bStartsWith = b.name.startsWith(normalizedQuery);
-      if (aStartsWith !== bStartsWith) {
-        return aStartsWith ? -1 : 1;
-      }
-      return a.index - b.index;
-    })
-    .slice(0, MAX_SKILL_SUGGESTIONS)
-    .map(({ skill }) => ({
-      name: skill.name,
-      description: skill.description,
-      kind: "skill" as const,
-    }));
-
-  return [...skillMatches, ...builtinMatches].slice(0, MAX_SKILL_SUGGESTIONS);
 }
 
 export function parseGoalCommand(value: string): GoalCommand | null {

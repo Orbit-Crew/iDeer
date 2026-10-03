@@ -5,7 +5,6 @@ import {
   clearComposerDraft,
   getSessionComposerDraftStorage,
   readComposerDraft,
-  resolveComposerDraft,
   writeComposerDraft,
   type ComposerDraftStorage,
 } from "@/core/threads/composer-draft";
@@ -82,34 +81,6 @@ describe("composer draft storage", () => {
     writeComposerDraft(storage, key, { text: "temporary", skillName: null });
     clearComposerDraft(storage, key);
     expect(storage.values.has(key)).toBe(false);
-  });
-
-  it("falls back to editable slash text when the saved skill is unavailable", () => {
-    expect(
-      resolveComposerDraft(
-        {
-          text: "Analyze the latest results",
-          skillName: "data-analysis",
-        },
-        new Set(["data-analysis"]),
-      ),
-    ).toEqual({
-      text: "Analyze the latest results",
-      skillName: "data-analysis",
-    });
-
-    expect(
-      resolveComposerDraft(
-        {
-          text: "Analyze the latest results",
-          skillName: "data-analysis",
-        },
-        new Set(),
-      ),
-    ).toEqual({
-      text: "/data-analysis Analyze the latest results",
-      skillName: null,
-    });
   });
 
   it("ignores malformed payloads and unavailable storage", () => {

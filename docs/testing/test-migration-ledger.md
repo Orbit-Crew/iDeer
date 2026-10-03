@@ -10,6 +10,33 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: Skill selection consolidates into the selection module
+
+Ticket `architecture-deepening` issue 08 (spec candidate 7, Q11=a). The
+composer's skill selection (offerable gate, "/" matcher, selected-chip state,
+`/name ` submission prefix, draft-restore degradation) moved into
+`frontend/src/core/skills/selection.ts`. The two same-named matchers were
+unified into one whose rule is name-or-description (the "/" typing flow now
+also matches descriptions — a spec-declared behavior change; the suggestion
+count cap is kept). The matcher tests of both old homes merged at the module
+interface. No assertion was weakened; the DOM hydration file was renamed in
+place and grew one test.
+
+| Removed/merged path | Replacement coverage | Core contract retained | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/components/workspace/input-box-helpers.test.ts` — `filterSkillsForAgent` (3 tests) and `getMatchingSkillSuggestions` (10 tests) describes | `frontend/tests/unit/core/skills/selection.test.ts` (new, 23 tests): `offerableSkills` (4), `matchSkills` (11), selection state + `submitTextFor` (3), `fromDraft` (5) | Inherit vs empty allowlist, name/slug/resource-id case-insensitive admission, enabled filtering, startsWith ranking, reserved-name exclusion (contract set + builtin extras), builtin-after-skill ordering, cap ≤ 6, empty-catalog builtin-only degradation; stronger: unified matcher adds explicit description-match coverage and the gate adds slug/resource-id cases | `cd frontend && pnpm vitest run tests/unit/core/skills/selection.test.ts --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/components/workspace/slash-suggestions.test.ts` — `getMatchingSkillSuggestions` (11 tests) and `RESERVED_SLASH_SKILL_NAMES` (2 tests, local 7-name drift set) describes | Same `matchSkills` describe as above; reserved names now pinned by `tests/unit/core/skills/slash-contract.test.ts` (contract 8-name set, superset including `agent`) plus the matcher's reserved-name loop | Overlay matching by name or description, disabled exclusion, case-insensitivity, reserved exclusion | Same command as above; `cd frontend && pnpm rstest run tests/unit/core/skills/slash-contract.test.ts` |
+| `frontend/tests/unit/components/workspace/slash-suggestions.test.ts` — `parseSlashPrefix` describe (10 tests); `frontend/tests/unit/components/workspace/slash-overlay.test.ts` — 2 `parseSlashPrefix` tests | `/name ` grammar stays pinned by `tests/unit/core/skills/slash.test.ts` (`parseSlashSkillReference` over `SLASH_SKILL_RE`) and the cross-stack contract tests (`tests/unit/core/skills/slash-contract.test.ts` + `backend/tests/test_slash_skill_contract.py`); the tested alias of the dead `parseTaskSkillPrefix` parser was removed with it | Leading `/word` grammar and reserved-command refusal | `cd frontend && pnpm rstest run tests/unit/core/skills/slash.test.ts tests/unit/core/skills/slash-contract.test.ts`; backend side below |
+| `frontend/tests/unit/core/threads/task-input.test.ts` — 2 `prepareTaskSubmission` tests | Deleted with the test-only function (no production caller); prefix production is `submitTextFor` (asserted in `selection.test.ts`), prefix grammar as row above | Wire prefix bytes unchanged (backend parses syntactically; contract tests green both sides) | Same commands as above |
+| `frontend/tests/unit/core/threads/composer-draft.test.ts` — `resolveComposerDraft` degradation test (1 test, 2 assertions) | `selection.test.ts` `fromDraft` describe (5 tests): chip restore, fold-back when not offerable, empty-text fold, no-skill passthrough, disabled-skill degradation | Saved skill restores as chip; unavailable skill folds back to editable `/name text` | Same command as above |
+| `frontend/tests/unit/components/workspace/input-box-agent-skill-hydration.dom.test.tsx` (2 tests) | Renamed to `frontend/tests/unit/components/workspace/input-box-skill-hydration.dom.test.tsx` (3 tests) — the deleted `agentSkillNames`/`agentSkillsLoading` props are replaced by `allowedSkillNames` + the `useSkills` loading gate; adds a degradation-through-DOM test | Wait-for-catalog chip restore, inherit semantics without allowlist; stronger: non-offerable saved skill folds into editable text in the real composer | `cd frontend && pnpm rstest run tests/unit/components/workspace/input-box-skill-hydration.dom.test.tsx` |
+
+Cross-stack slash protocol evidence: `contracts/slash_skill_contract.json` is
+unchanged; both sides of the contract test pass on this candidate —
+`cd frontend && pnpm rstest run tests/unit/core/skills/slash-contract.test.ts`
+and `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest
+tests/test_slash_skill_contract.py -q`.
+
 ## Batch 2026-10-03: Thread-page hook owns the shared chat-route wiring
 
 Ticket `architecture-deepening` issue 05 (spec candidate 4, Q8=a). No test
