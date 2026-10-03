@@ -4,7 +4,6 @@ import json
 import shutil
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -19,7 +18,7 @@ from app.agentplatform.workflows.v2.errors import WorkflowInvalidRootsError
 from app.agentplatform.workflows.v2.file_roots import make_host_resolver
 from app.agentplatform.workflows.v2.store import WorkflowV2Store
 from app.agentplatform.workflows.v2.worker import WorkflowWorker
-from app.workflow_worker import execute_workflow_task
+from app.workflow_worker import execute as execute_task
 from deerflow.config.database_config import DatabaseConfig
 from deerflow.config.paths import Paths
 from deerflow.persistence.base import Base
@@ -264,7 +263,7 @@ async def _run_worker_once(
     pinned_kernel_snapshot: dict | None = None,
     slug: str = "fault-zeroing",
     extra_inputs: dict | None = None,
-) -> None:
+) -> SimpleNamespace:
     # deerflow's skills host path defaults to the upstream `skills/` tree; the
     # enterprise skill bundle (fault-zeroing templates) lives in resources/skills.
     monkeypatch.setattr(
@@ -299,16 +298,17 @@ async def _run_worker_once(
             await session.commit()
     registry = ActionAdapterRegistry({("agent", "fault-zeroing"): agent})
     config = _make_config(tmp_path)
-    monkeypatch.setattr("app.workflow_worker.build_canonical_registry", AsyncMock(return_value=registry))
 
     async def execute(task) -> None:
-        await execute_workflow_task(
+        await execute_task(
             task,
             store=durable_store,
             config=config,
+            adapters=registry,
         )
 
     assert await WorkflowWorker(durable_store, execute, worker_id="worker-integration").run_once() is True
+    return config
 
 
 @pytest.mark.asyncio
@@ -402,6 +402,64 @@ async def test_missing_artifacts_pause_the_run_for_manual_resume(
     # both fork branches race without artifacts; whichever pauses first wins
     assert interrupts[0]["node_id"] in {"evidence_collection", "deductive_tree"}
     assert interrupts[0]["missing"]
+
+
+@pytest.mark.asyncio
+async def test_resume_entry_replays_a_paused_fork_one_interrupt_per_command(
+    durable_store: WorkflowV2Store,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """The resume entry owns the fork-interrupt recovery protocol.
+
+    A fork whose branches all pause on ``artifacts_missing`` leaves several
+    pending langgraph interrupts that only accept an id-keyed resume map. The
+    entry keys one plain operator payload onto the first pending interrupt per
+    invocation, so repeated operator commands drive each branch in turn until
+    the run completes — no caller ever learns a langgraph interrupt id.
+    """
+    monkeypatch.setattr("app.agentplatform.workflows.v2.file_roots.get_paths", lambda: Paths(str(tmp_path / "base")))
+    calls: list[str] = []
+    config = await _run_worker_once(
+        durable_store,
+        tmp_path,
+        RecordingAgent(calls, write_artifacts=False),
+        run_id="run-worker-resume-fork",
+        monkeypatch=monkeypatch,
+    )
+    paused = await durable_store.get_run("run-worker-resume-fork")
+    assert paused is not None and paused.status == "paused"
+
+    # Operator resume rounds carry plain payloads only; on each resumed re-run
+    # the agent now produces the contract-legal artifacts so the branch can
+    # actually advance past its artifacts_missing gate.
+    registry = ActionAdapterRegistry({("agent", "fault-zeroing"): RecordingAgent(calls, write_artifacts=True)})
+
+    async def execute(task) -> None:
+        await execute_task(task, store=durable_store, config=config, adapters=registry)
+
+    worker = WorkflowWorker(durable_store, execute, worker_id="worker-resume-fork")
+    for round_index in range(4):
+        await durable_store.submit_command(
+            f"resume-fork-{round_index}",
+            "run-worker-resume-fork",
+            "resume",
+            {"artifacts_confirmed": True},
+            "user-1",
+        )
+        if not await worker.run_once():
+            break
+        run = await durable_store.get_run("run-worker-resume-fork")
+        assert run is not None
+        if run.status != "paused":
+            break
+
+    completed = await durable_store.get_run("run-worker-resume-fork")
+    assert completed is not None and completed.status == "completed", completed.error
+    events = await durable_store.list_events(completed.run_id)
+    assert events[0].event_type == "run_started"
+    assert any(event.event_type == "resumed" for event in events)
+    assert events[-1].event_type == "run_completed"
 
 
 @pytest.mark.asyncio
@@ -550,13 +608,13 @@ async def test_empty_payload_resume_advances_past_interrupt_gates(
     await _make_canonical_run(durable_store, "run-gate-resume-empty", definition, {}, name="gated")
     registry = ActionAdapterRegistry({("tool", "finish"): FinishAgent()})
     config = _make_config(tmp_path)
-    monkeypatch.setattr("app.workflow_worker.build_canonical_registry", AsyncMock(return_value=registry))
 
     async def execute(task) -> None:
-        await execute_workflow_task(
+        await execute_task(
             task,
             store=durable_store,
             config=config,
+            adapters=registry,
         )
 
     worker = WorkflowWorker(durable_store, execute, worker_id="worker-integration")
@@ -643,13 +701,13 @@ edges:
         }
     )
     config = _make_config(tmp_path)
-    monkeypatch.setattr("app.workflow_worker.build_canonical_registry", AsyncMock(return_value=registry))
 
     async def execute(task) -> None:
-        await execute_workflow_task(
+        await execute_task(
             task,
             store=durable_store,
             config=config,
+            adapters=registry,
         )
 
     worker = WorkflowWorker(durable_store, execute, worker_id="worker-integration")
@@ -714,13 +772,13 @@ async def test_declared_result_contract_gate_fails_the_run_before_completion(
             await session.commit()
     registry = ActionAdapterRegistry({("tool", "finish"): FinishAgent()})
     config = _make_config(tmp_path)
-    monkeypatch.setattr("app.workflow_worker.build_canonical_registry", AsyncMock(return_value=registry))
 
     async def execute(task) -> None:
-        await execute_workflow_task(
+        await execute_task(
             task,
             store=durable_store,
             config=config,
+            adapters=registry,
         )
 
     assert await WorkflowWorker(durable_store, execute, worker_id="worker-integration").run_once() is True

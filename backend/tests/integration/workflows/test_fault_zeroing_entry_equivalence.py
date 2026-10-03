@@ -24,7 +24,6 @@ import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -43,7 +42,7 @@ from app.agentplatform.workflows.v2.store import WorkflowV2Store
 from app.agentplatform.workflows.v2.worker import WorkflowWorker
 from app.gateway.routers import resources
 from app.gateway.routers.resources import WorkflowRunRequest
-from app.workflow_worker import execute_workflow_task
+from app.workflow_worker import execute as execute_task
 from deerflow.config.database_config import DatabaseConfig
 from deerflow.config.paths import Paths
 from deerflow.persistence.base import Base as DeerFlowBase
@@ -327,10 +326,9 @@ async def _drive_queue_to_emptiness(env, monkeypatch: pytest.MonkeyPatch, agent:
     )
     registry = ActionAdapterRegistry({("agent", "fault-zeroing"): agent})
     config = _make_config(env.tmp)
-    monkeypatch.setattr("app.workflow_worker.build_canonical_registry", AsyncMock(return_value=registry))
 
     async def execute(task) -> None:
-        await execute_workflow_task(task, store=env.store, config=config)
+        await execute_task(task, store=env.store, config=config, adapters=registry)
 
     worker = WorkflowWorker(env.store, execute, worker_id="worker-equivalence")
     while await worker.run_once():
