@@ -11,6 +11,9 @@ Each test pins one historically observed failure mode so it cannot return:
 7. 文件存在即成功     — non-empty-but-broken artifacts never complete a run.
 8. 枚举漂移           — node prompts cite the unified rule source instead of
    restating the enum/grading lists owned by evidence_rules.md and the schema.
+9. 契约复述漂移       — node prompts and the SKILL/SOUL texts cite the
+   generated contract reference instead of restating the declarative Result
+   Contract content owned by contract.py (ticket 07, spec candidate 6).
 """
 
 from __future__ import annotations
@@ -212,3 +215,91 @@ def test_file_existence_alone_never_completes_a_run(tmp_path: Path) -> None:
         verdict=verdict,
     )
     assert completion.status == kernel_mod.COMPLETION_STATUS_FAILED
+
+
+def _contract_texts(workflow_yaml: dict) -> dict[str, str]:
+    """The prose surfaces that used to restate the declarative contract."""
+
+    def prompt_of(node: dict) -> str:
+        action = node.get("action") or {}
+        params = action.get("params") or {}
+        return (params.get("prompt") or "") + "\n" + (params.get("system_prompt") or "")
+
+    skill = (REPO_ROOT / "resources" / "skills" / "fault-zeroing" / "SKILL.md").read_text(encoding="utf-8")
+    soul = (REPO_ROOT / "resources" / "agents" / "fault-zeroing" / "SOUL.md").read_text(encoding="utf-8")
+    return {
+        "workflow-prompts": "\n".join(prompt_of(node) for node in workflow_yaml["nodes"]),
+        "SKILL.md": skill,
+        "SOUL.md": soul,
+    }
+
+
+def test_prose_cites_the_contract_reference_instead_of_restating_it(workflow_yaml: dict) -> None:
+    """Regression 9 (ticket 07 / spec candidate 6, Q10=a): contract.py is the
+    single home of the declarative Result Contract content.  The workflow
+    prompts and the SKILL/SOUL texts cite the generated sandbox reference
+    (``/mnt/skills/fault-zeroing/references/result_contract.md``) instead of
+    restating the artifact list, report sections, coverage categories, stage
+    markers, responsibility phrases or disclosure phrases — one rule change
+    must stay one file edit (the generated copies excluded)."""
+
+    contract = load_module("fz_contract_regr5", PKG_DIR / "contract.py")
+    texts = _contract_texts(workflow_yaml)
+
+    # The prose names the generated citation target.
+    for name, text in texts.items():
+        assert "result_contract.md" in text, f"{name} must cite references/result_contract.md"
+
+    # The contract-consuming nodes present it as the single source, like the
+    # evidence_rules citation introduced by the rule-source unification.
+    for node_id in ("evidence_collection", "generate_outputs"):
+        node = _node(workflow_yaml, node_id)
+        action = node.get("action") or {}
+        prompt = (action.get("params") or {}).get("prompt") or ""
+        assert "result_contract.md" in prompt, f"{node_id} must cite result_contract.md"
+        assert "唯一来源" in prompt, f"{node_id} must present result_contract.md as the single source"
+
+    # No prose surface restates a declarative family verbatim.  Fingerprints
+    # are the canonical item sequences with the separators the prose used.
+    def normalize(text: str) -> str:
+        return text.replace("`", "")
+
+    families: dict[str, tuple[str, ...]] = {
+        "REQUIRED_OUTPUTS": ("、".join(contract.REQUIRED_OUTPUTS),),
+        "REQUIRED_REPORT_SECTIONS": ("、".join(contract.REQUIRED_REPORT_SECTIONS),),
+        "REQUIRED_COVERAGE": ("、".join(contract.REQUIRED_COVERAGE),),
+        "REQUIRED_REPORT_KEY_PHRASES": ("、".join(contract.REQUIRED_REPORT_KEY_PHRASES),),
+        "REQUIRED_STAGE_MARKERS": (
+            "、".join(contract.REQUIRED_STAGE_MARKERS),
+            "→".join(contract.REQUIRED_STAGE_MARKERS),
+        ),
+        "REQUIRED_RESPONSIBILITY_PHRASES": (
+            "；".join(contract.REQUIRED_RESPONSIBILITY_PHRASES),
+            "、".join(contract.REQUIRED_RESPONSIBILITY_PHRASES),
+        ),
+        "disclosure-phrases": (
+            *contract.EVIDENCE_SIDE_DISCLOSURE.values(),
+            contract.SCANNER_UNAVAILABLE_DISCLOSURE,
+        ),
+    }
+    for family, fingerprints in families.items():
+        for name, text in texts.items():
+            normalized = normalize(text)
+            for fingerprint in fingerprints:
+                assert fingerprint not in normalized, f"{name} restates the declarative contract family {family}: {fingerprint!r}"
+
+    # The generated citation target actually carries every family, so the
+    # citation is actionable inside the sandbox.
+    reference = (REPO_ROOT / "resources" / "skills" / "fault-zeroing" / "references" / "result_contract.md").read_text(encoding="utf-8")
+    for item in (
+        *contract.REQUIRED_OUTPUTS,
+        *contract.REQUIRED_REPORT_SECTIONS,
+        *contract.REQUIRED_COVERAGE,
+        *contract.REQUIRED_REPORT_KEY_PHRASES,
+        *contract.REQUIRED_STAGE_MARKERS,
+        *contract.REQUIRED_RESPONSIBILITY_PHRASES,
+        *contract.FORBIDDEN_RESPONSIBILITY_CLAIMS,
+        *contract.EVIDENCE_SIDE_DISCLOSURE.values(),
+        contract.SCANNER_UNAVAILABLE_DISCLOSURE,
+    ):
+        assert item in reference, f"generated reference lost {item!r}"

@@ -36,7 +36,7 @@ allowed-tools:
 6. 长文档按章节或行号范围读取，不一次性吞入无关内容。
 7. 缺少关键输入时调用 `ask_clarification`，不得用假设替代资料。
 8. 即使用户只给出一句“做归零排故分析”，也要主动盘点上传目录，把盘点到的文件经 `start_zeroing_run` 参数声明后发起正式 Run，不要求用户补写详细 prompt（见「运行入口边界」）。
-9. 资料覆盖矩阵必须逐项检查五类资料：问题描述、设计约束、试验记录或日志、总结报告、历史或复核记录。缺失项必须同时写入报告“输入资料”和“遗留风险”。
+9. 资料覆盖矩阵必须逐项检查结果契约声明的全部资料类别（类别清单以 `/mnt/skills/fault-zeroing/references/result_contract.md` 的「资料覆盖类别」为准）。缺失项必须同时写入报告“输入资料”和“遗留风险”。
 10. `06_expected_analysis.md`、`*_expected_analysis.md` 等验收参考文件只可用于人工验收，不得作为底事件、根因或报告结论的证据来源。
 
 ## 代码证据包规则
@@ -60,7 +60,7 @@ allowed-tools:
   - `paused`：用 `ask_clarification` 呈现三选一（补传缺失材料 / 缺侧继续 / 停止）；用户选择继续时调用 `confirm_zeroing_run` 回传发起时返回的 `input_snapshot_hash`；确认后新增材料会改变快照哈希并被拒绝确认，需要重新向用户确认；
   - 之后用 `check_zeroing_run` 查询进度：Run 完成（含 `pending_verification` 披露性完成）时五件套产物自动送回会话展示；契约违规时把违规摘要与产物链接回传给用户，用户修正材料后重新发起。
 - 真实归零分析与工作流入口共用同一执行内核（`app.agentplatform.fault_zeroing.kernel`）：相同输入从任一入口发起实际归零 Run 时，使用相同的输入快照、证据规则、阶段策略和 Result Contract 版本，得到语义等价的结构化结果。
-- 单侧证据（仅文档或仅代码证据包）继续的 Run 仍为 hybrid 模式，必须在资料覆盖矩阵和遗留风险中披露缺失侧（`文档证据未提供` / `代码证据包未提供`），Result Contract 会强制校验该披露。
+- 单侧证据（仅文档或仅代码证据包）继续的 Run 仍为 hybrid 模式，必须在资料覆盖矩阵和遗留风险中按 `/mnt/skills/fault-zeroing/references/result_contract.md` 的「证据缺失侧披露短语」原样披露缺失侧，Result Contract 会强制校验该披露。
 - 结构化最终产物的完成判定以 Result Contract 为准（版本 `1.0.0`），`pending_verification` 是完整的披露性完成状态，不等同于根因已确认。
 
 ## 故障树构建规则
@@ -81,15 +81,15 @@ allowed-tools:
 
 **运行模式作用域**：当 system prompt 中出现「运行模式：工作流节点」一节时，以该节的「当前阶段指令」为准，只产出本节点指令声明的文件，不得越权补写其他阶段的产物；`write_file` 被拒绝时不要更换路径重试。下述文件级要求仅约束工作流节点产出的对应文件。
 
-聊天入口不内联产出五件套：真实归零分析经 `start_zeroing_run` 发起正式 Run，Run 完成后由 `check_zeroing_run` 把 `fault_tree.json`、`fault_tree.svg`、`bottom_event_assessment.md`、`analysis_process.svg`、`zeroing_report.md` 五件套复制回会话展示（`present_files` 通道）。不在对话中直接散落五个文件路径冒充交付。
+聊天入口不内联产出五件套：真实归零分析经 `start_zeroing_run` 发起正式 Run，Run 完成后由 `check_zeroing_run` 把结果契约「五件产物清单」（`/mnt/skills/fault-zeroing/references/result_contract.md`）所列的五件套产物复制回会话展示（`present_files` 通道）。不在对话中直接散落文件路径冒充交付。
 
 工作流节点产出的报告与图形仍须满足：
 
-1. 报告包含问题概述、输入资料、故障现象、故障树分析、底事件评估、根因归因、验证计划、纠正措施、遗留风险和证据附录。
+1. 报告章节以 `/mnt/skills/fault-zeroing/references/result_contract.md` 的「报告章节」清单为准。
 2. 根因结论至少引用一条 A/B 级证据；否则必须写“待验证”。
 3. 数值概率必须有统计、历史频次或专家打分依据；没有依据时 `probability` 保持 `null`。
 4. `zeroing_report.md` 的顶事件、主根因和待验证项必须与 `fault_tree.json` 一致。
-5. SVG 只使用内联 `<svg>`、`<rect>`、`<line>`、`<text>` 等静态元素，不写脚本和外链资源，不包含远程图片或动态交互代码。`fault_tree.svg` 展示顶事件、中间事件、底事件、逻辑门和底事件状态；`analysis_process.svg` 展示证据提取、故障树构建、底事件评估、根因归因、纠正措施、文档生产这条分析链路。
-6. 报告必须显式包含资料覆盖矩阵、证据台账摘要、待验证项和遗留风险。
-7. 报告必须包含各阶段职责说明：演绎建树阶段不依赖证据台账；证据检漏只做添加不做删除；文档阶段不修改分析数据。
+5. SVG 只使用内联 `<svg>`、`<rect>`、`<line>`、`<text>` 等静态元素，不写脚本和外链资源，不包含远程图片或动态交互代码。`fault_tree.svg` 展示顶事件、中间事件、底事件、逻辑门和底事件状态；`analysis_process.svg` 展示 `/mnt/skills/fault-zeroing/references/result_contract.md`「分析阶段标记」所列的分析链路。
+6. 报告必须显式包含 `/mnt/skills/fault-zeroing/references/result_contract.md`「报告关键短语」所列的关键短语。
+7. 报告必须包含 `/mnt/skills/fault-zeroing/references/result_contract.md`「阶段职责说明」所列的职责说明，且不得出现该节禁止的反义声明。
 8. 产物落盘后可提示用户运行离线 validator：`python /mnt/skills/fault-zeroing/scripts/validate_fault_zeroing_outputs.py --outputs-dir <产物目录>`。
