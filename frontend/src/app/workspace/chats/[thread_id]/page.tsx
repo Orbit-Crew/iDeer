@@ -66,12 +66,20 @@ function RecentTaskCards({
 }: {
   threads: Array<Parameters<typeof titleOfThread>[0]>;
 }) {
+  const { t } = useI18n();
   if (threads.length === 0) return null;
   return (
-    <section className="workbench-recent-tasks" aria-label="最近任务">
+    <section
+      className="workbench-recent-tasks"
+      aria-label={t.workbench.recentTasks}
+    >
       <p className="workbench-module-guide">
-        <span className="workbench-guide-question">工作复盘？</span>
-        <span className="workbench-guide-answer">iDeer带你回到过去</span>
+        <span className="workbench-guide-question">
+          {t.workbench.reviewQuestion}
+        </span>
+        <span className="workbench-guide-answer">
+          {t.workbench.reviewAnswer}
+        </span>
       </p>
       <div className="workbench-recent-grid">
         {threads.slice(0, 3).map((thread) => {
@@ -96,13 +104,13 @@ function RecentTaskCards({
             (typeof metadata?.task_type === "string"
               ? metadata.task_type
               : undefined) ??
-            "对话任务";
+            t.workbench.defaultTaskType;
           const status =
             (typeof metadata?.status === "string"
               ? metadata.status
               : undefined) ??
             (typeof values?.status === "string" ? values.status : undefined) ??
-            "进行中";
+            t.workbench.defaultStatus;
 
           return (
             <Link
@@ -466,10 +474,10 @@ export default function ChatPage() {
                       >
                         <p className="workbench-module-guide workbench-scenario-guide">
                           <span className="workbench-guide-question">
-                            方向不明？
+                            {t.workbench.exploreQuestion}
                           </span>
                           <span className="workbench-guide-answer">
-                            iDeer帮你找对帮手
+                            {t.workbench.exploreAnswer}
                           </span>
                         </p>
                         <ScenarioTabs
@@ -505,10 +513,10 @@ export default function ChatPage() {
                       {isWelcomeMode && (
                         <p className="workbench-module-guide workbench-input-guide">
                           <span className="workbench-guide-question">
-                            目标明确？
+                            {t.workbench.focusQuestion}
                           </span>
                           <span className="workbench-guide-answer">
-                            iDeer帮你落地实现
+                            {t.workbench.focusAnswer}
                           </span>
                         </p>
                       )}

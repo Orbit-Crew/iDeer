@@ -77,7 +77,10 @@ vi.mock("@/core/i18n/hooks", () => ({
         loading: "Loading...",
         notAvailableInDemoMode: "Not available in demo",
       },
-      agents: { newChat: "New Chat" },
+      agents: {
+        newChat: "New Chat",
+        skilledAt: (skills: string[]) => `擅长：${skills.join("、")}`,
+      },
     },
   }),
 }));

@@ -60,6 +60,39 @@ describe("i18n translation keys", () => {
     });
   });
 
+  describe("workbench keys", () => {
+    it("en-US has task workbench strings", () => {
+      expect(enUS.workbench.recentTasks).toBe("Recent tasks");
+      expect(enUS.workbench.reviewQuestion).toBe("Reviewing past work?");
+      expect(enUS.workbench.reviewAnswer).toBe("iDeer takes you back");
+      expect(enUS.workbench.defaultTaskType).toBe("Conversation task");
+      expect(enUS.workbench.defaultStatus).toBe("In progress");
+      expect(enUS.workbench.exploreQuestion).toBe("Unclear direction?");
+      expect(enUS.workbench.exploreAnswer).toBe("iDeer finds the right helper");
+      expect(enUS.workbench.focusQuestion).toBe("Clear goal?");
+      expect(enUS.workbench.focusAnswer).toBe("iDeer helps you land it");
+    });
+
+    it("zh-CN keeps the former hardcoded chat-page strings", () => {
+      expect(zhCN.workbench.recentTasks).toBe("最近任务");
+      expect(zhCN.workbench.reviewQuestion).toBe("工作复盘？");
+      expect(zhCN.workbench.reviewAnswer).toBe("iDeer带你回到过去");
+      expect(zhCN.workbench.defaultTaskType).toBe("对话任务");
+      expect(zhCN.workbench.defaultStatus).toBe("进行中");
+      expect(zhCN.workbench.exploreQuestion).toBe("方向不明？");
+      expect(zhCN.workbench.exploreAnswer).toBe("iDeer帮你找对帮手");
+      expect(zhCN.workbench.focusQuestion).toBe("目标明确？");
+      expect(zhCN.workbench.focusAnswer).toBe("iDeer帮你落地实现");
+    });
+
+    it("agent chat welcome describes the agent's skills", () => {
+      expect(enUS.agents.skilledAt(["web-search"])).toBe(
+        "Skilled in: web-search",
+      );
+      expect(zhCN.agents.skilledAt(["网页搜索"])).toBe("擅长：网页搜索");
+    });
+  });
+
   describe("brand keys", () => {
     it("en-US uses iDeer brand in app name", () => {
       expect(enUS.pages.appName).toBe("iDeer");
@@ -70,35 +103,9 @@ describe("i18n translation keys", () => {
     });
   });
 
-  describe("key parity", () => {
-    it("en-US and zh-CN have same top-level keys", () => {
-      const enKeys = Object.keys(enUS).sort();
-      const zhKeys = Object.keys(zhCN).sort();
-      expect(enKeys).toEqual(zhKeys);
-    });
-
-    it("en-US and zh-CN workspace keys match", () => {
-      const enKeys = Object.keys(enUS.workspace).sort();
-      const zhKeys = Object.keys(zhCN.workspace).sort();
-      expect(enKeys).toEqual(zhKeys);
-    });
-
-    it("en-US and zh-CN sidebar keys match", () => {
-      const enKeys = Object.keys(enUS.sidebar).sort();
-      const zhKeys = Object.keys(zhCN.sidebar).sort();
-      expect(enKeys).toEqual(zhKeys);
-    });
-
-    it("en-US and zh-CN workflows keys match", () => {
-      const enKeys = Object.keys(enUS.workflows).sort();
-      const zhKeys = Object.keys(zhCN.workflows).sort();
-      expect(enKeys).toEqual(zhKeys);
-    });
-
-    it("en-US and zh-CN breadcrumb keys match", () => {
-      const enKeys = Object.keys(enUS.breadcrumb).sort();
-      const zhKeys = Object.keys(zhCN.breadcrumb).sort();
-      expect(enKeys).toEqual(zhKeys);
-    });
-  });
+  // Key parity between en-US and zh-CN is enforced at compile time:
+  // `Translations` is derived from the en-US literal (locales/types.ts) and
+  // zh-CN is annotated with it, so a missing key fails `tsc --noEmit`. The
+  // former runtime parity checks are recorded in
+  // docs/testing/test-migration-ledger.md (batch 2026-10-03, issue 09).
 });

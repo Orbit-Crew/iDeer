@@ -1,6 +1,7 @@
-import type { Translations } from "./types";
-
-export const enUS: Translations = {
+// en-US is the source of truth for the translation shape: `Translations` in
+// ./types is derived from this literal, so adding a key here defines the type
+// for every locale.
+export const enUS = {
   // Locale meta
   locale: {
     localName: "English",
@@ -49,7 +50,8 @@ export const enUS: Translations = {
     showArtifacts: "Show artifacts of this conversation",
     browser: "Browser",
     showBrowser: "Open Agent browser panel",
-    showingOf: (loaded, total) => `Showing ${loaded} of ${total}`,
+    showingOf: (loaded: number, total: number) =>
+      `Showing ${loaded} of ${total}`,
     error: "Error:",
     deleteTitle: "Delete conversation",
     deleteThreadConfirm: (title: string) =>
@@ -61,13 +63,13 @@ export const enUS: Translations = {
   runDuration: {
     reasoning: "Reasoning",
     working: "Working…",
-    completedIn: (duration) => `Completed in ${duration}`,
+    completedIn: (duration: string) => `Completed in ${duration}`,
     description:
       "Total task time, including model reasoning, tool calls, and waiting.",
     lessThanSecond: "<1s",
-    hours: (value) => `${value}h`,
-    minutes: (value) => `${value}m`,
-    seconds: (value) => `${value}s`,
+    hours: (value: number) => `${value}h`,
+    minutes: (value: number) => `${value}m`,
+    seconds: (value: number) => `${value}s`,
     separator: " ",
   },
   // Home
@@ -103,7 +105,7 @@ export const enUS: Translations = {
     saveFailed: "Failed to save artifact",
   },
   artifactPreview: {
-    limited: (previewSize, totalSize) =>
+    limited: (previewSize: string, totalSize?: string) =>
       totalSize
         ? `Showing the first ${previewSize} of ${totalSize}.`
         : `Showing the first ${previewSize}.`,
@@ -118,25 +120,26 @@ export const enUS: Translations = {
     currentVersionNotice:
       "The file list comes from this response. Contents are the current versions and may have changed.",
     downloadFailed: "Failed to download artifact archive.",
-    downloadSelected: (count) =>
+    downloadSelected: (count: number) =>
       `Download selected files (${count} ${count === 1 ? "file" : "files"})`,
-    selectFile: (fileName) => `Include ${fileName} in archive`,
+    selectFile: (fileName: string) => `Include ${fileName} in archive`,
     selectionNotice: "Choose which files to include in the archive.",
-    selectionLimit: (count) => `Select no more than ${count} files.`,
+    selectionLimit: (count: number) => `Select no more than ${count} files.`,
   },
   // Citations
   citations: {
-    sourcesSummary: (count) =>
+    sourcesSummary: (count: number) =>
       `Used ${count} ${count === 1 ? "source" : "sources"}`,
-    citeCount: (count) => `${count} ${count === 1 ? "cite" : "cites"}`,
-    copyReference: (title) => `Copy ${title} reference`,
-    copiedReference: (title) => `Copied ${title} reference`,
+    citeCount: (count: number) => `${count} ${count === 1 ? "cite" : "cites"}`,
+    copyReference: (title: string) => `Copy ${title} reference`,
+    copiedReference: (title: string) => `Copied ${title} reference`,
   },
   // Workspace Changes
   workspaceChanges: {
     title: "Workspace changes",
-    editedTitle: (count) => `Edited ${count} ${count === 1 ? "file" : "files"}`,
-    badge: (count, additions, deletions) =>
+    editedTitle: (count: number) =>
+      `Edited ${count} ${count === 1 ? "file" : "files"}`,
+    badge: (count: number, additions: number, deletions: number) =>
       `${count} ${count === 1 ? "file" : "files"} changed +${additions} -${deletions}`,
     viewChanges: "View changes",
     created: "Created",
@@ -279,9 +282,9 @@ export const enUS: Translations = {
     cancel: "Cancel task",
     cancelling: "Cancelling…",
     cancelFailed: "Failed to cancel task",
-    cancellationRetrying: (attempt) =>
+    cancellationRetrying: (attempt: number) =>
       `Cancellation attempt ${attempt} failed; iDeer will keep retrying.`,
-    notificationRetrying: (attempt) =>
+    notificationRetrying: (attempt: number) =>
       `Chat notification attempt ${attempt} failed; iDeer will retry with backoff.`,
     notificationStopped:
       "Chat notification delivery stopped after repeated or permanent failures.",
@@ -295,8 +298,8 @@ export const enUS: Translations = {
     inputUnavailable:
       "This integration cannot send your response back to the remote task yet.",
     lastPollError: "Latest status error",
-    created: (time) => `Started ${time}`,
-    updated: (time) => `Updated ${time}`,
+    created: (time: string) => `Started ${time}`,
+    updated: (time: string) => `Updated ${time}`,
     status: {
       submitted: "Submitted",
       working: "Working",
@@ -325,8 +328,10 @@ export const enUS: Translations = {
     viewItems: "View items",
     hideItems: "Hide items",
     itemsFailed: "Couldn't load batch items",
-    progress: (completed, total) => `${completed} of ${total} terminal`,
-    limits: (live, running) => `Live ${live} · running ${running}`,
+    progress: (completed: number, total: number) =>
+      `${completed} of ${total} terminal`,
+    limits: (live: number, running: number) =>
+      `Live ${live} · running ${running}`,
     status: {
       queued: "Queued",
       running: "Running",
@@ -616,6 +621,7 @@ export const enUS: Translations = {
     source: "Source definition",
     notSpecified: "Not specified",
     exportFailed: "Failed to export Agent. Please try again.",
+    skilledAt: (skills: string[]) => `Skilled in: ${skills.join(", ")}`,
   },
   // Breadcrumb
   breadcrumb: {
@@ -663,7 +669,8 @@ export const enUS: Translations = {
   // Chats
   chats: {
     searchChats: "Search chats",
-    branchLabel: (title, parentTitle) => `${title}, branch of ${parentTitle}`,
+    branchLabel: (title: string, parentTitle: string) =>
+      `${title}, branch of ${parentTitle}`,
     loadMoreToSearch: "Load more to search older conversations",
     loadingMore: "Loading more...",
     loadOlderChats: "Load older chats",
@@ -671,7 +678,7 @@ export const enUS: Translations = {
     unpinChat: "Unpin chat",
     pinChatFailed: "Failed to update pinned chat",
     deleteChat: "Delete chat",
-    deleteConfirm: (title) =>
+    deleteConfirm: (title: string) =>
       `Delete “${title}”? This will delete the conversation and its files. This action cannot be undone.`,
     deleteFailed: "Failed to delete chat. Please try again.",
     noActiveChats: "No recent chats",
@@ -689,6 +696,18 @@ export const enUS: Translations = {
     noMatchingChats: "No matching chats in the loaded conversations",
     loadChatsFailed: "Failed to load conversations",
     retryLoadChats: "Retry",
+  },
+  // Task workbench (chat page welcome module)
+  workbench: {
+    recentTasks: "Recent tasks",
+    reviewQuestion: "Reviewing past work?",
+    reviewAnswer: "iDeer takes you back",
+    defaultTaskType: "Conversation task",
+    defaultStatus: "In progress",
+    exploreQuestion: "Unclear direction?",
+    exploreAnswer: "iDeer finds the right helper",
+    focusQuestion: "Clear goal?",
+    focusAnswer: "iDeer helps you land it",
   },
   // Sidecar
   sidecar: {
@@ -1126,16 +1145,16 @@ export const enUS: Translations = {
         sandboxRuntimeNotReady:
           "Not ready — lark-cli may be missing at chat time",
         notInstalled: "Not installed",
-        skillsInstalled: (installed, expected) =>
+        skillsInstalled: (installed: number, expected: number) =>
           `${installed}/${expected} skills installed`,
-        installedVersion: (version) => `Installed: ${version}`,
-        updateAvailable: (version) =>
+        installedVersion: (version: string) => `Installed: ${version}`,
+        updateAvailable: (version: string) =>
           `Update available: ${version} — admin reinstall updates the managed Gateway CLI and skill pack`,
         runtimeVersionMismatch:
           "Skill pack version differs from the Gateway runtime lark-cli; admin reinstall attempts to update the managed Gateway CLI and realign the skill pack",
         authNotConfigured: "Not connected",
         authConfigured: "Credentials configured (not live-verified)",
-        authConfiguredFor: (user) =>
+        authConfiguredFor: (user: string) =>
           `${user} · credentials configured (not live-verified)`,
         connect: "Connect Lark",
         authStarting: "Opening connection link...",
@@ -1287,7 +1306,7 @@ export const enUS: Translations = {
         continueAuth: "I completed browser confirmation, continue",
         preparingAuthorization: "Preparing authorization...",
         completingAuth: "Checking...",
-        authExpiresIn: (seconds) =>
+        authExpiresIn: (seconds: number) =>
           `This link expires in about ${seconds} seconds.`,
         installingTitle: "Installing official skill pack",
         installingDescription:
@@ -1570,10 +1589,10 @@ export const enUS: Translations = {
   artifactTable: {
     title: "Table preview",
     header: "First row as header",
-    column: (index) => `Column ${index}`,
-    total: (count) => `${count} rows`,
-    sample: (count) => `Preview of first ${count} rows`,
-    range: (start, end, limited) =>
+    column: (index: number) => `Column ${index}`,
+    total: (count: number) => `${count} rows`,
+    sample: (count: number) => `Preview of first ${count} rows`,
+    range: (start: number, end: number, limited: boolean) =>
       `${start}–${end}${limited ? " of preview" : ""}`,
     columnsLimited: "Showing the first 50 columns of the preview.",
     uneven:
@@ -1586,7 +1605,8 @@ export const enUS: Translations = {
     retry: "Retry preview",
     previous: "Previous page",
     next: "Next page",
-    cell: (row, column) => `View cell: row ${row}, column ${column}`,
+    cell: (row: number, column: number) =>
+      `View cell: row ${row}, column ${column}`,
     cellValue: "Cell value",
     missing: "Missing",
     savedVersion:
@@ -1597,7 +1617,8 @@ export const enUS: Translations = {
     favorites: "Favorites",
     otherModels: "Other models",
     noModels: "No models available",
-    favoriteModel: (displayName, name) => `Favorite ${displayName} (${name})`,
+    favoriteModel: (displayName: string, name: string) =>
+      `Favorite ${displayName} (${name})`,
     sessionOnly: "Favorites are stored for this session only.",
   },
   projects: {
@@ -1638,8 +1659,9 @@ export const enUS: Translations = {
     instructions: "Instructions",
     instructionsPlaceholder:
       "Background, goals, and conventions the agent should always know for this project…",
-    instructionsByteCount: (used, max) => `${used} / ${max} bytes`,
-    instructionsTooLong: (max) =>
+    instructionsByteCount: (used: number, max: number) =>
+      `${used} / ${max} bytes`,
+    instructionsTooLong: (max: number) =>
       `Instructions are over the ${max}-byte limit. Shorten them to save.`,
     instructionsSaved: "Saved",
     instructionsSaveFailed: "Failed to save instructions",
@@ -1648,7 +1670,8 @@ export const enUS: Translations = {
     uploadDocuments: "Upload",
     uploadingDocuments: "Uploading…",
     uploadDocumentFailed: "Failed to upload document",
-    documentFromThread: (threadName, kind) => `from ${threadName} · ${kind}`,
+    documentFromThread: (threadName: string, kind: string) =>
+      `from ${threadName} · ${kind}`,
     documentKindUpload: "upload",
     documentKindOutput: "output",
     attachToThread: "Attach to chat",
@@ -1656,10 +1679,10 @@ export const enUS: Translations = {
     attachDialogHint: "Choose a chat to attach this document to.",
     attachNoThreads: "No chats available.",
     attachFailed: "Failed to attach document",
-    attachedToThread: (name) => `Attached "${name}"`,
+    attachedToThread: (name: string) => `Attached "${name}"`,
     moveDocumentToTrash: "Move to trash",
     moveDocumentToTrashTitle: "Move to trash?",
-    moveDocumentToTrashConfirm: (name, days) =>
+    moveDocumentToTrashConfirm: (name: string, days: number) =>
       `"${name}" will move to the trash and stay recoverable for ${days} days.`,
     deleteDocumentFailed: "Failed to move document to trash",
     contentMissing: "Content missing",
@@ -1669,12 +1692,12 @@ export const enUS: Translations = {
       "This project is archived. Documents are read-only — upload, save to project, and trash are unavailable.",
     conversationFiles: "Conversation files",
     conversationFilesEmpty: "No files in this project's chats yet.",
-    threadFilesTruncated: (count) =>
+    threadFilesTruncated: (count: number) =>
       `Only the first ${count} files of this chat are shown.`,
     threadFilesBrowseInThread: "Browse all files in the chat",
     saveToProject: "Save to project",
     saveToProjectFailed: "Failed to save file to project",
-    savedToProject: (name) => `Saved "${name}" to the shelf`,
+    savedToProject: (name: string) => `Saved "${name}" to the shelf`,
     shelfNameLabel: "Shelf name",
     viewTrash: "Trash",
     documentsLoadFailed: "Couldn't load project documents",
@@ -1687,9 +1710,9 @@ export const enUS: Translations = {
     empty: "Trash is empty.",
     loadFailed: "Couldn't load trash",
     retry: "Try again",
-    originProject: (projectName) => `from ${projectName}`,
+    originProject: (projectName: string) => `from ${projectName}`,
     unknownProject: "Unknown project",
-    retentionLeft: (days) =>
+    retentionLeft: (days: number) =>
       days <= 0
         ? "Less than a day left"
         : days === 1
@@ -1697,8 +1720,8 @@ export const enUS: Translations = {
           : `${days} days left`,
     restore: "Restore",
     restoreFailed: "Failed to restore document",
-    restoredToast: (name) => `Restored "${name}"`,
-    restoreMergedToast: (name) =>
+    restoredToast: (name: string) => `Restored "${name}"`,
+    restoreMergedToast: (name: string) =>
       `"${name}" matched existing shelf content — merged.`,
     restoreConflict:
       "This document's content is missing or damaged, so it stays in the trash.",
@@ -1707,12 +1730,12 @@ export const enUS: Translations = {
       "The original project is gone or archived. Pick an active project to restore into.",
     deletePermanently: "Delete permanently",
     deletePermanentlyTitle: "Delete permanently?",
-    deletePermanentlyConfirm: (name) =>
+    deletePermanentlyConfirm: (name: string) =>
       `"${name}" will be permanently deleted. This cannot be undone.`,
     purgeFailed: "Failed to delete document",
     emptyTrash: "Empty trash",
     emptyTrashTitle: "Empty trash?",
-    emptyTrashConfirm: (count) =>
+    emptyTrashConfirm: (count: number) =>
       count === 1
         ? "1 document will be permanently deleted. This cannot be undone."
         : `${count} documents will be permanently deleted. This cannot be undone.`,
@@ -1947,9 +1970,9 @@ export const enUS: Translations = {
     skills: "Skills",
     connectors: "Connectors",
     impactTitle: "Downgrade impact",
-    impactSummary: (total, direct, transitive) =>
+    impactSummary: (total: number, direct: number, transitive: number) =>
       `This change will affect ${total} resource(s) (${direct} direct, ${transitive} transitive).`,
-    impactBlockedSummary: (count) =>
+    impactBlockedSummary: (count: number) =>
       `${count} of them are built-in resources that cannot be auto-repaired.`,
     impactCascadeLabel:
       "Also downgrade repairable affected resources to private",
@@ -1965,11 +1988,11 @@ export const enUS: Translations = {
     notificationsEmpty: "No notifications",
     notificationsMarkAllRead: "Mark all read",
     notificationsMarkAllReadDone: "All notifications marked as read",
-    notificationsVisibilityReduced: (name) =>
+    notificationsVisibilityReduced: (name: string) =>
       `Visibility of "${name}" was reduced`,
-    notificationsVisibilityReducedCascade: (name) =>
+    notificationsVisibilityReducedCascade: (name: string) =>
       `Visibility of "${name}" was reduced and dependents were cascaded`,
-    notificationsAdminVisibilityReduced: (count) =>
+    notificationsAdminVisibilityReduced: (count: number) =>
       `An admin reduced a resource's visibility, affecting ${count} resource(s)`,
     notificationsUnknownEvent: "New resource notification",
     notificationsLoadFailed: "Failed to load notifications",

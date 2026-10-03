@@ -369,8 +369,9 @@ describe("enUS locale comprehensive", () => {
       // 72 enterprise keys restored + 21 upstream agent-settings keys, minus
       // 3 keys orphaned when the /workspace/agents surface was merged into
       // the capability center (featureDisabledTitle/Description,
-      // nameStepApiDisabledError) = 90
-      expect(Object.keys(enUS.agents)).toHaveLength(93);
+      // nameStepApiDisabledError) = 90, plus skilledAt for the agent-chat
+      // welcome skills line = 94
+      expect(Object.keys(enUS.agents)).toHaveLength(94);
     });
 
     it("nameStepBootstrapMessage contains {name} placeholder", () => {

@@ -10,6 +10,21 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: i18n key parity moves from runtime checks to the compiler
+
+Ticket `architecture-deepening` issue 09 (spec candidate 8, Q12=a). The
+`Translations` interface (`frontend/src/core/i18n/locales/types.ts`, 2,047
+hand-maintained lines) was replaced by a one-line derivation from the en-US
+literal (`export type Translations = typeof enUS`), making en-US the source of
+truth and zh-CN a checked adapter. No test file was moved or renamed; one
+describe block was deleted because the compiler now owns its assertion.
+
+| Removed/kept path | Superseded or retained coverage | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/core/i18n/keys.test.ts` — `key parity` describe (5 tests: top-level/workspace/sidebar/workflows/breadcrumb key-set equality) | Deleted as compile-time superseded: `zhCN` is annotated with the derived `Translations`, so any missing or extra zh-CN key fails `tsc --noEmit` (verified: deleting `common.favoritesOnly` from zh-CN produces TS2741; adding a key to en-US alone produces TS2741 on zh-CN until translated). The compiler covers every key of every section, not the five sampled ones. | Stronger: exhaustive, build-blocking, zero-maintenance; the former checks could only sample sections and could never fail once the manual interface existed | `cd frontend && ./node_modules/.bin/tsc --noEmit` plus the focused suite below |
+| `frontend/tests/unit/core/i18n/keys.test.ts` — new `workbench keys` describe (3 tests) and the rest of the file (admin/workflow/brand value assertions) | Kept and extended: value assertions pin the exact strings, including the former page-hardcoded Chinese now living in `zhCN.workbench` and `zhCN.agents.skilledAt` | Unchanged for existing assertions; additive for the migrated strings | `cd frontend && pnpm vitest run tests/unit/core/i18n/keys.test.ts` |
+| `frontend/tests/unit/core/i18n/translations.test.ts` — "every locale has all top-level sections" | Kept as deliberate redundancy: the loop also exercises the `translations` record mapping (`Record<Locale, Translations>`) at runtime, and its section list is a pinned subset rather than pure parity | Compile-time guarantee plus a runtime record smoke | `cd frontend && pnpm vitest run tests/unit/core/i18n/translations.test.ts` |
+
 ## Batch 2026-10-03: Skill selection consolidates into the selection module
 
 Ticket `architecture-deepening` issue 08 (spec candidate 7, Q11=a). The

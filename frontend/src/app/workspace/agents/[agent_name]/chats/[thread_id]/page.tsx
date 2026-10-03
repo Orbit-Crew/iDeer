@@ -330,7 +330,7 @@ export default function AgentChatPage() {
                       </p>
                       {agent.skills && agent.skills.length > 0 && (
                         <p className="type-body text-muted-foreground mt-3">
-                          擅长：{agent.skills.join("、")}
+                          {t.agents.skilledAt(agent.skills)}
                         </p>
                       )}
                     </div>

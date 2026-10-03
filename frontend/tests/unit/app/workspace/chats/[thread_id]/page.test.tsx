@@ -56,6 +56,17 @@ vi.mock("@/core/i18n/hooks", () => ({
         loading: "Loading...",
         notAvailableInDemoMode: "Not available in demo",
       },
+      workbench: {
+        recentTasks: "最近任务",
+        reviewQuestion: "工作复盘？",
+        reviewAnswer: "iDeer带你回到过去",
+        defaultTaskType: "对话任务",
+        defaultStatus: "进行中",
+        exploreQuestion: "方向不明？",
+        exploreAnswer: "iDeer帮你找对帮手",
+        focusQuestion: "目标明确？",
+        focusAnswer: "iDeer帮你落地实现",
+      },
       inputBox: { disclaimer: "内容由AI生成，重要信息请务必核查" },
       sidebar: { scheduledTasks: "Scheduled tasks" },
       scenarios: {
