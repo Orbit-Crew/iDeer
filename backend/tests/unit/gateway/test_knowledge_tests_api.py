@@ -20,7 +20,8 @@ from app.agentplatform.knowledge.provider import ProviderIngestionResult
 from app.agentplatform.knowledge.revisions import KnowledgeRevisionService, execute_publish
 from app.agentplatform.rbac_models import UserModel, UserRole
 from app.agentplatform.resource_models import Resource
-from app.agentplatform.resources.service import ResourceAction, ResourceActor
+from app.agentplatform.resources.actors import role_permissions
+from app.agentplatform.resources.service import ResourceActor
 from app.gateway.routers import knowledge_tests, resources
 from deerflow.community.ragflow.client import RAGFlowConnectionError
 from deerflow.persistence.base import Base
@@ -92,7 +93,7 @@ def _actor(user_id: str, *, permissions=None) -> ResourceActor:
         user_id=user_id,
         department_id=None,
         role="user",
-        permissions=frozenset(permissions or {ResourceAction.READ, ResourceAction.USE, ResourceAction.WRITE}),
+        permissions=frozenset(permissions or role_permissions("user")),
     )
 
 

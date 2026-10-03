@@ -1514,13 +1514,13 @@ async def _resolve_canonical_alias(assistant_id: str | None, request: Request) -
 
     from app.agentplatform.rbac_models import UserModel
     from app.agentplatform.resource_service import (
-        ResourceAction,
         ResourceActor,
         ResourceConflict,
         ResourceNotFound,
         ResourcePermissionDenied,
         ResourceService,
     )
+    from app.agentplatform.resources.actors import actor_from_user, role_permissions
     from deerflow.persistence.engine import get_session_factory
 
     session_factory = get_session_factory()
@@ -1536,7 +1536,7 @@ async def _resolve_canonical_alias(assistant_id: str | None, request: Request) -
                     user_id=cached["user_id"],
                     department_id=cached["department_id"],
                     role=cached["role"],
-                    permissions=frozenset({ResourceAction.READ, ResourceAction.USE}),
+                    permissions=role_permissions(cached["role"]),
                     tool_groups=None,
                 )
             else:
@@ -1550,13 +1550,7 @@ async def _resolve_canonical_alias(assistant_id: str | None, request: Request) -
                 ).scalar_one_or_none()
                 if user is None:
                     raise ResourcePermissionDenied("Active RBAC user is required")
-                actor = ResourceActor(
-                    user_id=str(user.id),
-                    department_id=str(user.department_id) if user.department_id is not None else None,
-                    role=str(user.role),
-                    permissions=frozenset({ResourceAction.READ, ResourceAction.USE}),
-                    tool_groups=None,
-                )
+                actor = actor_from_user(user)
             resource = await ResourceService(session, actor).resolve_legacy_alias("agent", assistant_id)
         return resource.id
     except ResourceNotFound as exc:

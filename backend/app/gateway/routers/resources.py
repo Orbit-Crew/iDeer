@@ -47,7 +47,6 @@ from app.agentplatform.resource_runtime import (
     write_agent_draft_source,
 )
 from app.agentplatform.resource_service import (
-    ResourceAction,
     ResourceActor,
     ResourceApprovalRequired,
     ResourceConflict,
@@ -56,6 +55,7 @@ from app.agentplatform.resource_service import (
     ResourceService,
     VisibilityClosureError,
 )
+from app.agentplatform.resources.actors import actor_from_user
 from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
 from app.agentplatform.resources.skill_validation import _validate_skill_frontmatter
 from app.agentplatform.workflow_runtime import (
@@ -345,20 +345,8 @@ class WorkflowCommandRequest(BaseModel):
 
 
 def _resource_actor(user: UserModel) -> ResourceActor:
-    permissions = {ResourceAction.READ}
-    if user.role in {UserRole.USER, UserRole.DEPARTMENT_ADMIN, UserRole.SUPER_ADMIN}:
-        permissions.update({ResourceAction.USE, ResourceAction.WRITE})
-    if user.role in {UserRole.DEPARTMENT_ADMIN, UserRole.SUPER_ADMIN}:
-        permissions.add(ResourceAction.APPROVE)
-    if user.role == UserRole.SUPER_ADMIN:
-        permissions.update(ResourceAction)
-    return ResourceActor(
-        user_id=str(user.id),
-        department_id=str(user.department_id) if user.department_id is not None else None,
-        role=str(user.role),
-        permissions=frozenset(permissions),
-        tool_groups=None,
-    )
+    """Delegate to the shared role ladder — the single permission-map home."""
+    return actor_from_user(user)
 
 
 def _translate_resource_errors(handler):

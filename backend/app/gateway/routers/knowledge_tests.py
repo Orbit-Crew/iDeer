@@ -19,10 +19,11 @@ from app.agentplatform.knowledge.evaluation import KnowledgeEvaluationService, K
 from app.agentplatform.knowledge.models import KnowledgeEvalCase, KnowledgeEvaluationPolicy
 from app.agentplatform.knowledge.retrieval_test import KnowledgeRetrievalTestService, KnowledgeRetrievalTestValidationError, RetrievalTestUnavailable
 from app.agentplatform.rbac_models import UserModel
+from app.agentplatform.resources.actors import actor_from_user
 from app.agentplatform.resources.service import ResourceConflict, ResourceService
 from app.gateway.audit import record_audit
 from app.gateway.authz import get_current_rbac_user
-from app.gateway.routers.resources import _factory, _resource_actor, _translate_resource_errors
+from app.gateway.routers.resources import _factory, _translate_resource_errors
 
 router = APIRouter(prefix="/api/resources", tags=["knowledge-tests"])
 
@@ -74,7 +75,7 @@ class EvaluationPolicyRequest(BaseModel):
 @_translate_resource_errors
 async def get_evaluation_policy(resource_id: str, current_user: UserModel = Depends(get_current_rbac_user)) -> dict[str, Any]:
     async with _factory()() as session:
-        resource = await ResourceService(session, _resource_actor(current_user)).get_visible(resource_id)
+        resource = await ResourceService(session, actor_from_user(current_user)).get_visible(resource_id)
         if resource.type != "knowledge_base":
             raise ResourceConflict("KnowledgeBase not found")
         policy = await session.get(KnowledgeEvaluationPolicy, resource_id)
@@ -85,7 +86,7 @@ async def get_evaluation_policy(resource_id: str, current_user: UserModel = Depe
 @_translate_resource_errors
 async def put_evaluation_policy(resource_id: str, body: EvaluationPolicyRequest, current_user: UserModel = Depends(get_current_rbac_user)) -> dict[str, Any]:
     async with _factory()() as session:
-        actor = _resource_actor(current_user)
+        actor = actor_from_user(current_user)
         service = ResourceService(session, actor)
         resource = await service.get_visible(resource_id)
         if resource.type != "knowledge_base":
@@ -121,7 +122,7 @@ async def create_retrieval_test(
 ) -> dict[str, Any]:
     """Run and archive a bounded retrieval test."""
     async with _factory()() as session:
-        service = KnowledgeRetrievalTestService(session, _resource_actor(current_user))
+        service = KnowledgeRetrievalTestService(session, actor_from_user(current_user))
         try:
             payload = await service.execute(resource_id, body.revision_id, query=body.query, top_k=body.top_k, profile_id=body.profile_id)
             await session.commit()
@@ -159,7 +160,7 @@ async def list_retrieval_tests(
 ) -> dict[str, Any]:
     """List archived retrieval tests for a visible knowledge base."""
     async with _factory()() as session:
-        return await KnowledgeRetrievalTestService(session, _resource_actor(current_user)).list_tests(resource_id, offset=offset, limit=limit)
+        return await KnowledgeRetrievalTestService(session, actor_from_user(current_user)).list_tests(resource_id, offset=offset, limit=limit)
 
 
 @router.get("/{resource_id}/retrieval-tests/{test_id}")
@@ -171,7 +172,7 @@ async def get_retrieval_test(
 ) -> dict[str, Any]:
     """Read one archived retrieval test after rechecking access."""
     async with _factory()() as session:
-        return await KnowledgeRetrievalTestService(session, _resource_actor(current_user)).get_test(resource_id, test_id)
+        return await KnowledgeRetrievalTestService(session, actor_from_user(current_user)).get_test(resource_id, test_id)
 
 
 @router.post("/{resource_id}/evaluations", status_code=202)
@@ -184,7 +185,7 @@ async def create_evaluation(
     """Freeze and enqueue one bounded profile evaluation."""
     async with _factory()() as session:
         try:
-            payload = await KnowledgeEvaluationService(session, _resource_actor(current_user)).start(
+            payload = await KnowledgeEvaluationService(session, actor_from_user(current_user)).start(
                 resource_id,
                 body.revision_id,
                 profile_id=body.profile_id,
@@ -207,7 +208,7 @@ async def list_evaluations(
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> dict[str, Any]:
     async with _factory()() as session:
-        return await KnowledgeEvaluationService(session, _resource_actor(current_user)).list_runs(resource_id, offset=offset, limit=limit)
+        return await KnowledgeEvaluationService(session, actor_from_user(current_user)).list_runs(resource_id, offset=offset, limit=limit)
 
 
 @router.get("/{resource_id}/evaluations/{run_id}")
@@ -220,7 +221,7 @@ async def get_evaluation(
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> dict[str, Any]:
     async with _factory()() as session:
-        return await KnowledgeEvaluationService(session, _resource_actor(current_user)).get_run(resource_id, run_id, result_offset=result_offset, result_limit=result_limit)
+        return await KnowledgeEvaluationService(session, actor_from_user(current_user)).get_run(resource_id, run_id, result_offset=result_offset, result_limit=result_limit)
 
 
 @router.post("/{resource_id}/evaluations/{run_id}/retry", status_code=202)
@@ -231,7 +232,7 @@ async def retry_evaluation(
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> dict[str, Any]:
     async with _factory()() as session:
-        payload = await KnowledgeEvaluationService(session, _resource_actor(current_user)).retry(resource_id, run_id)
+        payload = await KnowledgeEvaluationService(session, actor_from_user(current_user)).retry(resource_id, run_id)
         await session.commit()
     return payload
 
@@ -245,7 +246,7 @@ async def create_evaluation_comparison(
 ) -> dict[str, Any]:
     async with _factory()() as session:
         try:
-            payload = await KnowledgeEvaluationService(session, _resource_actor(current_user)).start_comparison(
+            payload = await KnowledgeEvaluationService(session, actor_from_user(current_user)).start_comparison(
                 resource_id,
                 left_revision_id=body.left_revision_id,
                 left_profile_id=body.left_profile_id,
@@ -269,4 +270,4 @@ async def get_evaluation_comparison(
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> dict[str, Any]:
     async with _factory()() as session:
-        return await KnowledgeEvaluationService(session, _resource_actor(current_user)).get_comparison(resource_id, comparison_id)
+        return await KnowledgeEvaluationService(session, actor_from_user(current_user)).get_comparison(resource_id, comparison_id)

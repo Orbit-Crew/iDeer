@@ -15,7 +15,8 @@ from sqlalchemy.orm import selectinload
 from app.agentplatform.audit_model import AuditLog
 from app.agentplatform.rbac_models import DepartmentModel, UserModel, UserRole
 from app.agentplatform.resource_models import Resource, ResourceMetadata
-from app.agentplatform.resource_service import ResourceAction, ResourceActor, ResourceService
+from app.agentplatform.resource_service import ResourceActor, ResourceService
+from app.agentplatform.resources.actors import role_permissions
 from app.agentplatform.visibility_models import VisibilityApplication, VisibilityApplicationStatus
 from app.gateway.authz import get_current_rbac_user, require_role
 from app.gateway.rbac_users import create_auth_user_with_rbac
@@ -835,7 +836,7 @@ async def delete_department(
                 user_id=str(current_user.id),
                 department_id=current_user.department_id,
                 role="super_admin",
-                permissions=frozenset(ResourceAction),
+                permissions=role_permissions(UserRole.SUPER_ADMIN),
             ),
         )
 

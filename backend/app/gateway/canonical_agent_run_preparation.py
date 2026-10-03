@@ -59,14 +59,13 @@ async def prepare_canonical_agent_run(
     from sqlalchemy import select
 
     from app.agentplatform.knowledge.scope import calculate_effective_knowledge_scope
-    from app.agentplatform.rbac_models import UserModel, UserRole
+    from app.agentplatform.rbac_models import UserModel
     from app.agentplatform.resource_runtime import (
         CanonicalResourceLoader,
         ResourceRuntimeError,
         ResourceStorage,
     )
     from app.agentplatform.resource_service import (
-        ResourceAction,
         ResourceActor,
         ResourceConflict,
         ResourceNotFound,
@@ -74,6 +73,7 @@ async def prepare_canonical_agent_run(
         ResourceService,
         VisibilityClosureError,
     )
+    from app.agentplatform.resources.actors import actor_from_user, role_permissions
     from app.agentplatform.runtime_adapter import build_canonical_agent_factory
     from deerflow.config.app_config import get_app_config
     from deerflow.config.paths import get_paths
@@ -91,18 +91,11 @@ async def prepare_canonical_agent_run(
             # issuing a duplicate UserModel SELECT on every first turn.
             cached = _cached_rbac_identity(request, str(user_id))
             if cached is not None:
-                permissions = {ResourceAction.READ}
-                if cached["role"] in {
-                    UserRole.USER.value,
-                    UserRole.DEPARTMENT_ADMIN.value,
-                    UserRole.SUPER_ADMIN.value,
-                }:
-                    permissions.add(ResourceAction.USE)
                 actor = ResourceActor(
                     user_id=cached["user_id"],
                     department_id=cached["department_id"],
                     role=cached["role"],
-                    permissions=frozenset(permissions),
+                    permissions=role_permissions(cached["role"]),
                     tool_groups=None,
                 )
             else:
@@ -116,20 +109,7 @@ async def prepare_canonical_agent_run(
                 ).scalar_one_or_none()
                 if user is None:
                     raise ResourcePermissionDenied("Active RBAC user is required")
-                permissions = {ResourceAction.READ}
-                if user.role in {
-                    UserRole.USER,
-                    UserRole.DEPARTMENT_ADMIN,
-                    UserRole.SUPER_ADMIN,
-                }:
-                    permissions.add(ResourceAction.USE)
-                actor = ResourceActor(
-                    user_id=str(user.id),
-                    department_id=str(user.department_id) if user.department_id is not None else None,
-                    role=str(user.role),
-                    permissions=frozenset(permissions),
-                    tool_groups=None,
-                )
+                actor = actor_from_user(user)
             service = ResourceService(session, actor)
             # T3: resolve the closure once — it serves the Skill check below
             # and the snapshot freeze, instead of walking the graph twice.

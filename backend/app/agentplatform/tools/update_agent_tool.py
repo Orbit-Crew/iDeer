@@ -42,10 +42,11 @@ def _update_canonical_agent(
     """Update an agent through the canonical resource catalog (draft + publish)."""
     from tempfile import TemporaryDirectory
 
-    from app.agentplatform.rbac_models import UserModel, UserRole
+    from app.agentplatform.rbac_models import UserModel
     from app.agentplatform.resource_models import Resource
+    from app.agentplatform.resources.actors import actor_from_user
     from app.agentplatform.resources.publisher import ResourcePublisher, write_agent_draft_source
-    from app.agentplatform.resources.service import ResourceAction, ResourceActor, ResourceService
+    from app.agentplatform.resources.service import ResourceService
     from app.agentplatform.resources.storage import ResourceStorage
 
     sf = get_session_factory()
@@ -57,16 +58,7 @@ def _update_canonical_agent(
             user = (await session.execute(select(UserModel).where(UserModel.id == user_id, UserModel.disabled.is_not(True)))).scalar_one_or_none()
             if user is None:
                 raise RuntimeError("Active user is required to update a catalog agent")
-            permissions = {ResourceAction.READ, ResourceAction.USE}
-            if user.role in {UserRole.USER, UserRole.DEPARTMENT_ADMIN, UserRole.SUPER_ADMIN}:
-                permissions.add(ResourceAction.WRITE)
-            actor = ResourceActor(
-                user_id=str(user.id),
-                department_id=str(user.department_id) if user.department_id is not None else None,
-                role=str(user.role),
-                permissions=frozenset(permissions),
-                tool_groups=None,
-            )
+            actor = actor_from_user(user)
             service = ResourceService(session, actor)
             resource = await service.resolve_legacy_alias("agent", agent_name)
             published = await service.get_published_content(resource.id)

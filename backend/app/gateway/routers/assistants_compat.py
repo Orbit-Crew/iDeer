@@ -69,7 +69,8 @@ async def _list_canonical_assistants(request: Request) -> list[AssistantResponse
     from sqlalchemy import select
 
     from app.agentplatform.rbac_models import UserModel
-    from app.agentplatform.resource_service import ResourceAction, ResourceActor, ResourceService
+    from app.agentplatform.resource_service import ResourceService
+    from app.agentplatform.resources.actors import actor_from_user
     from deerflow.persistence.engine import get_session_factory
 
     user_id = getattr(getattr(request.state, "user", None), "id", None)
@@ -87,12 +88,7 @@ async def _list_canonical_assistants(request: Request) -> list[AssistantResponse
         ).scalar_one_or_none()
         if user is None:
             return []
-        actor = ResourceActor(
-            user_id=str(user.id),
-            department_id=str(user.department_id) if user.department_id is not None else None,
-            role=str(user.role),
-            permissions=frozenset({ResourceAction.READ}),
-        )
+        actor = actor_from_user(user)
         page = await ResourceService(session, actor).list_visible(resource_type="agent", limit=200)
         return [
             AssistantResponse(

@@ -14,8 +14,9 @@ from app.agentplatform.knowledge.documents import KnowledgeDocumentService
 from app.agentplatform.knowledge.evaluation import KnowledgeEvaluationService
 from app.agentplatform.knowledge.models import KnowledgeBase, KnowledgeDocument, KnowledgeEvalRun
 from app.agentplatform.knowledge.ragflow import configured_ragflow_provider
-from app.agentplatform.rbac_models import UserModel, UserRole
+from app.agentplatform.rbac_models import UserModel
 from app.agentplatform.resource_models import Resource
+from app.agentplatform.resources.actors import actor_from_user
 from app.agentplatform.resources.service import ResourceAction, ResourceActor
 from deerflow.persistence.engine import get_session_factory
 
@@ -65,17 +66,17 @@ class KnowledgeWorker:
                     resource = await session.get(Resource, run.knowledge_base_id)
                     if resource is not None:
                         user = await session.get(UserModel, str(run.created_by))
-                        permissions = {ResourceAction.READ}
-                        if user and not user.disabled and user.role in {UserRole.USER, UserRole.DEPARTMENT_ADMIN, UserRole.SUPER_ADMIN}:
-                            permissions.update({ResourceAction.USE, ResourceAction.WRITE})
-                        if user and not user.disabled and user.role == UserRole.SUPER_ADMIN:
-                            permissions.update(ResourceAction)
-                        actor = ResourceActor(
-                            user_id=str(run.created_by),
-                            department_id=str(user.department_id) if user and user.department_id else None,
-                            role=str(user.role) if user else "unknown",
-                            permissions=frozenset(permissions),
-                        )
+                        if user is not None and not user.disabled:
+                            actor = actor_from_user(user)
+                        else:
+                            # Account-state policy: missing or disabled users keep
+                            # the READ floor; only active roles climb the ladder.
+                            actor = ResourceActor(
+                                user_id=str(run.created_by),
+                                department_id=str(user.department_id) if user and user.department_id else None,
+                                role=str(user.role) if user else "unknown",
+                                permissions=frozenset({ResourceAction.READ}),
+                            )
                         await KnowledgeEvaluationService(session, actor).process_run(run.id, owner=self._owner)
                         return
             if provider is None:
