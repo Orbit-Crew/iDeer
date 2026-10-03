@@ -379,6 +379,8 @@ import { SlashOverlay } from "@/components/workspace/slash-overlay";
 import { fetch } from "@/core/api/fetcher";
 import { useModels } from "@/core/models/hooks";
 import { useSkills } from "@/core/skills/hooks";
+
+import { makeTurnSubmitTestController } from "./turn-submit-test-stub";
 import { useSearchParams } from "next/navigation";
 
 // ---------------------------------------------------------------------------
@@ -450,7 +452,7 @@ function defaultProps(overrides: Record<string, any> = {}) {
   return {
     context: makeContext(),
     threadId: "thread-1",
-    onSubmit: vi.fn(),
+    turnSubmit: makeTurnSubmitTestController().controller,
     onStop: vi.fn(),
     onContextChange: vi.fn(),
     onFollowupsVisibilityChange: vi.fn(),
@@ -1029,13 +1031,14 @@ describe("InputBox", () => {
   describe("submit behavior", () => {
     test("does not stop or submit when submitting during streaming", async () => {
       const onStop = vi.fn();
-      const onSubmit = vi.fn();
+      const { controller: turnSubmit, requests } =
+        makeTurnSubmitTestController();
 
       render(
         <InputBox
           {...defaultProps()}
           status="streaming"
-          onSubmit={onSubmit}
+          turnSubmit={turnSubmit}
           onStop={onStop}
         />,
       );
@@ -1048,17 +1051,18 @@ describe("InputBox", () => {
       // A concurrent submit must neither cancel the stream (#3878) nor send.
       await waitFor(() => {
         expect(onStop).not.toHaveBeenCalled();
-        expect(onSubmit).not.toHaveBeenCalled();
+        expect(requests).toHaveLength(0);
       });
     });
 
     test("does not submit when text is empty and no files", async () => {
-      const onSubmit = vi.fn();
+      const { controller: turnSubmit, requests } =
+        makeTurnSubmitTestController();
 
       render(
         <InputBox
           {...defaultProps()}
-          onSubmit={onSubmit}
+          turnSubmit={turnSubmit}
           context={makeContext({
             model_name: "gpt-4o",
             mode: "flash",
@@ -1071,9 +1075,9 @@ describe("InputBox", () => {
         new Event("submit", { bubbles: true, cancelable: true }),
       );
 
-      // Empty text + no files should not call onSubmit
+      // Empty text + no files must not reach the turn-submit controller
       await waitFor(() => {
-        expect(onSubmit).not.toHaveBeenCalled();
+        expect(requests).toHaveLength(0);
       });
     });
   });
@@ -1775,7 +1779,8 @@ describe("InputBox", () => {
   describe("submit with model mismatch", () => {
     test("calls onContextChange when submitting with mismatched model", async () => {
       const onContextChange = vi.fn();
-      const onSubmit = vi.fn();
+      const { controller: turnSubmit, requests } =
+        makeTurnSubmitTestController();
       const models = [
         makeModel({ name: "gpt-4o", display_name: "GPT-4o" }),
         makeModel({
@@ -1794,7 +1799,7 @@ describe("InputBox", () => {
       render(
         <InputBox
           {...defaultProps()}
-          onSubmit={onSubmit}
+          turnSubmit={turnSubmit}
           onContextChange={onContextChange}
           context={makeContext({
             model_name: "gpt-4o",
@@ -1805,15 +1810,15 @@ describe("InputBox", () => {
 
       // The form submit should trigger handleSubmit, which checks
       // resolvedModelName vs context.model_name. Since they match,
-      // it should call onSubmit directly.
+      // it should submit through the turn-submit controller directly.
       const form = screen.getByTestId("prompt-input");
       form.dispatchEvent(
         new Event("submit", { bubbles: true, cancelable: true }),
       );
 
-      // onSubmit should be called since models match
+      // The submit should reach the turn-submit controller since models match
       await waitFor(() => {
-        expect(onSubmit).toHaveBeenCalled();
+        expect(requests).toHaveLength(1);
       });
     });
   });
@@ -2003,14 +2008,15 @@ describe("InputBox", () => {
   // ----- Submit with non-empty text -----
 
   describe("submit with text", () => {
-    test("calls onSubmit when text is non-empty and model matches", async () => {
-      const onSubmit = vi.fn();
+    test("dispatches the turn through the turn-submit controller when text is non-empty and model matches", async () => {
+      const { controller: turnSubmit, requests } =
+        makeTurnSubmitTestController();
       mockTextInputContext.value = "Hello world";
 
       render(
         <InputBox
           {...defaultProps()}
-          onSubmit={onSubmit}
+          turnSubmit={turnSubmit}
           context={makeContext({
             model_name: "gpt-4o",
             mode: "flash",
@@ -2024,11 +2030,14 @@ describe("InputBox", () => {
       );
 
       await waitFor(() => {
-        expect(onSubmit).toHaveBeenCalledWith(
-          expect.objectContaining({ text: "Hello world", files: [] }),
-          // The merged composer always passes submit options (draft clearing,
-          // sidecar quote metadata) as the second argument.
-          expect.anything(),
+        expect(requests[0]).toEqual(
+          expect.objectContaining({
+            threadId: "thread-1",
+            message: expect.objectContaining({
+              text: "Hello world",
+              files: [],
+            }),
+          }),
         );
       });
     });
@@ -2135,7 +2144,7 @@ describe("InputBox", () => {
   describe("submit model mismatch guard", () => {
     test("defers submit when resolved model differs from context model", async () => {
       const onContextChange = vi.fn();
-      const onSubmit = vi.fn();
+      const { controller: turnSubmit } = makeTurnSubmitTestController();
       mockTextInputContext.value = "Hello";
 
       // Set up so resolvedModelName will differ from context.model_name
@@ -2149,7 +2158,7 @@ describe("InputBox", () => {
       render(
         <InputBox
           {...defaultProps()}
-          onSubmit={onSubmit}
+          turnSubmit={turnSubmit}
           onContextChange={onContextChange}
           context={makeContext({
             model_name: "different-model",
@@ -2753,7 +2762,7 @@ describe("InputBox", () => {
   describe("handleFollowupClick direct submit", () => {
     test("clicking followup with empty input sets text and triggers submit", async () => {
       const user = userEvent.setup();
-      const onSubmit = vi.fn();
+      const { controller: turnSubmit } = makeTurnSubmitTestController();
       const mockFetch = fetch as unknown as ReturnType<typeof vi.fn>;
       mockFetch.mockResolvedValue({
         ok: true,
@@ -2775,7 +2784,7 @@ describe("InputBox", () => {
       const { rerender } = render(
         <InputBox
           {...defaultProps()}
-          onSubmit={onSubmit}
+          turnSubmit={turnSubmit}
           status="streaming"
           context={makeContext({ model_name: "gpt-4o", mode: "flash" })}
         />,
@@ -2784,7 +2793,7 @@ describe("InputBox", () => {
       rerender(
         <InputBox
           {...defaultProps()}
-          onSubmit={onSubmit}
+          turnSubmit={turnSubmit}
           status="ready"
           context={makeContext({ model_name: "gpt-4o", mode: "flash" })}
         />,

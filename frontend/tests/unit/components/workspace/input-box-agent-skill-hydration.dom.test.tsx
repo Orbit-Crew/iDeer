@@ -10,6 +10,8 @@ import { DEFAULT_LOCALE } from "@/core/i18n";
 import { I18nProvider } from "@/core/i18n/context";
 import { buildComposerDraftKey } from "@/core/threads/composer-draft";
 
+import { makeTurnSubmitTestController } from "./turn-submit-test-stub";
+
 const skillState = rs.hoisted(() => ({
   skills: [
     {
@@ -86,6 +88,7 @@ function renderComposer({
                 agentSkillNames={agentSkillNames}
                 agentSkillsLoading={agentSkillsLoading}
                 context={{ mode: "flash" } as never}
+                turnSubmit={makeTurnSubmitTestController().controller}
               />
             </PromptInputProvider>
           </ThreadContext.Provider>
@@ -151,6 +154,7 @@ describe("InputBox agent skill draft hydration", () => {
                   agentSkillNames={["research"]}
                   agentSkillsLoading={false}
                   context={{ mode: "flash" } as never}
+                  turnSubmit={makeTurnSubmitTestController().controller}
                 />
               </PromptInputProvider>
             </ThreadContext.Provider>

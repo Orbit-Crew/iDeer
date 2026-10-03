@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import { BrowserTrigger } from "@/components/workspace/browser-view";
@@ -16,10 +15,7 @@ import {
 } from "@/components/workspace/chats";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { GoalStatus } from "@/components/workspace/goal-status";
-import {
-  InputBox,
-  type InputBoxSubmitOptions,
-} from "@/components/workspace/input-box";
+import { InputBox } from "@/components/workspace/input-box";
 import {
   MessageList,
   MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
@@ -63,6 +59,10 @@ import {
   useThreads,
 } from "@/core/threads/hooks";
 import { threadTokenUsageToTokenUsage } from "@/core/threads/token-usage";
+import {
+  createTurnSubmitGate,
+  useViewTurnSubmit,
+} from "@/core/threads/turn-submit";
 import {
   pathOfThread,
   textOfMessage,
@@ -320,6 +320,11 @@ export default function ChatPage() {
 
   const { showNotification } = useNotification();
 
+  // The shared turn-submit fence of this view: opened by the controller
+  // below (composer submit chain) and joined by useThreadStream's send
+  // paths, so duplicate submissions are fenced in exactly one place.
+  const turnSubmitGate = useMemo(() => createTurnSubmitGate(), []);
+
   const {
     thread,
     pendingUsageMessages,
@@ -337,6 +342,7 @@ export default function ChatPage() {
     displayThreadId: threadId,
     context: selectionContext,
     isMock,
+    turnSubmitGate,
     prepareSubmit: async () => {
       const created = await getAPIClient().threads.create({
         metadata: {
@@ -407,25 +413,29 @@ export default function ChatPage() {
     threadMetadata.isLoading,
   ]);
 
-  const handleSubmit = useCallback(
-    (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
-      if (!selectionBinding.valid) {
-        toast.error(selectionBinding.reason);
-        return;
+  // Turn-submit controller: owns the message submit chain (duplicate fence,
+  // draft policy, attachment pre-uploads, lifecycle) on top of the stream
+  // module's send. The page contributes the scenario selection binding as
+  // the admission guard and the run-request context.
+  const turnSubmit = useViewTurnSubmit({
+    gate: turnSubmitGate,
+    sendMessage,
+    admit: () => {
+      if (selectionBinding.valid) {
+        return true;
       }
-      const sendPromise = sendMessage(
-        threadId,
-        message,
-        selectionBinding.context,
-        options,
-      );
-      if (message.files.length > 0) {
-        return sendPromise;
-      }
-      void sendPromise;
+      toast.error(selectionBinding.reason);
+      return false;
     },
-    [selectionBinding, sendMessage, threadId],
-  );
+    extraContext: () =>
+      selectionBinding.valid ? selectionBinding.context : undefined,
+  });
+  useEffect(() => {
+    return () => {
+      turnSubmit.invalidate();
+    };
+  }, [turnSubmit, threadId]);
+
   const handleStop = useCallback(async () => {
     await thread.stop();
   }, [thread]);
@@ -674,7 +684,7 @@ export default function ChatPage() {
                           setSettings("context", context)
                         }
                         onGoalChange={setLocalGoal}
-                        onSubmit={handleSubmit}
+                        turnSubmit={turnSubmit}
                         onStop={handleStop}
                       />
                       {isWelcomeMode && (

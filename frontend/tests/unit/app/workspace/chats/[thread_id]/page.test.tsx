@@ -1123,7 +1123,7 @@ describe("ChatPage", () => {
     });
   });
 
-  test("handleSubmit with files returns send promise", () => {
+  test("dispatches submitted messages through the turn-submit controller", async () => {
     const sendMessageMock = vi.fn().mockResolvedValue(undefined);
     mockUseThreadStream.mockReturnValue({
       thread: {
@@ -1155,63 +1155,12 @@ describe("ChatPage", () => {
       </QueryClientProvider>,
     );
 
-    const file = new File(["content"], "test.txt", { type: "text/plain" });
-    const result = mockLastInputBoxProps.current.onSubmit({
-      text: "hello",
-      files: [file],
+    const result = mockLastInputBoxProps.current.turnSubmit.submit({
+      threadId: "test-thread",
+      message: { text: "hello", files: [] },
     });
     expect(result).toBeInstanceOf(Promise);
-    expect(sendMessageMock).toHaveBeenCalledWith(
-      "test-thread",
-      {
-        text: "hello",
-        files: [file],
-      },
-      {
-        connector_name: undefined,
-        mode: "flash",
-      },
-      undefined,
-    );
-  });
-
-  test("handleSubmit without files returns void", () => {
-    const sendMessageMock = vi.fn().mockResolvedValue(undefined);
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        isThreadLoading: false,
-        error: null,
-        values: {},
-        stop: vi.fn(),
-        getMessagesMetadata: vi.fn(),
-      },
-      pendingUsageMessages: [],
-      sendMessage: sendMessageMock,
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
-
-    const client = new QueryClient();
-    const { rerender } = render(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    rerender(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-
-    const result = mockLastInputBoxProps.current.onSubmit({
-      text: "hello",
-      files: [],
-    });
-    expect(result).toBeUndefined();
+    await result;
     expect(sendMessageMock).toHaveBeenCalledWith(
       "test-thread",
       {
@@ -1226,7 +1175,7 @@ describe("ChatPage", () => {
     );
   });
 
-  test("forwards submit options (onSent) so composer cleanup can run", () => {
+  test("forwards the submit request options so composer metadata reaches the stream send", async () => {
     const sendMessageMock = vi.fn().mockResolvedValue(undefined);
     mockUseThreadStream.mockReturnValue({
       thread: {
@@ -1258,18 +1207,20 @@ describe("ChatPage", () => {
       </QueryClientProvider>,
     );
 
-    // InputBox relies on the forwarded options to clear the composer draft
-    // once the send proceeds past the in-flight guard; dropping them would
-    // let a stale debounced draft save resurrect cleared text.
-    const options = { onSent: vi.fn() };
-    const file = new File(["content"], "test.txt", { type: "text/plain" });
-    mockLastInputBoxProps.current.onSubmit(
-      { text: "hello", files: [file] },
+    // The composer's per-send metadata (quotes, references, staged files)
+    // must reach the stream send untouched; the lifecycle is owned by the
+    // turn-submit module's shared gate instead of riding the options.
+    const options = { additionalKwargs: { sidecar_visible_message: true } };
+    const result = mockLastInputBoxProps.current.turnSubmit.submit({
+      threadId: "test-thread",
+      message: { text: "hello", files: [] },
       options,
-    );
+    });
+    expect(result).toBeInstanceOf(Promise);
+    await result;
     expect(sendMessageMock).toHaveBeenCalledWith(
       "test-thread",
-      { text: "hello", files: [file] },
+      { text: "hello", files: [] },
       {
         connector_name: undefined,
         mode: "flash",

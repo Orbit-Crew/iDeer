@@ -10,6 +10,8 @@ import { AuthProvider } from "@/core/auth/AuthProvider";
 import { DEFAULT_LOCALE } from "@/core/i18n";
 import { I18nProvider } from "@/core/i18n/context";
 
+import { makeTurnSubmitTestController } from "./turn-submit-test-stub";
+
 rs.mock("next/navigation", () => ({
   useRouter: () => ({ push: rs.fn(), replace: rs.fn(), refresh: rs.fn() }),
   usePathname: () => "/workspace",
@@ -66,6 +68,7 @@ function renderComposer() {
                 threadId="thread-1"
                 status="ready"
                 context={{ mode: "flash" } as never}
+                turnSubmit={makeTurnSubmitTestController().controller}
               />
             </PromptInputProvider>
           </ThreadContext.Provider>

@@ -4,7 +4,6 @@ import { BotIcon, PlusSquare } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
@@ -17,10 +16,7 @@ import {
 import { ContextUsageBadge } from "@/components/workspace/context-usage-badge";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { GoalStatus } from "@/components/workspace/goal-status";
-import {
-  InputBox,
-  type InputBoxSubmitOptions,
-} from "@/components/workspace/input-box";
+import { InputBox } from "@/components/workspace/input-box";
 import {
   MessageList,
   MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
@@ -58,6 +54,10 @@ import {
   selectContextUsage,
   threadTokenUsageToTokenUsage,
 } from "@/core/threads/token-usage";
+import {
+  createTurnSubmitGate,
+  useViewTurnSubmit,
+} from "@/core/threads/turn-submit";
 import { pathOfThread, textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
@@ -104,6 +104,11 @@ export default function AgentChatPage() {
     setIsWelcomeMode(isNewThread);
   }, [isNewThread]);
 
+  // The shared turn-submit fence of this view: opened by the controller
+  // below (composer submit chain) and joined by useThreadStream's send
+  // paths, so duplicate submissions are fenced in exactly one place.
+  const turnSubmitGate = useMemo(() => createTurnSubmitGate(), []);
+
   const {
     thread,
     pendingUsageMessages,
@@ -120,6 +125,7 @@ export default function AgentChatPage() {
     // optimistic messages and live-message attribution stay attached to the
     // view while `threadId` itself is gated on backend thread creation.
     displayThreadId: threadId,
+    turnSubmitGate,
     context: {
       ...settings.context,
       agent_name: agent_name,
@@ -204,21 +210,19 @@ export default function AgentChatPage() {
     threadMetadata.isLoading,
   ]);
 
-  const handleSubmit = useCallback(
-    (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
-      const sendPromise = sendMessage(
-        threadId,
-        message,
-        { agent_name },
-        options,
-      );
-      if (message.files.length > 0) {
-        return sendPromise;
-      }
-      void sendPromise;
-    },
-    [sendMessage, threadId, agent_name],
-  );
+  // Turn-submit controller: owns the message submit chain (duplicate fence,
+  // draft policy, attachment pre-uploads, lifecycle) on top of the stream
+  // module's send. The page contributes the agent binding as run context.
+  const turnSubmit = useViewTurnSubmit({
+    gate: turnSubmitGate,
+    sendMessage,
+    extraContext: () => ({ agent_name }),
+  });
+  useEffect(() => {
+    return () => {
+      turnSubmit.invalidate();
+    };
+  }, [turnSubmit, threadId]);
 
   const handleSubmitHumanInput = useMemo(
     () =>
@@ -488,7 +492,7 @@ export default function AgentChatPage() {
                       setSettings("context", context)
                     }
                     onGoalChange={setLocalGoal}
-                    onSubmit={handleSubmit}
+                    turnSubmit={turnSubmit}
                     onStop={handleStop}
                   />
                   {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (

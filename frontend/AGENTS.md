@@ -82,7 +82,7 @@ src/
 ### Interaction Ownership
 
 - `src/app/workspace/chats/[thread_id]/page.tsx` owns composer busy-state wiring.
-- `src/core/threads/hooks.ts` owns pre-submit upload state and thread submission.
+- `src/core/threads/turn-submit.ts` owns the message submit chain: the duplicate-submission fence, submit-chain draft policy, attachment pre-uploads, and turn lifecycle. `src/core/threads/hooks.ts` owns streaming and joins the shared fence through `turnSubmitGate`.
 - `src/hooks/usePoseStream.ts` is a passive store selector; global WebSocket lifecycle stays in `App.tsx`.
 
 ### Environment & Dependency Notes
@@ -122,7 +122,7 @@ This agent architecture is part of the iDeer project.
 
 ## Active ownership rules
 
-`src/app/workspace/chats/[thread_id]/page.tsx` owns chat-page composer busy state. `src/core/threads/hooks.ts` owns pre-submit upload state and thread submission. `src/hooks/usePoseStream.ts` only selects from the store; `App.tsx` owns the global WebSocket lifecycle. Keep new state and effects with the existing owner.
+`src/app/workspace/chats/[thread_id]/page.tsx` owns chat-page composer busy state. `src/core/threads/turn-submit.ts` owns the message submit chain (duplicate fence, draft policy, attachment pre-uploads, turn lifecycle); the composer and chat pages are views over its controller, and `src/core/threads/hooks.ts` owns streaming while joining the shared fence through `turnSubmitGate`. Keep new submit-chain state and effects in the turn-submit module, not in the composer, pages, or stream hooks. `src/hooks/usePoseStream.ts` only selects from the store; `App.tsx` owns the global WebSocket lifecycle.
 
 `ui/` and `ai-elements/` contain generated components. Change their source registry or generation input instead of editing generated output by hand. Keep server components as the default and add `"use client"` only where browser interaction or client state requires it.
 

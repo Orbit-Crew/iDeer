@@ -10,6 +10,29 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: Turn-submit module owns the message submit chain
+
+Ticket `architecture-deepening` issue 04 (spec candidate 3, Q7=a). No test
+file was moved, renamed, or deleted. The submit-chain behaviors (duplicate
+fence, draft hold/persist/restore/clear, attachment pre-uploads, lifecycle
+ownership) moved from composer/page internals into the new module
+`frontend/src/core/threads/turn-submit.ts`, and the behavior assertions moved
+to that module interface. Composer and page tests keep wiring smoke only.
+
+| New owner | Absorbed behavior (previous home) | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/core/threads/turn-submit.test.ts` (33 tests) | Duplicate-submission fence (`hooks.test.ts` "does not send when sendInFlight is true", composer `pendingDraftSubmissionKeyRef` rejection); send-failure draft preservation (`ea4e32572` unit/e2e keepers retained); onSent-once/at-dispatch vs onSendCompleted-at-stream-finish (`hooks.test.ts` "completes a sent message only after the stream finishes", both retained unchanged); attachment pre-upload reuse/dedup and lazy-new-thread skip (previously untested composer internals); admission drop and stale-continuation drop (previously untested `submissionEpochRef` internals) | Stronger: the fence exists in exactly one place and the pinned send-failure/terminal-event contracts are now asserted at the module interface in pure unit tests instead of through DOM wiring | `cd frontend && pnpm vitest run tests/unit/core/threads/turn-submit.test.ts tests/unit/core/threads/hooks.test.ts --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/components/workspace/turn-submit-test-stub.ts` (new helper) | — | Framework-agnostic composer wiring double shared by vitest and rstest files | Covered by the suites below |
+| `frontend/tests/unit/components/workspace/input-box-project-attachment.dom.test.tsx` (rewritten in place) | Simulated the completion lifecycle by calling `options.onSent`/`options.onSendCompleted` submit-option callbacks | Stronger: the six staged-attachment assertions now run through a real `TurnSubmitController` and its gate (`completeTurn()` settles the dispatched turn exactly as the stream's `onFinish` would) | `cd frontend && pnpm rstest run tests/unit/components/workspace/input-box-project-attachment.dom.test.tsx` |
+| `frontend/tests/unit/app/workspace/chats/[thread_id]/page.test.tsx` (2 tests rewritten) | "handleSubmit with files returns send promise" / "handleSubmit without files returns void" / "forwards submit options (onSent)" page-plumbing assertions | The files/void plumbing moved into the module (owned by `turn-submit.test.ts`); the page tests keep wiring smoke: controller dispatch carries the scenario-selection context and forwards submit-request options untouched | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx` (2 tests merged into 1) | "handleSubmit returns promise/undefined" page-plumbing assertions | Same split: plumbing owned by the module; the page test pins that the controller dispatches with the agent binding context | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/components/workspace/input-box.test.tsx`, `input-box-pending-template.test.tsx`, `input-box-stop-gating.dom.test.tsx`, `input-box-empty-skills.dom.test.tsx`, `input-box-agent-skill-hydration.dom.test.tsx` (rewired in place) | Asserted against the composer's `onSubmit` prop | Same assertions re-pointed to the `turnSubmit` controller stub; no assertion lost | Full suites below |
+
+Kept unchanged and still green on the candidate: `tests/unit/core/threads/hooks.test.ts`
+(124 tests, including both `ea4e32572` keepers), `tests/e2e/chat.spec.ts`
+draft-preservation scenarios (browser lane), `tests/unit/app/workspace/agents/new/page.test.tsx`
+and `tests/unit/app/workspace/chats/thread-page.test.tsx` (unaffected direct senders).
+
 ## Batch 2026-10-03: Knowledge endpoints route through the facade seam
 
 Ticket `architecture-deepening` issue 03 (spec candidate 1, Q6=a). No test

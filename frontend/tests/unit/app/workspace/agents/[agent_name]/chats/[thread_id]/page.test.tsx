@@ -640,33 +640,21 @@ describe("AgentChatPage", () => {
     });
   });
 
-  // --- handleSubmit with files (line 111-112) ---
-  test("handleSubmit returns promise when message has files", () => {
+  // --- submit wiring: the composer hands turns to the page's controller ---
+  test("turnSubmit dispatches submitted messages with the agent binding", async () => {
     render(<AgentChatPage />);
-    const result = lastInputBoxProps.onSubmit({
-      text: "hello",
-      files: [new File([""], "test.png")],
+    const result = lastInputBoxProps.turnSubmit.submit({
+      threadId: "test-thread",
+      message: { text: "hello", files: [] },
     });
-    expect(mockSendMessage).toHaveBeenCalledWith(
-      "test-thread",
-      { text: "hello", files: [expect.any(File)] },
-      { agent_name: "test-agent" },
-      undefined,
-    );
     expect(result).toBeInstanceOf(Promise);
-  });
-
-  // --- handleSubmit without files (line 114) ---
-  test("handleSubmit returns undefined when message has no files", () => {
-    render(<AgentChatPage />);
-    const result = lastInputBoxProps.onSubmit({ text: "hello", files: [] });
+    await result;
     expect(mockSendMessage).toHaveBeenCalledWith(
       "test-thread",
       { text: "hello", files: [] },
       { agent_name: "test-agent" },
       undefined,
     );
-    expect(result).toBeUndefined();
   });
 
   // --- handleStop (line 119-121) ---

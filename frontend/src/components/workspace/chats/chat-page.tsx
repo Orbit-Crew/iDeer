@@ -7,17 +7,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import { BrowserTrigger } from "@/components/workspace/browser-view";
 import { ContextUsageBadge } from "@/components/workspace/context-usage-badge";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { GoalStatus } from "@/components/workspace/goal-status";
-import {
-  InputBox,
-  type InputBoxSubmitOptions,
-} from "@/components/workspace/input-box";
+import { InputBox } from "@/components/workspace/input-box";
 import {
   MessageList,
   MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
@@ -64,6 +60,10 @@ import {
   selectContextUsage,
   threadTokenUsageToTokenUsage,
 } from "@/core/threads/token-usage";
+import {
+  createTurnSubmitGate,
+  useViewTurnSubmit,
+} from "@/core/threads/turn-submit";
 import { projectIdOfThread, textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
@@ -131,6 +131,11 @@ export default function ChatPage() {
 
   const { showNotification } = useNotification();
 
+  // The shared turn-submit fence of this view: opened by the controller below
+  // (composer submit chain) and joined by useThreadStream's send paths, so
+  // duplicate submissions are fenced in exactly one place.
+  const turnSubmitGate = useMemo(() => createTurnSubmitGate(), []);
+
   const {
     thread,
     pendingUsageMessages,
@@ -146,6 +151,7 @@ export default function ChatPage() {
     displayThreadId: threadId,
     context: settings.context,
     isMock,
+    turnSubmitGate,
     // onSend only animates the UI; do NOT flip `isNewThread` here — the
     // LangGraph SDK eagerly fetches /history the moment it receives a
     // thread id and assumes the thread exists on the backend (issue #2746).
@@ -233,41 +239,29 @@ export default function ChatPage() {
     }
   }, [threadId, projectParam, queryClient, t]);
 
-  // Submission fence. The cleanup runs when `threadId` changes (conversation
-  // switch on a persisted page — sidebar navigation keeps this component
-  // mounted), when the new-chat project scope changes (the sidebar "New
-  // chat" link can drop `?project=` without a pathname change), or on
-  // unmount. handleSubmit awaits the project pre-create before sending, and
-  // a navigation during that await must not let the stale continuation
-  // start a run for the abandoned conversation: its onStart would rewrite
-  // the newly selected conversation's URL and its completion would clear
-  // the new composer.
-  const submissionEpochRef = useRef(0);
+  // Turn-submit controller: owns the message submit chain (duplicate fence,
+  // draft policy, attachment pre-uploads, staleness, lifecycle) on top of the
+  // stream module's send. The page contributes the project pre-create as the
+  // pre-dispatch prepare step; the composer and the stream module join the
+  // same fence.
+  const turnSubmit = useViewTurnSubmit({
+    gate: turnSubmitGate,
+    sendMessage,
+    prepare: ensureProjectThread,
+  });
+  // The cleanup runs when `threadId` changes (conversation switch on a
+  // persisted page — sidebar navigation keeps this component mounted), when
+  // the new-chat project scope changes (the sidebar "New chat" link can drop
+  // `?project=` without a pathname change), or on unmount. A navigation
+  // during the pre-dispatch await must not let the stale continuation start
+  // a run for the abandoned conversation: its onStart would rewrite the
+  // newly selected conversation's URL and its completion would clear the
+  // new composer.
   useEffect(() => {
     return () => {
-      submissionEpochRef.current += 1;
+      turnSubmit.invalidate();
     };
-  }, [threadId, projectParam]);
-
-  const handleSubmit = useCallback(
-    async (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
-      const submissionEpoch = submissionEpochRef.current;
-      await ensureProjectThread();
-      // Conversation switched (or the page unmounted) while the project
-      // pre-create was pending: drop the submission. Reject silently — the
-      // user has already moved on, so a toast would land on the new
-      // conversation — and PromptInput keeps the current composer text.
-      if (submissionEpochRef.current !== submissionEpoch) {
-        throw new Error("thread-submission-stale");
-      }
-      const sendPromise = sendMessage(threadId, message, undefined, options);
-      if (message.files.length > 0) {
-        return sendPromise;
-      }
-      void sendPromise;
-    },
-    [sendMessage, threadId, ensureProjectThread],
-  );
+  }, [turnSubmit, threadId, projectParam]);
   const handleSubmitHumanInput = useCallback(
     async (request: HumanInputRequest, response: HumanInputResponse) => {
       let sent = false;
@@ -557,7 +551,7 @@ export default function ChatPage() {
                       }}
                       onGoalChange={setLocalGoal}
                       onPrepareThread={ensureProjectThread}
-                      onSubmit={handleSubmit}
+                      turnSubmit={turnSubmit}
                       onStop={handleStop}
                       canStopStreaming={canStopStreaming}
                     />
