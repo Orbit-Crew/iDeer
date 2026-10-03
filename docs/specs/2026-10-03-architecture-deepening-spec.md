@@ -5,7 +5,7 @@ triage: ready-for-agent
 # 架构深化设计记录（八候选）
 
 - 日期：2026-10-03
-- 状态：设计已收敛；本轮仅规划，代码未改动，实施待启动
+- 状态：设计已收敛；九张工票已全部实施（分支 `architecture-deepening`，2026-10-03；集成分支终验 `pr-standard` 全部子车道 status=0，集成期修正两条测试断言随候选记录于迁移台账）
 - 来源：2026-10-02 按改动热度驱动的架构评审（报告为会话产物，不入库）；三个探索代理提供文件:行号证据；上游归属按 deerflow v2.1.0（345f08be）比对
 - 术语：turn（一轮）已录入根 `CONTEXT.md` 的 Execution 区
 - 工票：`.scratch/architecture-deepening/issues/01`–`09` 按本规格切分
