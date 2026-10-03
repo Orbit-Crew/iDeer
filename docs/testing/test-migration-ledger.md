@@ -3,12 +3,67 @@
 > audience: testers, developers, release maintainers<br>
 > status: current<br>
 > owner: test maintainers<br>
-> last-verified: 2026-10-01<br>
+> last-verified: 2026-10-03<br>
 > canonical-path: `docs/testing/test-migration-ledger.md`
 
 This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
+
+## Batch 2026-10-03: Thread initialization ordering duplicate
+
+Removed `frontend/tests/e2e/workflows/chat-thread-init-ordering.spec.ts` and
+retained the upstream-path copy at
+`frontend/tests/e2e/chat-thread-init-ordering.spec.ts`. The files contain the
+same Playwright test, request event capture, 250 ms stream delay, and assertions
+that neither `/history` nor `GET /runs` starts before `POST /runs/stream`. Their
+only source differences were equivalent relative imports to the same mock API
+module and the issue URL in a comment. Both tests use the same Playwright
+configuration, Chromium project, page fixture, mock handlers, and runtime.
+There are no markers or path-sensitive behaviors.
+
+GitNexus returned `UNKNOWN` with no resolved callers for the removed path. A
+repository text search found no imports or active configuration references;
+the remaining path references are the specification's keeper/removal table and
+its paired baseline command. Full `detect-changes --scope all` mapped the two
+documentation files but did not list the deleted test path; the Git diff has
+three changed paths including that deletion. The graph omission is recorded as
+an unresolved index limitation, not as evidence of no effect. The T1
+result-consistency record confirms its
+focused regression and static check passed, so the prerequisite is satisfied.
+
+The paired Chromium baseline first collected exactly two tests, then passed
+both tests in 22.7 seconds in the allowed browser/socket environment. After
+deletion, the retained-file command passed 1 test. The preflight exited 0 with
+Chromium launch and local socket bind ready. The removed test's assertions map
+one-to-one to the retained test:
+
+| Removed assertion | Retained assertion |
+| --- | --- |
+| `POST /runs/stream` is issued during send | Same request assertion |
+| No `GET /history` request precedes stream initiation | Same sequence assertion |
+| No `GET /runs` request precedes stream initiation | Same sequence assertion |
+| Delay stream response by 250 ms to expose early initialization requests | Same delayed route handlers |
+
+Validation used the locked frontend dependencies and unchanged Chromium test
+configuration:
+
+```bash
+CI=1 PLAYWRIGHT_DEV_SERVER=1 pnpm exec playwright test \
+  tests/e2e/chat-thread-init-ordering.spec.ts \
+  tests/e2e/workflows/chat-thread-init-ordering.spec.ts \
+  --project=chromium --retries=0 --list
+CI=1 PLAYWRIGHT_DEV_SERVER=1 pnpm exec playwright test \
+  tests/e2e/chat-thread-init-ordering.spec.ts \
+  tests/e2e/workflows/chat-thread-init-ordering.spec.ts \
+  --project=chromium --retries=0
+CI=1 PLAYWRIGHT_DEV_SERVER=1 pnpm exec playwright test \
+  tests/e2e/chat-thread-init-ordering.spec.ts \
+  --project=chromium --retries=0
+```
+
+The collected count changed from 2 to 1. No test was skipped, weakened, or
+removed from the formal lane configuration.
 
 ## Batch 2026-10-03: Serialization test duplicate
 
