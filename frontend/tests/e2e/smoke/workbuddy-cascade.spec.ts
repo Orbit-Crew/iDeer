@@ -152,8 +152,8 @@ test.describe("@smoke WorkBuddy cascade bar", () => {
     // new-conversation home (issue 01); history stays in the left sidebar.
     await expect(page.getByText(/open source super agent/i)).toHaveCount(0);
     await expect(page.getByTestId("workbench-recent-chats")).toHaveCount(0);
-    await expect(page.getByText("方向不明？")).toBeVisible();
-    await expect(page.getByText("目标明确？")).toBeVisible();
+    await expect(page.getByText("Unclear direction?")).toBeVisible();
+    await expect(page.getByText("Clear goal?")).toBeVisible();
   });
 
   test("keeps Skill-mode guidance without restoring the ordinary intro", async ({
