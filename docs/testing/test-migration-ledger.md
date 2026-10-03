@@ -130,6 +130,59 @@ GitNexus did not list that deleted path. Its impact therefore remains
 `UNKNOWN`, not zero. The paired 26-to-13 run and one-to-one mapping above
 provide the behavior evidence for this deletion.
 
+## Batch 2026-10-03: Message merge duplicate
+
+Removed `frontend/tests/unit/core/threads/message-merge-local.test.ts` and
+retained `frontend/tests/unit/core/threads/message-merge.test.ts`, the upstream
+Rstest path. The nine Vitest cases have one-to-one equivalents in the retained
+file. Both exercise the same exported message merge or optimistic visibility
+behavior with the same input and expected result. The retained file also covers
+protected early messages, history/live ordering, historical run metadata,
+pagination, summarization, and replay ordering, including its parameterized
+cases.
+
+| Removed Vitest case | Retained Rstest case | Behavior kept |
+| --- | --- | --- |
+| `mergeMessages removes duplicate messages already present in history` | Same case | Duplicate human and AI messages appear once |
+| `mergeMessages lets live thread messages replace overlapping history` | Same case | Live human and AI copies replace older history copies |
+| `mergeMessages deduplicates tool messages by tool_call_id` | Same case | Live tool output replaces history with the same tool call ID |
+| `getVisibleOptimisticMessages hides optimistic user input after server human arrives` | Same case | Server confirmation hides the optimistic input |
+| `mergeMessages shows server human instead of optimistic duplicate after first response` | Same case | The first server human is rendered without an optimistic duplicate |
+| `getVisibleOptimisticMessages keeps optimistic user input until server human arrives` | Same case | Pending input remains visible before server confirmation |
+| `getVisibleOptimisticMessages keeps non-human optimistic status messages` | Same case | Non-human status messages remain visible |
+| `getVisibleOptimisticMessages hides the upload optimistic pair after server human arrives` | Same case | Server confirmation hides the optimistic upload pair |
+| `getVisibleOptimisticMessages hides optimistic user input after later server turns` | Same case | A later server turn hides the prior input, while the current pending input remains visible |
+
+The tests use no DOM, setup hook, marker, timer, fixture, or path-dependent
+behavior. Vitest runs the removed file in jsdom with `tests/setup.ts`; Rstest
+runs the retained file in Node. Both resolve `@` to `frontend/src`, and the
+tested functions are pure, so the environment difference does not supply any
+unique assertion. The project continues to collect files by framework import.
+
+The paired baseline used the locked frontend dependencies. Vitest passed 9 of
+9 tests in 8.53s. Rstest first failed to start in the restricted sandbox with
+`listen EPERM` on `127.0.0.1:3000`; the same command passed when rerun with local
+socket access, collecting and passing 102 tests (1 file; 754ms total, including
+372ms build and 382ms test time). This is an environment denial, not a test
+failure. After removal, the same Rstest command passed all 102 collected tests.
+`python3 scripts/test_inventory.py --collect --json` exited 0 with 1900
+inventory entries. It reported 98 statically discovered test declarations at
+the retained Rstest path and no entry for the removed path. The static count
+does not expand `test.each`; the Rstest execution report is the actual count of
+102 tests. Vitest and Rstest remain separate frameworks; this change only
+removes the duplicate Vitest file.
+
+GitNexus did not map the deleted test path and returned `UNKNOWN` for that
+target. Impact on the underlying `mergeMessages` implementation reported 13
+symbols across 5 processes, and `getVisibleOptimisticMessages` reported 10
+symbols across 5 processes, both `CRITICAL`; neither implementation changed.
+Repository search found no imports or active configuration references to the
+removed file. Its remaining path references are in the migration and conflict
+ledgers, the specification, and the ticket's paired-baseline command. The graph
+result remains an index limitation, not a zero-impact claim. The full candidate
+`detect-changes --scope all` result and exact tracked diff count are recorded in
+the ticket execution record.
+
 ## Batch 2026-10-01: Exact backend test copies at upstream paths
 
 Removed the nested local-migration copy in each row and retained the identical
