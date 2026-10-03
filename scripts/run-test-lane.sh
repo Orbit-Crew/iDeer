@@ -52,29 +52,35 @@ finish() {
     status=124
     echo "TEST_LANE_BUDGET_EXCEEDED lane=${LANE:-unknown} limit=${TEST_LANE_MAX_SECONDS}s actual=${elapsed}s"
   fi
-  echo "TEST_LANE_DURATION lane=${LANE:-unknown} seconds=${elapsed} status=${status}"
+  local outcome=passed
+  if [[ $status -eq 130 || $status -eq 143 ]]; then
+    outcome=cancelled
+  elif [[ $status -ne 0 ]]; then
+    outcome=failed
+  elif [[ ${LANE_OUTCOME:-} == "unexecuted" ]]; then
+    outcome=unexecuted
+  fi
   if [[ -n ${ARTIFACT_DIR:-} ]]; then
-    printf 'finished=%s\nstatus=%s\nseconds=%s\n' "$(date -u +%FT%TZ)" "$status" "$elapsed" >>"$ARTIFACT_DIR/run.meta" || true
     if [[ -f "$ARTIFACT_DIR/lane-evidence.json" ]]; then
-      local outcome=passed
-      if [[ ${LANE_OUTCOME:-} == "unexecuted" ]]; then
-        outcome=unexecuted
-      elif [[ $status -eq 130 || $status -eq 143 ]]; then
-        outcome=cancelled
-      elif [[ $status -ne 0 ]]; then
-        outcome=failed
-      fi
       set +e
       "$PYTHON_BIN" "$ROOT_DIR/scripts/test_lane_evidence.py" \
         --root "$ROOT_DIR" --output "$ARTIFACT_DIR/lane-evidence.json" \
         --lane "$LANE" --complete --status "$status" --seconds "$elapsed" --outcome "$outcome"
       local evidence_status=$?
       set -e
-      if [[ $evidence_status -ne 0 && $status -eq 0 ]]; then
-        status=1
+      if [[ $evidence_status -ne 0 ]]; then
         echo "TEST_LANE_EVIDENCE_ERROR lane=$LANE status=$evidence_status"
+        if [[ $status -eq 0 ]]; then
+          status=1
+          outcome=failed
+        fi
       fi
     fi
+  fi
+
+  echo "TEST_LANE_DURATION lane=${LANE:-unknown} seconds=${elapsed} status=${status}"
+  if [[ -n ${ARTIFACT_DIR:-} ]]; then
+    printf 'finished=%s\nstatus=%s\nseconds=%s\n' "$(date -u +%FT%TZ)" "$status" "$elapsed" >>"$ARTIFACT_DIR/run.meta" || true
   fi
   if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
     {
@@ -82,6 +88,7 @@ finish() {
       echo
       echo "- Test execution: ${elapsed}s"
       echo "- Exit status: ${status}"
+      echo "- Outcome: ${outcome}"
     } >>"$GITHUB_STEP_SUMMARY"
   fi
   exit "$status"
@@ -222,6 +229,7 @@ case "$LANE" in
     ;;
   frontend-stagehand)
     if [[ -z ${OPENAI_API_KEY:-} && -z ${OPENAI_BASE_URL:-} ]]; then
+      LANE_OUTCOME=unexecuted
       echo "TEST_LANE_STATUS lane=frontend-stagehand status=unexecuted reason=missing_stagehand_credentials"
       exit 0
     fi

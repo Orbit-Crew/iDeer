@@ -1,7 +1,9 @@
 import json
+import os
 import subprocess
 from pathlib import Path
 
+import pytest
 from test_lane_evidence import build_context, write_completion
 
 
@@ -41,6 +43,22 @@ def test_completion_records_final_status_and_duration(tmp_path: Path) -> None:
     assert record["outcome"] == "cancelled"
     assert record["duration_seconds"] == 600
     assert record["finished_at"]
+
+
+def test_failed_completion_replace_keeps_start_record_incomplete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output = tmp_path / "lane.json"
+    output.write_text('{"lane":"backend-standard"}\n', encoding="utf-8")
+
+    def fail_replace(source: str | os.PathLike[str], target: str | os.PathLike[str]) -> None:
+        raise OSError("injected evidence publish failure")
+
+    monkeypatch.setattr(os, "replace", fail_replace)
+    with pytest.raises(OSError, match="injected evidence publish failure"):
+        write_completion(output, 0, 12, "passed")
+
+    record = json.loads(output.read_text(encoding="utf-8"))
+    assert record == {"lane": "backend-standard"}
+    assert list(tmp_path.glob(".lane.json.*.tmp")) == []
 
 
 def test_source_archive_records_context_without_git_metadata(tmp_path: Path) -> None:
