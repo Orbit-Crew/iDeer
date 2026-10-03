@@ -3,7 +3,7 @@
 > audience: testers, developers, release maintainers<br>
 > status: current<br>
 > owner: test maintainers<br>
-> last-verified: 2026-10-01<br>
+> last-verified: 2026-10-03<br>
 > canonical-path: `docs/testing/README.md`
 
 测试治理按职责分开维护；同一规则只在其权威文档中定义：
@@ -13,6 +13,7 @@
 - [测试 Lane 运行手册](test-lane-runbook.md)：PR 与交付级 lane 的运行、判定和交接规则。
 - [测试清单](../../scripts/test_inventory.py)：复用文件发现结果，输出文件、节点、lane 归属和收集状态。
 - [运行前检查](../../scripts/test_preflight.py)：按 lane 检查工具、锁文件、浏览器、可写目录和 socket 条件。
+- [Mock E2E recovery A](mock-e2e-recovery-A.md) / [B](mock-e2e-recovery-B.md)：记录已确认失败的分类、修复和候选验证证据。
 
 执行入口：
 

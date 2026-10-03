@@ -54,6 +54,7 @@ import {
 import { getChipsByPill } from "@/core/scenarios/config";
 import type { ScenarioId } from "@/core/scenarios/types";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
+import { resolveThreadContext } from "@/core/settings/store";
 import { useSkills } from "@/core/skills/hooks";
 import {
   useBranchThread,
@@ -670,9 +671,13 @@ export default function ChatPage() {
                           env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
                           isUploading
                         }
-                        onContextChange={(context) =>
-                          setSettings("context", context)
-                        }
+                        onContextChange={(context, options) => {
+                          if (options?.automatic) {
+                            resolveThreadContext(threadId, context);
+                          } else {
+                            setSettings("context", context);
+                          }
+                        }}
                         onGoalChange={setLocalGoal}
                         onSubmit={handleSubmit}
                         onStop={handleStop}

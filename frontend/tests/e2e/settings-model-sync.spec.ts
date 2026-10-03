@@ -55,6 +55,13 @@ for (const agent of [false, true]) {
           },
         }),
       );
+      const owner = "00000000-0000-0000-0000-000000000028";
+      const preferenceRequests: Array<{
+        method: string;
+        owner: string | undefined;
+        status?: number;
+        patch?: unknown;
+      }> = [];
       const patches: unknown[] = [];
       let reads = 0;
       let server = {
@@ -64,15 +71,44 @@ for (const agent of [false, true]) {
         notification_enabled: true,
       };
       await page.route("**/api/v1/auth/preferences", async (route) => {
+        const expectedUserId = route.request().headers()["x-expected-user-id"];
         if (route.request().method() === "PATCH") {
           const patch = route.request().postDataJSON() as Partial<
             typeof server
           >;
+          preferenceRequests.push({
+            method: "PATCH",
+            owner: expectedUserId,
+            patch,
+          });
           patches.push(patch);
           server = { ...server, ...patch };
           await route.fulfill({ status: 204 });
         } else {
+          if (expectedUserId === "e2e-user") {
+            preferenceRequests.push({
+              method: "GET",
+              owner: expectedUserId,
+              status: 409,
+            });
+            await route.fulfill({ status: 409 });
+            return;
+          }
+          if (expectedUserId !== owner) {
+            preferenceRequests.push({
+              method: "GET",
+              owner: expectedUserId,
+              status: 409,
+            });
+            await route.fulfill({ status: 409 });
+            return;
+          }
           reads++;
+          preferenceRequests.push({
+            method: "GET",
+            owner: expectedUserId,
+            status: 200,
+          });
           await route.fulfill({ json: server });
         }
       });
@@ -88,9 +124,9 @@ for (const agent of [false, true]) {
         document.dispatchEvent(new Event("visibilitychange")),
       );
       await expect.poll(() => reads).toBe(1);
-      await expect(
-        page.getByRole("button", { name: "Thread Model", exact: true }),
-      ).toBeVisible();
+      await expect(page.getByTestId("model-selector-trigger")).toContainText(
+        "Thread Model",
+      );
       await expect(
         page.getByRole("button", {
           name: "Reasoning Effort: Medium",
@@ -106,7 +142,12 @@ for (const agent of [false, true]) {
           .click();
         await page.getByRole("menuitem").filter({ hasText: /^High/ }).click();
       } else {
-        await page.getByRole("button", { name: "Pro", exact: true }).click();
+        const modeButton = page.getByRole("button", {
+          name: "Mode",
+          exact: true,
+        });
+        await expect(modeButton).toContainText("Pro");
+        await modeButton.click();
         await page
           .getByRole("menuitem")
           .filter({ hasText: /^Ultra/ })
@@ -121,9 +162,21 @@ for (const agent of [false, true]) {
         ]);
       expect(server.model_name).toBe("account-model");
       await page.keyboard.press("Escape");
-      await expect(
-        page.getByRole("button", { name: "Thread Model", exact: true }),
-      ).toBeVisible();
+      await expect(page.getByTestId("model-selector-trigger")).toContainText(
+        "Thread Model",
+      );
+      expect(
+        preferenceRequests.filter(({ method }) => method === "PATCH"),
+      ).toEqual([
+        {
+          method: "PATCH",
+          owner,
+          patch:
+            field === "effort"
+              ? { reasoning_effort: "high" }
+              : { mode: "ultra", reasoning_effort: "high" },
+        },
+      ]);
     });
   }
 }
@@ -132,26 +185,27 @@ test("custom agent automatic default does not become an account preference", asy
   page,
 }) => {
   mockLangGraphAPI(page, {
-    agents: [{ name: "researcher", description: "Research agent" }],
+    agents: [
+      {
+        name: "researcher",
+        description: "Research agent",
+        model: "agent-model",
+      },
+    ],
   });
+  const owner = "00000000-0000-0000-0000-000000000027";
+  const preferenceRequests: Array<{
+    method: string;
+    owner: string | undefined;
+    status?: number;
+    patch?: unknown;
+  }> = [];
   const patches: unknown[] = [];
   let reads = 0;
   let allowModels!: () => void;
   const modelsReady = new Promise<void>((resolve) => {
     allowModels = resolve;
   });
-  await page.route("**/api/agents/researcher", (route) =>
-    route.fulfill({
-      json: {
-        name: "researcher",
-        description: "Research agent",
-        model: "agent-model",
-        system_prompt: "Research",
-        tools: [],
-        skills: [],
-      },
-    }),
-  );
   await page.route("**/api/models", async (route) => {
     // Do not let the auth-disabled fixture select a model before the account
     // is activated. The real agent page must then choose its configured model.
@@ -184,11 +238,41 @@ test("custom agent automatic default does not become an account preference", asy
     }),
   );
   await page.route("**/api/v1/auth/preferences", async (route) => {
+    const expectedUserId = route.request().headers()["x-expected-user-id"];
     if (route.request().method() === "PATCH") {
-      patches.push(route.request().postDataJSON());
+      const patch = route.request().postDataJSON();
+      preferenceRequests.push({
+        method: "PATCH",
+        owner: expectedUserId,
+        patch,
+      });
+      patches.push(patch);
       await route.fulfill({ status: 204 });
     } else {
+      if (expectedUserId === "e2e-user") {
+        preferenceRequests.push({
+          method: "GET",
+          owner: expectedUserId,
+          status: 409,
+        });
+        await route.fulfill({ status: 409 });
+        return;
+      }
+      if (expectedUserId !== owner) {
+        preferenceRequests.push({
+          method: "GET",
+          owner: expectedUserId,
+          status: 409,
+        });
+        await route.fulfill({ status: 409 });
+        return;
+      }
       reads++;
+      preferenceRequests.push({
+        method: "GET",
+        owner: expectedUserId,
+        status: 200,
+      });
       await route.fulfill({
         json: {
           model_name: null,
@@ -199,6 +283,9 @@ test("custom agent automatic default does not become an account preference", asy
       });
     }
   });
+  const agentResponse = page.waitForResponse((response) =>
+    response.url().endsWith("/api/resources/researcher/published"),
+  );
   await page.goto("/workspace/agents/researcher/chats/new");
   await page
     .locator("[data-sidebar='sidebar']")
@@ -209,29 +296,49 @@ test("custom agent automatic default does not become an account preference", asy
     document.dispatchEvent(new Event("visibilitychange")),
   );
   await expect.poll(() => reads).toBe(1);
+  await agentResponse;
   allowModels();
-  await expect(
-    page.getByRole("button", { name: "Agent Model", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTestId("model-selector-trigger")).toContainText(
+    "Agent Model",
+  );
   // Flush the local outbox cycle through a completed server read, so this also
   // catches a PATCH that would otherwise arrive just after the UI assertion.
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect.poll(() => reads).toBe(2);
   expect(patches).toEqual([]);
   // Explicit model selections on this same page must still be synchronized.
-  await page.getByRole("button", { name: "Agent Model", exact: true }).click();
+  await expect(page.getByTestId("model-selector-trigger")).toContainText(
+    "Agent Model",
+  );
+  await page.getByTestId("model-selector-trigger").click();
   await page
     .getByRole("button", { name: "First Model (first-model)", exact: true })
     .click();
   await expect.poll(() => patches).toEqual([{ model_name: "first-model" }]);
+  expect(preferenceRequests.filter(({ method }) => method === "PATCH")).toEqual(
+    [{ method: "PATCH", owner, patch: { model_name: "first-model" } }],
+  );
+  expect(preferenceRequests[0]).toEqual({
+    method: "GET",
+    owner: "e2e-user",
+    status: 409,
+  });
 });
 
 test("automatic model fallback cannot overwrite a slowly loaded account preference", async ({
   page,
 }) => {
   mockLangGraphAPI(page);
+  const owner = "00000000-0000-0000-0000-000000000026";
   const patches: unknown[] = [];
-  let requested = false;
+  const preferenceRequests: Array<{
+    method: string;
+    owner: string | undefined;
+    status?: number;
+    patch?: unknown;
+  }> = [];
+  let requestedOwnerRead = false;
+  let accountReads = 0;
   let release!: () => void;
   const delayed = new Promise<void>((resolve) => {
     release = resolve;
@@ -257,13 +364,44 @@ test("automatic model fallback cannot overwrite a slowly loaded account preferen
     }),
   );
   await page.route("**/api/v1/auth/preferences", async (route) => {
+    const expectedUserId = route.request().headers()["x-expected-user-id"];
     if (route.request().method() === "PATCH") {
-      patches.push(route.request().postDataJSON());
+      const patch = route.request().postDataJSON();
+      preferenceRequests.push({
+        method: "PATCH",
+        owner: expectedUserId,
+        patch,
+      });
+      patches.push(patch);
       await route.fulfill({ status: 204 });
       return;
     }
-    requested = true;
+    if (expectedUserId === "e2e-user") {
+      preferenceRequests.push({
+        method: "GET",
+        owner: expectedUserId,
+        status: 409,
+      });
+      await route.fulfill({ status: 409 });
+      return;
+    }
+    if (expectedUserId !== owner) {
+      preferenceRequests.push({
+        method: "GET",
+        owner: expectedUserId,
+        status: 409,
+      });
+      await route.fulfill({ status: 409 });
+      return;
+    }
+    requestedOwnerRead = true;
+    accountReads++;
     await delayed;
+    preferenceRequests.push({
+      method: "GET",
+      owner: expectedUserId,
+      status: 200,
+    });
     await route.fulfill({
       json: {
         model_name: "model-b",
@@ -284,13 +422,23 @@ test("automatic model fallback cannot overwrite a slowly loaded account preferen
   await page.evaluate(() =>
     document.dispatchEvent(new Event("visibilitychange")),
   );
-  await expect.poll(() => requested).toBe(true);
-  await expect(
-    page.getByRole("button", { name: "Model A", exact: true }),
-  ).toBeVisible();
+  await expect.poll(() => requestedOwnerRead).toBe(true);
+  await expect(page.getByTestId("model-selector-trigger")).toContainText(
+    "Model A",
+  );
   release();
-  await expect(
-    page.getByRole("button", { name: "Model B", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTestId("model-selector-trigger")).toContainText(
+    "Model B",
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => accountReads).toBe(2);
+  await expect(page.getByTestId("model-selector-trigger")).toContainText(
+    "Model B",
+  );
   expect(patches).toEqual([]);
+  expect(preferenceRequests).toEqual([
+    { method: "GET", owner: "e2e-user", status: 409 },
+    { method: "GET", owner, status: 200 },
+    { method: "GET", owner, status: 200 },
+  ]);
 });

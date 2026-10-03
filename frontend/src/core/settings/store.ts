@@ -244,7 +244,15 @@ export function resolveThreadContext(
   context: Partial<LocalSettings["context"]>,
 ) {
   if (!preferenceEdit) {
-    updateThreadSettings(threadId, "context", context);
+    ensureBaseSettingsLoaded();
+    ensureStorageListenerRegistered();
+    baseSettings = mergeSettingsSection(baseSettings, "context", context);
+    persistLocalOnlySettings();
+    if (getThreadModelSnapshot(threadId) && "model_name" in context) {
+      threadModelNames.set(threadId, context.model_name);
+      saveThreadModelName(threadId, context.model_name);
+    }
+    emitChange();
     return;
   }
   baseSettings = mergeSettingsSection(baseSettings, "context", context);
