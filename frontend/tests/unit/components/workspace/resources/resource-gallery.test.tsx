@@ -1,5 +1,4 @@
 import { render, screen, cleanup } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -89,6 +88,12 @@ vi.mock("@/components/ui/tabs", () => ({
   ),
 }));
 
+vi.mock("@/components/ui/sidebar", () => ({
+  SidebarTrigger: ({ className }: { className?: string }) => (
+    <button aria-label="Toggle Sidebar" className={className} />
+  ),
+}));
+
 vi.mock("@/components/workspace/resources/agent-list", () => ({
   AgentList: () => <div data-testid="agent-list">Agent List</div>,
 }));
@@ -134,6 +139,13 @@ describe("ResourceGallery", () => {
     expect(screen.getByText("Resources")).toBeInTheDocument();
     expect(
       screen.getByText("Manage your experts, skills, and connectors"),
+    ).toBeInTheDocument();
+  });
+
+  test("renders the mobile sidebar trigger", () => {
+    render(<ResourceGallery />);
+    expect(
+      screen.getByRole("button", { name: "Toggle Sidebar" }),
     ).toBeInTheDocument();
   });
 
