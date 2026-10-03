@@ -31,8 +31,7 @@ from app.agentplatform.fault_zeroing.kernel import (
     FaultZeroingKernel,
 )
 from app.agentplatform.knowledge import models as knowledge_models  # noqa: F401 - register knowledge tables
-from app.agentplatform.knowledge.documents import KnowledgeDocumentService
-from app.agentplatform.knowledge.eval_cases import KnowledgeEvalCaseService
+from app.agentplatform.knowledge.facade import KnowledgeFacade
 from app.agentplatform.knowledge.ragflow import configured_ragflow_provider
 from app.agentplatform.knowledge.revisions import KnowledgeRevisionService, execute_publish
 from app.agentplatform.rbac_models import UserModel, UserRole
@@ -382,6 +381,11 @@ def _factory():
     if session_factory is None:
         raise HTTPException(503, "Resource persistence is unavailable")
     return session_factory
+
+
+def _knowledge_facade() -> KnowledgeFacade:
+    """Wire the knowledge-domain seam with this gateway's session factory and audit sink."""
+    return KnowledgeFacade(_factory(), audit=record_audit)
 
 
 def _resource_payload(
@@ -914,11 +918,9 @@ async def get_knowledge_binding(
 async def list_knowledge_documents(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        documents = await KnowledgeDocumentService(session, _resource_actor(current_user), configured_ragflow_provider()).list_documents(resource_id)
-        await session.commit()
-        return {"items": documents, "total": len(documents)}
+    return await knowledge.list_documents(_resource_actor(current_user), resource_id)
 
 
 @router.post("/{resource_id}/documents", status_code=201)
@@ -927,19 +929,9 @@ async def upload_knowledge_document(
     resource_id: str,
     file: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        service = KnowledgeDocumentService(session, _resource_actor(current_user))
-        document = await service.upload(resource_id, file)
-        await session.commit()
-        await record_audit(
-            str(current_user.id),
-            "knowledge_document_uploaded",
-            "knowledge_document",
-            str(document["id"]),
-            {"resource_id": resource_id, "content_hash": document["content_hash"], "size": document["size"]},
-        )
-        return document
+    return await knowledge.upload_document(_resource_actor(current_user), resource_id, file)
 
 
 @router.get("/{resource_id}/documents/{document_id}")
@@ -948,9 +940,9 @@ async def get_knowledge_document(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        return await KnowledgeDocumentService(session, _resource_actor(current_user)).get_document(document_id, resource_id=resource_id)
+    return await knowledge.get_document(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.patch("/{resource_id}/documents/{document_id}")
@@ -960,24 +952,15 @@ async def update_knowledge_document(
     document_id: str,
     body: KnowledgeDocumentUpdateRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        service = KnowledgeDocumentService(session, _resource_actor(current_user))
-        document = await service.update_document(
-            document_id,
-            resource_id=resource_id,
-            title=body.title,
-            metadata=body.metadata,
-        )
-        await session.commit()
-        await record_audit(
-            str(current_user.id),
-            "knowledge_document_updated",
-            "knowledge_document",
-            document_id,
-            {"resource_id": resource_id, "changed_title": body.title is not None, "changed_metadata": body.metadata is not None},
-        )
-        return document
+    return await knowledge.update_document(
+        _resource_actor(current_user),
+        resource_id,
+        document_id,
+        title=body.title,
+        metadata=body.metadata,
+    )
 
 
 @router.post("/{resource_id}/documents/{document_id}/retry")
@@ -986,19 +969,9 @@ async def retry_knowledge_document(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        service = KnowledgeDocumentService(session, _resource_actor(current_user))
-        document = await service.request_retry(document_id, resource_id=resource_id)
-        await session.commit()
-        await record_audit(
-            str(current_user.id),
-            "knowledge_document_retry_requested",
-            "knowledge_document",
-            document_id,
-            {"resource_id": resource_id},
-        )
-        return document
+    return await knowledge.request_document_retry(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.post("/{resource_id}/documents/{document_id}/rebuild-index")
@@ -1007,19 +980,9 @@ async def rebuild_knowledge_document_index(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        service = KnowledgeDocumentService(session, _resource_actor(current_user))
-        document = await service.request_retry(document_id, resource_id=resource_id, rebuild=True)
-        await session.commit()
-        await record_audit(
-            str(current_user.id),
-            "knowledge_document_rebuild_requested",
-            "knowledge_document",
-            document_id,
-            {"resource_id": resource_id},
-        )
-        return document
+    return await knowledge.request_document_rebuild(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.delete("/{resource_id}/documents/{document_id}")
@@ -1028,20 +991,9 @@ async def delete_knowledge_document(
     resource_id: str,
     document_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        service = KnowledgeDocumentService(session, _resource_actor(current_user))
-        document = await service.request_delete(document_id, resource_id=resource_id)
-        await session.commit()
-        action = "knowledge_document_delete_requested"
-        await record_audit(
-            str(current_user.id),
-            action,
-            "knowledge_document",
-            document_id,
-            {"resource_id": resource_id, "status": document["status"], "failure_code": document["failure_code"]},
-        )
-        return document
+    return await knowledge.request_document_delete(_resource_actor(current_user), resource_id, document_id)
 
 
 @router.post("/{resource_id}/knowledge-revisions", status_code=201)
@@ -1175,28 +1127,15 @@ async def create_eval_case(
     resource_id: str,
     body: EvalCaseCreateRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        case = await KnowledgeEvalCaseService(session, _resource_actor(current_user)).create_case(
-            resource_id,
-            question=body.question,
-            expected_document_ids=body.expected_document_ids,
-            tags=body.tags,
-        )
-        await session.commit()
-    await record_audit(
-        str(current_user.id),
-        "eval_case_created",
-        "knowledge_eval_case",
-        str(case["id"]),
-        {
-            "resource_id": resource_id,
-            "version_no": case["version_no"],
-            "content_hash": case["content_hash"],
-            "expected_document_count": len(case["expected_document_ids"]),
-        },
+    return await knowledge.create_eval_case(
+        _resource_actor(current_user),
+        resource_id,
+        question=body.question,
+        expected_document_ids=body.expected_document_ids,
+        tags=body.tags,
     )
-    return case
 
 
 @router.get("/{resource_id}/eval-cases")
@@ -1204,10 +1143,9 @@ async def create_eval_case(
 async def list_eval_cases(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        cases = await KnowledgeEvalCaseService(session, _resource_actor(current_user)).list_cases(resource_id)
-        return {"items": cases, "total": len(cases)}
+    return await knowledge.list_eval_cases(_resource_actor(current_user), resource_id)
 
 
 @router.get("/{resource_id}/eval-cases/revisions/{revision_id}/applicability")
@@ -1216,9 +1154,9 @@ async def get_eval_case_revision_applicability(
     resource_id: str,
     revision_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        return await KnowledgeEvalCaseService(session, _resource_actor(current_user)).revision_applicability(resource_id, revision_id)
+    return await knowledge.eval_case_revision_applicability(_resource_actor(current_user), resource_id, revision_id)
 
 
 @router.get("/{resource_id}/eval-cases/{case_id}")
@@ -1227,9 +1165,9 @@ async def get_eval_case(
     resource_id: str,
     case_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        return await KnowledgeEvalCaseService(session, _resource_actor(current_user)).get_case(resource_id, case_id)
+    return await knowledge.get_eval_case(_resource_actor(current_user), resource_id, case_id)
 
 
 @router.patch("/{resource_id}/eval-cases/{case_id}")
@@ -1239,28 +1177,16 @@ async def update_eval_case(
     case_id: str,
     body: EvalCaseUpdateRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        case = await KnowledgeEvalCaseService(session, _resource_actor(current_user)).update_case(
-            resource_id,
-            case_id,
-            question=body.question,
-            expected_document_ids=body.expected_document_ids,
-            tags=body.tags,
-        )
-        await session.commit()
-    await record_audit(
-        str(current_user.id),
-        "eval_case_updated",
-        "knowledge_eval_case",
+    return await knowledge.update_eval_case(
+        _resource_actor(current_user),
+        resource_id,
         case_id,
-        {
-            "resource_id": resource_id,
-            "version_no": case["version_no"],
-            "content_hash": case["content_hash"],
-        },
+        question=body.question,
+        expected_document_ids=body.expected_document_ids,
+        tags=body.tags,
     )
-    return case
 
 
 @router.delete("/{resource_id}/eval-cases/{case_id}", status_code=204)
@@ -1269,18 +1195,10 @@ async def delete_eval_case(
     resource_id: str,
     case_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> Response:
     """Delete one knowledge regression case."""
-    async with _factory()() as session:
-        await KnowledgeEvalCaseService(session, _resource_actor(current_user)).delete_case(resource_id, case_id)
-        await session.commit()
-    await record_audit(
-        str(current_user.id),
-        "eval_case_deleted",
-        "knowledge_eval_case",
-        case_id,
-        {"resource_id": resource_id},
-    )
+    await knowledge.delete_eval_case(_resource_actor(current_user), resource_id, case_id)
     return Response(status_code=204)
 
 
@@ -1312,18 +1230,9 @@ async def save_knowledge_draft(
 async def initialize_knowledge(
     resource_id: str,
     current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(_knowledge_facade),
 ) -> dict[str, Any]:
-    async with _factory()() as session:
-        result = await KnowledgeDocumentService(session, _resource_actor(current_user)).request_initialization(resource_id)
-        await session.commit()
-        await record_audit(
-            str(current_user.id),
-            "knowledge_initialization_requested",
-            "knowledge_base",
-            resource_id,
-            {"status": result["status"]},
-        )
-        return result
+    return await knowledge.request_initialization(_resource_actor(current_user), resource_id)
 
 
 @router.post("/{resource_id}/knowledge", status_code=200)
