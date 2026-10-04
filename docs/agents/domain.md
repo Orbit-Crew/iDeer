@@ -1,3 +1,13 @@
+---
+id: docs-agents-domain
+kind: reference
+status: current
+owner: repository maintainers
+scope: how engineering skills consume domain documentation (CONTEXT glossary, ADRs, project state) before exploring the codebase
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+---
+
 # Domain Docs
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
@@ -53,4 +63,4 @@ If the concept you need isn't in the glossary yet, that's a signal: either you'r
 
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
 
-> _Contradicts ADR-0007 (event-sourced orders), but worth reopening because…_
+> _Contradicts ADR-0007 (agent terminology unification), but worth reopening because…_

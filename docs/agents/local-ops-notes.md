@@ -1,3 +1,13 @@
+---
+id: docs-agents-local-ops-notes
+kind: reference
+status: current
+owner: repository maintainers
+scope: local deployment entry (nginx bind address), secrets/config hygiene, and git-ignored session working files
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+---
+
 # Local Ops Notes (deployment, config, session files)
 
 > audience: developers running the stack locally

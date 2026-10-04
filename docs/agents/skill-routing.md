@@ -1,3 +1,13 @@
+---
+id: docs-agents-skill-routing
+kind: reference
+status: current
+owner: repository maintainers
+scope: full skill-routing flow for coding agents (precedence over skills, main flow, on-ramps, phase boundaries, communication agreement); root AGENTS.md carries the compact table
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+---
+
 # Skill Routing
 
 How coding agents route work through the installed ask-matt skill set, adapted to this repository's discipline. Root `AGENTS.md` carries the compact routing table; this document carries the full flow, the low-frequency routes, phase boundaries, and the precedence rules that reconcile the skill flow with this repo's own contracts.

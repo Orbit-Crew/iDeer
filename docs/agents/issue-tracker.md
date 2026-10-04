@@ -1,3 +1,13 @@
+---
+id: docs-agents-issue-tracker
+kind: reference
+status: current
+owner: repository maintainers
+scope: where local specifications and work tickets live, their triage vocabulary, and the GitHub issue/PR command conventions for this repository
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+---
+
 # Local specifications and work tickets
 
 Specifications for this repo live as Markdown files in `docs/specs/`. Work tickets live as one Markdown file per ticket under `.scratch/<feature-slug>/issues/`, numbered from `01` in dependency order. Each ticket records its blockers and `ready-for-agent` status. `.scratch/` is git-ignored, so local tickets stay in the working directory and are not published to GitHub or included in commits by default. GitHub Issues remain available for separate issue discussions.
