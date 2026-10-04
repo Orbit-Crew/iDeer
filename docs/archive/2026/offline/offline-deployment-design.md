@@ -1,4 +1,17 @@
+---
+id: docs-archive-2026-offline-offline-deployment-design
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-05 候选的禁公网内网离线部署设计：离线包布局、deploy-intranet.sh 的 bundle-root 与 runtime 目录契约、配置生成策略、模型配置、健康检查，以及 2026-05-27/28 修复后的归零排故智能体预置安装行为
+archived-reason: 时点部署设计；其后 bundled 资源安装改由 scripts/seed_bundled_resources.py 与 bundled-resources.json（--bundled-conflict keep/override）承担，脚本另新增多组子命令与旗标。现行内网部署权威：scripts/README-intranet.md、docs/deployment/禁公网内网离线部署作业指导书.md、docs/offline-product-line-governance-plan.md
+---
+
 # iDeer 禁公网内网离线部署方案
+
+> status: archived; current intranet deployment authorities: `scripts/README-intranet.md`、`docs/deployment/禁公网内网离线部署作业指导书.md`
+> source period: 2026-05（2026-05-22 立稿，经 2026-05-27/28 两次内网部署修复定稿；2026-07-15 随文档体系归档至 `docs/archive/2026/offline/`）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。仍成立：`scripts/deploy-intranet.sh` 与 `scripts/package-intranet-offline.sh` 存在；`prepare`、`up`（别名 `start`）、`restart`、`stop`/`down`、`status` 子命令，`--bundle-root` 与 `IDEER_BUNDLE_ROOT`，打包 `--version`/`--force`；离线包内容（镜像 tar、源码 tar.gz、`deploy-intranet.sh`、`MANIFEST.txt`、`SHA256SUMS`、`docs/deployment/禁公网内网离线部署作业指导书.md`）；端口 2026 与 `/health`、`/api/v1/auth/setup-status`、`/` 健康检查；`.better-auth-secret`/`.internal-auth-token` 复用、裸 `models:` 生成 `models: []`、`runtime/frontend.env` 与 `extensions_config.json` 种子生成。已漂移：第 4/5 节的归零排故智能体预置安装（`runtime/data/agents/fault-zeroing/` 直写、五个 custom subagent 合并进 config.yaml、`IDEER_INSTALL_FAULT_ZEROING=0` 跳过、拒绝覆盖语义）在现行脚本中已由 `scripts/seed_bundled_resources.py` + `bundled-resources.json` 取代（以超级管理员身份安装公共资源，`--bundled-conflict keep|override` 控制冲突；归零排故技能现位于 `resources/skills/fault-zeroing`）；现行脚本另新增 `load`/`prune-old`/`logs`、`--keep-versions`、`--prune-old`、`--no-load`、`--skip-check`、`--dry-run`、超级管理员自动初始化（`IDEER_ADMIN_EMAIL`/`IDEER_ADMIN_PASSWORD`）与 `IDEER_HOME`/`IDEER_CONFIG_PATH` 覆盖，正文均未记载。
 
 ## 1. 方案目标
 

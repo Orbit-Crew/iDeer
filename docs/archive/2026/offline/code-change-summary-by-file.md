@@ -1,6 +1,18 @@
+---
+id: docs-archive-2026-offline-code-change-summary-by-file
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: ideer-harness 时期候选（正文路径为 backend/packages/harness/ideer/，约 2026-06）的一次工作区变更记录：git diff HEAD 按文件逐行摘录，移除旧版 citations 块功能，涉及 backend prompt/artifacts、frontend 消息与 artifact 渲染、i18n、两个 public 技能与 demo thread 数据
+archived-reason: 单次历史工作区变更的逐文件 diff 证据；路径、行号与统计描述该时期 ideer-harness 布局，按记录保留。其后引用能力以新机制回归（frontend/src/core/citations/sources.ts，行内 citation 标记格式），本文档不描述现行引用实现
+---
+
 # 代码更改总结（按文件 diff，细到每一行）
 
 > status: archived; current change evidence: `docs/archive/`
+>
+> source period: ideer-harness 时期候选（`backend/packages/harness/ideer/` 路径期，约 2026-06；该路径布局自 2026-09 起已移除）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。删除项复核成立：`safe-citation-content.tsx`、`inline-citation.tsx`、旧 `frontend/src/core/citations/` 三个文件（index/use-parsed-citations/utils）、`remove_citations_block`、`<citations_format>` 段落均不在当前候选，当次新增的 `markdown-content.tsx` 仍在。后续漂移：引用能力其后以新机制回归——`frontend/src/core/citations/sources.ts` 解析行内 citation 标记，i18n `citations` 命名空间以新键（sourcesSummary/citeCount 等）重建；`backend/packages/harness/deerflow/agents/lead_agent/prompt.py`（原 ideer 路径已迁移）现仅含 delegation-ledger receipt 语义的 citation 文案。`backend/CLAUDE.md` 现为 23 行（治理精简后），正文所述第 159 行附近 API 表已不存在。`skills/public/github-deep-research/` 已迁至 `resources/skills/github-deep-research/`，且现行版本要求行内 citation 标记引用（与当次措辞移除方向相反）；`market-analysis` 技能已不在当前候选。demo threads 抽查无 citations 块残留。
 
 基于 `git diff HEAD` 的完整 diff，按文件列出所有变更。删除/新增文件单独说明。
 
