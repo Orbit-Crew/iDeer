@@ -1,20 +1,29 @@
+---
+id: docs-governance-resource-governance-v2-cutover
+kind: reference
+status: current
+owner: repository maintainers
+scope: canonical-only deployment and rollback manual for Resource Governance V2 — upgrade preconditions, cutover steps, rollback constraints, retention purge authorization, and the dated 2026-08-15~17 local execution record
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c9981aac3
+---
+
 # Resource Governance V2 部署与回滚手册
 
-> audience: operators, release engineers
-> status: operations contract
-> last-verified: 2026-08-17
+> audience: operators, release engineers<br>
 > canonical-path: `docs/governance/resource-governance-v2-cutover.md`
 
-本文档是 [Resource Governance V2 架构决策](../decisions/2026-08-14-resource-governance-v2.md) 的可执行化。本版本为 canonical-only 定案：无模式开关（`IDEER_RESOURCE_CATALOG_MODE` 已移除），旧名称路由已删除（404），迁移工具仅存在于旧版本。回滚只退回代码版本，不删除任何 canonical 版本或历史审计。
+本文档是 [Resource Governance V2 架构决策](../decisions/2026-08-14-resource-governance-v2.md) 的可执行化。本版本为 canonical-only 定案：无模式开关（`IDEER_RESOURCE_CATALOG_MODE` 已移除），旧名称路由已删除（404），迁移工具仅存在于旧版本。回滚只退回代码版本，不删除任何 canonical 版本或历史审计。2026-10-04 核对：`IDEER_RESOURCE_CATALOG_MODE` 与 `resource_catalog_mode` 在当前候选无残留引用；`/api/agents`、`/api/workflows` 无任何路由挂载，`/api/skills` 仅保留上游 SkillGallery 所需的 `/api/skills/custom*`，旧名称路由 404 契约不变。
 
 ## 1. 升级前置条件（全部必须满足）
 
-1. 单 Alembic head 且数据库处于 head：
+1. 单 Alembic head 且数据库处于 head。统一迁移链的唯一入口是 harness 的 `alembic.ini`（经 `version_locations` 联合 `app/agentplatform/persistence/migrations/versions/`）：
 
    ```bash
    cd backend
-   uv run python -m alembic -c app/agentplatform/persistence/migrations/alembic.ini heads
-   # 输出必须只有 20260814_resource_catalog_v2 (head)
+   uv run python -m alembic -c packages/harness/deerflow/persistence/migrations/alembic.ini heads
+   # 必须输出且仅输出一个 (head)：2026-08 切换期为 20260814_resource_catalog_v2，
+   # 2026-10-04 核对时为 20261001_rejoin_upstream_line；head 随统一链推进，以实际输出为准
    ```
 
 2. 有存量数据：先在旧版本执行 `audit → migrate → verify` 且三者 exit 0（命令见[迁移映射](resource-governance-v2-migration-map.md)）；无存量数据直接安装，跳过本步。
@@ -47,7 +56,7 @@ git revert <本分支合并提交>
 
 ## 4. 物理清理（观察期结束后，另行授权）
 
-`purge_eligible_versions`（`ideer.resources.retention`）只回收满足全部条件的归档版本：
+`purge_eligible_versions`（`app.agentplatform.resources.retention`）只回收满足全部条件的归档版本：
 
 - 资源已 `archived`、非预装（`storage_kind != "bundled"`）、非 system-owned、超出保留期、未被 Run 快照引用；
 - 磁盘内容 hash 与 catalog 一致；
@@ -65,6 +74,8 @@ git revert <本分支合并提交>
 - 本手册记录观察期起止与清理授权记录。
 
 ## 6. 执行记录（2026-08-15 ~ 2026-08-17，本地 worktree `resource-governance-v2`）
+
+> status: 历史执行记录，适用于 2026-08 切换期与当时的 `resource-governance-v2` worktree；验收数字是该期证据，不代表当前验证状态。2026-10-04 核对：后续上游合并使 `routers/agents.py`、`routers/skills.py` 文件重新存在于当前候选（agents 路由按 D4 未挂载，skills 仅 `/api/skills/custom*`），`routers/workflows.py`、`mode.py`、`compare.py`、`resource_catalog_mode.py`、`migration.py`、`scripts/resource_catalog_v2.py` 仍不存在；旧名称路由 404 与无模式开关的外部契约不变。
 
 - canonical 冒烟（canonical-only，Gateway 8001）：`/api/resources` 返回 34 项 canonical；`/api/agents|skills|workflows/{name}` 全部 404（路由已删除）；老名字 `fault-zeroing` run 经 alias 解析为 UUID 56e2423d… 成功创建；`run_resource_snapshots` 落库 agent+skill 各 1 行（version/hash 正确）；前端 admin 资源页经同源代理渲染 canonical 数据。
 - Workflow Worker canonical 冒烟（2026-08-16）：worker 消费 workflow run，状态 queued→running→failed（冒烟占位 `upload_dir` 不存在导致业务失败），`run_resource_snapshots` 完整闭包 3 行落库；runtime 修复后全量 `make test` 通过。
