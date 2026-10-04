@@ -30,6 +30,7 @@
 | 离线部署作业 | [禁公网内网离线部署作业指导书](deployment/禁公网内网离线部署作业指导书.md) |
 | 架构基线 | [架构索引](architecture/README.md)、[项目架构概览](architecture/overview.md)、[后端架构](../backend/docs/README.md) |
 | 领域词汇 | [领域建模指南](agents/domain.md)、[术语表](plans/2026-08-26-term-glossary.md) |
+| Agent 工作流 | [技能路由](agents/skill-routing.md)、[本地规格与工单](agents/issue-tracker.md) |
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
 | 上游兼容基线与补丁 | [上游锁定记录](upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)、[根上游补丁账本](../UPSTREAM_PATCH_LEDGER.md)、[本地运行时补丁账本](local-runtime/PATCH_LEDGER.md) |
 | 当前工程待办 | [backlog.md](backlog.md) |

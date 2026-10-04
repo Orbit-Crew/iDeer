@@ -6,7 +6,24 @@ Edit `AGENTS.md` as the sole source in each rule directory. Run `python3 scripts
 
 ## Implementation discipline
 
-Keep each change limited to the requested behavior and follow nearby conventions. Before editing, state assumptions and identify any choice that changes the result; ask only when the available evidence cannot resolve it. Prefer the smallest implementation that meets the acceptance criteria. Define completion in observable checks, then run those checks and report their actual status. Long-span work — a single task whose reading and implementation would not fit one context window, or a batch of tickets with blocking edges — goes through the `orchestrate-worktrees` skill (one self-contained subagent per ticket in a dedicated git worktree) instead of working inline.
+Keep each change limited to the requested behavior and follow nearby conventions. Before editing, state the approach and its assumptions, identify any choice that changes the result, and present such choices with a recommendation; reserve blocking questions for what the evidence cannot resolve. When you notice an adjacent defect, a cheaper design, or an existing utility that already fits, surface it as a suggestion instead of silently expanding or shrinking scope. Prefer the smallest implementation that meets the acceptance criteria. Define completion in observable checks, then run those checks and report their actual status. Long-span work — a single task whose reading and implementation would not fit one context window, or a batch of tickets with blocking edges — goes through the `orchestrate-worktrees` skill (one self-contained subagent per ticket in a dedicated git worktree) instead of working inline.
+
+## Skill routing
+
+When a situation matches a routed skill, invoke it instead of improvising the process; small, well-specified changes go straight to the TDD slice discipline above. Skills change how work is prepared and reviewed, never what validation the test-lane contract requires; if a routed skill is not installed, follow the stated principle anyway.
+
+| Situation | Route |
+| --- | --- |
+| New feature with open design questions | `grill-with-docs` |
+| Hard bug resisting a first glance | `diagnosing-bugs` |
+| Multi-session feature build | `to-spec` → `to-tickets` → `orchestrate-worktrees` |
+| Incoming bugs and requests pile up | `triage` |
+| Reviewing a diff, branch, or PR | `code-review` |
+| Completed build, especially a bumpy one | propose `retro` |
+| Fuzzy or overloaded domain term | `domain-modeling` |
+| Huge, foggy effort | `wayfinder` |
+
+The full map (including codebase-design, prototype, and research), phase boundaries, and precedence rules live in [docs/agents/skill-routing.md](docs/agents/skill-routing.md).
 
 ## Project Structure & Module Organization
 
@@ -59,6 +76,7 @@ Use the document for the task at hand:
 | Upstream harness work | [upstream lock](docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md), [patch ledger](UPSTREAM_PATCH_LEDGER.md) | Relevant compatibility checks |
 | Local runtime patches | [runtime patch ledger](docs/local-runtime/PATCH_LEDGER.md) | Listed patch-specific validation |
 | Issue triage | [issue tracker](docs/agents/issue-tracker.md), [triage labels](docs/agents/triage-labels.md) | Keep the issue state and labels current |
+| Workflow choice or skill routing | [skill routing map](docs/agents/skill-routing.md) | Follow the precedence rules in that document |
 
 `docs/README.md` is the engineering documentation index. `docs/adr/` holds ADR records; `docs/decisions/` holds dated decisions, and both are indexed from the decisions README. Current documents govern active work. Drafts are proposals, superseded documents point to their replacement, and archived records provide history only. A historical test result never satisfies validation for the current candidate. Update documentation when behavior, interfaces, configuration, architecture, or workflow changes.
 
