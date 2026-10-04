@@ -1,6 +1,15 @@
+---
+id: backend-docs-archive-2026-memory-improvements-summary
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: summary of memory prompt-injection implementation status as of 2026-03-10 on main, companion to memory-improvements-2026-03-10
+archived-reason: point-in-time status snapshot; the format_memory_for_injection API it describes has since been replaced by the MemoryManager flow in backend/packages/harness/deerflow/agents/memory/manager.py
+---
+
 # Memory System Improvements - Summary
 
-> status: archived; current behavior reference: `backend/docs/MEMORY_SETTINGS_REVIEW.md`
+> status: archived; current memory implementation: `backend/packages/harness/deerflow/agents/memory/manager.py` (MemoryManager; the API shape below is historical)
 > source date: 2026-03-10
 > canonical-path: `backend/docs/archive/2026/memory-improvements-summary-2026-03-10.md`
 
@@ -36,6 +45,8 @@ def format_memory_for_injection(memory_data: dict[str, Any], max_tokens: int = 2
 No `current_context` argument is currently available in `main`.
 
 ## Verification Pointers
+
+> Historical paths as of 2026-03-10; the current memory implementation is `backend/packages/harness/deerflow/agents/memory/manager.py`.
 
 - Implementation: `packages/harness/ideer/agents/memory/prompt.py`
 - Prompt assembly: `packages/harness/ideer/agents/lead_agent/prompt.py`

@@ -1,3 +1,12 @@
+---
+id: backend-docs-archive-2026-title-generation-implementation
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: automatic title-generation implementation record (completed 2026-01-14): ThreadState title field, TitleMiddleware, config wiring, and design rationale as of that candidate
+archived-reason: point-in-time implementation summary; current behavior authority is backend/docs/AUTO_TITLE_GENERATION.md
+---
+
 # 自动 Title 生成功能实现总结
 
 > status: archived; current behavior reference: `backend/docs/AUTO_TITLE_GENERATION.md`
@@ -8,27 +17,27 @@
 
 ### 1. 核心实现文件
 
-#### [`packages/harness/ideer/agents/thread_state.py`](../../../packages/harness/ideer/agents/thread_state.py)
+#### [`packages/harness/deerflow/agents/thread_state.py`](../../../packages/harness/deerflow/agents/thread_state.py)
 - ✅ 添加 `title: str | None = None` 字段到 `ThreadState`
 
-#### [`packages/harness/ideer/config/title_config.py`](../../../packages/harness/ideer/config/title_config.py) (新建)
+#### [`packages/harness/deerflow/config/title_config.py`](../../../packages/harness/deerflow/config/title_config.py) (新建)
 - ✅ 创建 `TitleConfig` 配置类
 - ✅ 支持配置：enabled, max_words, max_chars, model_name, prompt_template
 - ✅ 提供 `get_title_config()` 和 `set_title_config()` 函数
 - ✅ 提供 `load_title_config_from_dict()` 从配置文件加载
 
-#### [`packages/harness/ideer/agents/middlewares/title_middleware.py`](../../../packages/harness/ideer/agents/middlewares/title_middleware.py) (新建)
+#### [`packages/harness/deerflow/agents/middlewares/title_middleware.py`](../../../packages/harness/deerflow/agents/middlewares/title_middleware.py) (新建)
 - ✅ 创建 `TitleMiddleware` 类
 - ✅ 实现 `_should_generate_title()` 检查是否需要生成
 - ✅ 实现 `_generate_title()` 调用 LLM 生成标题
 - ✅ 实现 `after_agent()` 钩子，在首次对话后自动触发
 - ✅ 包含 fallback 策略（LLM 失败时使用用户消息前几个词）
 
-#### [`packages/harness/ideer/config/app_config.py`](../../../packages/harness/ideer/config/app_config.py)
+#### [`packages/harness/deerflow/config/app_config.py`](../../../packages/harness/deerflow/config/app_config.py)
 - ✅ 导入 `load_title_config_from_dict`
 - ✅ 在 `from_file()` 中加载 title 配置
 
-#### [`packages/harness/ideer/agents/lead_agent/agent.py`](../../../packages/harness/ideer/agents/lead_agent/agent.py)
+#### [`packages/harness/deerflow/agents/lead_agent/agent.py`](../../../packages/harness/deerflow/agents/lead_agent/agent.py)
 - ✅ 导入 `TitleMiddleware`
 - ✅ 注册到 `middleware` 列表：`[SandboxMiddleware(), TitleMiddleware()]`
 
@@ -60,7 +69,7 @@ title:
 
 ### 4. 测试
 
-#### `backend/tests/test_title_generation.py`（历史实现记录中的测试路径）
+#### `backend/tests/test_title_generation.py`（历史实现记录中的测试路径；现位于 `backend/tests/unit/runtime/test_title_generation.py`）
 - ✅ 配置类测试
 - ✅ Middleware 初始化测试
 - ✅ TODO: 集成测试（需要 mock Runtime）

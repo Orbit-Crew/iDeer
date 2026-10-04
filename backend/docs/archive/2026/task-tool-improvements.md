@@ -1,6 +1,15 @@
+---
+id: backend-docs-archive-2026-task-tool-improvements
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026 task-tool rework record that removed the run_in_background parameter and LLM-side polling in favor of backend polling, with the timeout and thread-pool mechanics as documented then
+archived-reason: point-in-time change record; the current implementation in backend/packages/harness/deerflow/tools/builtins/task_tool.py has since evolved (async polling with a max_polls budget, subagents.timeout_seconds default 900) and no longer matches the numbers below
+---
+
 # Task Tool Improvements
 
-> status: archived; implementation is already in the current codebase
+> status: archived; the rework described here landed, but the current implementation is `backend/packages/harness/deerflow/tools/builtins/task_tool.py` and its timeouts/poll mechanics have since evolved
 > source date: 2026
 > canonical-path: `backend/docs/archive/2026/task-tool-improvements.md`
 

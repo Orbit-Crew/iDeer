@@ -1,8 +1,18 @@
+---
+id: backend-docs-archive-2026-auth-test-docker-gap
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026 release-validation pass for its candidate: un-executed TC-DOCKER cases, their non-Docker coverage equivalents, and the ship decision recorded then
+archived-reason: point-in-time validation record scoped to the release candidate it validated; current testing authority is docs/testing/coverage-matrix.md
+---
+
 # Docker Test Gap (Section 七 7.4)
 
 > status: archived; current testing authority: `docs/testing/coverage-matrix.md`
 > source date: 2026
 > canonical-path: `backend/docs/archive/2026/auth-test-docker-gap.md`
+> parallel record: the pre-rename variant of this gap report is preserved at `backend/docs/AUTH_TEST_DOCKER_GAP.md` (also archived)
 
 This file documents the only **un-executed** test cases from
 the archived auth test plan after the full release validation pass.
