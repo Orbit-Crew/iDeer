@@ -229,19 +229,15 @@ ideer/
 │       ├── nginx.conf      # Nginx config for Docker
 │       └── nginx.local.conf # Nginx config for local dev
 ├── backend/                 # Backend application
-│   ├── src/
-│   │   ├── gateway/        # Gateway API and LangGraph-compatible runtime (port 8001)
-│   │   ├── agents/         # LangGraph agent runtime used by Gateway
-│   │   ├── mcp/            # Model Context Protocol integration
-│   │   ├── skills/         # Skills system
-│   │   └── sandbox/        # Sandbox execution
+│   ├── app/
+│   │   └── gateway/        # Gateway API and LangGraph-compatible runtime (port 8001)
+│   ├── packages/harness/deerflow/  # LangGraph agent runtime used by Gateway (agents, mcp, skills, sandbox)
 │   ├── docs/               # Backend documentation
 │   └── Makefile            # Backend commands
 ├── frontend/               # Frontend application
 │   └── Makefile            # Frontend commands
 └── skills/                 # Agent skills
-    ├── public/             # Public skills
-    └── custom/             # Custom skills
+    └── public/             # Public skills
 ```
 
 ## Architecture
@@ -320,7 +316,7 @@ Every pull request triggers the following CI workflows:
 ## Documentation
 
 - [Configuration Guide](backend/docs/CONFIGURATION.md) - Setup and configuration
-- [Architecture Overview](backend/CLAUDE.md) - Technical architecture
+- [Architecture Overview](backend/README.md) - Technical architecture
 - [MCP Setup Guide](backend/docs/MCP_SERVER.md) - Model Context Protocol configuration
 
 ## Need Help?

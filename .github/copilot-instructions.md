@@ -1,6 +1,6 @@
 # Copilot Onboarding Instructions for iDeer
 
-Use this file as the default operating guide for this repository. Follow it first, and only search the codebase when this file is incomplete or incorrect.
+`AGENTS.md` at the repository root is the primary operating guide; follow it first. Use this file as its companion for verified command sequences and repository layout, and search the codebase when either file is incomplete or incorrect.
 
 ## 1) Repository Summary
 
@@ -81,7 +81,7 @@ Observed failure modes and workarounds:
 - `pnpm build` fails without `BETTER_AUTH_SECRET` in production-mode env validation.
 - Workaround: set `BETTER_AUTH_SECRET` (best) or set `SKIP_ENV_VALIDATION=1`.
 - Even with `SKIP_ENV_VALIDATION=1`, Better Auth can still warn/error in logs about default secret; prefer setting a real non-default secret.
-- `pnpm check` currently fails (`next lint` invocation is incompatible here and resolves to an invalid directory). Do not rely on `pnpm check`; run `pnpm lint` and `pnpm typecheck` explicitly.
+- `pnpm check` runs `eslint . --ext .ts,.tsx && tsc --noEmit` (lint plus typecheck in one command). Run `pnpm lint` and `pnpm typecheck` separately if you need the individual steps.
 
 ### D. Run locally (all services)
 
@@ -143,12 +143,12 @@ Root-level orchestration and config:
 
 Backend core:
 
-- `backend/packages/harness/ideer/agents/` - lead agent, middleware chain, memory
+- `backend/packages/harness/deerflow/agents/` - lead agent, middleware chain, memory
 - `backend/app/gateway/` - FastAPI gateway API
-- `backend/packages/harness/ideer/sandbox/` - sandbox provider + tool wrappers
-- `backend/packages/harness/ideer/subagents/` - subagent registry/execution
-- `backend/packages/harness/ideer/mcp/` - MCP integration
-- `backend/langgraph.json` - graph entrypoint (`ideer.agents:make_lead_agent`)
+- `backend/packages/harness/deerflow/sandbox/` - sandbox provider + tool wrappers
+- `backend/packages/harness/deerflow/subagents/` - subagent registry/execution
+- `backend/packages/harness/deerflow/mcp/` - MCP integration
+- `backend/langgraph.json` - graph entrypoint (`deerflow.agents:make_lead_agent`)
 - `backend/pyproject.toml` - Python deps and `requires-python`
 - `backend/ruff.toml` - lint/format policy
 - `backend/tests/` - backend unit and integration-like tests
@@ -175,7 +175,7 @@ Before submitting changes, run at minimum:
 - Frontend (if touched): `cd frontend && pnpm lint && pnpm typecheck`
 - Frontend build when changing env/auth/routing/build-sensitive files: `BETTER_AUTH_SECRET=... pnpm build`
 
-If touching orchestration/config (`Makefile`, `docker/*`, `config*.yaml`), also run `make dev` and verify the four services start.
+If touching orchestration/config (`Makefile`, `docker/*`, `config*.yaml`), also run `make dev` and verify the three services start.
 
 ## 7) Non-Obvious Dependencies and Gotchas
 
@@ -204,7 +204,7 @@ Important root entries:
 
 ## 9) Instruction Priority
 
-Trust this onboarding guide first.
+Trust `AGENTS.md` at the repository root first; it is the single primary operating guide for this repository. This file is the quick-start companion.
 
 Only do broad repo searches (`grep/find/code search`) when:
 
