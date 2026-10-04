@@ -1,3 +1,13 @@
+---
+id: contributing
+kind: reference
+status: current
+owner: repository maintainers
+scope: development environment setup, local and Docker workflow, and contribution process
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ ed87169e7
+---
+
 # Contributing to iDeer
 
 Thank you for your interest in contributing to iDeer! This guide will help you set up your development environment and understand our development workflow.
@@ -315,6 +325,7 @@ Every pull request triggers the following CI workflows:
 
 ## Documentation
 
+- [Engineering docs index](docs/README.md) - Entry point for architecture, testing, operations, and governance documents
 - [Configuration Guide](backend/docs/CONFIGURATION.md) - Setup and configuration
 - [Architecture Overview](backend/README.md) - Technical architecture
 - [MCP Setup Guide](backend/docs/MCP_SERVER.md) - Model Context Protocol configuration

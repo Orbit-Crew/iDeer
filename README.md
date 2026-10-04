@@ -1,3 +1,13 @@
+---
+id: readme-root
+kind: reference
+status: current
+owner: repository maintainers
+scope: project overview, quick start, and feature summary for the public repository
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ ed87169e7
+---
+
 # 🦌 iDeer - 2.0
 
 English | [中文](./README_zh.md) | [日本語](./README_ja.md) | [Français](./README_fr.md) | [Русский](./README_ru.md)
@@ -44,7 +54,7 @@ iDeer has newly integrated the intelligent search and crawling toolset independe
 
 ## Table of Contents
 
-- [🦌 iDeer - 2.0](#-ideer---20)
+- [🦌 iDeer - 2.0](#ideer---20)
   - [Official Website](#official-website)
   - [Coding Plan from ByteDance Volcengine](#coding-plan-from-bytedance-volcengine)
   - [InfoQuest](#infoquest)
@@ -74,7 +84,7 @@ iDeer has newly integrated the intelligent search and crawling toolset independe
   - [Recommended Models](#recommended-models)
   - [Embedded Python Client](#embedded-python-client)
   - [Documentation](#documentation)
-  - [⚠️ Security Notice](#️-security-notice)
+  - [⚠️ Security Notice](#security-notice)
     - [Improper Deployment May Introduce Security Risks](#improper-deployment-may-introduce-security-risks)
     - [Security Recommendations](#security-recommendations)
   - [Contributing](#contributing)
@@ -227,7 +237,7 @@ make docker-init    # Pull sandbox image (only once or when image updates)
 make docker-start   # Start services (auto-detects sandbox mode from config.yaml)
 ```
 
-`make docker-start` starts `provisioner` only when `config.yaml` uses provisioner mode (`sandbox.use: ideer.community.aio_sandbox:AioSandboxProvider` with `provisioner_url`).
+`make docker-start` starts `provisioner` only when `config.yaml` uses provisioner mode (`sandbox.use: deerflow.community.aio_sandbox:AioSandboxProvider` with `provisioner_url`).
 
 Docker builds use the upstream `uv` registry by default. If you need faster mirrors in restricted networks, export `UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple` and `NPM_REGISTRY=https://registry.npmmirror.com` before running `make docker-init` or `make docker-start`.
 
@@ -253,7 +263,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed Docker development guide.
 
 If you prefer running services locally:
 
-Prerequisite: complete the "Configuration" steps above first (`make setup`). `make dev` requires a valid `config.yaml` in the project root. Set `IDEER_PROJECT_ROOT` to define that root explicitly, or `IDEER_CONFIG_PATH` to point at a specific config file. Runtime state defaults to `.ideer` under the project root and can be moved with `IDEER_HOME`; skills default to `skills/` under the project root and can be moved with `IDEER_SKILLS_PATH`. Run `make doctor` to verify your setup before starting.
+Prerequisite: complete the "Configuration" steps above first (`make setup`). `make dev` requires a valid `config.yaml` in the project root. Set `IDEER_PROJECT_ROOT` to define that root explicitly, or `IDEER_CONFIG_PATH` to point at a specific config file. Runtime state defaults to `.deer-flow` under the project root and can be moved with `IDEER_HOME`; skills default to `skills/` under the project root and can be moved with `IDEER_SKILLS_PATH`. Run `make doctor` to verify your setup before starting.
 On Windows, run the local development flow from Git Bash. Native `cmd.exe` and PowerShell shells are not supported for the bash-based service scripts, and WSL is not guaranteed because some scripts rely on Git for Windows utilities such as `cygpath`.
 
 1. **Check prerequisites**:
@@ -406,7 +416,7 @@ channels:
     qrcode_login_enabled: true      # optional: allow first-time QR bootstrap when bot_token is absent
     allowed_users: []               # empty = allow all
     polling_timeout: 35
-    state_dir: ./.ideer/wechat/state
+    state_dir: ./.deer-flow/wechat/state
     max_inbound_image_bytes: 20971520
     max_outbound_image_bytes: 20971520
     max_inbound_file_bytes: 52428800
@@ -510,7 +520,7 @@ DINGTALK_CLIENT_SECRET=your_client_secret
 4. *(Optional)* To enable streaming AI Card replies (typewriter effect), create an **AI Card** template on the [DingTalk Card Platform](https://open.dingtalk.com/document/dingstart/typewriter-effect-streaming-ai-card), then set `card_template_id` in `config.yaml` to the template ID. You also need to apply for the `Card.Streaming.Write` and `Card.Instance.Write` permissions.
 
 
-When iDeer runs in Docker Compose, IM channels execute inside the `gateway` container. In that case, do not point `channels.langgraph_url` or `channels.gateway_url` at `localhost`; use container service names such as `http://gateway:8001/api` and `http://gateway:8001`, or set `IDEER_CHANNELS_LANGGRAPH_URL` and `IDEER_CHANNELS_GATEWAY_URL`.
+When iDeer runs in Docker Compose, IM channels execute inside the `gateway` container. In that case, do not point `channels.langgraph_url` or `channels.gateway_url` at `localhost`; use container service names such as `http://gateway:8001/api` and `http://gateway:8001`, or set `DEER_FLOW_CHANNELS_LANGGRAPH_URL` and `DEER_FLOW_CHANNELS_GATEWAY_URL`.
 
 **Commands**
 
@@ -561,7 +571,7 @@ If you are using a self-hosted Langfuse instance, set `LANGFUSE_BASE_URL` to you
 - `trace_name` = assistant id (defaults to `lead-agent`)
 - `tags` = `[env:<IDEER_ENV>, model:<model_name>]` (omitted when not set)
 
-These are injected into `RunnableConfig.metadata` at the graph invocation root for both the gateway path (`runtime/runs/worker.py::run_agent`) and the embedded path (`client.py::iDeerClient.stream`), so any LangChain-compatible callback can read them. Set `IDEER_ENV` (or `ENVIRONMENT`) to tag traces by deployment environment.
+These are injected into `RunnableConfig.metadata` at the graph invocation root for both the gateway path (`runtime/runs/worker.py::run_agent`) and the embedded path (`client.py::DeerFlowClient.stream`), so any LangChain-compatible callback can read them. Set `DEER_FLOW_ENV` (or `ENVIRONMENT`) to tag traces by deployment environment.
 
 #### Using Both Providers
 
@@ -698,12 +708,12 @@ iDeer is model-agnostic — it works with any LLM that implements the OpenAI-com
 
 ## Embedded Python Client
 
-iDeer can be used as an embedded Python library without running the full HTTP services. The `iDeerClient` provides direct in-process access to all agent and Gateway capabilities, returning the same response schemas as the HTTP Gateway API. The HTTP Gateway also exposes `DELETE /api/threads/{thread_id}` to remove iDeer-managed local thread data after the LangGraph thread itself has been deleted:
+iDeer can be used as an embedded Python library without running the full HTTP services. The `DeerFlowClient` provides direct in-process access to all agent and Gateway capabilities, returning the same response schemas as the HTTP Gateway API. The HTTP Gateway also exposes `DELETE /api/threads/{thread_id}` to remove iDeer-managed local thread data after the LangGraph thread itself has been deleted:
 
 ```python
-from ideer.client import iDeerClient
+from deerflow.client import DeerFlowClient
 
-client = iDeerClient()
+client = DeerFlowClient()
 
 # Chat
 response = client.chat("Analyze this paper for me", thread_id="my-thread")
@@ -720,7 +730,7 @@ client.update_skill("web-search", enabled=True)
 client.upload_files("thread-1", ["./report.pdf"])  # {"success": True, "files": [...]}
 ```
 
-All dict-returning methods are validated against Gateway Pydantic response models in CI (`TestGatewayConformance`), ensuring the embedded client stays in sync with the HTTP API schemas. See `backend/packages/harness/ideer/client.py` for full API documentation.
+All dict-returning methods are validated against Gateway Pydantic response models in CI (`TestGatewayConformance`), ensuring the embedded client stays in sync with the HTTP API schemas. See `backend/packages/harness/deerflow/client.py` for full API documentation.
 
 ## Documentation
 

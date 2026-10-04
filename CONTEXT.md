@@ -1,8 +1,18 @@
+---
+id: context
+kind: reference
+status: current
+owner: repository maintainers
+scope: engineering terminology and product concept definitions for the whole repository
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ ed87169e7
+---
+
 # iDeer
 
 iDeer is an agent application that composes Thread, Agent, Skill, and Workflow resources into executable Runs.
 
-CONTEXT.md is the repository's single authority for engineering terminology. The [UI term table](docs/plans/2026-08-26-term-glossary.md) covers interface display-language copy only and does not redefine the engineering terms here.
+CONTEXT.md is the repository's single authority for engineering terminology. Read it when naming or reviewing resources, routes, components, or API fields, or when two documents disagree on a term's meaning. The [UI term table](docs/plans/2026-08-26-term-glossary.md) covers interface display-language copy only and does not redefine the engineering terms here.
 
 ## Scenario Entry
 
