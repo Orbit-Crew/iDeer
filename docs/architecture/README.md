@@ -1,9 +1,19 @@
+---
+id: docs-architecture-readme
+kind: index
+status: current
+owner: repository maintainers
+scope: architecture documentation index linking the architecture overview, backend architecture references, and the offline product-line boundary plan
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 0e9cd4562
+---
+
 # 架构文档
 
 > audience: developers, architects<br>
 > status: current<br>
 > owner: engineering maintainers<br>
-> last-verified: 2026-07-15<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/architecture/README.md`
 
 - [项目架构概览](overview.md)
