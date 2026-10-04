@@ -1,11 +1,23 @@
 """Tests for per-user data migration."""
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
 
 from deerflow.config.paths import Paths
+
+
+def _seed_threads_db(db_path: Path, rows: list[tuple[str, str]]) -> None:
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("CREATE TABLE threads_meta (thread_id TEXT, user_id TEXT)")
+        conn.executemany("INSERT INTO threads_meta VALUES (?, ?)", rows)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 @pytest.fixture
@@ -91,6 +103,51 @@ class TestMigrateThreadDirs:
         assert len(report) == 1
         assert (base_dir / "threads" / "t1").exists()  # not moved
         assert not (base_dir / "users" / "alice" / "threads" / "t1").exists()
+
+
+class TestBuildOwnerMapFromDb:
+    def test_reads_owner_map_from_deerflow_db_under_data_dir(self, base_dir: Path, paths: Paths):
+        # Current runtime layout: {sqlite_dir}/deerflow.db with sqlite_dir
+        # defaulting to {base_dir}/data (see deerflow.config.database_config).
+        _seed_threads_db(base_dir / "data" / "deerflow.db", [("t1", "alice"), ("t2", "bob")])
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice", "t2": "bob"}
+
+    def test_falls_back_to_legacy_ideer_db(self, base_dir: Path, paths: Paths):
+        _seed_threads_db(base_dir / "ideer.db", [("t1", "alice")])
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice"}
+
+    def test_prefers_new_db_name_over_legacy(self, base_dir: Path, paths: Paths):
+        _seed_threads_db(base_dir / "data" / "deerflow.db", [("t1", "alice")])
+        _seed_threads_db(base_dir / "data" / "ideer.db", [("t1", "legacy-owner")])
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice"}
+
+    def test_returns_empty_when_no_db_exists(self, base_dir: Path, paths: Paths):
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {}
+
+    def test_ignores_null_owners(self, base_dir: Path, paths: Paths):
+        db_path = base_dir / "data" / "deerflow.db"
+        _seed_threads_db(db_path, [("t1", "alice")])
+        conn = sqlite3.connect(str(db_path))
+        try:
+            conn.execute("INSERT INTO threads_meta VALUES ('t2', NULL)")
+            conn.commit()
+        finally:
+            conn.close()
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice"}
 
 
 class TestMigrateMemory:
