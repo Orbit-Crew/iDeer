@@ -1,4 +1,14 @@
+---
+id: docs-archive-2026-optimization-implementation-roadmap
+kind: plan
+status: archived
+owner: repository maintainers
+scope: offline_feature-era 12-week implementation roadmap (finalized approx. 2026-06-10): sequencing bug fixes, test additions, security hardening, and documentation/performance work with staffing-trim options for that candidate
+archived-reason: schedule for the ideer-harness candidate; items were partially executed and later re-scoped, and current unfinished work is tracked in docs/backlog.md
+---
 # 实施路线图
+
+> status: archived（offline_feature 时期实施路线图，约 2026-06-10 定稿）。2026-10-04 核对：交付物路径为该时点计划——`docs/user-manual/` 未在当前候选创建，`docs/deployment/` 存在；优化方案本体已归档于本目录。当前未完成事项入口：[backlog.md](../../../backlog.md)。正文按历史记录保留。
 
 ## 概述
 

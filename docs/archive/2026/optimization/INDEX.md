@@ -1,3 +1,11 @@
+---
+id: docs-archive-2026-optimization-index
+kind: index
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 index of the offline_feature-era optimization plan set (bug fix, testing, documentation, performance, security, roadmap) with priority navigation for that candidate
+archived-reason: the indexed plans are historical; archive conclusions and current replacement entries live in this file and docs/archive/2026/README.md
+---
 # iDeer 企业内网平台优化方案文档索引
 
 > audience: maintainers, auditors<br>
@@ -5,6 +13,8 @@
 > owner: repository maintainers<br>
 > last-verified: 2026-07-15<br>
 > canonical-path: `docs/archive/2026/optimization/INDEX.md`
+
+> 2026-10-04 核对：快速导航中 9 处失效锚点已改指正文实际标题锚点；`docs/bug-list.md` 现为时点归档快照，现行未完成事项入口为 [backlog.md](../../../backlog.md)。索引数据（测试文件数、Bug 数）为 2026-06-10 时点事实。正文按历史记录保留。
 
 > 最后更新：2026-06-10
 > 基准数据：211 个后端测试文件 / 30 个前端测试文件 / 37 个已知遗留 Bug
@@ -53,16 +63,16 @@
 ### 按优先级
 
 #### 🔴 P0 — 必须立即修复（阻塞 PR 合并）
-- [工作流 goto 跳转失效](01-bug-fix-and-feature-completion.md#bug-c01)
-- [Auth bypass 检查逻辑缺陷](01-bug-fix-and-feature-completion.md#bug-c02)
-- [RBAC 数据库故障时权限升级](01-bug-fix-and-feature-completion.md#bug-h01)
-- [前端 Admin 页面无角色校验](01-bug-fix-and-feature-completion.md#bug-f01)
+- [工作流 goto 跳转失效](01-bug-fix-and-feature-completion.md#c01-工作流-goto-跳转实际不生效)
+- [Auth bypass 检查逻辑缺陷](01-bug-fix-and-feature-completion.md#c02-auth-bypass-检查逻辑缺陷)
+- [RBAC 数据库故障时权限升级](01-bug-fix-and-feature-completion.md#h01-rbac-数据库故障时权限升级)
+- [前端 Admin 页面无角色校验](01-bug-fix-and-feature-completion.md#f01-admin-页面无角色校验)
 
 #### 🟡 P1 — 本迭代必须完成
-- [前端 API 缺少错误处理](01-bug-fix-and-feature-completion.md#bug-f02)
-- [Skill 保存功能未实现](01-bug-fix-and-feature-completion.md#bug-f03)
-- [MCP 缓存竞态条件](01-bug-fix-and-feature-completion.md#bug-h02)
-- [工作流表达式运算符匹配缺陷](01-bug-fix-and-feature-completion.md#bug-h03)
+- [前端 API 缺少错误处理](01-bug-fix-and-feature-completion.md#f02-多个-api-模块缺少-responseok-检查)
+- [Skill 保存功能未实现](01-bug-fix-and-feature-completion.md#f03-skill-保存功能未实现)
+- [MCP 缓存竞态条件](01-bug-fix-and-feature-completion.md#h02-mcp-缓存初始化竞态条件)
+- [工作流表达式运算符匹配缺陷](01-bug-fix-and-feature-completion.md#h03-工作流表达式运算符子串匹配)
 
 #### 🟢 P2 — 建议完成
 - [测试覆盖补充](02-testing-improvement.md)
@@ -89,7 +99,7 @@
 
 #### 第四阶段：性能与验收（第 11-12 周）
 - [性能优化](04-performance-optimization.md)
-- [集成测试与验收](implementation-roadmap.md#第-11-周集成测试与验收)
+- [集成验收（第 12 周）](implementation-roadmap.md#第-12-周集成验收)
 
 ---
 

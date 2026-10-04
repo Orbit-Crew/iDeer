@@ -1,3 +1,11 @@
+---
+id: docs-archive-2026-optimization-readme
+kind: index
+status: archived
+owner: repository maintainers
+scope: archive overview and conclusions for the offline_feature-era optimization plan set: completed and uncompleted split plus current replacement entries (testing coverage matrix, offline product line governance plan, backlog)
+archived-reason: the plan set it introduces is archived; the current execution entries are the intranet offline deployment work instruction and the offline product line governance plan
+---
 # 2026 优化方案归档索引
 
 > audience: maintainers, auditors<br>
@@ -5,6 +13,8 @@
 > owner: repository maintainers<br>
 > last-verified: 2026-07-15<br>
 > canonical-path: `docs/archive/2026/optimization/README.md`
+
+> 2026-10-04 核对：所列当前替代入口（coverage-matrix、离线产品线治理方案、backlog）与当前候选路径一致，链接有效。正文按历史记录保留。
 
 原始目录：`docs/optimization/`。这些文件记录 offline_feature 阶段的优化目标、阶段路线和验证材料。
 
