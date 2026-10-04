@@ -1,8 +1,21 @@
+---
+id: docs-archive-2026-offline-incidents-2026-07-15-agent-memory-path-shadowing
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-06-01 ideer-harness 时期候选的一次排障复盘（文件名日期为归档入册日期）：按 Agent 记忆写入 users/<user_id>/agents/<agent_name>/memory.json 遮蔽共享智能体 fault-zeroing 的根因（5 Whys）、agent-memory/ 命名空间拆分修复、路径层与存储层改动、回归测试与验证记录
+archived-reason: 已修复故障的复盘证据；正文记录的路径布局与修复属 ideer-harness 时期（backend/packages/harness/ideer/，该路径布局自 2026-09 起已移除），现行相关行为以 backend/packages/harness/deerflow/config/paths.py 与 backend/packages/harness/deerflow/config/agents_config.py 为准
+---
+
 # Agent 记忆路径遮蔽共享智能体排障复盘
 
 日期：2026-06-01
 状态：已修复
 相关提交：`5b8331da fix(memory): isolate per-agent memory paths`
+
+> status: archived; current behavior authorities: `backend/packages/harness/deerflow/config/paths.py`、`backend/packages/harness/deerflow/config/agents_config.py`
+> source period: ideer-harness 时期候选（正文路径 `packages/harness/ideer/...`，约 2026-06；该路径布局自 2026-09 起已移除；正文日期 2026-06-01，文件名日期为归档入册日期）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。正文所列测试文件在当前候选仍存在（`backend/tests/test_paths_user_isolation.py`、`backend/tests/test_memory_storage_user_isolation.py`、`backend/tests/test_memory_storage.py`、`backend/tests/test_custom_agent.py`）。已漂移：`agent-memory/` 命名空间拆分不在当前候选——现行 `Paths.agent_memory_file`/`user_agent_memory_file` 仍返回 `agents/<name>/memory.json` 布局；共享智能体不被 memory 目录遮蔽的现行机制是配置加载器要求用户级 `agents/<name>/` 目录必须含 `config.yaml` 才视为有效 Agent 目录（`backend/packages/harness/deerflow/config/agents_config.py`，注释引 #3390）。unverified：相关提交 `5b8331da` 在当前候选 Git 历史中不可见，正文提交号与 focused tests 计数（85 passed）无法在本候选复核。
 
 ## 摘要
 

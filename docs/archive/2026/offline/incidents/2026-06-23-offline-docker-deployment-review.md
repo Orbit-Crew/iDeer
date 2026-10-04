@@ -1,6 +1,19 @@
+---
+id: docs-archive-2026-offline-incidents-2026-06-23-offline-docker-deployment-review
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-05-27 的人工代码审查报告（文件名日期为归档入册日期）：内网离线 Docker 部署三起实操问题（env 文件命名、config.yaml 不可启动、登录后无法进入主页）的代码定位，九项发现（env 命名合同、models: null、Gateway 启动连锁失败、内部鉴权 token、源码包泄漏、预检缺失、密钥持久化、根部 compose 误用、.claude/.codex 挂载）与修复建议
+archived-reason: 时点审查报告，其建议已由后续整改落地（见同目录 2026-06-23-offline-docker-remediation.md 与 2026-06-23-offline-docker-image-build.md），按历史证据保留；现行内网部署权威：scripts/README-intranet.md、docs/deployment/禁公网内网离线部署作业指导书.md
+---
+
 # 离线 Docker 部署实操问题代码审查报告
 
 日期：2026-05-27
+
+> status: archived; current intranet deployment authorities: `scripts/README-intranet.md`、`docs/deployment/禁公网内网离线部署作业指导书.md`
+> source period: 2026-05-27 审查时点的候选（正文日期为准；文件名日期为归档入册日期）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。所引文件均仍存在（`scripts/deploy-intranet.sh`、`scripts/package-intranet-offline.sh`、`docker/docker-compose.intranet.yaml`、`frontend/src/core/auth/server.ts`、`frontend/src/app/workspace/layout.tsx`、`config.example.yaml`、`backend/app/gateway/internal_auth.py`、`backend/app/channels/manager.py`）。问题 1–7 与 9 的建议已在现行脚本/compose 落地：compose 前端 env_file 为强依赖 `${IDEER_FRONTEND_ENV_FILE:?...}`（误导性 fallback 已移除）；`config.example.yaml` 仍为裸 `models:`（全部注释），改为由 `deploy-intranet.sh` prepare 生成 `models: []`（采纳"生成最小运行配置"路径而非改模板）；`IDEER_INTERNAL_AUTH_TOKEN` 已注入 intranet compose 并持久化到 `runtime/data/.internal-auth-token`；`BETTER_AUTH_SECRET` 持久化到 `runtime/data/.better-auth-secret`；打包排除 `frontend/.env`、`frontend/test-results`、`frontend/playwright-report`、`backend/.ruff_cache`；intranet compose 三个服务均含 healthcheck，`.claude`/`.codex` 默认挂载已移除。正文引用的 `seed_runtime()` 等函数名对应当日脚本版本，现行脚本（新增增量包、超级管理员初始化、`validate_runtime()` 等）不逐行对应。问题 8 所述 `MANIFEST.txt` 提示落地情况未逐项核对（unverified）。
 
 ## 审查背景
 
