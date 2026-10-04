@@ -1,4 +1,4 @@
-# CLAUDE.md
+# iDeer 架构概览
 
 > audience: developers, architects<br>
 > status: current<br>
@@ -6,13 +6,15 @@
 > last-verified: 2026-09-20<br>
 > canonical-path: `docs/architecture/overview.md`
 
-本文件为 Claude Code（claude.ai/code）在本仓库中处理代码时提供指导。
+本文件描述 iDeer 当前的系统边界与执行关系，是[架构索引](README.md)下的架构基线参考之一。工程术语以根目录 [CONTEXT.md](../../CONTEXT.md) 为权威；[UI 术语对照表](../plans/2026-08-26-term-glossary.md) 仅覆盖界面显示语言（i18n 文案），不构成工程术语定义。按任务进入文档见[工程文档入口](../README.md)与[任务路由](../agents/task-routing.md)。
 
 ## 项目概览
 
 iDeer 是一个基于 LangGraph 的 AI 超级智能体系统，采用全栈架构。后端提供“超级智能体”能力，包含沙箱执行、持久化记忆、子智能体委托以及可扩展工具集成，且所有能力都运行在线程级隔离环境中。
 
 ## 当前集成进展（2026-09-21）
+
+本节是 2026-09-21 的时点集成状态快照，属于历史时点记录，不是当前架构边界或当前验收状态；历史测试结果不作为当前候选的验证依据。
 
 | 工作包 | 代码状态 | 验收状态 |
 | --- | --- | --- |
@@ -88,14 +90,7 @@ ideer/
 
 ### 文档更新策略
 
-**关键要求：每次代码变更后都必须更新 README.md 和 CLAUDE.md**
-
-进行代码变更时，必须更新相关文档：
-
-- 面向用户的变更（功能、安装、使用说明）更新 `README.md`
-- 开发相关变更（架构、命令、工作流、内部系统）更新 `CLAUDE.md`
-- 始终保持文档与代码库同步
-- 确保所有文档准确且及时
+文档随行为、接口、配置、架构或工作流的变更而更新；入口见 [docs/README.md](../README.md)。规则与代理指南的维护遵循根 `AGENTS.md` 的 Guidance maintenance 约定：`AGENTS.md` 是唯一来源，`CLAUDE.md` 由同步脚本生成，不手工编辑。
 
 ## 命令
 

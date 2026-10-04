@@ -2,6 +2,8 @@
 
 iDeer is an agent application that composes Thread, Agent, Skill, and Workflow resources into executable Runs.
 
+CONTEXT.md is the repository's single authority for engineering terminology. The [UI term table](docs/plans/2026-08-26-term-glossary.md) covers interface display-language copy only and does not redefine the engineering terms here.
+
 ## Scenario Entry
 
 **Scenario Tab**:

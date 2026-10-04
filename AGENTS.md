@@ -64,19 +64,9 @@ Keep enterprise behavior at the extension boundary. Prefer, in order, Extension,
 
 For each harness patch, record its reason, alternatives, impact, validation, owner, and removal condition in the applicable patch ledger. Resolve upstream conflicts by behavior and contract; review each conflicted change instead of accepting one side globally. Track upstream synchronization, product integration, and compatibility validation as separate states. Contract and patch registration checks prove that changes are recorded, not that behavior is compatible; compatibility evidence comes from the relevant tests and review.
 
-### Task documentation map
+### Task documentation routing
 
-Use the document for the task at hand:
-
-| Task | Read first | Validation or record |
-| --- | --- | --- |
-| Architecture or boundaries | [architecture index](docs/architecture/README.md), [architecture overview](docs/architecture/overview.md) | Relevant contract or integration checks |
-| Domain terms or design decisions | [domain guide](docs/agents/domain.md), [glossary](docs/plans/2026-08-26-term-glossary.md), [ADR index](docs/decisions/README.md) | Add or update a decision only when behavior or an interface changes |
-| Tests or coverage | [testing index](docs/testing/README.md), [coverage matrix](docs/testing/coverage-matrix.md), [lane runbook](docs/testing/test-lane-runbook.md) | [test inventory](scripts/test_inventory.py), [migration ledger](docs/testing/test-migration-ledger.md) |
-| Upstream harness work | [upstream lock](docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md), [patch ledger](UPSTREAM_PATCH_LEDGER.md) | Relevant compatibility checks |
-| Local runtime patches | [runtime patch ledger](docs/local-runtime/PATCH_LEDGER.md) | Listed patch-specific validation |
-| Issue triage | [issue tracker](docs/agents/issue-tracker.md), [triage labels](docs/agents/triage-labels.md) | Keep the issue state and labels current |
-| Workflow choice or skill routing | [skill routing map](docs/agents/skill-routing.md) | Follow the precedence rules in that document |
+Once the task domain is known, read the matching route in [docs/agents/task-routing.md](docs/agents/task-routing.md): for each of the nine common task domains it names the current contract, code entry point, conditional decisions, and the first validation hop, and states the stopping point where document reading ends and source verification begins. Engineering terminology is defined in [CONTEXT.md](CONTEXT.md); the [UI term table](docs/plans/2026-08-26-term-glossary.md) covers display-language copy only.
 
 `docs/README.md` is the engineering documentation index. `docs/adr/` holds ADR records; `docs/decisions/` holds dated decisions, and both are indexed from the decisions README. Current documents govern active work. Drafts are proposals, superseded documents point to their replacement, and archived records provide history only. A historical test result never satisfies validation for the current candidate. Update documentation when behavior, interfaces, configuration, architecture, or workflow changes.
 

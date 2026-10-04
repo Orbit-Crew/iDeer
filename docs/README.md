@@ -23,13 +23,14 @@
 
 | 主题 | 当前权威来源 |
 | --- | --- |
+| 按任务域进入文档 | [任务路由](agents/task-routing.md)：九个常见任务域的当前契约、代码入口、条件决策与验证入口 |
 | 用户使用与公开开发 | [前端公开文档站](/zh/docs) |
 | 测试覆盖与迁移 | [coverage-matrix.md](testing/coverage-matrix.md)、[test-migration-ledger.md](testing/test-migration-ledger.md) |
 | 权限模型与矩阵 | [permission-model-redesign.md](permission-model-redesign.md)、[permission-matrix.md](permission-matrix.md) |
 | 离线产品线治理 | [offline-product-line-governance-plan.md](offline-product-line-governance-plan.md) |
 | 离线部署作业 | [禁公网内网离线部署作业指导书](deployment/禁公网内网离线部署作业指导书.md) |
 | 架构基线 | [架构索引](architecture/README.md)、[项目架构概览](architecture/overview.md)、[后端架构](../backend/docs/README.md) |
-| 领域词汇 | [领域建模指南](agents/domain.md)、[术语表](plans/2026-08-26-term-glossary.md) |
+| 领域词汇 | [工程术语权威 CONTEXT.md](../CONTEXT.md)、[领域建模指南](agents/domain.md)；[UI 术语对照表](plans/2026-08-26-term-glossary.md) 仅覆盖界面显示语言 |
 | Agent 工作流 | [技能路由](agents/skill-routing.md)、[本地规格与工单](agents/issue-tracker.md) |
 | 待实现规格 | [specs/](specs/) 目录（`to-spec` 输出，`ready-for-agent` 状态） |
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
