@@ -1,10 +1,18 @@
+---
+id: docs-knowledge-test-matrix
+kind: plan
+status: archived
+owner: engineering maintainers
+scope: M2 Ticket 01 mapping of knowledge plan sections 95-99 (unit/integration/revision/receipt/security) onto proposed backend and frontend test files for tickets 02/03/04
+archived-reason: planning-era mapping; tests landed under backend/tests/unit/knowledge/ (17 files) plus backend/tests/unit/gateway/ and backend/tests/unit/workflows/ with partly different names (test_knowledge_revisions.py, test_run_knowledge_freeze.py, test_retrieval_receipts.py versus the proposed test_knowledge_revision_service.py / test_knowledge_run_freeze.py / test_knowledge_retrieval_receipt.py), and the proposed backend/tests/integration/knowledge/ directory was not created
+---
+
 # Test Matrix — 知识方案 §95–99 到测试文件的映射（M2 Ticket 01 产出）
 
 > audience: developers, testers<br>
-> status: current<br>
-> owner: engineering maintainers<br>
-> last-verified: 2026-09-11<br>
 > canonical-path: `docs/knowledge/TEST_MATRIX.md`
+
+> status: archived（M2 时期测试映射，规划性落点）。2026-10-04 核对：知识域测试已实施于 `backend/tests/unit/knowledge/`（17 个文件）及 `backend/tests/unit/gateway/`、`backend/tests/unit/workflows/`（如 `test_v2_knowledge_freeze.py`），部分文件名与本映射提案不同（提案 `test_knowledge_revision_service.py` → 实际 `test_knowledge_revisions.py` / `test_knowledge_revision_publish.py`、提案 `test_knowledge_run_freeze.py` → 实际 `test_run_knowledge_freeze.py`、提案 `test_knowledge_retrieval_receipt.py` → 实际 `test_retrieval_receipts.py`；`test_knowledge_base_service.py`、`test_effective_knowledge_scope.py` 同名落地；提案的 `backend/tests/integration/knowledge/` 目录未按此建立）。正文按历史规划记录保留；现行测试面以 `backend/tests/unit/knowledge/` 目录为准。
 
 把知识方案 §95–99 测试矩阵逐条映射到本仓库测试文件（现有文件给出锚点，新文件给出建议路径）。路径与命名遵循仓库规约：后端 `backend/tests/unit|integration|contracts/` 的 `test_*.py`；前端 `frontend/tests/unit/` 镜像 `src/` 树。Lane 定义见 `scripts/run-test-lane.sh`。
 
