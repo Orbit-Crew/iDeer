@@ -1,3 +1,13 @@
+---
+id: backend-docs-sso
+kind: reference
+status: current
+owner: repository maintainers
+scope: OIDC single sign-on: authorization-code flow with PKCE, provider configuration, and local Keycloak example
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # SSO / OIDC Authentication
 
 DeerFlow supports single sign-on (SSO) via any OpenID Connect (OIDC) 2.0 compliant provider. This includes Keycloak, Google Workspace, Azure AD, Okta, and many others.

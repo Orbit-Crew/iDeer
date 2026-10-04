@@ -1,3 +1,13 @@
+---
+id: backend-docs-github-agents
+kind: reference
+status: current
+owner: repository maintainers
+scope: GitHub webhook channel architecture: agent bindings, fan-out, thread determinism, token lifecycle, and follow-up buffering
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # GitHub Event-Driven Agents
 
 GitHub is a **webhook-push** channel: there is no long-polling worker. Every GitHub App / repository delivery lands at `POST /api/webhooks/github`, where it is HMAC-verified, fan-out'd to one `InboundMessage` per matching custom-agent binding, and shipped to the rest of DeerFlow through the same `ChannelManager` that handles Feishu/Slack/Telegram. For the high-level orientation, see [AGENTS.md](../AGENTS.md) → "GitHub event-driven agents".

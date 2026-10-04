@@ -1,3 +1,13 @@
+---
+id: backend-docs-im-channel-connections
+kind: reference
+status: current
+owner: repository maintainers
+scope: user-owned IM channel bindings: connect-code flow, ownership transfer, file pipeline, and provider configuration
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # IM Channel Connections
 
 DeerFlow supports user-owned IM channel bindings for Telegram, Slack, Discord, Feishu/Lark, DingTalk, WeChat, WeCom, and Buzz. The feature reuses the existing `channels.*` runtime configuration, so it works in local and private deployments with the same outbound transports already supported by DeerFlow.

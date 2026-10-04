@@ -1,3 +1,13 @@
+---
+id: backend-docs-thread-lifecycle
+kind: reference
+status: current
+owner: repository maintainers
+scope: gateway thread lifecycle invariants: checkpoint lineage, branching, regenerate/edit replay, and archive metadata
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Gateway thread lifecycle invariants
 
 Read this guide before changing thread branching, regeneration, edit replay, or

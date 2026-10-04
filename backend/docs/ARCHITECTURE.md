@@ -1,3 +1,13 @@
+---
+id: backend-docs-architecture
+kind: reference
+status: current
+owner: repository maintainers
+scope: backend architecture overview: gateway runtime, middleware chain, sandbox, tools, MCP, and skills boundaries
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Architecture Overview
 
 This document provides a comprehensive overview of the iDeer backend architecture.
@@ -54,7 +64,7 @@ This document provides a comprehensive overview of the iDeer backend architectur
 
 The agent runtime is embedded in the FastAPI Gateway and built on LangGraph for robust multi-agent workflow orchestration. Nginx rewrites `/api/langgraph/*` to Gateway's native `/api/*` routes, so the public API remains compatible with LangGraph SDK clients without running a separate LangGraph server.
 
-**Entry Point**: `packages/harness/ideer/agents/lead_agent/agent.py:make_lead_agent`
+**Entry Point**: `packages/harness/deerflow/agents/lead_agent/agent.py:make_lead_agent`
 
 **Key Responsibilities**:
 - Agent creation and configuration
@@ -68,9 +78,8 @@ It is not the default service entrypoint; scripts and Docker deployments run the
 
 ```json
 {
-  "agent": {
-    "type": "agent",
-    "path": "ideer.agents:make_lead_agent"
+  "graphs": {
+    "lead_agent": "deerflow.agents:make_lead_agent"
   }
 }
 ```
@@ -178,7 +187,7 @@ class ThreadState(AgentState):
               ▼                                         ▼
 ┌─────────────────────────┐              ┌─────────────────────────┐
 │  LocalSandboxProvider   │              │  AioSandboxProvider     │
-│  (packages/harness/ideer/sandbox/local.py) │              │  (packages/harness/ideer/community/)       │
+│  (packages/harness/deerflow/sandbox/local/) │           │  (packages/harness/deerflow/community/)       │
 │                         │              │                         │
 │  - Singleton instance   │              │  - Docker-based         │
 │  - Direct execution     │              │  - Isolated containers  │
@@ -201,7 +210,7 @@ class ThreadState(AgentState):
 | `/mnt/user-data/workspace` | `backend/.deer-flow/threads/{thread_id}/user-data/workspace` |
 | `/mnt/user-data/uploads` | `backend/.deer-flow/threads/{thread_id}/user-data/uploads` |
 | `/mnt/user-data/outputs` | `backend/.deer-flow/threads/{thread_id}/user-data/outputs` |
-| `/mnt/skills` | `ideer/skills/` |
+| `/mnt/skills` | `skills/` under the project root (`skills.path` / `DEER_FLOW_SKILLS_PATH`) |
 
 ### Tool System
 
@@ -212,7 +221,7 @@ class ThreadState(AgentState):
 
 ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
 │   Built-in Tools    │  │  Configured Tools   │  │     MCP Tools       │
-│  (packages/harness/ideer/tools/)       │  │  (config.yaml)      │  │  (extensions.json)  │
+│  (packages/harness/deerflow/tools/)    │  │  (config.yaml)      │  │  (extensions.json)  │
 ├─────────────────────┤  ├─────────────────────┤  ├─────────────────────┤
 │ - present_files     │  │ - web_search        │  │ - github            │
 │ - ask_clarification │  │ - web_fetch         │  │ - filesystem        │
@@ -228,7 +237,7 @@ class ThreadState(AgentState):
                                    ▼
                       ┌─────────────────────────┐
                       │   get_available_tools() │
-                      │   (packages/harness/ideer/tools/__init__)  │
+                      │   (packages/harness/deerflow/tools/__init__)  │
                       └─────────────────────────┘
 ```
 
@@ -237,7 +246,7 @@ class ThreadState(AgentState):
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                          Model Factory                                   │
-│                     (packages/harness/ideer/models/factory.py)                              │
+│                     (packages/harness/deerflow/models/factory.py)                              │
 └─────────────────────────────────────────────────────────────────────────┘
 
 config.yaml:
@@ -284,7 +293,7 @@ config.yaml:
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                          MCP Integration                                 │
-│                        (packages/harness/ideer/mcp/manager.py)                              │
+│                        (packages/harness/deerflow/mcp/cache.py)                              │
 └─────────────────────────────────────────────────────────────────────────┘
 
 extensions_config.json:
@@ -322,7 +331,7 @@ extensions_config.json:
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                          Skills System                                   │
-│                       (packages/harness/ideer/skills/loader.py)                             │
+│                       (packages/harness/deerflow/skills/parser.py)                             │
 └─────────────────────────────────────────────────────────────────────────┘
 
 Directory Structure:

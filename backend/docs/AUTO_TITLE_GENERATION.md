@@ -1,3 +1,13 @@
+---
+id: backend-docs-auto-title-generation
+kind: reference
+status: current
+owner: repository maintainers
+scope: automatic thread title generation: TitleMiddleware trigger, storage, and configuration
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # 自动 Thread Title 生成功能
 
 ## 功能说明
@@ -52,7 +62,7 @@ checkpointer = PostgresSaver.from_conn_string(
 ```json
 {
   "graphs": {
-    "lead_agent": "ideer.agents:lead_agent"
+    "lead_agent": "deerflow.agents:make_lead_agent"
   },
   "checkpointer": "checkpointer:checkpointer"
 }
@@ -73,7 +83,7 @@ title:
 或在代码中配置：
 
 ```python
-from ideer.config.title_config import TitleConfig, set_title_config
+from deerflow.config.title_config import TitleConfig, set_title_config
 
 set_title_config(TitleConfig(
     enabled=True,
@@ -156,7 +166,7 @@ sequenceDiagram
     Client->>LangGraph: POST /threads/{id}/runs
     LangGraph->>Agent: 处理消息
     Agent-->>LangGraph: 返回回复
-    LangGraph->>TitleMiddleware: after_agent()
+    LangGraph->>TitleMiddleware: after_model()
     TitleMiddleware->>TitleMiddleware: 检查是否需要生成 title
     TitleMiddleware->>LLM: 生成 title
     LLM-->>TitleMiddleware: 返回 title
@@ -187,7 +197,7 @@ sequenceDiagram
 ```python
 # 测试 title 生成
 import pytest
-from ideer.agents.title_middleware import TitleMiddleware
+from deerflow.agents.middlewares.title_middleware import TitleMiddleware
 
 def test_title_generation():
     # TODO: 添加单元测试
@@ -199,7 +209,7 @@ def test_title_generation():
 ### Title 没有生成
 
 1. 检查配置是否启用：`get_title_config().enabled == True`
-2. 检查日志：查找 "Generated thread title" 或错误信息
+2. 检查日志：查找 title 生成失败信息（例如 "Failed to generate async title; falling back to local title"）
 3. 确认是首次对话：只有 1 个用户消息和 1 个助手回复时才会触发
 
 ### Title 生成但客户端看不到
@@ -231,25 +241,24 @@ def test_title_generation():
 ```python
 # TitleMiddleware 核心逻辑
 @override
-def after_agent(self, state: TitleMiddlewareState, runtime: Runtime) -> dict | None:
+def after_model(self, state: TitleMiddlewareState, runtime: Runtime) -> dict | None:
     """Generate and set thread title after the first agent response."""
-    if self._should_generate_title(state, runtime):
-        title = self._generate_title(runtime)
-        print(f"Generated thread title: {title}")
-        
+    if self._should_generate_title(state):
+        result = self._generate_title_result(state)
+
         # ✅ 返回 state 更新，会被 checkpointer 自动持久化
-        return {"title": title}
-    
+        return result
+
     return None
 ```
 
 ## 相关文件
 
-- [`packages/harness/ideer/agents/thread_state.py`](../packages/harness/ideer/agents/thread_state.py) - ThreadState 定义
-- [`packages/harness/ideer/agents/middlewares/title_middleware.py`](../packages/harness/ideer/agents/middlewares/title_middleware.py) - TitleMiddleware 实现
-- [`packages/harness/ideer/config/title_config.py`](../packages/harness/ideer/config/title_config.py) - 配置管理
+- [`packages/harness/deerflow/agents/thread_state.py`](../packages/harness/deerflow/agents/thread_state.py) - ThreadState 定义
+- [`packages/harness/deerflow/agents/middlewares/title_middleware.py`](../packages/harness/deerflow/agents/middlewares/title_middleware.py) - TitleMiddleware 实现
+- [`packages/harness/deerflow/config/title_config.py`](../packages/harness/deerflow/config/title_config.py) - 配置管理
 - [`config.yaml`](../../config.example.yaml) - 配置文件
-- [`packages/harness/ideer/agents/lead_agent/agent.py`](../packages/harness/ideer/agents/lead_agent/agent.py) - Middleware 注册
+- [`packages/harness/deerflow/agents/lead_agent/agent.py`](../packages/harness/deerflow/agents/lead_agent/agent.py) - Middleware 注册
 
 ## 参考资料
 

@@ -1,3 +1,13 @@
+---
+id: backend-docs-blocking-io-detection
+kind: reference
+status: current
+owner: repository maintainers
+scope: blocking-IO static/runtime detectors and thread-boundary inventory: usage, semantics, and maintenance workflow
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Blocking IO detection usage and maintenance
 
 This document describes how to use and maintain DeerFlow backend blocking-IO

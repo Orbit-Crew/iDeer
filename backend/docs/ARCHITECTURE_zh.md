@@ -1,3 +1,13 @@
+---
+id: backend-docs-architecture-zh
+kind: reference
+status: current
+owner: repository maintainers
+scope: backend-docs-architecture 的中文镜像：Gateway 运行时、中间件链、沙箱、工具、MCP 与技能边界
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # 架构概览
 
 本文档提供 iDeer 后端架构的全面概述。
@@ -54,7 +64,7 @@
 
 Agent 运行时嵌入在 FastAPI Gateway 中，基于 LangGraph 构建，用于稳健的多 Agent 工作流编排。Nginx 将 `/api/langgraph/*` 重写为 Gateway 原生 `/api/*` 路由，因此公共 API 无需独立运行 LangGraph 服务器就能兼容 LangGraph SDK 客户端。
 
-**入口点**: `packages/harness/ideer/agents/lead_agent/agent.py:make_lead_agent`
+**入口点**: `packages/harness/deerflow/agents/lead_agent/agent.py:make_lead_agent`
 
 **主要职责**:
 - Agent 创建与配置
@@ -67,9 +77,8 @@ Agent 运行时嵌入在 FastAPI Gateway 中，基于 LangGraph 构建，用于�
 
 ```json
 {
-  "agent": {
-    "type": "agent",
-    "path": "ideer.agents:make_lead_agent"
+  "graphs": {
+    "lead_agent": "deerflow.agents:make_lead_agent"
   }
 }
 ```
@@ -162,7 +171,7 @@ class ThreadState(AgentState):
               ▼                                         ▼
 ┌─────────────────────────┐              ┌─────────────────────────┐
 │  LocalSandboxProvider   │              │  AioSandboxProvider     │
-│  (packages/harness/ideer/sandbox/local.py) │  (packages/harness/ideer/community/)       │
+│  (packages/harness/deerflow/sandbox/local/) │  (packages/harness/deerflow/community/)       │
 │                         │              │                         │
 │  - 单例实例             │              │  - 基于 Docker           │
 │  - 直接执行             │              │  - 隔离容器              │
@@ -185,7 +194,7 @@ class ThreadState(AgentState):
 | `/mnt/user-data/workspace` | `backend/.deer-flow/threads/{thread_id}/user-data/workspace` |
 | `/mnt/user-data/uploads` | `backend/.deer-flow/threads/{thread_id}/user-data/uploads` |
 | `/mnt/user-data/outputs` | `backend/.deer-flow/threads/{thread_id}/user-data/outputs` |
-| `/mnt/skills` | `ideer/skills/` |
+| `/mnt/skills` | 项目根目录下的 `skills/`（`skills.path` / `DEER_FLOW_SKILLS_PATH`） |
 
 ### 工具系统
 
@@ -196,7 +205,7 @@ class ThreadState(AgentState):
 
 ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
 │    内置工具          │  │  配置工具           │  │    MCP 工具         │
-│  (packages/harness/ideer/tools/)       │  │  (config.yaml)      │  │  (extensions.json)  │
+│  (packages/harness/deerflow/tools/)    │  │  (config.yaml)      │  │  (extensions.json)  │
 ├─────────────────────┤  ├─────────────────────┤  ├─────────────────────┤
 │ - present_files     │  │ - web_search        │  │ - github            │
 │ - ask_clarification │  │ - web_fetch         │  │ - filesystem        │
@@ -212,7 +221,7 @@ class ThreadState(AgentState):
                                     ▼
                        ┌─────────────────────────┐
                        │   get_available_tools() │
-                       │  (packages/harness/ideer/tools/__init__)  │
+                       │  (packages/harness/deerflow/tools/__init__)  │
                        └─────────────────────────┘
 ```
 
@@ -221,7 +230,7 @@ class ThreadState(AgentState):
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           模型工厂                                        │
-│                   (packages/harness/ideer/models/factory.py)            │
+│                   (packages/harness/deerflow/models/factory.py)            │
 └─────────────────────────────────────────────────────────────────────────┘
 
 config.yaml:
@@ -268,7 +277,7 @@ config.yaml:
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                          MCP 集成                                        │
-│                    (packages/harness/ideer/mcp/manager.py)              │
+│                    (packages/harness/deerflow/mcp/cache.py)              │
 └─────────────────────────────────────────────────────────────────────────┘
 
 extensions_config.json:
@@ -306,7 +315,7 @@ extensions_config.json:
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           技能系统                                        │
-│                     (packages/harness/ideer/skills/loader.py)           │
+│                     (packages/harness/deerflow/skills/parser.py)           │
 └─────────────────────────────────────────────────────────────────────────┘
 
 目录结构:

@@ -1,3 +1,13 @@
+---
+id: backend-docs-index
+kind: index
+status: current
+owner: repository maintainers
+scope: index of backend/docs: quick links, feature documentation, and development references
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Documentation
 
 This directory contains detailed documentation for the iDeer backend.
