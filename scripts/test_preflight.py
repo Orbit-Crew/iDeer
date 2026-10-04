@@ -187,8 +187,36 @@ def main() -> int:
             print(
                 "[test-preflight] WARN OPENAI_API_KEY is absent; requires_llm tests will be skipped"
             )
+    if os.environ.get("TEST_PREFLIGHT_SKIP_REFERENCE_LOOKUP") != "1":
+        _reference_lookup_report()
     print(f"[test-preflight] lane={args.lane} status={'fail' if failed else 'ready'}")
     return 1 if failed else 0
+
+
+def _reference_lookup_report() -> None:
+    """Advisory: surface tests referencing the candidate's changed files.
+
+    Never affects the preflight verdict; the report asks the author to run
+    the listed tests or record why they stay unexecuted.
+    """
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "test_reference_lookup.py")],
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+            cwd=ROOT,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"[test-preflight] WARN reference lookup skipped: {exc}")
+        return
+    if result.stdout.strip():
+        print(result.stdout.rstrip())
+    if result.returncode != 0:
+        detail = result.stderr.strip()[-200:] or f"exit {result.returncode}"
+        print(f"[test-preflight] WARN reference lookup failed: {detail}")
 
 
 def _node_ok() -> bool:

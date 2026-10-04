@@ -1,0 +1,5 @@
+{
+  "surfaces": {
+    "frontend/src/core/i18n/locales/": ["frontend/tests/e2e/smoke/**"]
+  }
+}
