@@ -1,12 +1,22 @@
+---
+id: docs-archive-2026-readme
+kind: index
+status: current
+owner: repository maintainers
+scope: topic registry of the docs/archive/2026 partition: archived testing, permission, optimization, offline, and governance materials with their current replacement entries, plus the retention rule
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ abbf0aab1
+---
+
 # 2026 年历史文档
 
 > audience: maintainers, auditors, incident reviewers<br>
 > status: current<br>
 > owner: repository maintainers<br>
-> last-verified: 2026-07-15<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/archive/2026/README.md`
 
-本目录登记已结束的计划、审计和阶段性材料。历史正文已物理迁移到本目录；旧路径不再保留跳转桩。登记项中的 canonical path 是归档后的主题入口。
+本目录登记已结束的计划、审计和阶段性材料。历史正文已物理迁移到本目录；旧路径不再保留跳转桩。登记项中的 canonical path 是归档后的主题入口。登记项的"结论与当前替代入口"列给出各项的现行权威；从历史材料出发的任务先读该列，不把归档正文当作现行依据。
 
 ## 已归档主题
 
