@@ -511,7 +511,7 @@ updater 的聚焦回归覆盖位于 `backend/tests/test_memory_updater.py`。
 **每个新功能或 bug 修复都必须附带单元测试。没有例外。**
 
 - 按现有命名约定 `test_<feature>.py` 在 `backend/tests/` 中编写测试
-- 变更前后都运行完整测试套件：`make test`
+- 每个 TDD 切片只运行聚焦回归测试和最窄相关的静态检查；标准 lane 在实现完成时运行一次（lane 选择与交接见 [测试 Lane 运行手册](../testing/test-lane-runbook.md)）
 - 测试必须通过，功能才算完成
 - 对轻量级配置/工具模块，优先使用无外部依赖的纯单元测试
 - 如果某个模块在测试中导致循环导入问题，在 `tests/conftest.py` 中添加 `sys.modules` mock（参考 `ideer.subagents.executor` 的现有示例）

@@ -10,7 +10,7 @@ How the engineering skills should consume this repo's domain documentation when 
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
-> 本仓库历史决策现存于 `docs/decisions/`（如 `2026-08-14-resource-governance-v2.md`，入口见 `docs/decisions/README.md`），`docs/adr/` 为技能约定的规范路径，尚未迁移；消费时两者都可参考，新 ADR 按 `YYYY-MM-DD-topic.md` 写入 `docs/adr/`。
+> 本仓库的现行决策入口是[决策索引](../decisions/README.md)：编号 ADR 在 `docs/adr/`（如 `0007-agent-terminology-unification.md`），历史 dated decision 保留在 `docs/decisions/`。新 ADR 一律按 `NNNN-topic-name.md` 编号命名，该规则以 `docs/decisions/README.md` 的声明为准。
 
 ## File structure
 

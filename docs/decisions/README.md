@@ -6,7 +6,7 @@
 > last-verified: 2026-10-01<br>
 > canonical-path: `docs/decisions/README.md`
 
-决策状态使用 `current`、`draft`、`superseded` 或 `archived`。新 ADR 放在 `docs/adr/`，按 `NNNN-topic-name.md` 编号；既有 dated decision 保留在本目录。新增或变更决策时，同时更新本索引。
+决策状态使用 `current`、`draft`、`superseded` 或 `archived`。新 ADR 放在 `docs/adr/`，按 `NNNN-topic-name.md` 编号命名（这是全仓库统一的 ADR 命名规则，其他文档引用本约定）；既有 dated decision 保留在本目录。新增或变更决策时，同时更新本索引。
 
 ## 当前 ADR
 
