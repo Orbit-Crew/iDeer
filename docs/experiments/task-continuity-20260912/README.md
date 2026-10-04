@@ -1,3 +1,12 @@
+---
+id: docs-experiments-task-continuity-20260912-readme
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: package description of the frozen 2026-09-12 session-continuity prototype experiment (LongMemEval-S public QA plus controlled continuation): published contents, runtime, run order, and reproducibility boundaries
+archived-reason: the experiment concluded and its integration PR landed; this package is the pre-integration evidence for that candidate, and the current feature reference is docs/task-continuity.md — its A/B/C/D scores must not be cited as current runtime performance
+---
+
 # Session continuity evaluation
 
 Historical research prototype motivating the opt-in implementation in this PR. The measurements below were completed before production integration; they are not measurements of the implementation shipped here. The reported baseline uses the exact installed default summarization prompt, not the entire DeerFlow runtime. The protocol deliberately enables forced compaction to examine loss/recovery under context pressure.

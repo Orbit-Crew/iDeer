@@ -1,8 +1,17 @@
+---
+id: docs-experiments-task-continuity-20260912-report
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: full report of the 2026-09-12 prototype experiment — A/B/C/D public LongMemEval-S and controlled continuation results under forced compaction, paired gains, retrieval and cost accounting, and the reproduction file list
+archived-reason: the experiment concluded and its integration PR landed; results are pre-integration evidence for that candidate, and the current feature reference is docs/task-continuity.md — its scores must not be cited as current runtime performance
+---
+
 # DeerFlow 任务接续增强：真实模型对照实验
 
 作者：Aari
 
-> 本文保留集成前的原型实验结果；本 PR 的运行时实现及验证见 [功能说明](../../task-continuity.md)。公开包只包含脚本、方法、图表和去除原文的逐例分数；原始响应、数据集和本地工作区不随 PR 分发。
+> 本文保留集成前的原型实验结果；本 PR 的运行时实现及验证见 [功能说明](../../task-continuity.md)。公开包只包含脚本、方法、图表和去除原文的逐例分数；原始响应、数据集和本地工作区不随 PR 分发。本文为历史记录，适用期间为 2026-09-12 实验及其集成 PR 评审。
 
 **状态：实验及预算续跑已结束；运行失败与模型质量分开列示。**
 

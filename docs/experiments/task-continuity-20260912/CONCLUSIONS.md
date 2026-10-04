@@ -1,3 +1,14 @@
+---
+id: docs-experiments-task-continuity-20260912-conclusions
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: conclusions of the 2026-09-12 prototype experiment — build optional task notes and verbatim lookup first; this run does not justify defaulting vector retrieval on or replacing summaries wholesale; identity-bound in conclusion-metadata.json
+archived-reason: the experiment concluded and its integration PR landed; current feature reference is docs/task-continuity.md — these conclusions apply to the 2026-09-12 prototype candidate only
+---
+
+> 历史记录（2026-09-12 原型实验）：适用期间为该实验及其集成 PR 评审；现行功能参考见 [task-continuity.md](../../task-continuity.md)。
+
 ## 本轮结论与建议
 
 **先做可选的任务笔记与原文回查增强；这轮结果不支持默认引入向量检索，也不支持全面替换现有摘要。**
