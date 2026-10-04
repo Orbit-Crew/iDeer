@@ -1,7 +1,15 @@
+---
+id: backend-docs-development-reference
+kind: reference
+status: current
+owner: backend maintainers
+scope: backend development reference: harness/app split, middleware chain, configuration system, gateway API, sandbox/subagent/tool/memory/tracing systems, and development commands
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3811ef515
+---
+
 # Backend development reference
 
-> status: current
-> owner: backend maintainers
 > source: valid architecture and runtime rules migrated from the former backend guidance
 
 Read this reference when changing backend configuration, runtime, tools, channels, memory, uploads, or retrieval evidence. The nearest directory guidance governs subsystem semantics. The root risk-based test policy governs implementation checks.
@@ -187,7 +195,7 @@ from deerflow.config import get_app_config
 
 ### Middleware Chain
 
-Lead-agent middlewares are assembled in strict append order across `packages/harness/deerflow/agents/middlewares/tool_error_handling_middleware.py` (`build_lead_runtime_middlewares`) and `packages/harness/deerflow/agents/lead_agent/agent.py` (`_build_middlewares`):
+Lead-agent middlewares are assembled in strict append order across `packages/harness/deerflow/agents/middlewares/tool_error_handling_middleware.py` (`build_lead_runtime_middlewares`) and `packages/harness/deerflow/agents/lead_agent/agent.py` (`build_middlewares`). The list below is the option-independent spine; the full conditional chain (sanitization, budget, receipts, skill/durable-context, deferred-tool, and finish-reason middlewares) is enumerated in [middleware-execution-flow.md](middleware-execution-flow.md):
 
 1. **ThreadDataMiddleware** - Creates per-thread directories under the user's isolation scope (`backend/.deer-flow/users/{user_id}/threads/{thread_id}/user-data/{workspace,uploads,outputs}`); resolves `user_id` via `get_effective_user_id()` (falls back to `"default"` in no-auth mode); Web UI thread deletion now follows LangGraph thread removal with Gateway cleanup of the local thread directory
 2. **UploadsMiddleware** - Tracks and injects newly uploaded files into conversation
@@ -198,7 +206,7 @@ Lead-agent middlewares are assembled in strict append order across `packages/har
 7. **SandboxAuditMiddleware** - Audits sandboxed shell/file operations for security logging before tool execution continues
 8. **ToolErrorHandlingMiddleware** - Converts tool exceptions into error `ToolMessage`s so the run can continue instead of aborting
 9. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
-10. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
+10. **TodoMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
 11. **TokenUsageMiddleware** - Records token usage metrics when token tracking is enabled (optional); subagent usage is cached by `tool_call_id` only while token usage is enabled and merged back into the dispatching AIMessage by message position rather than message id
 12. **TitleMiddleware** - Auto-generates thread title after first complete exchange and normalizes structured message content before prompting the title model
 13. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)

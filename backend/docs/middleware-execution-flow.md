@@ -1,27 +1,69 @@
+---
+id: backend-docs-middleware-execution-flow
+kind: reference
+status: current
+owner: repository maintainers
+scope: lead-agent middleware chain: current assembly order and hook phases, execution-flow diagrams for the option-independent subset, and ordering design rationale
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3811ef515
+---
+
 # Middleware 执行流程
 
 ## Middleware 列表
 
-`create_ideer_agent` 通过 `RuntimeFeatures` 组装的完整 middleware 链（默认全开时）：
+Lead agent 的完整 middleware 链由 `packages/harness/deerflow/agents/lead_agent/agent.py` 的
+`build_middlewares()` 组装（公共运行时段来自 `build_lead_runtime_middlewares()` /
+`_build_runtime_middlewares()`，见
+`packages/harness/deerflow/agents/middlewares/tool_error_handling_middleware.py`），
+最后经 `compose_with_extensions` 合并扩展贡献。下表为 2026-10-04 核对的实际顺序
+（`make_lead_agent` / 嵌入式 `DeerFlowClient` 共用同一链）：
 
-| # | Middleware | `before_agent` | `before_model` | `after_model` | `after_agent` | `wrap_model_call` | `wrap_tool_call` | 主 Agent | Subagent | 来源 |
-|---|-----------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|------|
-| 0 | ThreadDataMiddleware | ✓ | | | | | | ✓ | ✓ | `sandbox` |
-| 1 | UploadsMiddleware | ✓ | | | | | | ✓ | ✗ | `sandbox` |
-| 2 | SandboxMiddleware | ✓ | | | ✓ | | | ✓ | ✓ | `sandbox` |
-| 3 | DanglingToolCallMiddleware | | | | | ✓ | | ✓ | ✗ | 始终开启 |
-| 4 | GuardrailMiddleware | | | | | | ✓ | ✓ | ✓ | *Phase 2 纳入* |
-| 5 | ToolErrorHandlingMiddleware | | | | | | ✓ | ✓ | ✓ | 始终开启 |
-| 6 | SummarizationMiddleware | | ✓ | | | | | ✓ | ✗ | `summarization` |
-| 7 | TodoMiddleware | | ✓ | ✓ | | ✓ | | ✓ | ✗ | `plan_mode` 参数 |
-| 8 | TitleMiddleware | | | ✓ | | | | ✓ | ✗ | `auto_title` |
-| 9 | MemoryMiddleware | | | | ✓ | | | ✓ | ✗ | `memory` |
-| 10 | ViewImageMiddleware | | ✓ | | | | | ✓ | ✗ | `vision` |
-| 11 | SubagentLimitMiddleware | | | ✓ | | | | ✓ | ✗ | `subagent` |
-| 12 | LoopDetectionMiddleware | ✓ | | ✓ | ✓ | ✓ | | ✓ | ✗ | 始终开启 |
-| 13 | ClarificationMiddleware | | | | | | ✓ | ✓ | ✗ | 始终最后 |
+| # | Middleware | 钩子 | 生效条件 |
+|--:|-----------|------|----------|
+| 1 | InputSanitizationMiddleware | `wrap_model_call` | 常开（最外层包装） |
+| 2 | ToolOutputBudgetMiddleware | `wrap_model_call` `wrap_tool_call` | 常开 |
+| 3 | ToolResultSanitizationMiddleware | `wrap_tool_call` | 常开 |
+| 4 | ThreadDataMiddleware | `before_agent` | 常开 |
+| 5 | UploadsMiddleware | `before_agent` | 常开（主 agent；subagent 链不含） |
+| 6 | SandboxMiddleware | `before_agent` `after_agent` `wrap_tool_call` | 常开 |
+| 7 | DanglingToolCallMiddleware | `wrap_model_call` | 常开（主 agent 与 subagent 共享） |
+| 8 | LLMErrorHandlingMiddleware | `wrap_model_call` | 常开 |
+| 9 | ToolReceiptMiddleware | `wrap_model_call` `wrap_tool_call` | `verification.receipts_enabled` |
+| 10 | GuardrailMiddleware（授权适配） | `wrap_tool_call` | `authorization.enabled` 且解析到 provider |
+| 11 | GuardrailMiddleware（显式 guardrails） | `wrap_tool_call` | `guardrails.enabled` 且配置 provider |
+| 12 | SandboxAuditMiddleware | `wrap_tool_call` | 常开 |
+| 13 | ReadBeforeWriteMiddleware | `wrap_model_call` `wrap_tool_call` | `read_before_write.enabled` |
+| 14 | ToolProgressMiddleware | `before_agent` `wrap_model_call` `wrap_tool_call` | `tool_progress.enabled` |
+| 15 | ToolErrorHandlingMiddleware | `wrap_tool_call` | 常开 |
+| 16 | DynamicContextMiddleware | `before_agent` `wrap_model_call` | 常开 |
+| 17 | SkillActivationMiddleware | `wrap_model_call` | 常开 |
+| 18 | DeferredToolPromotionAuditMiddleware | `wrap_tool_call` | tool_search 启用且有 deferred 工具 |
+| 19 | SkillToolPolicyMiddleware | `wrap_model_call` `wrap_tool_call` | 常开 |
+| 20 | DurableContextMiddleware | `before_model` `after_model` `wrap_model_call` | 常开 |
+| 21 | SummarizationMiddleware（`DeerFlowSummarizationMiddleware`） | `before_model` | `summarization.enabled` |
+| 22 | TodoMiddleware（LangChain `TodoListMiddleware` 子类） | `before_agent` `before_model` `after_model` `wrap_model_call` `after_agent` | 请求 `is_plan_mode=true` |
+| 23 | TokenUsageMiddleware | `after_model` | `token_usage.enabled` |
+| 24 | TitleMiddleware | `after_model` | 常开 |
+| 25 | MemoryMiddleware | `after_agent` | memory 启用 |
+| 26 | ViewImageMiddleware | `wrap_model_call` | 模型 `supports_vision` |
+| 27 | MCPRoutingMiddleware | `before_model` | tool_search 启用 |
+| 28 | DeferredToolFilterMiddleware | `wrap_model_call` `wrap_tool_call` | tool_search 启用且有 deferred 工具 |
+| 29 | SystemMessageCoalescingMiddleware | `wrap_model_call` | 常开 |
+| 30 | SubagentLimitMiddleware | `after_model` | 请求 `subagent_enabled=true` |
+| 31 | LoopDetectionMiddleware | `before_agent` `after_model` `after_agent` `wrap_model_call` | `loop_detection.enabled` |
+| 32 | TokenBudgetMiddleware | `before_agent` `wrap_model_call` `after_model` `after_agent` | `token_budget.enabled` |
+| 33 | 自定义 middlewares（`custom_middlewares`） | 按实现 | 调用方注入 |
+| 34 | 扩展配置 middlewares | 按实现 | `extensions_config.json` 配置 |
+| 35 | TerminalResponseMiddleware | `before_agent` `wrap_model_call` `after_model` `after_agent` | 常开 |
+| 36 | ModelLengthFinishReasonMiddleware | `after_model` | 常开 |
+| 37 | SafetyFinishReasonMiddleware | `after_model` | `safety_finish_reason.enabled` |
+| 38 | ClarificationMiddleware | `wrap_tool_call` `after_model` | 常开，永远最后 |
 
-主 agent **14 个** middleware（`make_lead_agent`），subagent **4 个**（ThreadData、Sandbox、Guardrail、ToolErrorHandling）。`create_ideer_agent` Phase 1 实现 **13 个**（Guardrail 仅支持自定义实例，无内置默认）。
+Subagent 链由 `build_subagent_runtime_middlewares()` 组装：共享同一运行时段但不含
+`UploadsMiddleware`；`DanglingToolCallMiddleware`、skill activation/policy、deferred
+filter、`ViewImageMiddleware`、`LoopDetectionMiddleware` 等与主 agent 镜像启用，另外
+追加 subagent 专属中间件（见 `packages/harness/deerflow/subagents/`）。
 
 ## 执行流程
 
@@ -29,39 +71,35 @@ LangChain `create_agent` 的规则：
 - **`before_*` 正序执行**（列表位置 0 → N）
 - **`after_*` 反序执行**（列表位置 N → 0）
 
+以下示意图只绘制常开/常用子集（方括号编号对应上表 #），完整链以表格为准：
+
 ```mermaid
 graph TB
     START(["invoke"]) --> TD
 
     subgraph BA ["<b>before_agent</b> 正序 0→N"]
         direction TB
-        TD["[0] ThreadData<br/>创建线程目录"] --> UL["[1] Uploads<br/>扫描上传文件"] --> SB["[2] Sandbox<br/>获取沙箱"] --> LD_BA["[12] LoopDetection<br/>清理 stale warning"]
+        TD["[4] ThreadData<br/>创建线程目录"] --> UL["[5] Uploads<br/>扫描上传文件"] --> SB["[6] Sandbox<br/>获取沙箱"] --> LD_BA["[31] LoopDetection<br/>清理 stale warning"]
     end
 
-    subgraph BM ["<b>before_model</b> 正序 0→N"]
+    subgraph WM ["<b>wrap_model_call</b> 外→内"]
         direction TB
-        VI["[10] ViewImage<br/>注入图片 base64"]
+        DTC_WM["[7] DanglingToolCall<br/>补悬空 ToolMessage"] --> VI["[26] ViewImage<br/>注入图片 base64"] --> LD_WM["[31] LoopDetection<br/>注入当前 run warning"]
     end
 
-    subgraph WM ["<b>wrap_model_call</b>"]
-        direction TB
-        DTC_WM["[3] DanglingToolCall<br/>补悬空 ToolMessage"] --> LD_WM["[12] LoopDetection<br/>注入当前 run warning"]
-    end
-
-    LD_BA --> VI
-    VI --> DTC_WM
+    LD_BA --> DTC_WM
     LD_WM --> M["<b>MODEL</b>"]
 
     subgraph AM ["<b>after_model</b> 反序 N→0"]
         direction TB
-        LD["[12] LoopDetection<br/>检测循环/排队 warning"] --> SL["[11] SubagentLimit<br/>截断多余 task"] --> TI["[8] Title<br/>生成标题"]
+        LD["[31] LoopDetection<br/>检测循环/排队 warning"] --> SL["[30] SubagentLimit<br/>截断多余 task"] --> TI["[24] Title<br/>生成标题"]
     end
 
     M --> LD
 
     subgraph AA ["<b>after_agent</b> 反序 N→0"]
         direction TB
-        LD_CLEAN["[12] LoopDetection<br/>清理 pending warning"] --> MEM["[9] Memory<br/>入队记忆"] --> SBR["[2] Sandbox<br/>释放沙箱"]
+        LD_CLEAN["[31] LoopDetection<br/>清理 pending warning"] --> MEM["[25] Memory<br/>入队记忆"] --> SBR["[6] Sandbox<br/>释放沙箱"]
     end
 
     TI --> LD_CLEAN
@@ -74,8 +112,8 @@ graph TB
     classDef afterAgentNode fill:#a0b5a8,stroke:#637a6b,color:#2d3239
     classDef terminalNode fill:#a8b5a0,stroke:#6b7a63,color:#2d3239
 
-    class TD,UL,SB,LD_BA,VI beforeNode
-    class DTC_WM,LD_WM wrapModelNode
+    class TD,UL,SB,LD_BA beforeNode
+    class DTC_WM,LD_WM,VI wrapModelNode
     class M modelNode
     class LD,SL,TI afterModelNode
     class LD_CLEAN,SBR,MEM afterAgentNode
@@ -113,14 +151,13 @@ sequenceDiagram
     SB ->> LD: before_agent
     activate LD
     Note right of LD: before_agent 清理同 thread 旧 run 的 pending warning
-    LD ->> VI: before_model
-    activate VI
-    Note right of VI: before_model 注入图片 base64
-
-    VI ->> DTC: wrap_model_call
+    LD ->> DTC: wrap_model_call
     activate DTC
     Note right of DTC: wrap_model_call 补悬空 ToolMessage
-    DTC ->> LD: wrap_model_call
+    DTC ->> VI: wrap_model_call
+    activate VI
+    Note right of VI: wrap_model_call 注入图片 base64
+    VI ->> LD: wrap_model_call
     Note right of LD: wrap_model_call drain 当前 run warning 并追加到末尾
     LD ->> M: messages + tools
     activate M
@@ -142,8 +179,6 @@ sequenceDiagram
     deactivate TI
 
     deactivate DTC
-
-    VI -->> SB: done
     deactivate VI
 
     Note right of LD: after_agent 清理当前 run 未消费 warning
@@ -163,12 +198,12 @@ sequenceDiagram
 
 ## 洋葱模型
 
-列表位置决定在洋葱中的层级 — 位置 0 最外层，位置 N 最内层：
+列表位置决定在洋葱中的层级 — 列表首（位置 0）最外层，列表末（位置 N）最内层：
 
 ```
-进入 before_*：   [0] → [1] → [2] → ... → [10] → MODEL
-退出 after_*：    MODEL → [13] → [11] → ... → [6] → [3] → [2] → [0]
-                          ↑ 最内层最先执行
+进入 before_* / wrap_model_call：  列表首（最外层）→ ... → MODEL
+退出 after_*：                     MODEL → 列表末（最内层，Clarification）→ ... → 列表首
+                                    ↑ 最内层最先执行
 ```
 
 > [!important] 核心规则
@@ -250,11 +285,11 @@ sequenceDiagram
     Note right of LD: before_agent 清理 stale pending warning
 
     loop 每轮对话（tool call 循环）
-        SB ->> VI: .
-        Note right of VI: before_model 注入图片
-        VI ->> DTC: .
+        LD ->> DTC: .
         Note right of DTC: wrap_model_call 补悬空工具结果
-        DTC ->> LD: .
+        DTC ->> VI: .
+        Note right of VI: wrap_model_call 注入图片
+        VI ->> LD: .
         Note right of LD: wrap_model_call 注入当前 run warning
         LD ->> M: messages + tools
         M -->> LD: AI response
@@ -298,7 +333,10 @@ sequenceDiagram
 
 ### SandboxMiddleware 的对称性
 
-`before_agent`（正序第 3 个）获取沙箱，`after_agent`（反序第 1 个）释放沙箱。外层进入 → 外层退出，天然的洋葱对称。
+`before_agent`（正序第 3 个：ThreadData → Uploads → Sandbox）获取沙箱；`after_agent`
+反序执行时沙箱在接近末尾处释放（Memory 入队之后）。按列表位置看，Sandbox 仍是带
+`before_agent`/`after_agent` 钩子的最外层中间件，获取在外层进入、释放在外层退出，
+天然的洋葱对称。
 
 ### LoopDetectionMiddleware 为什么同时用多个钩子？
 

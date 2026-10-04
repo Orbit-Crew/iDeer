@@ -1,3 +1,11 @@
+---
+id: backend-docs-checkpoint-retention-contract
+kind: policy
+status: draft
+owner: repository maintainers
+scope: draft deletion contract for checkpoint retention (#4189 item 3): protected checkpoint rows, provably safe deletion forms, deletion mechanics, and the required validation method
+---
+
 # Checkpoint Retention Contract (DRAFT)
 
 Status: **draft** — the deletion contract for #4189 item 3. No retention or

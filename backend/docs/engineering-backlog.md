@@ -1,3 +1,13 @@
+---
+id: backend-docs-engineering-backlog
+kind: plan
+status: current
+owner: repository maintainers
+scope: open backend engineering work items migrated from TODO.md (2026-07-14): sandbox pooling, upload formats, skill marketplace, and async/performance improvements
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3811ef515
+---
+
 # Engineering Backlog
 
 > 从 `TODO.md` 迁移（2026-07-14）。原有的已完成项已清除，此处仅保留尚待实施的工程改进。
@@ -13,7 +23,7 @@
 ## Async & Performance
 
 - [ ] Optimize async concurrency in agent hot path (IM channels multi-task scenario)
-- [ ] Replace `subprocess.run()` with `asyncio.create_subprocess_shell()` in `packages/harness/ideer/sandbox/local/local_sandbox.py`
+- [ ] Replace `subprocess.run()` with `asyncio.create_subprocess_shell()` in `packages/harness/deerflow/sandbox/local/local_sandbox.py`
   - Replace sync `requests` with `httpx.AsyncClient` in community tools (tavily, jina_ai, firecrawl, infoquest, image_search)
   - Consider `asyncio.to_thread()` wrapper for remaining blocking file I/O
   - For production: use `langgraph up` (multi-worker) instead of `langgraph dev` (single-worker)
