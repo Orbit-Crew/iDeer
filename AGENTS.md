@@ -6,7 +6,7 @@ Edit `AGENTS.md` as the sole source in each rule directory. Run `python3 scripts
 
 ## Implementation discipline
 
-Keep each change limited to the requested behavior and follow nearby conventions. Before editing, state assumptions and identify any choice that changes the result; ask only when the available evidence cannot resolve it. Prefer the smallest implementation that meets the acceptance criteria. Define completion in observable checks, then run those checks and report their actual status.
+Keep each change limited to the requested behavior and follow nearby conventions. Before editing, state assumptions and identify any choice that changes the result; ask only when the available evidence cannot resolve it. Prefer the smallest implementation that meets the acceptance criteria. Define completion in observable checks, then run those checks and report their actual status. Long-span work — a single task whose reading and implementation would not fit one context window, or a batch of tickets with blocking edges — goes through the `orchestrate-worktrees` skill (one self-contained subagent per ticket in a dedicated git worktree) instead of working inline.
 
 ## Project Structure & Module Organization
 
