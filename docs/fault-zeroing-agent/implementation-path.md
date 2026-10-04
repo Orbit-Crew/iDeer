@@ -1,4 +1,15 @@
+---
+id: docs-fault-zeroing-agent-implementation-path
+kind: plan
+status: archived
+owner: repository maintainers
+scope: code-exploration feasibility study and three-phase implementation path (configuration-first PoC, structured business layer, production integration) written against the ideer-era harness layout
+archived-reason: the recommended subagent-based PoC path was superseded in execution by the Workflow V2 DAG engine (custom subagents deprecated) and later the shared fault-zeroing kernel; the harness package was renamed ideer to deerflow and bundled assets moved under resources/ — current entry points are docs/plans/2026-09-29-fault-zeroing-unified-kernel-spec.md, docs/plans/2026-09-30-fault-zeroing-toolchain-spec.md, and docs/fault-zeroing-agent/收口清单-fault-zeroing-toolchain.md
+---
+
 # 归零排故智能体可行性与实现路径（代码探索版）
+
+> status: archived（可行性与实现路径·代码探索版，ideer 时期候选）。2026-10-04 核对：文中 `backend/packages/harness/ideer/` 路径对应现行 `backend/packages/harness/deerflow/`（上游整合后包名变更）；所引符号（`AgentConfig`、`load_agent_soul()`、`/api/agents` 路由、`SkillStorage.load_skills()`、`validate_local_tool_path()`、`subagents_config` 的 custom_agents、`task_tool`、`present_files`、`FileMemoryStorage`、`mcp/client.py`、`/mnt/user-data/*` 虚拟路径）经抽查仍存在。推荐路径已被 Workflow V2（子智能体废弃）与统一内核取代；现行入口见[收口清单](收口清单-fault-zeroing-toolchain.md)。正文按历史记录保留。
 
 ## 1. 结论
 

@@ -1,6 +1,16 @@
+---
+id: docs-fault-zeroing-agent-toolchain-closeout-checklist
+kind: reference
+status: current
+owner: repository maintainers
+scope: post-delivery operations checklist for the 2026-09-30 fault-zeroing toolchain slice — local config.yaml dead custom_agents cleanup, bundled resource republish via seeding, backend image rebuild for static scanners, and the T3 code-evidence manifest entry shape change
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3fc2af234
+---
+
 # 归零智能体工具链切片收口清单（2026-09-30）
 
-切片规格：`docs/plans/2026-09-30-fault-zeroing-toolchain-spec.md`（T1–T5 已实现）。
+切片规格：[docs/plans/2026-09-30-fault-zeroing-toolchain-spec.md](../plans/2026-09-30-fault-zeroing-toolchain-spec.md)（T1–T5 已实现）。
 本清单记录交付后需要运维/部署侧完成的三件事；代码仓库本身无需再改动。
 
 ## 1. 本地 config.yaml 的废弃 custom_agents 清理（运维动作）
