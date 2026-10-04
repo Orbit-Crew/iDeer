@@ -310,11 +310,11 @@ async def review_application(
 
             canonical_resource_id = getattr(application, "canonical_resource_id", None)
             if isinstance(canonical_resource_id, str) and canonical_resource_id:
-                from app.gateway.routers.resources import _resource_actor
+                from app.agentplatform.resources.actors import actor_from_user
 
                 reviewed = await ResourceService(
                     session,
-                    _resource_actor(current_user),
+                    actor_from_user(current_user),
                 ).review_visibility_application(
                     application_id,
                     approve=request.action == VisibilityApplicationStatus.APPROVED.value,

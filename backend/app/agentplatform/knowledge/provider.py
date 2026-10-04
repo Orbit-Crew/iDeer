@@ -21,6 +21,10 @@ class KnowledgeProviderError(Exception):
         super().__init__(message)
 
 
+class KnowledgeProviderUnavailable(RuntimeError):
+    """No knowledge provider is configured in this deployment."""
+
+
 class KnowledgeProvider(Protocol):
     async def create_dataset(self, *, name: str, embedding_model: str | None = None) -> str: ...
 

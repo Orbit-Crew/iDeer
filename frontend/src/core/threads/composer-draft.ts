@@ -114,17 +114,3 @@ export function clearComposerDraft(
     // Browser storage can be disabled; sending must keep working.
   }
 }
-
-export function resolveComposerDraft(
-  draft: ComposerDraft,
-  enabledSkillNames: ReadonlySet<string>,
-): ComposerDraft {
-  if (!draft.skillName || enabledSkillNames.has(draft.skillName)) {
-    return draft;
-  }
-
-  return {
-    text: `/${draft.skillName}${draft.text ? ` ${draft.text}` : ""}`,
-    skillName: null,
-  };
-}

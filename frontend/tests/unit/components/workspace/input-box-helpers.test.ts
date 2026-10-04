@@ -6,12 +6,10 @@ import {
   canPolishInput,
   createGoalRequestState,
   findSuggestionTemplatePlaceholder,
-  filterSkillsForAgent,
   finishGoalRequest,
   getGoalObjectiveCounter,
   getInputSubmitAction,
   getLeadingSlashSkillQuery,
-  getMatchingSkillSuggestions,
   GOAL_OBJECTIVE_COUNTER_VISIBLE_AT,
   isAbortError,
   isCurrentGoalRequest,
@@ -20,28 +18,7 @@ import {
   parseCompactCommand,
   parseGoalCommand,
   readGoalResponseError,
-  type SlashSuggestion,
 } from "@/components/workspace/input-box-helpers";
-import { RESERVED_SLASH_SKILL_NAMES, type Skill } from "@/core/skills";
-
-function makeSkill(name: string, enabled = true): Skill {
-  return {
-    name,
-    description: `${name} description`,
-    enabled,
-  } as Skill;
-}
-
-// Builtin command names are bare (no leading slash); the composer renders them
-// as `/${name}`. Mirror that shape here.
-const builtins: SlashSuggestion[] = [
-  {
-    name: "goal",
-    description: "Set, show, or clear an active goal",
-    kind: "builtin",
-  },
-  { name: "new", description: "Start a new thread", kind: "builtin" },
-];
 
 describe("parseGoalCommand", () => {
   it("returns status for a bare /goal", () => {
@@ -293,133 +270,6 @@ describe("getLeadingSlashSkillQuery", () => {
     expect(getLeadingSlashSkillQuery("rev")).toBeNull();
     expect(getLeadingSlashSkillQuery("/rev now")).toBeNull();
     expect(getLeadingSlashSkillQuery("/a/b")).toBeNull();
-  });
-});
-
-describe("filterSkillsForAgent", () => {
-  it("keeps all skills when the agent inherits the global catalog", () => {
-    const skills = [makeSkill("research"), makeSkill("writer")];
-
-    expect(filterSkillsForAgent(skills, null)).toEqual(skills);
-    expect(filterSkillsForAgent(skills, undefined)).toEqual(skills);
-  });
-
-  it("keeps only skills allowed by the active agent", () => {
-    const skills = [
-      makeSkill("research"),
-      makeSkill("writer"),
-      makeSkill("disabled-writer", false),
-    ];
-
-    expect(filterSkillsForAgent(skills, ["writer", "missing"])).toEqual([
-      makeSkill("writer"),
-    ]);
-  });
-
-  it("treats an empty allowlist as no skills available", () => {
-    expect(filterSkillsForAgent([makeSkill("research")], [])).toEqual([]);
-  });
-});
-
-describe("getMatchingSkillSuggestions", () => {
-  it("offers only builtin commands when the catalog is empty (denied role)", () => {
-    // A role whose `skills` policy allows nothing gets an empty catalog from
-    // GET /api/skills (resource-level listing filter); the composer must
-    // still offer the builtin commands rather than lose the whole dropdown.
-    const result = getMatchingSkillSuggestions([], "", builtins);
-
-    expect(result.map((s) => `${s.kind}:${s.name}`)).toEqual([
-      "builtin:goal",
-      "builtin:new",
-    ]);
-  });
-
-  it("returns an empty list when an empty catalog matches nothing", () => {
-    expect(getMatchingSkillSuggestions([], "deep", builtins)).toEqual([]);
-  });
-
-  it("excludes disabled skills and ranks prefix matches first", () => {
-    const skills = [
-      makeSkill("deep-research"),
-      makeSkill("review"),
-      makeSkill("reviewer-disabled", false),
-    ];
-
-    const result = getMatchingSkillSuggestions(skills, "rev", []);
-
-    expect(result.map((s) => s.name)).toEqual(["review"]);
-    expect(result.every((s) => s.kind === "skill")).toBe(true);
-  });
-
-  it("applies the allowed skill names before showing slash suggestions", () => {
-    const skills = [
-      makeSkill("research"),
-      { ...makeSkill("restricted"), slug: "private-research" },
-    ];
-
-    const result = getMatchingSkillSuggestions(
-      skills,
-      "",
-      [],
-      ["private-research"],
-    );
-
-    expect(result.map((suggestion) => suggestion.name)).toEqual(["restricted"]);
-  });
-
-  it("includes matching builtin commands after skills", () => {
-    const result = getMatchingSkillSuggestions(
-      [makeSkill("goal-helper")],
-      "goal",
-      builtins,
-    );
-
-    expect(result.map((s) => s.name)).toContain("goal-helper");
-    expect(result.map((s) => s.name)).toContain("goal");
-  });
-
-  it("excludes skills that collide with builtin command names", () => {
-    const result = getMatchingSkillSuggestions(
-      [makeSkill("goal"), makeSkill("goal-helper")],
-      "goal",
-      builtins,
-    );
-
-    expect(result.map((s) => `${s.kind}:${s.name}`)).toEqual([
-      "skill:goal-helper",
-      "builtin:goal",
-    ]);
-  });
-
-  it("excludes skills that collide with a reserved slash name", () => {
-    // The picker must not offer what the slash parsers refuse. Both sides drop
-    // these names, so such a skill can never activate — picking it would send
-    // literal text to the model with nothing loaded.
-    for (const reserved of RESERVED_SLASH_SKILL_NAMES) {
-      const result = getMatchingSkillSuggestions(
-        [makeSkill(reserved), makeSkill(`${reserved}-helper`)],
-        reserved,
-        builtins,
-      );
-
-      expect(
-        result.filter((s) => s.kind === "skill").map((s) => s.name),
-      ).toEqual([`${reserved}-helper`]);
-    }
-  });
-
-  it("keeps reserved names out even when no builtin commands are passed", () => {
-    const result = getMatchingSkillSuggestions([makeSkill("status")], "", []);
-
-    expect(result).toEqual([]);
-  });
-
-  it("caps the number of suggestions", () => {
-    const skills = Array.from({ length: 10 }, (_, i) =>
-      makeSkill(`skill-${i}`),
-    );
-    const result = getMatchingSkillSuggestions(skills, "", []);
-    expect(result.length).toBeLessThanOrEqual(6);
   });
 });
 

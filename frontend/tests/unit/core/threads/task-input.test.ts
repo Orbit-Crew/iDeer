@@ -5,38 +5,9 @@ import {
   getResolvedInputMode,
   hasTaskInput,
   prepareTaskInputInsertion,
-  prepareTaskSubmission,
 } from "@/core/threads/task-input";
 
-const context = {
-  model_name: "gpt-4o",
-  mode: "flash" as const,
-};
-
 describe("task input", () => {
-  it("removes a slash Skill prefix and adds the Skill to context", () => {
-    expect(
-      prepareTaskSubmission(
-        { text: "/research summarize this", files: [] },
-        context,
-      ),
-    ).toEqual({
-      message: { text: "summarize this", files: [] },
-      context: { ...context, skill_name: "research" },
-      skillName: "research",
-    });
-  });
-
-  it("keeps normal text and context unchanged", () => {
-    expect(
-      prepareTaskSubmission({ text: "hello", files: [] }, context),
-    ).toEqual({
-      message: { text: "hello", files: [] },
-      context,
-      skillName: null,
-    });
-  });
-
   it("accepts files when text is empty", () => {
     expect(hasTaskInput({ text: "  ", files: [{}] })).toBe(true);
     expect(hasTaskInput({ text: "  ", files: [] })).toBe(false);

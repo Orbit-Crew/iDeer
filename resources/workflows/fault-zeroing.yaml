@@ -112,13 +112,16 @@ nodes:
                - .md/.txt/.log/.c/.h 等纯文本与源码文本直接用 read_file 读取
                  （工具自动识别 UTF-8 / GB18030，GBK 兼容）
           3. 读取文件内容，抽取每一条证据
-          4. 检查五类资料覆盖情况：问题描述、设计约束、试验记录或日志、总结报告、历史或复核记录
+          4. 检查资料覆盖情况：覆盖类别的唯一来源是
+             /mnt/skills/fault-zeroing/references/result_contract.md
+             （按其「资料覆盖类别」清单逐项检查）
           5. 生成证据台账。静态告警的 confidence 分级上限按证据规则的结论约束执行。
              当 {{inputs.code_analysis_source}} 非空时，读取其中的 scanner_status.json 与
              findings.json（analyze_code_evidence 落盘的扫描记录与静态告警）：
              - findings.json 每条静态告警作为独立证据来源引用，必须与人工阅读交叉验证；
-             - scanner_status.json 的 overall 为 scanners_unavailable 时，必须在证据台账
-               与覆盖矩阵中写明“静态扫描器不可用”，并要求下游在报告“遗留风险”中原样披露；
+             - scanner_status.json 的 overall 为 scanners_unavailable 时，按
+               /mnt/skills/fault-zeroing/references/result_contract.md「静态扫描披露」
+               的披露短语写入证据台账与覆盖矩阵，并要求下游在报告“遗留风险”中原样披露；
                严禁把“未扫描”表述成“扫过无发现”。
 
           输出：
@@ -566,6 +569,10 @@ nodes:
           你是文档工程师。基于所有分析产物生成标准输出文件。
           ⚠️ 不修改 fault_tree.json——它已是最终版。
         prompt: |
+          执行前先读取结果契约的声明式内容（五件产物、报告章节、覆盖类别、
+          披露短语的唯一来源）：
+          /mnt/skills/fault-zeroing/references/result_contract.md
+
           读取以下产物：
           - {{inputs.output_base_dir}}/fault_tree.json
           - {{inputs.output_base_dir}}/artifacts/evidence/evidence_table.json
@@ -576,8 +583,9 @@ nodes:
           纠正措施被跳过；此时报告的"纠正措施"章节应写明"无已确认根因，
           不生成纠正措施"，其余输出照常生成。
           若 scan_summary.json 的 overall 为 scanners_unavailable，报告的
-          "遗留风险"章节必须原样包含“静态扫描器不可用”，并说明本次无机器
-          扫描告警、代码结论依赖人工阅读；不得把"未扫描"写成"扫描无告警"。）
+          "遗留风险"章节按 result_contract.md「静态扫描披露」的披露短语原样
+          披露，并说明本次无机器扫描告警、代码结论依赖人工阅读；不得把
+          "未扫描"写成"扫描无告警"。）
 
           生成以下 4 个文件到 {{inputs.output_base_dir}}/：
 
@@ -589,33 +597,24 @@ nodes:
               格式参考 /mnt/skills/fault-zeroing/templates/bottom_event_assessment.md
 
           3. analysis_process.svg
-             静态 SVG：证据提取→故障树构建→底事件评估→根因归因→纠正措施→文档生产
+             静态 SVG：按 result_contract.md「分析阶段标记」所列的阶段链绘制
              不含 script/event handler/external URL
 
           4. zeroing_report.md
-             10 章节：
-              1. 问题概述
-              2. 输入资料（含覆盖矩阵）
-              3. 故障现象
-              4. 故障树分析
-              5. 底事件概率评估
-              6. 根因归因
-              7. 验证计划与待验证项
-              8. 纠正措施
-              9. 遗留风险
-              10. 证据引用（含分析过程追溯）
-             资料覆盖矩阵必须使用模板的语义结构，至少包含表头“类别（或资料类别）”
-             和“检查结果（或覆盖状态/覆盖情况）”，并列出五类资料、来源和缺失影响。
-             报告中的验证计划必须逐项列出 fault_tree.json verification_plan 中的全部 ID
-             （例如 VP-01）；每个验证项的 item 可以润色，但必须保留对应 ID 和完整语义。
+             章节结构与必须显式包含的关键短语以 result_contract.md 的
+             「报告章节」「报告关键短语」各节为准；资料覆盖矩阵使用模板的语义
+             结构（表头与列），逐项检查的资料类别以 result_contract.md 的
+             「资料覆盖类别」为准。报告中的验证计划必须逐项列出 fault_tree.json
+             verification_plan 中的全部 ID（例如 VP-01）；每个验证项的 item
+             可以润色，但必须保留对应 ID 和完整语义。
              请参考 /mnt/skills/fault-zeroing/templates/zeroing_report.md 的表格结构。
 
           质量自检：
           - 4 个文件全部存在且非空
-          - 报告包含资料覆盖矩阵、证据台账摘要、待验证项、遗留风险
+          - 报告满足 result_contract.md 声明的报告章节与关键短语要求
           - fault_tree.json 的顶事件、根因、待验证项与报告一致
           - SVG 为纯静态
-          - 分析过程追溯标记：证据提取、故障树构建、底事件评估、根因归因、纠正措施、文档生产
+          - 分析过程追溯标记按 result_contract.md「分析阶段标记」清单
 
           失败契约：任一输入文件缺失或无法生成全部 4 个文件时，回复必须以
           FAILED: 开头说明缺失项；严禁生成占位/空文件。

@@ -67,6 +67,7 @@ import {
   retainThreadTokenUsagePlaceholder,
   threadTokenUsageQueryKey,
 } from "./token-usage";
+import { createTurnSubmitGate, type TurnSubmitGate } from "./turn-submit";
 import type {
   AgentThread,
   AgentThreadState,
@@ -97,6 +98,14 @@ export type ThreadStreamOptions = {
     context?: Record<string, unknown>;
   }>;
   onThreadCreated?: (threadId: string) => void;
+  /**
+   * The shared turn-submit fence for this view (core/threads/turn-submit).
+   * When provided, the page's TurnSubmitController and this hook share one
+   * duplicate-submission fence and one lifecycle owner; without it the hook
+   * fences its own sends with a private gate (direct senders such as the
+   * sidecar panel).
+   */
+  turnSubmitGate?: TurnSubmitGate;
 };
 
 type SendMessageOptions = {
@@ -1750,8 +1759,14 @@ export function useThreadStream({
   onToolEnd,
   prepareSubmit,
   onThreadCreated,
+  turnSubmitGate,
 }: ThreadStreamOptions) {
   const { t } = useI18n();
+  // The one duplicate-submission fence of this view. Pages coordinating the
+  // full turn-submit chain pass their controller's gate in; standalone
+  // consumers fall back to a private gate.
+  const privateTurnSubmitGate = useMemo(() => createTurnSubmitGate(), []);
+  const turnSubmit = turnSubmitGate ?? privateTurnSubmitGate;
   const currentViewThreadId = displayThreadId ?? threadId ?? null;
   const currentViewThreadIdRef = useRef(currentViewThreadId);
   currentViewThreadIdRef.current = currentViewThreadId;
@@ -1779,8 +1794,6 @@ export function useThreadStream({
   const pendingPreparedReplayRef = useRef<PendingPreparedReplayMask | null>(
     null,
   );
-  const pendingSendFailureRef = useRef<(() => void) | null>(null);
-  const pendingSendCompletionRef = useRef<(() => void) | null>(null);
   const listeners = useRef({
     onSend,
     onStart,
@@ -2040,10 +2053,7 @@ export function useThreadStream({
       }
     },
     onError(error) {
-      const onSendFailed = pendingSendFailureRef.current;
-      pendingSendFailureRef.current = null;
-      pendingSendCompletionRef.current = null;
-      onSendFailed?.();
+      turnSubmit.failTurn();
       setOptimisticMessages([]);
       setOptimisticThreadId(null);
       setLiveMessagesThreadId(null);
@@ -2066,10 +2076,7 @@ export function useThreadStream({
       }
     },
     onFinish(state) {
-      const onSendCompleted = pendingSendCompletionRef.current;
-      pendingSendCompletionRef.current = null;
-      pendingSendFailureRef.current = null;
-      onSendCompleted?.();
+      turnSubmit.completeTurn();
       listeners.current.onFinish?.(state.values);
       pendingPreparedReplayRef.current = null;
       pendingUsageBaselineMessageIdsRef.current = new Set(
@@ -2137,7 +2144,6 @@ export function useThreadStream({
     (m) => m.type === "human",
   ).length;
   const latestMessageCountsRef = useRef({ humanMessageCount });
-  const sendInFlightRef = useRef(false);
   const activeTraceIdRef = useRef<string | null>(null);
   const firstDisplayedTraceIdRef = useRef<string | null>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -2183,7 +2189,10 @@ export function useThreadStream({
   // optimistic messages and in-flight guards do not leak across chat views.
   useEffect(() => {
     startedRef.current = false;
-    sendInFlightRef.current = false;
+    // Open the send-phase fence for the new conversation even if the previous
+    // conversation's send is still settling; its terminal events still reach
+    // the gate's lifecycle (matching the old in-flight flag reset).
+    turnSubmit.endSend();
     activeTraceIdRef.current = null;
     firstDisplayedTraceIdRef.current = null;
     messagesRef.current = [];
@@ -2203,7 +2212,7 @@ export function useThreadStream({
     setPendingSupersededMessageIds(new Set());
     prevHumanMsgCountRef.current =
       latestMessageCountsRef.current.humanMessageCount;
-  }, [threadId]);
+  }, [threadId, turnSubmit]);
 
   // Release entries individually once canonical history confirms their stable
   // identities. Keep unconfirmed entries across failure/refetch within this
@@ -2282,16 +2291,24 @@ export function useThreadStream({
       extraContext?: Record<string, unknown>,
       options?: SendMessageOptions,
     ) => {
-      if (sendInFlightRef.current) {
+      // The one duplicate-submission fence (core/threads/turn-submit): a
+      // coordinated composer turn joins first (its lifecycle wins), a direct
+      // sender opens an anonymous turn. The lifecycle rides the gate instead
+      // of third-party refs, so exactly one submission's callbacks are
+      // registered at a time.
+      if (
+        !turnSubmit.beginSend({
+          onSent: options?.onSent,
+          onSendFailed: options?.onSendFailed,
+          onSendCompleted: options?.onSendCompleted,
+        })
+      ) {
         return;
       }
-      sendInFlightRef.current = true;
-      pendingSendFailureRef.current = options?.onSendFailed ?? null;
-      pendingSendCompletionRef.current = options?.onSendCompleted ?? null;
+      turnSubmit.markDispatched();
 
-      // The send has genuinely proceeded past the in-flight guard, so callers
-      // can now run one-time cleanup that must not fire on the dropped path.
-      options?.onSent?.();
+      // The send has genuinely proceeded past the fence, so registered
+      // one-time cleanup has fired by now.
       const traceId = options?.traceId ?? crypto.randomUUID();
       activeTraceIdRef.current = traceId;
       firstDisplayedTraceIdRef.current = null;
@@ -2539,10 +2556,7 @@ export function useThreadStream({
           queryKey: INFINITE_THREADS_QUERY_KEY_PREFIX,
         });
       } catch (error) {
-        const onSendFailed = pendingSendFailureRef.current;
-        pendingSendFailureRef.current = null;
-        pendingSendCompletionRef.current = null;
-        onSendFailed?.();
+        turnSubmit.failTurn();
         setOptimisticMessages([]);
         setOptimisticThreadId(null);
         setLiveMessagesThreadId(null);
@@ -2550,7 +2564,7 @@ export function useThreadStream({
         localTurnAnchorRef.current = null;
         throw error;
       } finally {
-        sendInFlightRef.current = false;
+        turnSubmit.endSend();
       }
     },
     [
@@ -2561,6 +2575,7 @@ export function useThreadStream({
       humanMessageCount,
       persistedMessages,
       prepareSubmit,
+      turnSubmit,
       visibleHistory,
     ],
   );
@@ -2577,10 +2592,11 @@ export function useThreadStream({
       getSupersededMessageIds: (prepared: TPrepared) => string[];
       getOptimisticMessages?: (prepared: TPrepared) => Message[];
     }) => {
-      if (sendInFlightRef.current || !threadId) {
+      // An edit replay is a direct send: an anonymous gate turn keeps it
+      // fenced against concurrent submissions without a composer lifecycle.
+      if (!threadId || !turnSubmit.beginSend()) {
         return false;
       }
-      sendInFlightRef.current = true;
       prevHumanMsgCountRef.current = humanMessageCount;
       pendingUsageBaselineMessageIdsRef.current = new Set(
         persistedMessages
@@ -2705,7 +2721,7 @@ export function useThreadStream({
         toast.error(getStreamErrorMessage(error));
         return false;
       } finally {
-        sendInFlightRef.current = false;
+        turnSubmit.endSend();
       }
     },
     [
@@ -2714,6 +2730,7 @@ export function useThreadStream({
       persistedMessages,
       queryClient,
       thread,
+      turnSubmit,
       visibleHistory,
     ],
   );

@@ -1,10 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  getSlashAtCursor,
-  getMatchingSkillSuggestions,
-  parseSlashPrefix,
-} from "@/components/workspace/slash-suggestions";
+import { getSlashAtCursor } from "@/components/workspace/slash-suggestions";
+import { matchSkills } from "@/core/skills/selection";
 import type { Skill } from "@/core/skills/type";
 
 const makeSkill = (name: string, description = `${name} desc`): Skill => ({
@@ -51,17 +48,17 @@ describe("Phase 3: slash overlay integration", () => {
 
   describe("skill filtering with activeIndex", () => {
     test("filters skills by query", () => {
-      const result = getMatchingSkillSuggestions(SKILLS, "res");
+      const result = matchSkills({ skills: SKILLS }, "res");
       expect(result.map((s) => s.name)).toEqual(["research"]);
     });
 
     test("returns multiple matches for broad query", () => {
-      const result = getMatchingSkillSuggestions(SKILLS, "e");
+      const result = matchSkills({ skills: SKILLS }, "e");
       expect(result.length).toBeGreaterThan(1);
     });
 
     test("activeIndex wraps around", () => {
-      const result = getMatchingSkillSuggestions(SKILLS, "");
+      const result = matchSkills({ skills: SKILLS }, "");
       const total = result.length;
       const wrappedIndex = (total + 1) % total;
       expect(wrappedIndex).toBe(1);
@@ -69,18 +66,6 @@ describe("Phase 3: slash overlay integration", () => {
   });
 
   describe("slash prefix replacement", () => {
-    test("replaces slash prefix with skill name", () => {
-      const value = "/res hello";
-      const prefix = parseSlashPrefix(value);
-      expect(prefix).toEqual({ skillName: "res", rest: "hello" });
-    });
-
-    test("handles empty rest after replacement", () => {
-      const value = "/research";
-      const prefix = parseSlashPrefix(value);
-      expect(prefix).toEqual({ skillName: "research", rest: "" });
-    });
-
     test("preserves trailing text after slash prefix", () => {
       const before = "";
       const skillName = "research";

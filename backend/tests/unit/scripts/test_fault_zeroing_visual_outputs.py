@@ -21,6 +21,27 @@ RESPONSIBILITY_PHRASES = [
     "证据检漏只做添加不做删除",
     "文档阶段不修改分析数据",
 ]
+# Since the contract single-home change (2026-10-03), SKILL/SOUL no longer
+# restate the declarative contract content; they reference the generated
+# sandbox copy by section, and that copy carries the phrases verbatim
+# (parity-guarded against app.agentplatform.fault_zeroing.contract).
+CONTRACT_REFERENCE_MOUNT = "/mnt/skills/fault-zeroing/references/result_contract.md"
+CONTRACT_REFERENCE_TARGET = REPO_ROOT / "resources" / "skills" / "fault-zeroing" / "references" / "result_contract.md"
+CONTRACT_SECTIONS_SKILL = [
+    "五件产物清单",
+    "资料覆盖类别",
+    "报告章节",
+    "报告关键短语",
+    "分析阶段标记",
+    "阶段职责说明",
+]
+CONTRACT_SECTIONS_SOUL = [
+    "五件产物清单",
+    "资料覆盖类别",
+    "报告关键短语",
+    "分析阶段标记",
+    "阶段职责说明",
+]
 # The inline end-to-end chat mode was removed by the unified-kernel ticket 04:
 # real analysis promotes into a kernel Run via start_zeroing_run instead.
 REMOVED_INLINE_MODE_PHRASES = [
@@ -49,15 +70,22 @@ def test_fault_zeroing_skill_promotes_real_analysis_into_kernel_runs() -> None:
         "ask_clarification",
         "三选一",
         "input_snapshot_hash",
-        *REQUIRED_OUTPUTS,
         "资料覆盖矩阵",
         "证据台账",
         "probability_basis",
         "06_expected_analysis.md",
-        *RESPONSIBILITY_PHRASES,
-        *STAGE_MARKERS,
     ]:
         assert phrase in content
+
+    # The declarative contract content is referenced, not restated: the skill
+    # points at the generated reference copy by section, and that copy carries
+    # the five artifacts, stage markers, and responsibility phrases verbatim.
+    assert CONTRACT_REFERENCE_MOUNT in content
+    for section in CONTRACT_SECTIONS_SKILL:
+        assert f"「{section}」" in content
+    reference_target = CONTRACT_REFERENCE_TARGET.read_text(encoding="utf-8")
+    for phrase in [*REQUIRED_OUTPUTS, *STAGE_MARKERS, *RESPONSIBILITY_PHRASES]:
+        assert phrase in reference_target
 
     assert "present_files" in content
     assert "不写脚本和外链资源" in content
@@ -100,14 +128,19 @@ def test_fault_zeroing_soul_promotes_real_analysis_into_kernel_runs() -> None:
         "ask_clarification",
         "三选一",
         "证据台账",
-        *REQUIRED_OUTPUTS,
         "资料覆盖矩阵",
         "probability_basis",
-        "06_expected_analysis.md",
-        *RESPONSIBILITY_PHRASES,
-        *STAGE_MARKERS,
     ]:
         assert phrase in content
+
+    # Same contract-reference design as the skill: sections by name, phrases
+    # carried by the generated reference copy.
+    assert CONTRACT_REFERENCE_MOUNT in content
+    for section in CONTRACT_SECTIONS_SOUL:
+        assert f"「{section}」" in content
+    reference_target = CONTRACT_REFERENCE_TARGET.read_text(encoding="utf-8")
+    for phrase in [*REQUIRED_OUTPUTS, *STAGE_MARKERS, *RESPONSIBILITY_PHRASES]:
+        assert phrase in reference_target
 
     assert "SVG 不得包含脚本、外链资源或动态交互代码" in content
 

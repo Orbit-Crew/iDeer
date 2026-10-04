@@ -84,32 +84,42 @@ import {
   type SidecarContext,
 } from "@/core/sidecar";
 import { useSkills } from "@/core/skills/hooks";
+import {
+  clearSelection,
+  fromDraft,
+  matchSkills,
+  offerableSkills,
+  select,
+  selectedSkillName,
+  submitTextFor,
+  type SkillSelection,
+  type SkillSuggestion,
+} from "@/core/skills/selection";
 import { DEFAULT_MAX_SUGGESTIONS } from "@/core/suggestions/api";
 import { useSuggestionsConfig } from "@/core/suggestions/hooks";
 import type { AgentThreadContext, GoalState } from "@/core/threads";
 import { compactThreadContext } from "@/core/threads/api";
 import {
   buildComposerDraftKey,
-  clearComposerDraft,
   getSessionComposerDraftStorage,
   readComposerDraft,
-  resolveComposerDraft,
   type ComposerDraft,
   writeComposerDraft,
 } from "@/core/threads/composer-draft";
 import { prepareTaskInputInsertion } from "@/core/threads/task-input";
 import { threadTokenUsageQueryKey } from "@/core/threads/token-usage";
+import type {
+  TurnSubmitController,
+  TurnSubmitRequest,
+} from "@/core/threads/turn-submit";
 import { textOfMessage } from "@/core/threads/utils";
 import {
   formatUploadSize,
   splitUnsupportedUploadFiles,
   useUploadLimits,
   validateUploadLimits,
-  promptInputFilePartToFile,
-  uploadFiles,
   type UploadLimits,
   type UploadLimitViolation,
-  type UploadedFileInfo,
 } from "@/core/uploads";
 import {
   appendSpeechTranscript,
@@ -135,18 +145,16 @@ import {
   createGoalRequestState,
   findSuggestionTemplatePlaceholder,
   finishGoalRequest,
-  filterSkillsForAgent,
   getGoalObjectiveCounter,
   getInputSubmitAction,
   getLeadingSlashSkillQuery,
-  getMatchingSkillSuggestions,
   type GoalCommand,
   isAbortError,
   isCurrentGoalRequest,
   isGoalObjectiveTooLong,
   MAX_GOAL_OBJECTIVE_CHARS,
+  MAX_SKILL_SUGGESTIONS,
   readGoalResponseError,
-  type SlashSuggestion,
 } from "./input-box-helpers";
 import { useThread } from "./messages/context";
 import { ModeHoverGuide } from "./mode-hover-guide";
@@ -159,7 +167,6 @@ import { InlineSelectedTag, type SelectedTag } from "./scenario/selected-tags";
 import { ReferenceAttachmentSummary, useMaybeSidecar } from "./sidecar";
 import { SkillPicker } from "./slash-overlay";
 import { SlashSkillChip } from "./slash-skill-chip";
-import { getMatchingSkillSuggestions as getPickerSkillSuggestions } from "./slash-suggestions";
 import { Tooltip } from "./tooltip";
 
 type InputMode = "flash" | "thinking" | "pro" | "ultra";
@@ -226,18 +233,6 @@ function escapeXmlAttribute(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
-
-export type InputBoxSubmitOptions = {
-  additionalKwargs?: Record<string, unknown>;
-  additionalInputMessages?: Message[];
-  preuploadedFiles?: ReadonlyMap<File, UploadedFileInfo>;
-  traceId?: string;
-  /** Thread IDs attached through the conversation picker; sent as run context. */
-  conversationReferences?: string[];
-  onSent?: () => void;
-  onSendFailed?: () => void;
-  onSendCompleted?: () => void;
-};
 
 type VoiceRecognitionStartOptions = {
   focusAfterStart?: boolean;
@@ -328,11 +323,9 @@ export function InputBox({
   onFollowupsVisibilityChange,
   onGoalChange,
   onPrepareThread,
-  onSubmit,
+  turnSubmit,
   onStop,
   canStopStreaming = true,
-  agentSkillNames,
-  agentSkillsLoading = false,
   ...props
 }: Omit<ComponentProps<typeof PromptInput>, "onSubmit"> & {
   assistantId?: string | null;
@@ -356,8 +349,6 @@ export function InputBox({
   threadId: string;
   draftThreadId?: string;
   draftAgentName?: string | null;
-  agentSkillNames?: string[] | null;
-  agentSkillsLoading?: boolean;
   /**
    * The active custom agent's configured default model, if any. Used as the
    * auto-selection fallback so an agent chat honors the agent's own default
@@ -413,10 +404,13 @@ export function InputBox({
    * aborts the command and keeps the composer's text for a retry.
    */
   onPrepareThread?: () => void | Promise<void>;
-  onSubmit?: (
-    message: PromptInputMessage,
-    options?: InputBoxSubmitOptions,
-  ) => void | Promise<void>;
+  /**
+   * The turn-submit controller owning the message submit chain (duplicate
+   * fence, draft policy, attachment pre-uploads, lifecycle). Built by the
+   * chat page on top of the shared `useThreadStream` gate; the composer is
+   * a view over it.
+   */
+  turnSubmit: TurnSubmitController;
   onStop?: () => void;
   /**
    * Whether the caller's role holds `runs:cancel` (RFC #4063 Phase 4).
@@ -471,12 +465,6 @@ export function InputBox({
   });
   const voiceRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const voiceBaseTextRef = useRef("");
-  const preuploadedFilesRef = useRef(new Map<File, UploadedFileInfo>());
-  const attachmentTraceIdRef = useRef<string | null>(null);
-  const preuploadPromisesRef = useRef(
-    new Map<File, Promise<UploadedFileInfo>>(),
-  );
-  const pendingDraftSubmissionKeyRef = useRef<string | null>(null);
   const notifyUploadError = useCallback(
     (error: unknown) => {
       toast.error(
@@ -487,46 +475,12 @@ export function InputBox({
     [threadId],
   );
 
-  const ensurePreuploaded = useCallback(
-    (file: File) => {
-      const uploaded = preuploadedFilesRef.current.get(file);
-      if (uploaded) return Promise.resolve(uploaded);
-
-      const existing = preuploadPromisesRef.current.get(file);
-      if (existing) return existing;
-
-      const promise = (async () => {
-        const response = await uploadFiles(
-          threadId,
-          [file],
-          attachmentTraceIdRef.current ?? undefined,
-        );
-        const uploadedFile = response.files[0];
-        if (!uploadedFile) {
-          throw new Error(`Failed to upload attachment: ${file.name}`);
-        }
-        preuploadedFilesRef.current.set(file, uploadedFile);
-        attachmentTraceIdRef.current ??= response.trace_id ?? null;
-        return uploadedFile;
-      })();
-      preuploadPromisesRef.current.set(file, promise);
-      void promise
-        .finally(() => {
-          if (preuploadPromisesRef.current.get(file) === promise) {
-            preuploadPromisesRef.current.delete(file);
-          }
-        })
-        .catch(() => undefined);
-      return promise;
-    },
-    [threadId],
-  );
-
+  // Eager attachment pre-uploads: the store, dedup, and trace id live in the
+  // turn-submit controller; this effect only reconciles it with the
+  // composer's current attachments and surfaces failures as toasts.
   useEffect(() => {
     if (threadId === "new") {
-      preuploadedFilesRef.current.clear();
-      preuploadPromisesRef.current.clear();
-      attachmentTraceIdRef.current = null;
+      turnSubmit.syncPreuploads({ threadId, files: [] });
       return;
     }
     if (!uploadLimits) {
@@ -538,31 +492,21 @@ export function InputBox({
       .filter((file): file is File => file instanceof File);
     const validation = validateUploadLimits([], files, uploadLimits);
     const rejectedFiles = new Set(validation.rejected);
-    const activeFiles = new Set(files);
-    if (files.length > 0) {
-      attachmentTraceIdRef.current ??= crypto.randomUUID();
-    } else {
-      attachmentTraceIdRef.current = null;
-    }
-    for (const file of preuploadedFilesRef.current.keys()) {
-      if (!activeFiles.has(file)) preuploadedFilesRef.current.delete(file);
-    }
+    turnSubmit.syncPreuploads({ threadId, files });
 
     void Promise.all(
-      files.filter((file) => !rejectedFiles.has(file)).map(ensurePreuploaded),
+      files
+        .filter((file) => !rejectedFiles.has(file))
+        .map((file) => turnSubmit.preupload(file, threadId)),
     ).catch((error) => {
-      if (pendingDraftSubmissionKeyRef.current !== null) {
+      // While a submission is pending, its own pre-upload path owns the
+      // error surfacing; a background eager failure must not double-toast it.
+      if (turnSubmit.hasPendingSubmission()) {
         return;
       }
       notifyUploadError(error);
     });
-  }, [
-    attachmentParts,
-    ensurePreuploaded,
-    notifyUploadError,
-    threadId,
-    uploadLimits,
-  ]);
+  }, [attachmentParts, notifyUploadError, threadId, turnSubmit, uploadLimits]);
   const voiceLatestTextRef = useRef("");
   const voiceLastErrorKindRef = useRef<SpeechRecognitionErrorKind | null>(null);
   const voiceStopRequestedRef = useRef(false);
@@ -603,7 +547,7 @@ export function InputBox({
   const [textareaFocused, setTextareaFocused] = useState(false);
   const [skillSuggestionIndex, setSkillSuggestionIndex] = useState(0);
   const [selectedSlashSkill, setSelectedSlashSkill] =
-    useState<SlashSuggestion | null>(null);
+    useState<SkillSelection>(null);
   // Picker opened from the Skill trigger button (anchored SkillPicker
   // overlay, independent of the "/" typing flow below).
   const [skillPickerOpen, setSkillPickerOpen] = useState(false);
@@ -706,7 +650,7 @@ export function InputBox({
     }
     injectedTemplateRef.current = null;
   }, [clearInjectedTemplateKey, textInput]);
-  const builtinSlashCommands = useMemo<SlashSuggestion[]>(
+  const builtinSlashCommands = useMemo<SkillSuggestion[]>(
     () => [
       {
         name: "goal",
@@ -845,22 +789,13 @@ export function InputBox({
   currentDraftViewRef.current = {
     key: draftKey,
     text: textInput.value ?? "",
-    skillName:
-      selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+    skillName: selectedSkillName(selectedSlashSkill),
   };
-  const agentScopedSkills = useMemo(
-    () =>
-      agentSkillsLoading ? [] : filterSkillsForAgent(skills, agentSkillNames),
-    [agentSkillNames, agentSkillsLoading, skills],
-  );
-  const enabledSkillNames = useMemo(
-    () =>
-      new Set(
-        agentScopedSkills
-          .filter((skill) => skill.enabled)
-          .map((skill) => skill.name),
-      ),
-    [agentScopedSkills],
+  // The single gate: which skills this composer may offer at all (the active
+  // agent's closure when `allowedSkillNames` is set, otherwise the catalog).
+  const offerable = useMemo(
+    () => offerableSkills(skills, allowedSkillNames),
+    [allowedSkillNames, skills],
   );
   const cancelDraftSaveTimer = useCallback(() => {
     if (draftSaveTimerRef.current === null) {
@@ -875,15 +810,19 @@ export function InputBox({
   }, [cancelDraftSaveTimer]);
   const scheduleDraftSave = useCallback(
     (draft: ComposerDraft, key = draftKey) => {
+      // While a submission holds this key's draft, an emptied composer must
+      // not overwrite the preserved draft (the turn-submit lifecycle
+      // restores/clears it instead).
       if (
         !draft.text &&
         !draft.skillName &&
-        pendingDraftSubmissionKeyRef.current === key
+        turnSubmit.shouldHoldDraftFor(key)
       ) {
         return null;
       }
       if (draft.text || draft.skillName) {
-        pendingDraftSubmissionKeyRef.current = null;
+        // A newly typed draft releases the hold.
+        turnSubmit.releaseDraftHold();
       }
 
       latestDraftRef.current = { key, draft };
@@ -903,7 +842,7 @@ export function InputBox({
       draftSaveTimerRef.current = timer;
       return timer;
     },
-    [cancelDraftSaveTimer, draftKey],
+    [cancelDraftSaveTimer, draftKey, turnSubmit],
   );
   const flushLatestDraft = useCallback(
     (expectedKey?: string) => {
@@ -950,14 +889,20 @@ export function InputBox({
     promptHistoryIndexRef.current = null;
     promptHistoryDraftRef.current = "";
     setTextInput("");
-    setSelectedSlashSkill(null);
+    setSelectedSlashSkill(clearSelection());
     setInputPolishUndo(null);
     setHydratedDraftKey(null);
-    pendingDraftSubmissionKeyRef.current = null;
+    turnSubmit.releaseDraftHold();
     latestDraftRef.current = null;
     invalidateDraftSaveTimer();
     return () => flushLatestDraft(draftKey);
-  }, [draftKey, flushLatestDraft, invalidateDraftSaveTimer, setTextInput]);
+  }, [
+    draftKey,
+    flushLatestDraft,
+    invalidateDraftSaveTimer,
+    setTextInput,
+    turnSubmit,
+  ]);
 
   useLayoutEffect(() => {
     const handlePageHide = () => flushLatestDraft();
@@ -966,7 +911,7 @@ export function InputBox({
   }, [flushLatestDraft]);
 
   useEffect(() => {
-    if (skillsLoading || agentSkillsLoading || hydratedDraftKey === draftKey) {
+    if (skillsLoading || hydratedDraftKey === draftKey) {
       return;
     }
 
@@ -982,31 +927,19 @@ export function InputBox({
       return;
     }
 
-    const resolvedDraft = resolveComposerDraft(savedDraft, enabledSkillNames);
-    setTextInput(resolvedDraft.text);
-    const restoredSkill = resolvedDraft.skillName
-      ? agentScopedSkills.find(
-          (skill) => skill.enabled && skill.name === resolvedDraft.skillName,
-        )
-      : undefined;
-    setSelectedSlashSkill(
-      restoredSkill
-        ? {
-            name: restoredSkill.name,
-            description: restoredSkill.description,
-            kind: "skill",
-          }
-        : null,
-    );
+    const restored = fromDraft(savedDraft.skillName, {
+      text: savedDraft.text,
+      skills: offerable,
+    });
+    setTextInput(restored.text);
+    setSelectedSlashSkill(restored.selected);
     setHydratedDraftKey(draftKey);
   }, [
     draftKey,
-    enabledSkillNames,
     hydratedDraftKey,
     initialValue,
+    offerable,
     setTextInput,
-    agentScopedSkills,
-    agentSkillsLoading,
     skillsLoading,
     textInput.value,
   ]);
@@ -1018,8 +951,7 @@ export function InputBox({
 
     const draft: ComposerDraft = {
       text: textInput.value ?? "",
-      skillName:
-        selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+      skillName: selectedSkillName(selectedSlashSkill),
     };
     const timer = scheduleDraftSave(draft, draftKey);
     return () => {
@@ -1303,11 +1235,6 @@ export function InputBox({
 
   const submitThreadMessage = useCallback(
     async (message: PromptInputMessage) => {
-      if (pendingDraftSubmissionKeyRef.current === draftKey) {
-        return Promise.reject(
-          new Error("A message is already being submitted."),
-        );
-      }
       const files = message.files.flatMap((file) =>
         file.file instanceof File ? [file.file] : [],
       );
@@ -1342,27 +1269,7 @@ export function InputBox({
       const quoteContexts = quotes.map((quote) => quote.context);
       const pendingDraft: ComposerDraft = {
         text: textInput.value ?? "",
-        skillName:
-          selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
-      };
-      let sendStarted = false;
-      pendingDraftSubmissionKeyRef.current = draftKey;
-      if (threadId !== "new" && message.files.length > 0) {
-        invalidateDraftSaveTimer();
-        latestDraftRef.current = null;
-        clearComposerDraft(getSessionComposerDraftStorage(), draftKey);
-      }
-      const restorePendingDraft = () => {
-        if (sendStarted || pendingDraftSubmissionKeyRef.current !== draftKey) {
-          return;
-        }
-        pendingDraftSubmissionKeyRef.current = null;
-        latestDraftRef.current = { key: draftKey, draft: pendingDraft };
-        writeComposerDraft(
-          getSessionComposerDraftStorage(),
-          draftKey,
-          pendingDraft,
-        );
+        skillName: selectedSkillName(selectedSlashSkill),
       };
       const referenceIds = conversationReferences.map(
         (reference) => reference.threadId,
@@ -1386,112 +1293,64 @@ export function InputBox({
           : {}),
         ...(stagedFiles.length > 0 ? { files: stagedFiles } : {}),
       };
-      const submitOptions: InputBoxSubmitOptions = {
-        ...(Object.keys(additionalKwargs).length ? { additionalKwargs } : {}),
-        ...(quotes.length
-          ? {
-              additionalInputMessages: [
-                buildHiddenConversationQuoteMessage({
-                  contexts: quoteContexts,
-                }),
-              ],
-            }
-          : {}),
-        ...(referenceIds.length
-          ? { conversationReferences: referenceIds }
-          : {}),
-        // Clear one-time state only once the send genuinely proceeds. If the
-        // send is dropped by the in-flight guard, `onSent` never fires.
-        onSent: () => {
-          sendStarted = true;
-          if (pendingDraftSubmissionKeyRef.current === draftKey) {
-            invalidateDraftSaveTimer();
-            latestDraftRef.current = { key: draftKey, draft: pendingDraft };
-            writeComposerDraft(
-              getSessionComposerDraftStorage(),
-              draftKey,
-              pendingDraft,
-            );
-          }
-          sidecar?.clearConversationQuotes(quoteIds);
+      // The duplicate-submission fence, the submit-chain draft policy
+      // (hold/persist/restore/clear), and attachment pre-uploads live in the
+      // turn-submit module; the composer contributes its view state (draft
+      // ports) and one-time resets (lifecycle) only.
+      const submitRequest: TurnSubmitRequest = {
+        threadId,
+        message,
+        options: {
+          ...(Object.keys(additionalKwargs).length ? { additionalKwargs } : {}),
+          ...(quotes.length
+            ? {
+                additionalInputMessages: [
+                  buildHiddenConversationQuoteMessage({
+                    contexts: quoteContexts,
+                  }),
+                ],
+              }
+            : {}),
+          ...(referenceIds.length
+            ? { conversationReferences: referenceIds }
+            : {}),
         },
-        onSendCompleted: () => {
-          const storage = getSessionComposerDraftStorage();
-          const savedDraft = readComposerDraft(storage, draftKey);
-          const latestDraft = latestDraftRef.current;
-          const visibleDraft = currentDraftViewRef.current;
-          const hasNewDraft =
-            (latestDraft?.key === draftKey &&
-              (latestDraft.draft.text !== pendingDraft.text ||
-                latestDraft.draft.skillName !== pendingDraft.skillName)) ||
-            (visibleDraft.key === draftKey &&
-              Boolean(visibleDraft.text || visibleDraft.skillName) &&
-              (visibleDraft.text !== pendingDraft.text ||
-                visibleDraft.skillName !== pendingDraft.skillName));
-          if (
-            !hasNewDraft &&
-            savedDraft?.text === pendingDraft.text &&
-            savedDraft.skillName === pendingDraft.skillName
-          ) {
-            clearComposerDraft(storage, draftKey);
-          }
-          if (pendingDraftSubmissionKeyRef.current === draftKey) {
-            pendingDraftSubmissionKeyRef.current = null;
+        lifecycle: {
+          // Clear one-time state only once the send genuinely proceeds. If
+          // the send is dropped by the fence, `onSent` never fires.
+          onSent: () => {
+            sidecar?.clearConversationQuotes(quoteIds);
+          },
+          onSendCompleted: () => {
+            sidecar?.clearConversationQuotes(quoteIds);
+            setConversationReferences([]);
+            setProjectAttachments([]);
+          },
+        },
+        draft: {
+          key: draftKey,
+          pending: pendingDraft,
+          tracked: () => latestDraftRef.current,
+          visible: () => ({
+            key: currentDraftViewRef.current.key,
+            draft: {
+              text: currentDraftViewRef.current.text,
+              skillName: currentDraftViewRef.current.skillName,
+            },
+          }),
+          track: (draft) => {
+            latestDraftRef.current = { key: draftKey, draft };
+          },
+          forget: () => {
+            invalidateDraftSaveTimer();
             latestDraftRef.current = null;
-            invalidateDraftSaveTimer();
-          }
-          sidecar?.clearConversationQuotes(quoteIds);
-          setConversationReferences([]);
-          setProjectAttachments([]);
+          },
+          restore: (draft) => {
+            setTextInput(draft.text);
+            setSelectedSlashSkill(selectedSlashSkill);
+          },
         },
-        onSendFailed: () => {
-          const visibleDraft = currentDraftViewRef.current;
-          if (pendingDraftSubmissionKeyRef.current === draftKey) {
-            pendingDraftSubmissionKeyRef.current = null;
-            invalidateDraftSaveTimer();
-          }
-          if (
-            visibleDraft.key === draftKey &&
-            !visibleDraft.text &&
-            !visibleDraft.skillName
-          ) {
-            setTextInput(pendingDraft.text);
-            setSelectedSlashSkill(
-              selectedSlashSkill?.kind === "skill" ? selectedSlashSkill : null,
-            );
-          }
-        },
-      };
-
-      if (threadId !== "new" && message.files.length > 0) {
-        try {
-          const convertedFiles = await Promise.all(
-            message.files.map((filePart) =>
-              promptInputFilePartToFile(filePart),
-            ),
-          );
-          const preuploadedFiles = new Map<File, UploadedFileInfo>();
-          for (const file of convertedFiles) {
-            if (!file) {
-              throw new Error("Failed to prepare an attachment for upload.");
-            }
-            preuploadedFiles.set(file, await ensurePreuploaded(file));
-          }
-          submitOptions.preuploadedFiles = preuploadedFiles;
-          submitOptions.traceId = attachmentTraceIdRef.current ?? undefined;
-        } catch (error) {
-          restorePendingDraft();
-          notifyUploadError(error);
-          throw error;
-        }
-      }
-
-      const submit = async () => {
-        try {
-          await onSubmit?.(message, submitOptions);
-        } finally {
-          restorePendingDraft();
-        }
+        onPreuploadError: notifyUploadError,
       };
 
       // Guard against submitting before the initial model auto-selection
@@ -1510,12 +1369,14 @@ export function InputBox({
         );
         return new Promise<void>((resolve, reject) => {
           setTimeout(() => {
-            Promise.resolve(submit()).then(resolve).catch(reject);
+            Promise.resolve(turnSubmit.submit(submitRequest))
+              .then(resolve)
+              .catch(reject);
           }, 0);
         });
       }
 
-      return submit();
+      return turnSubmit.submit(submitRequest);
     },
     [
       context,
@@ -1524,7 +1385,6 @@ export function InputBox({
       invalidateDraftSaveTimer,
       notifyUploadError,
       onContextChange,
-      onSubmit,
       projectAttachments,
       setProjectAttachments,
       reportUploadLimitViolations,
@@ -1532,11 +1392,11 @@ export function InputBox({
       selectedSlashSkill,
       selectedModel,
       sidecar,
-      ensurePreuploaded,
       setTextInput,
       threadId,
       t.inputBox.suggestionPlaceholderRequired,
       textInput.value,
+      turnSubmit,
       uploadLimits,
     ],
   );
@@ -1569,7 +1429,7 @@ export function InputBox({
       const messageWithSlashSkill = selectedSlashSkill
         ? {
             ...message,
-            text: `/${selectedSlashSkill.name} ${message.text}`,
+            text: submitTextFor(message.text, selectedSlashSkill.name),
           }
         : message;
       const submitAction = getInputSubmitAction({
@@ -1654,7 +1514,7 @@ export function InputBox({
       }
       await submitThreadMessage(messageWithSlashSkill);
       if (selectedSlashSkill) {
-        setSelectedSlashSkill(null);
+        setSelectedSlashSkill(clearSelection());
       }
     },
     [
@@ -1735,11 +1595,14 @@ export function InputBox({
     if (slashSkillQuery === null) {
       return [];
     }
-    const matches = getMatchingSkillSuggestions(
-      agentScopedSkills,
+    const matches = matchSkills(
+      {
+        skills: offerable,
+        builtins: builtinSlashCommands,
+        limit: MAX_SKILL_SUGGESTIONS,
+      },
       slashSkillQuery,
-      builtinSlashCommands,
-      allowedSkillNames,
+      builtinSlashCommands.map(({ name }) => name),
     );
     // Builtin commands own the whole composer line, so they cannot be combined
     // with a skill activation: `/goal` behind a selected skill would submit as
@@ -1750,13 +1613,7 @@ export function InputBox({
     return selectedSlashSkill
       ? matches.filter(({ kind }) => kind === "skill")
       : matches;
-  }, [
-    agentScopedSkills,
-    allowedSkillNames,
-    builtinSlashCommands,
-    selectedSlashSkill,
-    slashSkillQuery,
-  ]);
+  }, [builtinSlashCommands, offerable, selectedSlashSkill, slashSkillQuery]);
   // A selected skill does not close the catalog: `/` reopens it so a skill can
   // be found by browsing and swapped without first clearing the chip.
   const showSkillSuggestions =
@@ -1771,11 +1628,8 @@ export function InputBox({
   // composer position). Kept separate from `skillSuggestions` so the typing
   // flow keeps its builtin-command entries and chip activation behavior.
   const skillPickerSuggestions = useMemo(
-    () =>
-      skillPickerOpen
-        ? getPickerSkillSuggestions(skills, "", allowedSkillNames)
-        : [],
-    [allowedSkillNames, skillPickerOpen, skills],
+    () => (skillPickerOpen ? matchSkills({ skills: offerable }, "") : []),
+    [offerable, skillPickerOpen],
   );
   const isComposerDisabled = disabled === true;
   const isMockThread = isMock === true;
@@ -1988,9 +1842,9 @@ export function InputBox({
   }, [slashSkillQuery, skillSuggestions.length]);
 
   const activateSkill = useCallback(
-    (suggestion: SlashSuggestion, clearInput: boolean) => {
+    (suggestion: SkillSuggestion, clearInput: boolean) => {
       if (suggestion.kind === "skill") {
-        setSelectedSlashSkill(suggestion);
+        setSelectedSlashSkill(select(suggestion));
         if (clearInput) {
           textInput.setInput("");
         }
@@ -2017,7 +1871,7 @@ export function InputBox({
   );
 
   const applySkillSuggestion = useCallback(
-    (suggestion: SlashSuggestion) => activateSkill(suggestion, true),
+    (suggestion: SkillSuggestion) => activateSkill(suggestion, true),
     [activateSkill],
   );
 
@@ -2115,14 +1969,7 @@ export function InputBox({
         const selected =
           skillPickerSuggestions[skillPickerIndex] ?? skillPickerSuggestions[0];
         if (selected) {
-          activateSkill(
-            {
-              name: selected.name,
-              description: selected.description,
-              kind: "skill",
-            },
-            false,
-          );
+          activateSkill(selected, false);
           closeSkillPicker();
         }
         return;
@@ -2335,7 +2182,7 @@ export function InputBox({
       }
 
       event.preventDefault();
-      setSelectedSlashSkill(null);
+      setSelectedSlashSkill(clearSelection());
       requestAnimationFrame(() => {
         textareaRef.current?.focus();
       });
@@ -2378,8 +2225,7 @@ export function InputBox({
       promptHistoryDraftRef.current = "";
       scheduleDraftSave({
         text: event.currentTarget.value,
-        skillName:
-          selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+        skillName: selectedSkillName(selectedSlashSkill),
       });
     },
     [
@@ -2402,8 +2248,7 @@ export function InputBox({
       textInput.setInput(nextText);
       scheduleDraftSave({
         text: nextText,
-        skillName:
-          selectedSlashSkill?.kind === "skill" ? selectedSlashSkill.name : null,
+        skillName: selectedSkillName(selectedSlashSkill),
       });
     },
     [
@@ -2511,7 +2356,7 @@ export function InputBox({
   );
 
   const clearSelectedSlashSkill = useCallback(() => {
-    setSelectedSlashSkill(null);
+    setSelectedSlashSkill(clearSelection());
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
     });
@@ -2925,14 +2770,7 @@ export function InputBox({
               activeIndex={skillPickerIndex}
               title={t.inputBox.skill}
               onSelect={(skill) => {
-                activateSkill(
-                  {
-                    name: skill.name,
-                    description: skill.description,
-                    kind: "skill",
-                  },
-                  false,
-                );
+                activateSkill(skill, false);
                 closeSkillPicker();
               }}
               onClose={closeSkillPicker}

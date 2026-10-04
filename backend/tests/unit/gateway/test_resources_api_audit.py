@@ -12,20 +12,18 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 import deerflow.persistence.models  # noqa: F401  -- registers DeerFlow ORM tables
 import deerflow.persistence.models.workflow_v2  # noqa: F401
 from app.agentplatform.rbac_models import UserModel, UserRole
-from app.agentplatform.resources.service import ResourceAction, ResourceActor, ResourceService
+from app.agentplatform.resources.actors import role_permissions
+from app.agentplatform.resources.service import ResourceActor, ResourceService
 from app.gateway.routers import resources
 from deerflow.persistence.base import Base
 
 
 def _actor(role: str) -> ResourceActor:
-    permissions = {ResourceAction.READ, ResourceAction.USE, ResourceAction.WRITE}
-    if role == "super_admin":
-        permissions.update(ResourceAction)
     return ResourceActor(
         user_id="owner",
         department_id="dept-a",
         role=role,
-        permissions=frozenset(permissions),
+        permissions=role_permissions(role),
     )
 
 
@@ -48,7 +46,7 @@ async def _make_env(
     async with factory() as session:
         session.add(current_user)
         await session.commit()
-    monkeypatch.setattr(resources, "get_session_factory", lambda: factory)
+    monkeypatch.setattr(resources, "_factory", lambda: factory)
     monkeypatch.setattr(
         resources,
         "get_paths",

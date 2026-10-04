@@ -30,7 +30,8 @@ from sqlalchemy import update as sql_update
 from app.agentplatform.audit_model import AuditLog
 from app.agentplatform.rbac_models import UserModel, UserRole
 from app.agentplatform.resource_models import Resource, ResourceDraft, ResourceMetadata, ResourceVersion
-from app.agentplatform.resource_service import ResourceAction, ResourceActor, ResourceService
+from app.agentplatform.resource_service import ResourceActor, ResourceService
+from app.agentplatform.resources.actors import role_permissions
 from app.agentplatform.visibility_models import VisibilityApplication
 from deerflow.persistence.engine import get_session_factory
 from deerflow.persistence.feedback.model import FeedbackRow
@@ -235,7 +236,7 @@ async def _handle_canonical_resources(
         user_id=current_user_id,
         department_id=None,
         role="super_admin",
-        permissions=frozenset(ResourceAction),
+        permissions=role_permissions(UserRole.SUPER_ADMIN),
     )
     canonical_strategy = "transfer" if strategy == "transfer" else "archive"
     await ResourceService(session, actor).govern_owner_deletion(

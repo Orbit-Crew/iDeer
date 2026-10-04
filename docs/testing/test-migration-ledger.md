@@ -10,6 +10,141 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: i18n key parity moves from runtime checks to the compiler
+
+Ticket `architecture-deepening` issue 09 (spec candidate 8, Q12=a). The
+`Translations` interface (`frontend/src/core/i18n/locales/types.ts`, 2,047
+hand-maintained lines) was replaced by a one-line derivation from the en-US
+literal (`export type Translations = typeof enUS`), making en-US the source of
+truth and zh-CN a checked adapter. No test file was moved or renamed; one
+describe block was deleted because the compiler now owns its assertion.
+
+| Removed/kept path | Superseded or retained coverage | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/core/i18n/keys.test.ts` — `key parity` describe (5 tests: top-level/workspace/sidebar/workflows/breadcrumb key-set equality) | Deleted as compile-time superseded: `zhCN` is annotated with the derived `Translations`, so any missing or extra zh-CN key fails `tsc --noEmit` (verified: deleting `common.favoritesOnly` from zh-CN produces TS2741; adding a key to en-US alone produces TS2741 on zh-CN until translated). The compiler covers every key of every section, not the five sampled ones. | Stronger: exhaustive, build-blocking, zero-maintenance; the former checks could only sample sections and could never fail once the manual interface existed | `cd frontend && ./node_modules/.bin/tsc --noEmit` plus the focused suite below |
+| `frontend/tests/unit/core/i18n/keys.test.ts` — new `workbench keys` describe (3 tests) and the rest of the file (admin/workflow/brand value assertions) | Kept and extended: value assertions pin the exact strings, including the former page-hardcoded Chinese now living in `zhCN.workbench` and `zhCN.agents.skilledAt` | Unchanged for existing assertions; additive for the migrated strings | `cd frontend && pnpm vitest run tests/unit/core/i18n/keys.test.ts` |
+| `frontend/tests/unit/core/i18n/translations.test.ts` — "every locale has all top-level sections" | Kept as deliberate redundancy: the loop also exercises the `translations` record mapping (`Record<Locale, Translations>`) at runtime, and its section list is a pinned subset rather than pure parity | Compile-time guarantee plus a runtime record smoke | `cd frontend && pnpm vitest run tests/unit/core/i18n/translations.test.ts` |
+| `frontend/tests/e2e/smoke/workbuddy-cascade.spec.ts` — "shows the task-first welcome hierarchy" scenario-prompt assertions (2 lines) | Correction found by the integration `pr-standard` run (unit i18n mocks had papered over the locale seam): the migrated prompts now render through i18n, so the assertions pin the en-US strings (`Unclear direction?` / `Clear goal?`) that the smoke suite's locale actually renders | Same elements, same strength; assertion update only, no product change | `bash scripts/run-test-lane.sh frontend-smoke` |
+| `backend/tests/unit/scripts/test_fault_zeroing_visual_outputs.py` — SKILL/SOUL verbatim-restatement loops (REQUIRED_OUTPUTS / STAGE_MARKERS / RESPONSIBILITY_PHRASES inside SKILL.md and SOUL.md) | Correction found by the integration `pr-standard` runs (issue 07's focused batch missed this file): under the contract single-home design the skill and soul reference the generated copy by section instead of restating it, so the tests now pin (a) the `/mnt/skills/.../references/result_contract.md` mount path and the section names each file must reference, and (b) the reference target carrying the phrases verbatim — which parity already guards against `contract.py` | Phrases remain pinned (now at the generated reference target); reference-by-section adds the new design's guarantee the old assertions could not express | `cd backend && uv run pytest tests/unit/scripts/test_fault_zeroing_visual_outputs.py -q` |
+
+## Batch 2026-10-03: Skill selection consolidates into the selection module
+
+Ticket `architecture-deepening` issue 08 (spec candidate 7, Q11=a). The
+composer's skill selection (offerable gate, "/" matcher, selected-chip state,
+`/name ` submission prefix, draft-restore degradation) moved into
+`frontend/src/core/skills/selection.ts`. The two same-named matchers were
+unified into one whose rule is name-or-description (the "/" typing flow now
+also matches descriptions — a spec-declared behavior change; the suggestion
+count cap is kept). The matcher tests of both old homes merged at the module
+interface. No assertion was weakened; the DOM hydration file was renamed in
+place and grew one test.
+
+| Removed/merged path | Replacement coverage | Core contract retained | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/components/workspace/input-box-helpers.test.ts` — `filterSkillsForAgent` (3 tests) and `getMatchingSkillSuggestions` (10 tests) describes | `frontend/tests/unit/core/skills/selection.test.ts` (new, 23 tests): `offerableSkills` (4), `matchSkills` (11), selection state + `submitTextFor` (3), `fromDraft` (5) | Inherit vs empty allowlist, name/slug/resource-id case-insensitive admission, enabled filtering, startsWith ranking, reserved-name exclusion (contract set + builtin extras), builtin-after-skill ordering, cap ≤ 6, empty-catalog builtin-only degradation; stronger: unified matcher adds explicit description-match coverage and the gate adds slug/resource-id cases | `cd frontend && pnpm vitest run tests/unit/core/skills/selection.test.ts --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/components/workspace/slash-suggestions.test.ts` — `getMatchingSkillSuggestions` (11 tests) and `RESERVED_SLASH_SKILL_NAMES` (2 tests, local 7-name drift set) describes | Same `matchSkills` describe as above; reserved names now pinned by `tests/unit/core/skills/slash-contract.test.ts` (contract 8-name set, superset including `agent`) plus the matcher's reserved-name loop | Overlay matching by name or description, disabled exclusion, case-insensitivity, reserved exclusion | Same command as above; `cd frontend && pnpm rstest run tests/unit/core/skills/slash-contract.test.ts` |
+| `frontend/tests/unit/components/workspace/slash-suggestions.test.ts` — `parseSlashPrefix` describe (10 tests); `frontend/tests/unit/components/workspace/slash-overlay.test.ts` — 2 `parseSlashPrefix` tests | `/name ` grammar stays pinned by `tests/unit/core/skills/slash.test.ts` (`parseSlashSkillReference` over `SLASH_SKILL_RE`) and the cross-stack contract tests (`tests/unit/core/skills/slash-contract.test.ts` + `backend/tests/test_slash_skill_contract.py`); the tested alias of the dead `parseTaskSkillPrefix` parser was removed with it | Leading `/word` grammar and reserved-command refusal | `cd frontend && pnpm rstest run tests/unit/core/skills/slash.test.ts tests/unit/core/skills/slash-contract.test.ts`; backend side below |
+| `frontend/tests/unit/core/threads/task-input.test.ts` — 2 `prepareTaskSubmission` tests | Deleted with the test-only function (no production caller); prefix production is `submitTextFor` (asserted in `selection.test.ts`), prefix grammar as row above | Wire prefix bytes unchanged (backend parses syntactically; contract tests green both sides) | Same commands as above |
+| `frontend/tests/unit/core/threads/composer-draft.test.ts` — `resolveComposerDraft` degradation test (1 test, 2 assertions) | `selection.test.ts` `fromDraft` describe (5 tests): chip restore, fold-back when not offerable, empty-text fold, no-skill passthrough, disabled-skill degradation | Saved skill restores as chip; unavailable skill folds back to editable `/name text` | Same command as above |
+| `frontend/tests/unit/components/workspace/input-box-agent-skill-hydration.dom.test.tsx` (2 tests) | Renamed to `frontend/tests/unit/components/workspace/input-box-skill-hydration.dom.test.tsx` (3 tests) — the deleted `agentSkillNames`/`agentSkillsLoading` props are replaced by `allowedSkillNames` + the `useSkills` loading gate; adds a degradation-through-DOM test | Wait-for-catalog chip restore, inherit semantics without allowlist; stronger: non-offerable saved skill folds into editable text in the real composer | `cd frontend && pnpm rstest run tests/unit/components/workspace/input-box-skill-hydration.dom.test.tsx` |
+
+Cross-stack slash protocol evidence: `contracts/slash_skill_contract.json` is
+unchanged; both sides of the contract test pass on this candidate —
+`cd frontend && pnpm rstest run tests/unit/core/skills/slash-contract.test.ts`
+and `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest
+tests/test_slash_skill_contract.py -q`.
+
+## Batch 2026-10-03: Thread-page hook owns the shared chat-route wiring
+
+Ticket `architecture-deepening` issue 05 (spec candidate 4, Q8=a). No test
+file was moved, renamed, or deleted. The shared chat-route wiring (stream
+wiring incl. thread adoption and finish notifications, welcome-mode state,
+empty-thread redirect, stop/branch/regenerate, view turn-submit controller)
+moved from the three chat routes into the new hook
+`frontend/src/core/threads/use-thread-page.ts`, and its behavior assertions
+moved to the hook interface. The two page test files were rewritten in place
+as adapter assertions over the page seam; the routes keep render/layout and
+page-increment assertions.
+
+| New owner | Absorbed behavior (previous home) | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/core/threads/use-thread-page.test.tsx` (new, 32 tests) | Welcome-mode init/send-flip/re-sync (`chats/[thread_id]/page.test.tsx` "onSend callback exits welcome mode", agents page "onSend callback sets welcome mode to false", both pages' welcome init via `isNewThread`); thread adoption on `onStart`/`onThreadCreated` with `setThreadId`/`setIsNewThread`/`history.replaceState` (chats page "onStart callback sets threadId and updates URL", agents page "onStart callback updates threadId and replaces URL" + encoded-segments variant); identity gating (`threadId` undefined while new, `displayThreadId` passthrough — chats page "passes displayThreadId so optimistic messages attach to the view"); finish notification policy (12 assertions across both page files: hidden/focused gating, default body, last-message body, 200-char truncation, empty/no-text messages); empty-thread redirect trigger, target and guards (page effects, previously untested at this strength); `handleStop`/`handleRegenerate`/`handleEditAndRegenerate`/`handleBranchTurn` incl. branch toast/navigation/no-op guards (chats + showcase page callbacks, agents page stop/regenerate); turn-submit dispatch and options forwarding (chats page "dispatches submitted messages through the turn-submit controller", "forwards the submit request options..."); fence invalidation on conversation switch (page-internal cleanup effects) | Stronger: each policy is now asserted once at the hook interface with real `turn-submit` wiring (gate/controller/fence interplay is exercised, not mocked), instead of duplicated per page behind a fully mocked stream module | `cd frontend && pnpm vitest run tests/unit/core/threads/use-thread-page.test.tsx --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/chats/[thread_id]/page.test.tsx` (rewritten in place, 1537 → 1117 lines, 46 → 38 tests) | Asserted stream wiring through a fully mocked `useThreadStream` | Adapter assertions over the page seam: the page fixture reaches InputBox/MessageList, the scenario binding flows through the seam's `admit`/`extraContext`/`prepareSubmit`/`threadPath` ports, `branchPending` gates edit/branch, identity forwarding; render/layout/scenario-selection assertions unchanged | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx` (rewritten in place, 867 → 614 lines, 43 → 35 tests) | Same mocked-stream page-plumbing assertions | Adapter assertions: agent-scoped `threadPath` encoding, agent binding context/pre-create ports, controller/stop/regenerate prop identity, welcome/status/disabled rendering; skill-closure, badge, navigation, and clarification assertions unchanged | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/chats/thread-page.test.tsx` (mock addition only) | — | `pathOfThread` added to the `@/core/threads/utils` mock because the route now resolves its URL policy through the seam; assertions unchanged | Same file run below |
+
+The showcase route component
+(`frontend/src/components/workspace/chats/chat-page.tsx`) had no dedicated
+test file before or after; its wiring behavior is owned by the hook tests
+above.
+
+## Batch 2026-10-03: Turn-submit module owns the message submit chain
+
+Ticket `architecture-deepening` issue 04 (spec candidate 3, Q7=a). No test
+file was moved, renamed, or deleted. The submit-chain behaviors (duplicate
+fence, draft hold/persist/restore/clear, attachment pre-uploads, lifecycle
+ownership) moved from composer/page internals into the new module
+`frontend/src/core/threads/turn-submit.ts`, and the behavior assertions moved
+to that module interface. Composer and page tests keep wiring smoke only.
+
+| New owner | Absorbed behavior (previous home) | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `frontend/tests/unit/core/threads/turn-submit.test.ts` (33 tests) | Duplicate-submission fence (`hooks.test.ts` "does not send when sendInFlight is true", composer `pendingDraftSubmissionKeyRef` rejection); send-failure draft preservation (`ea4e32572` unit/e2e keepers retained); onSent-once/at-dispatch vs onSendCompleted-at-stream-finish (`hooks.test.ts` "completes a sent message only after the stream finishes", both retained unchanged); attachment pre-upload reuse/dedup and lazy-new-thread skip (previously untested composer internals); admission drop and stale-continuation drop (previously untested `submissionEpochRef` internals) | Stronger: the fence exists in exactly one place and the pinned send-failure/terminal-event contracts are now asserted at the module interface in pure unit tests instead of through DOM wiring | `cd frontend && pnpm vitest run tests/unit/core/threads/turn-submit.test.ts tests/unit/core/threads/hooks.test.ts --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/components/workspace/turn-submit-test-stub.ts` (new helper) | — | Framework-agnostic composer wiring double shared by vitest and rstest files | Covered by the suites below |
+| `frontend/tests/unit/components/workspace/input-box-project-attachment.dom.test.tsx` (rewritten in place) | Simulated the completion lifecycle by calling `options.onSent`/`options.onSendCompleted` submit-option callbacks | Stronger: the six staged-attachment assertions now run through a real `TurnSubmitController` and its gate (`completeTurn()` settles the dispatched turn exactly as the stream's `onFinish` would) | `cd frontend && pnpm rstest run tests/unit/components/workspace/input-box-project-attachment.dom.test.tsx` |
+| `frontend/tests/unit/app/workspace/chats/[thread_id]/page.test.tsx` (2 tests rewritten) | "handleSubmit with files returns send promise" / "handleSubmit without files returns void" / "forwards submit options (onSent)" page-plumbing assertions | The files/void plumbing moved into the module (owned by `turn-submit.test.ts`); the page tests keep wiring smoke: controller dispatch carries the scenario-selection context and forwards submit-request options untouched | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx` (2 tests merged into 1) | "handleSubmit returns promise/undefined" page-plumbing assertions | Same split: plumbing owned by the module; the page test pins that the controller dispatches with the agent binding context | `cd frontend && pnpm vitest run 'tests/unit/app/workspace/agents/[agent_name]/chats/[thread_id]/page.test.tsx' --pool=forks --maxWorkers=2` |
+| `frontend/tests/unit/components/workspace/input-box.test.tsx`, `input-box-pending-template.test.tsx`, `input-box-stop-gating.dom.test.tsx`, `input-box-empty-skills.dom.test.tsx`, `input-box-agent-skill-hydration.dom.test.tsx` (rewired in place) | Asserted against the composer's `onSubmit` prop | Same assertions re-pointed to the `turnSubmit` controller stub; no assertion lost | Full suites below |
+
+Kept unchanged and still green on the candidate: `tests/unit/core/threads/hooks.test.ts`
+(124 tests, including both `ea4e32572` keepers), `tests/e2e/chat.spec.ts`
+draft-preservation scenarios (browser lane), `tests/unit/app/workspace/agents/new/page.test.tsx`
+and `tests/unit/app/workspace/chats/thread-page.test.tsx` (unaffected direct senders).
+
+## Batch 2026-10-03: Knowledge endpoints route through the facade seam
+
+Ticket `architecture-deepening` issue 03 (spec candidate 1, Q6=a). No test
+file was moved, renamed, or deleted; two gateway route-test files were
+rewritten in place from patching route-module globals to injecting the
+`KnowledgeFacade` seam, and the facade unit test file gained seam-level
+intent tests. Every replaced assertion retains an equal or stronger owner at
+the same path.
+
+| Rewritten in place | Replaced patching | Equal-or-stronger replacement at the same path | Validation |
+| --- | --- | --- | --- |
+| `backend/tests/unit/gateway/test_resources_api_knowledge_revisions.py` | `resources.get_session_factory`, `resources.get_paths`, `resources.record_audit`, `resources.configured_ragflow_provider` | Facade injected per test (`provider_factory` for the 503 case, `BackgroundTasks.add_task` as the build scheduler); audit payloads asserted through the injected sink; governance 403/404 and duplicate-publish 409 assertions retained | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/gateway/test_resources_api_knowledge_revisions.py tests/unit/knowledge/test_knowledge_facade.py -q` |
+| `backend/tests/unit/gateway/test_knowledge_tests_api.py` | `resources.get_session_factory`, `knowledge_tests.KnowledgeRetrievalTestService`, `knowledge_tests.record_audit` | Facade injected per test (`search`/`settings_factory` for provider states, facade subclass for the storage-refusal 503); execute/list/replay, provider-error state, 503/422/409/404 distinct safe states retained; adds policy endpoints classifying a non-KB resource as 404 (was 409 via `ResourceConflict`), policy round-trip, evaluation start/list/read/retry-guard, and comparison enqueue/read endpoint coverage that previously had no route-level owner | Same command as above plus `tests/unit/gateway/test_knowledge_tests_api.py` |
+| `backend/tests/unit/knowledge/test_knowledge_facade.py` | (additive) | New seam-level tests: revision/retrieval-test/evaluation/policy intents commit and audit exact payloads, `KnowledgeProviderUnavailable` on missing provider, `RetrievalTestStorageUnavailable` on storage refusal, non-KB resources raise `ResourceNotFound` (404) for policy intents | Same command as above |
+
+Two non-knowledge resources test files kept their environment wiring working
+after the session-factory helper moved to the shared seam module; their
+assertions are unchanged:
+
+| Adjusted wiring only | Change | Validation |
+| --- | --- | --- |
+| `backend/tests/unit/gateway/test_resources_api_audit.py` | patches `resources._factory` instead of the removed `resources.get_session_factory` import | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/gateway/test_resources_api_audit.py tests/unit/gateway/test_resources_api_canonical_drafts.py -q` |
+| `backend/tests/unit/gateway/test_resources_api_canonical_drafts.py` | same patch-target rename (5 sites) | Same command as above |
+
+Behavioral note recorded for reviewers: the two
+`ResourceConflict("KnowledgeBase not found")` raises in the evaluation-policy
+routes became `ResourceNotFound` via the evaluation service guard, so a
+non-KnowledgeBase resource now reads as 404 (unknown == invisible) instead of
+409; the comparison evaluation route's 422 detail code unified from
+`invalid_evaluation_comparison` to `invalid_evaluation` as part of collapsing
+the duplicate error-translation stack into one mapping
+(`app/gateway/knowledge_seam.py::translate_resource_errors`). No test or
+frontend consumer referenced the removed code.
+
+Validation of the wider blast radius (all green on the candidate revision):
+
+```bash
+cd backend
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/gateway tests/unit/knowledge tests/unit/resources -q
+# 2521 passed, 9 skipped
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/contracts/ tests/integration/persistence/ -q
+# 456 passed
+```
+
 ## Batch 2026-10-01: Exact backend test copies at upstream paths
 
 Removed the nested local-migration copy in each row and retained the identical

@@ -5,26 +5,65 @@ const mockStopFn = vi.fn();
 const mockSendMessage = vi.fn();
 const mockSetThreadId = vi.fn();
 const mockSetIsNewThread = vi.fn();
-const mockShowNotification = vi.fn();
 const mockSetLocalSettings = vi.fn();
 const mockSetSettings = vi.fn();
-const mockTextOfMessage = vi.fn().mockReturnValue("");
 const mockRouterPush = vi.fn();
 const mockRouterReplace = vi.fn();
 let agentNameParam = "test-agent";
 
-const { mockUseAgent, mockUseThreadChat, mockUseThreadStream } = vi.hoisted(
+const { mockUseAgent, mockUseThreadChat, mockUseThreadPage } = vi.hoisted(
   () => ({
     mockUseAgent: vi.fn(),
     mockUseThreadChat: vi.fn(),
-    mockUseThreadStream: vi.fn(),
+    mockUseThreadPage: vi.fn(),
   }),
 );
 
-const mockStreamCallbacks: Record<string, any> = {};
 let lastInputBoxProps: any = {};
 let lastMessageListProps: any = {};
 let tokenUsageEnabledFlag = false;
+
+// The page seam (core/threads/use-thread-page) owns the stream wiring,
+// welcome state, empty-thread redirect, and stop/regenerate behavior; those
+// assertions live in tests/unit/core/threads/use-thread-page.test.tsx. This
+// file asserts the page is a correct view over the hook: the fixture it
+// returns reaches the right props, and the page contributes its agent
+// binding through the seam's ports.
+function threadPageFixture(overrides: Record<string, any> = {}) {
+  return {
+    thread: {
+      messages: [],
+      isLoading: false,
+      isThreadLoading: false,
+      error: null,
+      values: {},
+      stop: mockStopFn,
+      getMessagesMetadata: vi.fn(),
+    },
+    pendingUsageMessages: [],
+    sendMessage: mockSendMessage,
+    isUploading: false,
+    isHistoryLoading: false,
+    hasMoreHistory: false,
+    loadMoreHistory: vi.fn(),
+    isWelcomeMode: false,
+    threadMetadata: {
+      data: { values: { title: "Existing" } },
+      isLoading: false,
+      isFetching: false,
+    },
+    branchPending: false,
+    turnSubmit: {
+      submit: vi.fn().mockResolvedValue(undefined),
+      hasPendingSubmission: vi.fn().mockReturnValue(false),
+    },
+    handleStop: vi.fn().mockResolvedValue(undefined),
+    handleRegenerate: vi.fn(),
+    handleEditAndRegenerate: vi.fn(),
+    handleBranchTurn: vi.fn(),
+    ...overrides,
+  };
+}
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ agent_name: agentNameParam }),
@@ -38,7 +77,10 @@ vi.mock("@/core/i18n/hooks", () => ({
         loading: "Loading...",
         notAvailableInDemoMode: "Not available in demo",
       },
-      agents: { newChat: "New Chat" },
+      agents: {
+        newChat: "New Chat",
+        skilledAt: (skills: string[]) => `擅长：${skills.join("、")}`,
+      },
     },
   }),
 }));
@@ -121,10 +163,6 @@ vi.mock("@/core/models/hooks", () => ({
   useModels: () => ({ tokenUsageEnabled: tokenUsageEnabledFlag }),
 }));
 
-vi.mock("@/core/notification/hooks", () => ({
-  useNotification: () => ({ showNotification: mockShowNotification }),
-}));
-
 vi.mock("@/core/settings", () => ({
   useLocalSettings: () => [
     { tokenUsage: { inlineMode: "off" } },
@@ -134,23 +172,12 @@ vi.mock("@/core/settings", () => ({
 }));
 
 vi.mock("@/core/threads/hooks", () => ({
-  useThreadStream: (...args: any[]) => mockUseThreadStream(...args),
   useThreadTokenUsage: () => ({ data: null }),
-  useThreadMetadata: () => ({
-    data: null,
-    isLoading: false,
-    isFetching: false,
-  }),
 }));
 
 vi.mock("@/core/threads/token-usage", () => ({
   threadTokenUsageToTokenUsage: () => ({}),
   selectContextUsage: () => null,
-}));
-
-vi.mock("@/core/threads/utils", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/core/threads/utils")>()),
-  textOfMessage: (...args: any[]) => mockTextOfMessage(...args),
 }));
 
 vi.mock("@/core/features", () => ({
@@ -200,27 +227,19 @@ vi.mock("@/lib/utils", () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(" "),
 }));
 
+vi.mock("@/core/threads/use-thread-page", () => ({
+  useThreadPage: (...args: any[]) => mockUseThreadPage(...args),
+}));
+
 import AgentChatPage from "@/app/workspace/agents/[agent_name]/chats/[thread_id]/page";
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  // Restore document properties
-  Object.defineProperty(document, "hidden", {
-    value: false,
-    configurable: true,
-  });
-  Object.defineProperty(document, "hasFocus", {
-    value: () => true,
-    configurable: true,
-  });
 });
 
 describe("AgentChatPage", () => {
   beforeEach(() => {
-    Object.keys(mockStreamCallbacks).forEach(
-      (k) => delete mockStreamCallbacks[k],
-    );
     lastInputBoxProps = {};
     lastTokenUsageProps = {};
     lastMessageListProps = {};
@@ -230,8 +249,6 @@ describe("AgentChatPage", () => {
     mockSendMessage.mockReset().mockReturnValue(Promise.resolve());
     mockSetThreadId.mockReset();
     mockSetIsNewThread.mockReset();
-    mockShowNotification.mockReset();
-    mockTextOfMessage.mockReset().mockReturnValue("");
     mockRouterPush.mockReset();
     mockRouterReplace.mockReset();
 
@@ -245,26 +262,7 @@ describe("AgentChatPage", () => {
       setIsNewThread: mockSetIsNewThread,
       isMock: false,
     });
-    mockUseThreadStream.mockImplementation((args: any) => {
-      Object.assign(mockStreamCallbacks, args);
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: mockStopFn,
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: mockSendMessage,
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
+    mockUseThreadPage.mockReturnValue(threadPageFixture());
   });
 
   test("renders chat box", () => {
@@ -361,59 +359,10 @@ describe("AgentChatPage", () => {
     expect(screen.getByText("test-agent")).toBeInTheDocument();
   });
 
-  test("sets welcome mode for new thread", () => {
-    mockUseThreadChat.mockReturnValue({
-      threadId: "new",
-      setThreadId: mockSetThreadId,
-      isNewThread: true,
-      setIsNewThread: mockSetIsNewThread,
-      isMock: false,
-    });
-
-    render(<AgentChatPage />);
-    const inputBox = screen.getByTestId("input-box");
-    expect(inputBox.getAttribute("data-welcome-mode")).toBe("true");
-  });
-
-  test("sets non-welcome mode for existing thread", () => {
-    render(<AgentChatPage />);
-    const inputBox = screen.getByTestId("input-box");
-    expect(inputBox.getAttribute("data-welcome-mode")).toBe("false");
-  });
-
-  test("renders todo list when todos exist", () => {
-    mockUseThreadStream.mockImplementation((args: any) => {
-      Object.assign(mockStreamCallbacks, args);
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: { todos: [{ id: "1", text: "Task 1", done: false }] },
-          stop: mockStopFn,
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: mockSendMessage,
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    render(<AgentChatPage />);
-    expect(screen.getByTestId("todo-list")).toBeInTheDocument();
-  });
-
-  test("does not render todo list when no todos", () => {
-    render(<AgentChatPage />);
-    expect(screen.queryByTestId("todo-list")).not.toBeInTheDocument();
-  });
-
-  // --- onSend callback (line 77-79) ---
-  test("onSend callback sets welcome mode to false", () => {
+  test("renders the hook's welcome layout on a new thread", () => {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
     mockUseThreadChat.mockReturnValue({
       threadId: "new",
       setThreadId: mockSetThreadId,
@@ -426,278 +375,87 @@ describe("AgentChatPage", () => {
     expect(
       screen.getByTestId("input-box").getAttribute("data-welcome-mode"),
     ).toBe("true");
+  });
 
-    act(() => {
-      mockStreamCallbacks.onSend();
-    });
-
+  test("renders conversation layout on an existing thread", () => {
+    render(<AgentChatPage />);
     expect(
       screen.getByTestId("input-box").getAttribute("data-welcome-mode"),
     ).toBe("false");
   });
 
-  // --- onStart callback (line 80-88) ---
-  test("onStart callback updates threadId and replaces URL", () => {
-    mockUseThreadChat.mockReturnValue({
-      threadId: "new",
-      setThreadId: mockSetThreadId,
-      isNewThread: true,
-      setIsNewThread: mockSetIsNewThread,
-      isMock: false,
-    });
-
-    const replaceStateSpy = vi.spyOn(history, "replaceState");
-
-    render(<AgentChatPage />);
-    act(() => {
-      mockStreamCallbacks.onStart("created-thread-123");
-    });
-
-    expect(mockSetThreadId).toHaveBeenCalledWith("created-thread-123");
-    expect(mockSetIsNewThread).toHaveBeenCalledWith(false);
-    expect(replaceStateSpy).toHaveBeenCalledWith(
-      null,
-      "",
-      "/workspace/agents/test-agent/chats/created-thread-123",
-    );
-
-    replaceStateSpy.mockRestore();
-  });
-
-  test("encodes expert and thread route segments after a chat starts", () => {
-    agentNameParam = "ops/team";
-    mockUseThreadChat.mockReturnValue({
-      threadId: "new",
-      setThreadId: mockSetThreadId,
-      isNewThread: true,
-      setIsNewThread: mockSetIsNewThread,
-      isMock: false,
-    });
-    const replaceStateSpy = vi.spyOn(history, "replaceState");
-
-    render(<AgentChatPage />);
-    act(() => mockStreamCallbacks.onStart("thread/#1"));
-
-    expect(replaceStateSpy).toHaveBeenCalledWith(
-      null,
-      "",
-      "/workspace/agents/ops%2Fteam/chats/thread%2F%231",
-    );
-    replaceStateSpy.mockRestore();
-  });
-
-  // --- onFinish callback - document visible (line 91) ---
-  test("onFinish does not show notification when document is visible", () => {
-    Object.defineProperty(document, "hidden", {
-      value: false,
-      configurable: true,
-    });
-    Object.defineProperty(document, "hasFocus", {
-      value: () => true,
-      configurable: true,
-    });
-
-    render(<AgentChatPage />);
-    mockStreamCallbacks.onFinish({
-      messages: [{ content: "hello" }],
-      title: "Test Title",
-    });
-
-    expect(mockShowNotification).not.toHaveBeenCalled();
-  });
-
-  // --- onFinish callback - document has focus but not hidden (line 91) ---
-  test("onFinish does not show notification when document has focus and is visible", () => {
-    Object.defineProperty(document, "hidden", {
-      value: false,
-      configurable: true,
-    });
-    Object.defineProperty(document, "hasFocus", {
-      value: () => true,
-      configurable: true,
-    });
-
-    render(<AgentChatPage />);
-    mockStreamCallbacks.onFinish({
-      messages: [{ content: "test" }],
-      title: "Done",
-    });
-
-    expect(mockShowNotification).not.toHaveBeenCalled();
-  });
-
-  // --- onFinish callback - document hidden, shows notification (line 91-103) ---
-  test("onFinish shows notification when document is hidden", () => {
-    mockTextOfMessage.mockReturnValue("hello world");
-    Object.defineProperty(document, "hidden", {
-      value: true,
-      configurable: true,
-    });
-    Object.defineProperty(document, "hasFocus", {
-      value: () => false,
-      configurable: true,
-    });
-
-    render(<AgentChatPage />);
-    mockStreamCallbacks.onFinish({
-      messages: [{ content: "hello world" }],
-      title: "Chat Done",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Chat Done", {
-      body: "hello world",
-    });
-  });
-
-  // --- onFinish - document hidden but has focus (line 91: document.hidden || !document.hasFocus()) ---
-  test("onFinish shows notification when document is hidden even if focused", () => {
-    mockTextOfMessage.mockReturnValue("result text");
-    Object.defineProperty(document, "hidden", {
-      value: true,
-      configurable: true,
-    });
-    Object.defineProperty(document, "hasFocus", {
-      value: () => true,
-      configurable: true,
-    });
-
-    render(<AgentChatPage />);
-    mockStreamCallbacks.onFinish({
-      messages: [{ content: "result text" }],
-      title: "Finished",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Finished", {
-      body: "result text",
-    });
-  });
-
-  // --- onFinish - long message truncated (line 98-99) ---
-  test("onFinish truncates long messages in notification body", () => {
-    mockTextOfMessage.mockReturnValue("a".repeat(250));
-    Object.defineProperty(document, "hidden", {
-      value: true,
-      configurable: true,
-    });
-    Object.defineProperty(document, "hasFocus", {
-      value: () => false,
-      configurable: true,
-    });
-
-    render(<AgentChatPage />);
-    mockStreamCallbacks.onFinish({
-      messages: [{ content: "a".repeat(250) }],
-      title: "Done",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Done", {
-      body: "a".repeat(200) + "...",
-    });
-  });
-
-  // --- onFinish - no messages (line 93: default body) ---
-  test("onFinish uses default body when no messages", () => {
-    Object.defineProperty(document, "hidden", {
-      value: true,
-      configurable: true,
-    });
-    Object.defineProperty(document, "hasFocus", {
-      value: () => false,
-      configurable: true,
-    });
-
-    render(<AgentChatPage />);
-    mockStreamCallbacks.onFinish({
-      messages: [],
-      title: "Empty Chat",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Empty Chat", {
-      body: "Conversation finished",
-    });
-  });
-
-  // --- onFinish - message with no textContent (line 96: textContent falsy) ---
-  test("onFinish uses default body when last message has no text content", () => {
-    mockTextOfMessage.mockReturnValue("");
-    Object.defineProperty(document, "hidden", {
-      value: true,
-      configurable: true,
-    });
-    Object.defineProperty(document, "hasFocus", {
-      value: () => false,
-      configurable: true,
-    });
-
-    render(<AgentChatPage />);
-    mockStreamCallbacks.onFinish({
-      messages: [{ content: null }],
-      title: "Empty",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Empty", {
-      body: "Conversation finished",
-    });
-  });
-
-  // --- handleSubmit with files (line 111-112) ---
-  test("handleSubmit returns promise when message has files", () => {
-    render(<AgentChatPage />);
-    const result = lastInputBoxProps.onSubmit({
-      text: "hello",
-      files: [new File([""], "test.png")],
-    });
-    expect(mockSendMessage).toHaveBeenCalledWith(
-      "test-thread",
-      { text: "hello", files: [expect.any(File)] },
-      { agent_name: "test-agent" },
-      undefined,
-    );
-    expect(result).toBeInstanceOf(Promise);
-  });
-
-  // --- handleSubmit without files (line 114) ---
-  test("handleSubmit returns undefined when message has no files", () => {
-    render(<AgentChatPage />);
-    const result = lastInputBoxProps.onSubmit({ text: "hello", files: [] });
-    expect(mockSendMessage).toHaveBeenCalledWith(
-      "test-thread",
-      { text: "hello", files: [] },
-      { agent_name: "test-agent" },
-      undefined,
-    );
-    expect(result).toBeUndefined();
-  });
-
-  // --- handleStop (line 119-121) ---
-  test("handleStop calls thread.stop", async () => {
-    render(<AgentChatPage />);
-    await lastInputBoxProps.onStop();
-    expect(mockStopFn).toHaveBeenCalled();
-  });
-
-  // --- isUploading disables input (line 252) ---
-  test("input box is disabled when isUploading is true", () => {
-    mockUseThreadStream.mockImplementation((args: any) => {
-      Object.assign(mockStreamCallbacks, args);
-      return {
+  test("renders todo list when todos exist", () => {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({
         thread: {
           messages: [],
           isLoading: false,
           isThreadLoading: false,
           error: null,
-          values: {},
+          values: { todos: [{ id: "1", text: "Task 1", done: false }] },
           stop: mockStopFn,
           getMessagesMetadata: vi.fn(),
         },
-        pendingUsageMessages: [],
-        sendMessage: mockSendMessage,
-        isUploading: true,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
+      }),
+    );
+
+    render(<AgentChatPage />);
+    expect(screen.getByTestId("todo-list")).toBeInTheDocument();
+  });
+
+  test("does not render todo list when no todos", () => {
+    render(<AgentChatPage />);
+    expect(screen.queryByTestId("todo-list")).not.toBeInTheDocument();
+  });
+
+  // --- seam contract: the page contributes its agent binding ---
+  test("scopes the thread URL policy to the agent route with encoded segments", () => {
+    agentNameParam = "ops/team";
+    render(<AgentChatPage />);
+
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    expect(seamArgs.threadPath("thread/#1")).toBe(
+      "/workspace/agents/ops%2Fteam/chats/thread%2F%231",
+    );
+  });
+
+  test("passes the agent binding as run context and lazy-thread pre-create", () => {
+    render(<AgentChatPage />);
+
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    expect(seamArgs.context).toEqual({
+      mode: "flash",
+      agent_name: "test-agent",
     });
+    expect(seamArgs.extraContext!()).toEqual({ agent_name: "test-agent" });
+    expect(seamArgs.prepareSubmit).toBeDefined();
+    expect(seamArgs.isMock).toBe(false);
+  });
+
+  test("forwards the hook's turn-submit controller and stop handler to the composer", () => {
+    const fixture = threadPageFixture();
+    mockUseThreadPage.mockReturnValue(fixture);
+    render(<AgentChatPage />);
+
+    expect(lastInputBoxProps.turnSubmit).toBe(fixture.turnSubmit);
+    expect(lastInputBoxProps.onStop).toBe(fixture.handleStop);
+  });
+
+  test("forwards regenerate handlers to the message list", () => {
+    const fixture = threadPageFixture();
+    mockUseThreadPage.mockReturnValue(fixture);
+    render(<AgentChatPage />);
+
+    expect(lastMessageListProps.onRegenerateMessage).toBe(
+      fixture.handleRegenerate,
+    );
+    expect(lastMessageListProps.onEditAndRegenerateMessage).toBe(
+      fixture.handleEditAndRegenerate,
+    );
+  });
+
+  test("input box is disabled when isUploading is true", () => {
+    mockUseThreadPage.mockReturnValue(threadPageFixture({ isUploading: true }));
 
     render(<AgentChatPage />);
     expect(screen.getByTestId("input-box").getAttribute("data-disabled")).toBe(
@@ -713,13 +471,7 @@ describe("AgentChatPage", () => {
     );
   });
 
-  // --- Static website only mode (line 259-262) ---
-  // Note: env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY is statically mocked as "false" at import time.
-  // The conditional rendering at line 259 and disabled at line 252 cannot be tested with
-  // the static import approach. The isUploading path in the OR condition (line 253) is
-  // tested separately above.
-
-  // --- tokenUsageInlineMode when tokenUsageEnabled is false (line 123-125) ---
+  // --- tokenUsageInlineMode when tokenUsageEnabled is false ---
   test("token usage indicator receives inline mode preference", () => {
     tokenUsageEnabledFlag = true;
     render(<AgentChatPage />);
@@ -729,8 +481,7 @@ describe("AgentChatPage", () => {
     });
   });
 
-  // --- isMock conditional in useThreadTokenUsage (line 54-55) ---
-  test("passes isMock=true to useThreadChat (isMock conditional)", () => {
+  test("renders with isMock=true thread identity", () => {
     mockUseThreadChat.mockReturnValue({
       threadId: "test-thread",
       setThreadId: mockSetThreadId,
@@ -740,11 +491,12 @@ describe("AgentChatPage", () => {
     });
 
     render(<AgentChatPage />);
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    expect(seamArgs.isMock).toBe(true);
     expect(screen.getByTestId("chat-box")).toBeInTheDocument();
   });
 
-  // --- isNewThread affects useThreadTokenUsage (line 54) ---
-  test("passes isNewThread=true threadId to useThreadChat", () => {
+  test("forwards a new-thread identity to the seam", () => {
     mockUseThreadChat.mockReturnValue({
       threadId: "new",
       setThreadId: mockSetThreadId,
@@ -754,14 +506,15 @@ describe("AgentChatPage", () => {
     });
 
     render(<AgentChatPage />);
-    expect(screen.getByTestId("chat-box")).toBeInTheDocument();
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    expect(seamArgs.threadId).toBe("new");
+    expect(seamArgs.isNewThread).toBe(true);
   });
 
-  // --- thread.isLoading status (line 241-242) ---
+  // --- thread.isLoading status ---
   test("passes 'streaming' status when thread is loading", () => {
-    mockUseThreadStream.mockImplementation((args: any) => {
-      Object.assign(mockStreamCallbacks, args);
-      return {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({
         thread: {
           messages: [],
           isLoading: true,
@@ -771,14 +524,8 @@ describe("AgentChatPage", () => {
           stop: mockStopFn,
           getMessagesMetadata: vi.fn(),
         },
-        pendingUsageMessages: [],
-        sendMessage: mockSendMessage,
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
+      }),
+    );
 
     render(<AgentChatPage />);
     expect(screen.getByTestId("input-box").getAttribute("data-status")).toBe(
@@ -786,11 +533,10 @@ describe("AgentChatPage", () => {
     );
   });
 
-  // --- thread.error status (line 239-240) ---
+  // --- thread.error status ---
   test("passes 'error' status when thread has error", () => {
-    mockUseThreadStream.mockImplementation((args: any) => {
-      Object.assign(mockStreamCallbacks, args);
-      return {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({
         thread: {
           messages: [],
           isLoading: false,
@@ -800,14 +546,8 @@ describe("AgentChatPage", () => {
           stop: mockStopFn,
           getMessagesMetadata: vi.fn(),
         },
-        pendingUsageMessages: [],
-        sendMessage: mockSendMessage,
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
+      }),
+    );
 
     render(<AgentChatPage />);
     expect(screen.getByTestId("input-box").getAttribute("data-status")).toBe(
@@ -815,7 +555,7 @@ describe("AgentChatPage", () => {
     );
   });
 
-  // --- normal status (line 243) ---
+  // --- normal status ---
   test("passes 'ready' status when not loading and no error", () => {
     render(<AgentChatPage />);
     expect(screen.getByTestId("input-box").getAttribute("data-status")).toBe(
@@ -823,7 +563,7 @@ describe("AgentChatPage", () => {
     );
   });
 
-  // --- new chat button onClick (line 156-158) ---
+  // --- new chat button onClick ---
   test("new chat button navigates to new chat page", () => {
     render(<AgentChatPage />);
     const newChatButton = screen.getByText("New Chat").closest("button");
@@ -834,7 +574,7 @@ describe("AgentChatPage", () => {
     );
   });
 
-  // --- onContextChange handler (line 255) ---
+  // --- onContextChange handler ---
   test("onContextChange updates settings context", () => {
     render(<AgentChatPage />);
     lastInputBoxProps.onContextChange({ mode: "deep" });
@@ -867,7 +607,7 @@ describe("AgentChatPage", () => {
     });
   });
 
-  // --- onPreferencesChange handler (line 170-172) ---
+  // --- onPreferencesChange handler ---
   test("onPreferencesChange updates local settings for token usage", () => {
     tokenUsageEnabledFlag = true;
     render(<AgentChatPage />);
