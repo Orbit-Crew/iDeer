@@ -1,6 +1,17 @@
+---
+id: docs-archive-2026-governance-document-system-audit-2026-06-28
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06-28 documentation-landscape inventory (root, backend/, frontend/, deployment, docs/ tree) and three-persona gap analysis (developer, local-deployment user, ops) of that candidate
+archived-reason: point-in-time inventory; file sets and line counts describe the 2026-06-28 candidate and have since drifted, body preserved as recorded. Current documentation entry is docs/README.md
+---
+
 # iDeer 文档体系梳理与差距分析
 
-> status: archived; current documentation entry: `docs/README.md`
+> status: archived; current documentation entry: `docs/README.md`  
+> source date: 2026-06-28（文档体系盘点时点，scope：该时点候选）  
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。行数与文件集已漂移——`backend/CLAUDE.md` 现为 23 行（治理精简后）、`config.example.yaml` 现 3115 行、`backend/docs/API.md` 现 1067 行；`backend/docs/TODO.md` 与 `backend/docs/BACKEND_IMPROVEMENTS.md` 已不在当前候选；`docs/deployment/` 现存 2 篇专题文档（正文记 7 篇）。本文档原始路径为 `docs/文档体系梳理与差距分析.md`，已随文档治理迁移至 `docs/archive/2026/governance/`。其余抽查引用路径仍在：README 多语种、`Install.md`、`CODE_OF_CONDUCT.md`、`SECURITY.md`、`backend/docs/{API,CONFIGURATION,AUTH_DESIGN,AUTH_UPGRADE,MCP_SERVER,STREAMING,middleware-execution-flow}.md`、`docs/testing-guidelines.md`、`backend/tests/factories/README.md`、`scripts/README-intranet.md`、`docker/provisioner/README.md`。
 
 > **版本**: v1.0  
 > **日期**: 2026-06-28  
