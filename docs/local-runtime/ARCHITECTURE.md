@@ -1,3 +1,13 @@
+---
+id: docs-local-runtime-architecture
+kind: reference
+status: current
+owner: repository maintainers
+scope: Local Runtime line architecture — the M7 control-plane boundary (server control plane → extension contract → device runtime), layers and dependency direction, main objects, integration seams, and invariants
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 4d2496136
+---
+
 # Local Runtime architecture
 
 This document fixes the M7 boundary for the Local Runtime line. It describes the

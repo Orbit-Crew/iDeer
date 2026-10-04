@@ -1,6 +1,23 @@
-# M7 patch ledger
+---
+id: docs-local-runtime-patch-ledger
+kind: reference
+status: current
+owner: repository maintainers
+scope: Local Runtime line (M7–M9) patch ledger — harness-adjacent patch registrations and per-milestone no-patch records for the device control plane, local file/Python hardening, local MCP, secrets, and tray lines
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 4d2496136
+---
+
+# Local Runtime patch ledger (M7–M9)
 
 The M7 control plane does not modify the shared harness package.
+
+> **Authority note (2026-10-01 起).** Harness patches are registered in the root
+> [`UPSTREAM_PATCH_LEDGER.md`](../../UPSTREAM_PATCH_LEDGER.md), the sole
+> harness-patch authority; the `subagents/registry.py` patch below is tracked
+> there as PATCH-029. This ledger remains the record of Local Runtime line
+> patches and their patch-specific validation; new harness edits register in
+> the root ledger, not here.
 
 | Change | Reason | Scope | Validation |
 | --- | --- | --- | --- |
@@ -9,7 +26,9 @@ The M7 control plane does not modify the shared harness package.
 
 Device control-plane code remains under `backend/app/device_control/`, its
 router and migration, and `local-runtime/`. Future edits to shared harness code
-must add a row here before implementation.
+must be registered in the root
+[`UPSTREAM_PATCH_LEDGER.md`](../../UPSTREAM_PATCH_LEDGER.md) before
+implementation.
 
 M8 local file and Python hardening remains outside the shared harness. The
 runtime changes use only local-runtime seams and the existing broker protocol;
@@ -33,7 +52,7 @@ independent `local-runtime` lane.
 The shared extension notifier also now stops immediately when one hook consumes
 the shared timeout budget. This preserves the existing timeout contract by
 preventing later extensions from starting after the budget has expired; it is
-covered by `tests/test_extension_task_lifecycle.py`.
+covered by `backend/tests/test_extension_task_lifecycle.py`.
 
 M9 security closure also binds production local-tool assembly to the signed
 broker connection. Device online state, owner, announced capabilities, MCP

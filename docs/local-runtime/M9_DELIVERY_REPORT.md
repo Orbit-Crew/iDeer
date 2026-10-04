@@ -1,11 +1,28 @@
+---
+id: docs-local-runtime-m9-delivery-report
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: Delivery verification evidence of the M9 local-MCP/secrets/tray candidate `feature/m9-local-mcp-secrets-tray` @ 2892a4fbc (2026-09-14/16 campaign) — automated lane results, Codex provider blocker record, Windows acceptance procedure, and the 2026-09-16 follow-up verification
+archived-reason: evidence scoped to the M9 candidate; that line has since landed on the develop line (commit 2892a4fbc is contained in develop), so the lane numbers and "current candidate" statements are period records and never satisfy current validation. Windows CI/desktop acceptance remained an external gate at the time of the report and no successor acceptance record exists in docs/local-runtime/
+---
+
 # M9 delivery verification
 
-## Current candidate
+> **Historical evidence (M9 candidate `feature/m9-local-mcp-secrets-tray` @
+> `2892a4fb`).** The M9 line has since landed on the develop line; the lane
+> numbers below are records of that candidate, not current validation.
+> Windows CI/desktop acceptance remained an external gate when this report was
+> written and has not been superseded by a later record in this directory.
+> Current code seams: [IMPLEMENTATION_INVENTORY.md](IMPLEMENTATION_INVENTORY.md);
+> Local Runtime line patches: [PATCH_LEDGER.md](PATCH_LEDGER.md).
 
-The candidate is the working tree on `feature/m9-local-mcp-secrets-tray` at
+## Candidate at time of report
+
+The candidate was the working tree on `feature/m9-local-mcp-secrets-tray` at
 commit `2892a4fb`, with the M9 implementation changes listed in
-[`PATCH_LEDGER.md`](PATCH_LEDGER.md). The current worktree is intentionally
-uncommitted for review.
+[`PATCH_LEDGER.md`](PATCH_LEDGER.md). The worktree was intentionally
+uncommitted for review at the time.
 
 ## Automated gates
 

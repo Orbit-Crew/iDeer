@@ -1,3 +1,13 @@
+---
+id: docs-local-runtime-security-model
+kind: reference
+status: current
+owner: repository maintainers
+scope: Local Runtime security model — two-layer server/device authorization, required security controls, capability risk levels and redaction rules, and the threat register with observable rejection codes
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 4d2496136
+---
+
 # Local Runtime security model
 
 The server authorizes delegation; the device authorizes execution. These are
@@ -61,9 +71,11 @@ unauthorized device capability.
   secrets capability: the only secret surface is the local CLI
   (`secret-set` / `secret-rotate` / `secret-delete` / `secret-list`), and
   listing exposes names only.
-- Only the harmless echo task and the bounded local file reads are part of the
-  current gate. No system command or arbitrary shell execution is part of this
-  ticket.
+- The built-in task surface is the harmless echo task, the bounded Level 0
+  `local.files.list`/`local.files.read` operations, consent-gated Level 1
+  `local.python` execution, and consent-gated projected `local.mcp.*` tools.
+  There is no system/shell command capability, and unannounced `local.*`
+  operations are rejected before dispatch.
 
 ## Threat register
 
