@@ -1,3 +1,12 @@
+---
+id: docs-openviking-memory-backend
+kind: reference
+status: current
+owner: repository maintainers
+scope: OpenViking long-term memory backend: configuration, credential and identity binding, session mapping, and failure behavior for memory.mode middleware
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # OpenViking memory backend
 
 DeerFlow can use a remote OpenViking server as an optional long-term memory

@@ -1,4 +1,14 @@
+---
+id: docs-skill-name-conflict-fix
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-02-10 code-change record of the public/custom skill name-conflict fix, in the ideer-era package layout
+archived-reason: the documented get_skill_key combined-key mechanism and the skill enable/disable settings page no longer exist; current skill management is backend/app/gateway/routers/skills.py plus resource governance V2
+---
 # 技能名称冲突修复 - 代码改动文档
+
+> status: archived（2026-02-10 时点改动记录）。2026-10-04 核对：文中机制已不在当前候选中——`get_skill_key` 组合键与技能启用/停用设置页均已移除（设置→技能现为只读，见 `docs/permission-matrix.md`）；`backend/packages/harness/ideer/` 包名已改回 `deerflow`。现行技能管理入口：`backend/app/gateway/routers/skills.py`（custom skill CRUD）与资源治理 V2（`docs/permission-model-redesign.md`）。正文按历史记录保留，不做现代化改写。
 
 ## 概述
 

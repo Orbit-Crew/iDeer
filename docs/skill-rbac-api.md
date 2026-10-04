@@ -1,4 +1,14 @@
+---
+id: docs-skill-rbac-api-legacy
+kind: reference
+status: archived
+owner: repository maintainers
+scope: historical Skill RBAC API reference: user preferences, open applications, admin review, defaults, and visibility endpoints
+archived-reason: most documented endpoints are removed; current contract is docs/permission-model-redesign.md plus the resource governance V2 routers (visibility_applications.py, resources.py)
+---
 # Skill RBAC API 文档
+
+> status: archived（历史 API 参考）。2026-10-04 核对：`/api/user/skill-preferences`、`/api/admin/skill-defaults`、`/api/skills/{id}/apply`、`/api/skills/{name}/visibility` 端点在当前候选中不存在；`GET/PUT /api/admin/skill-applications` 仍以 legacy 形式保留（`backend/app/gateway/routers/admin_skill_applications.py`）。现行契约：`docs/permission-model-redesign.md`、`docs/permission-matrix.md`；实现入口：`backend/app/gateway/routers/visibility_applications.py` 与 `backend/app/gateway/routers/resources.py`（资源治理 V2）。正文按历史记录保留。
 
 本文档描述了 Skill RBAC（基于角色的访问控制）相关的 API 接口。
 

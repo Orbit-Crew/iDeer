@@ -1,10 +1,26 @@
+---
+id: docs-permission-matrix
+kind: reference
+status: current
+owner: repository maintainers
+scope: resource-management requirement baseline: role-by-operation matrix, visibility semantics, and approval flow; API/DB sections are the 2026-07 design baseline annotated against resource governance V2
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # 资源管理体系需求文档
 
 > audience: developers, security reviewers, maintainers<br>
 > status: current<br>
 > owner: security and platform maintainers<br>
-> last-verified: 2026-07-15<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/permission-matrix.md`
+
+> **实现状态注记（2026-10-04 核对）**：本文的角色 × 操作矩阵与 visibility 语义仍是现行契约（`docs/agents/task-routing.md` 路由、`docs/project-state.md` 引用），但第「API 接口定义」「数据库表结构」「前端页面设计」「迁移方案」各节描述的是 2026-07 设计基线，与当前实现存在差异：
+> - 统一资源契约由[资源治理 V2 决策](decisions/2026-08-14-resource-governance-v2.md)与 [cutover 记录](governance/resource-governance-v2-cutover.md)定义，实现入口为 `backend/app/gateway/routers/resources.py`（`/api/resources` 系列，含 `/{id}/visibility`、`/{id}/visibility-applications`、`/admin/visibility-applications/{id}/review`）；
+> - visibility 申请独立路由为 `backend/app/gateway/routers/visibility_applications.py`（`/api/visibility-applications`），撤回为 `PUT /{id}/withdraw`（下表原写作 `DELETE /{id}`，已按当前实现更正）；
+> - 旧 Skill 审批路由 `/api/admin/skill-applications`（`admin_skill_applications.py`）仍保留为 legacy；`/api/user/skill-preferences`、`/api/admin/skill-defaults` 及设置页技能开关已移除；
+> - Agent 导入/导出已迁至 `/api/resources/import/agent` 与 `/api/resources/{id}/export`；文中 `resource_metadata` 表未按原文实现，由 V2 资源治理模型替代；
+> - 管理员人数上限（超管 ≤2、部门管理员 ≤3）在当前代码中未见强制，属 [backlog](backlog.md) PERM-01 范畴。
 
 ## 设计原则
 
@@ -280,7 +296,7 @@ rejected → pending（重新提交，生成新申请记录）
 | 操作 | 方法 | 路径 | 请求体 | 响应体 | 权限 |
 |------|------|------|--------|--------|------|
 | 提交申请 | POST | `/api/visibility-applications` | `{ resource_type, resource_id, target_visibility, reason }` | 申请详情 | 所有可写角色 |
-| 撤回申请 | DELETE | `/api/visibility-applications/{id}` | — | `{ success }` | 申请人 |
+| 撤回申请 | PUT | `/api/visibility-applications/{id}/withdraw` | — | `{ success }` | 申请人 |
 | 审批 | PUT | `/api/visibility-applications/{id}` | `{ action: approved/rejected, comment, version }` | 申请详情 | dept_admin / super_admin |
 | 查看待审批 | GET | `/api/visibility-applications` | `?status=pending` | `{ applications: [...] }` | dept_admin / super_admin |
 

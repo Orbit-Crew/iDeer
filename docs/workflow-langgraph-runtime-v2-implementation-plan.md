@@ -1,4 +1,14 @@
+---
+id: docs-workflow-v2-langgraph-implementation-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: two-phase implementation plan that redefined YAML workflows as a governed v2 DSL executed by LangGraph with a durable worker
+archived-reason: plan implemented in backend/app/agentplatform/workflows/ (v2 parser/compiler/store/worker); public API is the resource-scoped /api/resources/{id}/workflow-runs/... surface, not the planned /api/workflows/{name}/...
+---
 # YAML Workflow v2 → LangGraph 两阶段实施计划
+
+> status: archived（计划已实施）。2026-10-04 核对：v2 运行时已落地——`backend/app/agentplatform/workflows/`（`schema_version: 2`、`WorkflowGraphCompiler`、durable worker、`wf:{run_id}` checkpoint，见该目录 `README.md`），`legacy workflow_runs` 表保留只读（`backend/packages/harness/deerflow/persistence/models/legacy_tables.py`）。公开 API 与本计划第 1 节不同：现为资源治理 V2 的 `/api/resources/{id}/workflow-runs/...` 系列（`backend/app/gateway/routers/resources.py`），而非 `/api/workflows/{name}/...`。本计划保留为历史设计记录；现行行为以实现目录 README 与代码为准。
 
 ## 目标
 

@@ -1,4 +1,14 @@
+---
+id: docs-backend-validator-coverage-gap-analysis
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 backend-validator test-coverage gap analysis for the then-current route modules
+archived-reason: point-in-time campaign analysis; backend-validator is a historical proposal per root AGENTS.md and the test tree has been reorganized into backend/tests/{unit,integration,contracts}
+---
 # Backend-Validator 测试覆盖缺口分析报告
+
+> status: archived（2026-06-10 时点缺口分析）。backend-validator 是历史提案而非可调用技能（见根 `AGENTS.md`）；当前测试分层为 `backend/tests/{unit,integration,contracts}`，覆盖权威是 [coverage-matrix.md](testing/coverage-matrix.md)。正文按历史记录保留。
 
 **生成日期**: 2026-06-10
 **分析范围**: 全部后端功能 vs backend-validator 测试验证流程

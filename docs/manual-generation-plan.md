@@ -1,4 +1,14 @@
+---
+id: docs-manual-generation-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-12 plan for generating the user and devops manuals plus UI screenshots
+archived-reason: deliverables realized under docs/manual/ (user-manual.md, devops-manual.md, screenshots/, scripts/); retained as the record of the planned approach
+---
 # iDeer 用户手册 & 开发运维手册生成计划
+
+> status: archived（计划已执行完毕）。交付物已落地于 [docs/manual/](manual/README.md)（`user-manual.md`、`devops-manual.md`、`screenshots/`、`scripts/`，2026-10-04 核对存在）；截图脚本实际实现为 `docs/manual/scripts/capture-*.js`，非本文拟议的 `generate-screenshots.ts`。本计划保留为历史记录；手册维护以 `docs/manual/` 现行内容为准。
 
 > **创建日期**: 2026-06-12
 > **目标**: 生成两份完整手册 + UI截图

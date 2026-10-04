@@ -1,3 +1,12 @@
+---
+id: docs-database-forward-revision-recovery
+kind: reference
+status: current
+owner: repository maintainers
+scope: offline recovery procedure for databases stamped with the original 0019_thread_incarnations shape: verification, re-stamp, and upgrade steps
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # Recovering the original thread-incarnation database revision
 
 The Projects build requires `projects` and `threads_meta.project_id`. An older

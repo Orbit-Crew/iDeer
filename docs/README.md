@@ -1,3 +1,12 @@
+---
+id: docs-readme
+kind: index
+status: current
+owner: repository maintainers
+scope: entry index of engineering documentation: reader routes, current-authority table, and archive pointers
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # 工程文档入口
 
 > audience: developers, operators, testers, maintainers<br>
@@ -6,7 +15,7 @@
 > last-verified: 2026-10-04<br>
 > canonical-path: `docs/README.md`
 
-这里是开发、运维、测试和内部治理文档的入口。面向最终用户和公开开发者的产品说明，请从[公开文档站](/zh/docs)或[英文文档站](/en/docs)开始；`skills/**` 及其专用资料不属于本入口的治理范围。
+这里是开发、运维、测试和内部治理文档的入口。面向最终用户和公开开发者的产品说明，请从公开文档站（部署后路由 `/zh/docs` 与 `/en/docs`；仓库内内容源见[中文文档内容](/frontend/src/content/zh/)与[英文文档内容](/frontend/src/content/en/)）开始；`skills/**` 及其专用资料不属于本入口的治理范围。
 
 ## 按读者进入
 
@@ -24,7 +33,7 @@
 | 主题 | 当前权威来源 |
 | --- | --- |
 | 按任务域进入文档 | [任务路由](agents/task-routing.md)：九个常见任务域的当前契约、代码入口、条件决策与验证入口 |
-| 用户使用与公开开发 | [前端公开文档站](/zh/docs) |
+| 用户使用与公开开发 | 公开文档站（部署路由 `/zh/docs`；内容源 [frontend/src/content/zh/](/frontend/src/content/zh/)） |
 | 测试覆盖与迁移 | [coverage-matrix.md](testing/coverage-matrix.md)、[test-migration-ledger.md](testing/test-migration-ledger.md) |
 | 权限模型与矩阵 | [permission-model-redesign.md](permission-model-redesign.md)、[permission-matrix.md](permission-matrix.md) |
 | 离线产品线治理 | [offline-product-line-governance-plan.md](offline-product-line-governance-plan.md) |

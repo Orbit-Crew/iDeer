@@ -1,5 +1,14 @@
+---
+id: docs-document-retention-assessment-2026-07-15
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-07-15 retention assessment of 263 ordinary documents with disposition grades and the migration-status header; basis for the docs/archive/2026 migration
+archived-reason: point-in-time assessment whose first-batch recommendations have been executed; current entry is docs/README.md
+---
 # 项目文档留存必要性评估
 
+> status: archived（2026-07-15 时点评估，保留为归档迁移的评估依据；现行入口见 `docs/README.md`）。
 > 评估日期：2026-07-15
 > 评估范围：项目内普通文档与文档型资产；明确排除所有路径段中的 `skills/**`、其专用模板与引用资料，以及依赖包第三方文档。
 > 当前结论：本报告只提出留存、更新、合并和归档建议，不删除原文件。

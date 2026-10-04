@@ -1,3 +1,12 @@
+---
+id: docs-testing-guidelines
+kind: reference
+status: current
+owner: repository maintainers
+scope: test-writing conventions: mock principles, fixture usage, helpers, async rules, naming, isolation, and run commands
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # 测试规范指南
 
 > audience: testers, developers<br>
@@ -65,16 +74,7 @@ mock_response.json.return_value = MagicMock()
 
 ### 公共 Fixture
 
-使用 `conftest.py` 中的公共 fixture，避免重复定义：
-
-| Fixture | 用途 |
-|---------|------|
-| `mock_app_config` | 统一的应用配置 mock |
-| `mock_http_client` | 统一的 HTTP 客户端 mock |
-| `mock_db_session` | 统一的数据库会话 mock |
-| `mock_db_session_factory` | 工厂 fixture，返回 (session, factory) 对 |
-| `mock_sse_bridge` | SSE 桥接 mock（run-worker 测试用） |
-| `mock_run_manager` | 运行管理器 mock（run-worker 测试用） |
+公共 fixture 以 `backend/tests/conftest.py` 和各子目录 `conftest.py` 的当前定义为准（2026-10-04 核对：早期文档列出的 `mock_app_config`、`mock_http_client`、`mock_db_session`、`mock_sse_bridge`、`mock_run_manager` 等命名 fixture 已不存在，勿按旧清单引用）。路由测试的认证桩统一使用 `tests/_router_auth_helpers.py`。
 
 ### 自定义 Fixture
 
@@ -90,12 +90,12 @@ def admin_config(mock_app_config):
 
 ### Autouse Fixture
 
-以下 fixture 自动应用于所有测试：
+以下 fixture 自动应用于所有测试（2026-10-04 核对）：
 - `_reset_skill_storage_singleton` — 重置 SkillStorage 单例
 - `_restore_title_config_singleton` — 恢复 TitleConfig 默认值
 - `_auto_user_context` — 注入默认用户上下文（可通过 `@pytest.mark.no_auto_user` 禁用）
-- `_skip_llm_if_no_key` — 无 API key 时跳过 LLM 测试
-- `_llm_rate_limit` — LLM 测试串行化和限流
+
+当前注册的 marker 见 `backend/pyproject.toml`（`serial`、`requires_llm`、`no_auto_user`、`allow_blocking_io`、`integration`）。
 
 ## 三、测试辅助函数
 
@@ -115,7 +115,7 @@ result = await call_unwrapped(my_endpoint, param1="value")
 
 ### 数据构建
 
-使用 `_make_` 或 `_build_` 前缀的辅助函数：
+使用 `backend/tests/factories/` 下的工厂模块（`auth.py`、`llm.py`、`models.py`），或 `_make_` / `_build_` 前缀的模块级辅助函数：
 
 ```python
 def _make_user(role="user", department_id=None):
@@ -127,6 +127,10 @@ def _make_user(role="user", department_id=None):
         department_id=department_id or "dept-1",
     )
 ```
+
+### 示例测试文件
+
+认证与 RBAC 行为测试参考 `backend/tests/unit/gateway/test_authz.py` 与 `backend/tests/contracts/` 下的契约测试。
 
 ## 四、异步测试规范
 
@@ -231,18 +235,18 @@ def test_admin_endpoint():
 ## 十、运行测试
 
 ```bash
-# 运行所有测试
-cd backend && .venv/bin/python -m pytest tests/
+# 运行所有测试（仓库标准入口）
+cd backend && make test
 
 # 运行特定文件
-.venv/bin/python -m pytest tests/test_authz.py -v
+cd backend && PYTHONPATH=.:tests uv run pytest tests/unit/gateway/test_authz.py -v
 
 # 运行带覆盖率
-.venv/bin/python -m pytest tests/ --cov=app --cov=packages --cov-report=term-missing
+cd backend && PYTHONPATH=.:tests uv run pytest tests/ --cov=app --cov=packages --cov-report=term-missing
 
-# 跳过压力测试
-.venv/bin/python -m pytest tests/ -m "not stress"
+# 跳过 live 测试（默认 lane 即不含 live）
+cd backend && PYTHONPATH=.:tests uv run pytest -m "not live"
 
 # 只运行 LLM 测试（需要 API key）
-.venv/bin/python -m pytest tests/ -m "requires_llm"
+cd backend && PYTHONPATH=.:tests uv run pytest -m "requires_llm"
 ```

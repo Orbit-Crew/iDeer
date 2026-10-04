@@ -1,3 +1,12 @@
+---
+id: docs-task-continuity
+kind: reference
+status: current
+owner: repository maintainers
+scope: optional task-continuity feature: task_note/history_search/history_read tools, archive storage and lifecycle, and validation entry points
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # Task continuity after compaction
 
 Enable this optional feature to keep short task notes and recover details from
