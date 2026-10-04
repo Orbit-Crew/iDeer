@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-testing-tools-integration-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 第二批测试工具接入实现计划（2026-06 测试建设期）：pytest-xdist 后端并行、factory_boy 测试数据工厂、Lighthouse CI 前端性能守护、dependency-cruiser 架构边界四个工具的接入步骤、CI 集成与回滚方案
+archived-reason: 一次性接入计划，主要产物已在当前候选落地——backend/uv.lock 含 pytest-xdist，backend/tests/factories/ 模块（README/auth/llm/models）存在，frontend/lighthouserc.json 与 .github/workflows/lighthouse-ci.yml、frontend/.dependency-cruiser.cjs 均存在；计划中的 Makefile target 是否以同名落地未逐一核对（unverified）。现行测试权威：docs/testing/coverage-matrix.md 与 docs/testing/test-lane-runbook.md。正文按历史记录保留
+---
+
 # 第二批测试工具接入实现计划
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06 时点接入计划，正文按当时记录保留；四工具产物已落地，Makefile target 落地形态 unverified）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 目标：将 pytest-xdist、factory_boy（已有依赖）、Lighthouse CI、dependency-cruiser 四个工具接入现有测试框架，提升 CI 效率、测试数据质量、前端性能守护和架构边界强制。
 

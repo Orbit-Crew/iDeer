@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-screenshot-test-coverage-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 截图测试全覆盖计划（2026-06 QA 战役期）：在 22 个既有截图配置（覆盖 19/23 路由）基础上，分三阶段新增 63 个对话框/下拉/AI 交互/Settings/空态/错误态/多角色/Blog-Docs 截图配置的设计
+archived-reason: 计划针对当时的 frontend/tests/e2e/qa/visual-screenshot.spec.ts；当前候选中该 spec 位于 frontend/tests/e2e/visual/visual-screenshot.spec.ts，tests/e2e/qa/ 目录不存在，计划未按原样实施。现行测试权威：docs/testing/coverage-matrix.md。正文按历史记录保留
+---
+
 # 截图测试全覆盖计划
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06 时点计划，正文按当时候选保留；目标 spec 现位于 frontend/tests/e2e/visual/）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 目标：补齐截图测试在对话框、交互状态、空状态、错误状态、多角色视角、AI 交互、Settings 子页面、Blog/Docs 等维度的覆盖缺口。
 >

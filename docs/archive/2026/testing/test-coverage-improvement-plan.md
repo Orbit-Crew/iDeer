@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-test-coverage-improvement-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-13 测试覆盖率提升计划：记录当日快照（后端 72%→93.2%、前端 11.38%→36.58%）与阶段 2-4 任务清单（后端 93%→98%+、前端 37%→60%→98%）的模块级缺口表
+archived-reason: 覆盖率数字与缺口清单描述 2026-06-13 时点候选；其后覆盖率继续演进（见同目录 test-enhancement-roadmap.md 的 98.6%/98.01% 基线记录），模块清单与当前代码不对应。现行覆盖权威：docs/testing/coverage-matrix.md。正文按历史记录保留
+---
+
 # 测试覆盖率提升计划
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-13 时点计划，覆盖率数据按当时候选保留）；current testing authority: `docs/testing/coverage-matrix.md`
 
 ## 当前进展
 

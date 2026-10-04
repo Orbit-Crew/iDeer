@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-validation-remaining-issues-plan
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-06-15 全量验证剩余问题与解决方向记录：TS 类型错误 330→0、ESLint 错误 958→0 的修复方式，E2E 17 pass/74 fail 的根因分析（认证/超时环境问题），及后续优先级排序
+archived-reason: 时点验证证据——头部标注"全部修复完成"针对 2026-06-15 候选，错误计数、tsconfig.test.json/eslint 降级等改动状态与 E2E 环境问题在其后的演进未逐一复核（unverified）。现行测试权威：docs/testing/coverage-matrix.md 与 docs/testing/test-lane-runbook.md。正文按历史记录保留
+---
+
 # 全量验证剩余问题与解决方向
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-15 时点记录，"全部修复完成"结论按当时候选保留，其后演进 unverified）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 生成日期: 2026-06-15 | 基于验证报告: `.ideer/validation-reports/20260615_125000.md`
 > **最后更新: 2026-06-15 22:10 UTC+8** — 全部修复完成

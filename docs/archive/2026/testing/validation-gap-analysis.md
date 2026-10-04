@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-validation-gap-analysis
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-06-12 验证流程缺口分析报告（由 Workflow 页面两个漏网缺陷触发）：ORM/DB、前后端类型、RBAC、配置、路由白名单、错误处理 6 类 23 个缺口的定位、根因分析与 P0-P3 修复建议
+archived-reason: 时点分析证据——代码行号、字段清单与缺口状态描述 2026-06-12 候选，各缺口的后续修复情况未逐一复核（unverified）。现行测试权威：docs/testing/coverage-matrix.md。正文按历史记录保留
+---
+
 # 验证流程缺口分析报告
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-12 时点分析，行号与缺口状态按当时候选保留，修复情况 unverified）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > **日期**: 2026-06-12
 > **触发原因**: Workflow 管理页面出现两个未被 validation-orchestrator 捕获的问题

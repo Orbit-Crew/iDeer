@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-test-reorganization-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 后端测试目录重组计划（针对 377 个测试文件的扁平 tests/ 布局）：unit/integration/e2e/performance/qa 目标结构、约 370 个文件的分类去向表、helper 与 conftest 处理、导入路径更新及 CI/Makefile 调整步骤
+archived-reason: 重组其后以不同布局落地——当前候选为 backend/tests/{unit,integration,contracts}，无 e2e/performance/qa 子目录，tests/qa/ 已退出默认体系；计划中的逐文件去向表与当前布局不对应。测试迁移与删除的唯一记录权威：docs/testing/test-migration-ledger.md。正文按历史记录保留
+---
+
 # Backend Test Directory Reorganization Plan
 
-> status: archived; current testing authority: `docs/testing/test-migration-ledger.md`
+> status: archived（2026-06 扁平 tests/ 布局时期的重组计划，正文按当时记录保留；实际落地方案不同）；current testing authority: `docs/testing/test-migration-ledger.md`
 
 ## 1. Current State
 

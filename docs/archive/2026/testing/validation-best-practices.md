@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-validation-best-practices
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 验证最佳实践指南（validator/orchestrator skill 体系）：quick/standard/full 验证级别选择、变更阶段（未暂存/已暂存/已提交）验证流程、问题优先级、自动修复命令与 CI 集成建议
+archived-reason: 描述已归档的 validator skill 工作流——根 AGENTS.md 明确其为历史方案、当前工作树不可调用，.claude/skills/ 下无对应目录，正文验证级别与命令不对应现行测试车道。现行权威：验证车道 docs/testing/test-lane-runbook.md、测试规范 docs/testing-guidelines.md、覆盖矩阵 docs/testing/coverage-matrix.md。正文按历史记录保留
+---
+
 # 验证最佳实践指南
 
-> status: archived; current testing authority: `docs/testing-guidelines.md`
+> status: archived（2026-06-10 时点指南，正文按当时候选保留；validator skill 命令已失效）；current testing authorities: `docs/testing/test-lane-runbook.md`、`docs/testing-guidelines.md`
 
 ## 文档信息
 

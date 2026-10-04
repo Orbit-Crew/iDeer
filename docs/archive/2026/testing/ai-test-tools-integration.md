@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-ai-test-tools-integration
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06 AI 测试工具接入指南：Qodo Cover（前端/后端 .qodo-cover.json 约定、generate-ai-tests.sh 脚本）与 Stagehand（frontend/tests/e2e/stagehand/ 自然语言 E2E）在 validator/qa-tester skill 体系下的配置、触发方式与环境变量
+archived-reason: 时点集成指南。其依托的 validator/qa-tester skill 已归档（根 AGENTS.md：历史方案，非当前可调用技能）；本候选工作树中无 frontend/.qodo-cover.json、backend/.qodo-cover.json 及 .claude/skills/ 生成脚本（Qodo Cover 配置属本地校验资产）；Stagehand 测试目录 frontend/tests/e2e/stagehand/ 与辅助层 frontend/tests/e2e/utils/stagehand-helper.ts 仍存在，但按根 AGENTS.md 需专用 lane 运行。现行测试权威：docs/testing/coverage-matrix.md、docs/testing-guidelines.md。正文按历史记录保留
+---
+
 # AI 测试工具集成指南
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06 时点接入指南，正文按当时候选保留；skill 触发方式已失效，Stagehand 目录仍在但需专用 lane）；current testing authority: `docs/testing/coverage-matrix.md`
 
 ## 概述
 
