@@ -1,3 +1,13 @@
+---
+id: docs-decisions-readme
+kind: index
+status: current
+owner: repository maintainers
+scope: topic index for ADRs and dated decisions giving each record's one-line conclusion, scope, full-record trigger, and implementation/validation pointers; the linked decision bodies remain the authority for their content
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
+---
+
 # 设计决策
 
 > audience: developers, architects, maintainers<br>

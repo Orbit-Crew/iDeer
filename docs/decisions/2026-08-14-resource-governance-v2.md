@@ -1,3 +1,13 @@
+---
+id: docs-decisions-2026-08-14-resource-governance-v2
+kind: decision
+status: current
+owner: engineering maintainers
+scope: Skill/Agent/Workflow resources share one UUID-versioned canonical catalog with canonical-only semantics (no mode switch, legacy name routes removed); every new Run resolves and freezes the full dependency closure before its first side effect; Tool metadata stays in resource_metadata, and per-user install copies, anonymous public access, and pre-clearance data deletion are out of scope
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
+---
+
 # Skill、Agent、Workflow 资源治理 V2 架构决策
 
 > audience: developers, architects, security reviewers, operators
