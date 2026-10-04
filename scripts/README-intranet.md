@@ -17,8 +17,10 @@ scripts/package-intranet-offline.sh --version <version-tag>
 This produces a self-contained bundle in `dist/intranet/ideer-<version>/` containing:
 - Docker images (gateway, frontend, nginx, and the sandbox image as `ideer-sandbox:<version>`)
 - Source code archive
-- Deploy and pre-check scripts
+- Deploy and pre-check scripts, plus the bundled deployment guide
 - Config templates
+- `bundle-manifest.json` (component fingerprints and source snapshot) and `SHA256SUMS`
+- `wheels/` — offline skill runtime wheels (data-analysis, PPT generation)
 
 The sandbox image (`ideer-sandbox:<version>`) is bundled by default so the AI
 sandbox (file writes, bash execution) works offline. Override the source image
@@ -119,9 +121,16 @@ This will:
 3. Start all services
 4. Run health checks
 5. Auto-create the super admin account (`super_admin@test.com` / `super_admin@test.com` by default; override with `IDEER_ADMIN_EMAIL` / `IDEER_ADMIN_PASSWORD`; skipped when an admin already exists)
-6. Install the bundled agents (`fault-zeroing`, `srs-writing`) as **private resources of the super admin** (into `runtime/data/users/<admin-id>/agents/`), assign the bundled `resources/skills/` skills to the same private owner, and seed the bundled `fault-zeroing` workflow as the admin's private workflow once the gateway is healthy
+6. Seed the complete bundled resource manifest (`bundled-resources.json`) —
+   bundled skills, agents (`fault-zeroing`, `srs-writing`, and others), and the
+   `fault-zeroing` workflow — as **public canonical resources owned by the
+   super admin** via the canonical seeder, once the gateway is healthy
 
-Disable an agent for the session with `IDEER_INSTALL_FAULT_ZEROING=0` or `IDEER_INSTALL_SRS_WRITING=0`. The bundled `resources/skills/` skills remain public templates for all users.
+Seeding uses the `keep` conflict policy by default: bundled resources modified
+on-site after install are left untouched and listed in the seeder report; pass
+`--bundled-conflict override` (or `IDEER_BUNDLED_CONFLICT=override`) to publish
+the bundled content as a new version instead. Seeding failure aborts the
+deployment.
 
 To preview what would happen without making changes:
 
@@ -244,7 +253,7 @@ grep -n -A3 '^sandbox:' runtime/config.yaml
 Fix by re-loading the images tar (then `./deploy-intranet.sh restart` to let
 `prepare` rewrite `sandbox.image`), by `docker load`ing a custom sandbox image
 and setting `sandbox.image` to it, or by switching `sandbox.use` to
-`ideer.sandbox.local:LocalSandboxProvider` (no container isolation).
+`deerflow.sandbox.local:LocalSandboxProvider` (no container isolation).
 
 ### Full reset
 
@@ -266,11 +275,13 @@ docker system prune -f
 
 ## Architecture
 
-The intranet deployment runs four containers:
+The intranet deployment runs five containers:
 
 - **nginx** -- Reverse proxy on the configured port (default 2026)
 - **frontend** -- Next.js application on port 3000 (internal)
 - **gateway** -- Python backend API on port 8001 (internal)
+- **workflow-worker** -- Workflow execution worker, reusing the gateway image
+  (internal)
 - **sandbox** (on demand) -- AIO sandbox containers started by the gateway
   through the host Docker socket, using the bundled `ideer-sandbox:<version>`
   image

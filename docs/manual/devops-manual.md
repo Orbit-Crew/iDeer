@@ -979,16 +979,26 @@ make start
 
 ### 7.3 内网部署
 
-使用专用的内网部署配置：
+内网（禁公网）离线部署不直接运行 `docker compose`，而是通过离线包自带的 `deploy-intranet.sh` 统一入口完成打包、导入、启动与升级。完整步骤见[禁公网内网离线部署作业指导书](../deployment/禁公网内网离线部署作业指导书.md)。
 
 ```bash
-docker compose -f docker/docker-compose.intranet.yaml up -d
+# 构建机（联网环境）打包
+scripts/package-intranet-offline.sh --version <version>
+
+# 内网服务器：导入镜像并启动
+docker load -i ideer-images-<version>.tar
+./deploy-intranet.sh up
+
+# 升级
+docker load -i ideer-images-<new-version>.tar
+./deploy-intranet.sh --version <new-version> restart
 ```
 
-内网部署特点：
-- 关闭外部网络访问
-- 使用内网 DNS
-- 配置内网代理（如需要）
+要点：
+- 镜像与源码由构建机离线打包，内网服务器不访问公网。
+- Compose 文件由 `deploy-intranet.sh prepare` 从源码包解出（`source/docker/docker-compose.intranet.yaml`），需要 `env.intranet` 提供镜像名与配置路径；不要手工创建 Compose 文件或直接运行 `docker compose`。
+- 启动的常驻服务为 `nginx`、`frontend`、`gateway`、`workflow-worker`，沙箱容器按需拉起。
+- 运行配置与数据在 `runtime/` 目录，升级与重启不会覆盖。
 
 ### 7.4 环境变量
 
