@@ -286,6 +286,10 @@ _Avoid_: Conversation, Session, Chat
 A single execution attempt of an Agent or Workflow within one Thread, tracked through pending, running, success, error, timeout, or interrupted.
 _Avoid_: Execution, Job, Task
 
+**Turn**:
+One user submission inside a Thread and the assistant response it triggers, from send to completion or user stop. The composer submits one Turn at a time; stop and edit-and-regenerate act on a Turn.
+_Avoid_: Message pair, exchange, round
+
 ## Access & Visibility
 
 **Resource**:
