@@ -1,4 +1,15 @@
+---
+id: architecture-deerflow-main-merge-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-09-04 制定的 DeerFlow `main` 融合实施方案——候选 0f7d8709 合并进 develop 的全流程设计（Git 策略与分支模型、Probe Merge 与冲突分类 U/L/M/A/T/D、Dual-Runtime Bridge、R1~R12 Runtime 收敛顺序、DB 迁移/Config/前端/Docker 与离线包融合、ideer 删除条件、Patch Ledger 与最终 DoD）；适用候选与期间：0f7d8709 轮（2026-09-05 锁定，已执行完毕，正文保留制定时的历史状态）
+archived-reason: executed — 上游提交 0f7d8709 已是当前候选祖先（合并提交 cd28a0547），Phase 0 建档产物在 docs/upgrades/deerflow-main-0f7d8709/（UPSTREAM_LOCK、CONFLICT_LEDGER、PATH_POLICY、FEATURE_ADOPTION_MATRIX、各项验收报告与 DoD_CHECKLIST），legacy ideer harness 已按 Phase 9 删除（提交 19a758cb1，backend/packages/harness/ 现仅含 deerflow）；后续上游升级按 §30 维护模式以各轮独立合并计划执行（v2.1.0 轮为 docs/plans/2026-09-30-deerflow-v2.1.0-merge-plan.md，亦已归档），现行双轨上游策略权威为 docs/offline-product-line-governance-plan.md
+---
+
 # AgentPlatform：将 DeerFlow `main` 合并进 `develop` 的完整实施方案
+
+> **状态**：archived（已执行）。2026-10-04 核对：上游提交 `0f7d8709` 已并入当前候选（合并提交 `cd28a0547` "merge: converge deer-flow main 0f7d8709 into the AgentPlatform platform line"），Phase 0 建档产物在 [docs/upgrades/deerflow-main-0f7d8709/](../docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)（UPSTREAM_LOCK、CONFLICT_LEDGER、PATH_POLICY、FEATURE_ADOPTION_MATRIX、BASELINE_REPORT、各项验收报告与 DoD_CHECKLIST），legacy `ideer` harness 已按 Phase 9 删除（提交 `19a758cb1`，`backend/packages/harness/` 现仅含 `deerflow`），长期 Harness 差异登记以根 [UPSTREAM_PATCH_LEDGER.md](../UPSTREAM_PATCH_LEDGER.md) 为准。本文保留为该轮融合的执行设计与过程记录；正文中的"当前状态"表述（如 `backend/packages/harness/ideer/**` 为 AgentPlatform 现状）均为制定时（2026-09-04）的历史状态，按原样保留。《AgentPlatform 总体架构与模块边界基线》对目标边界的表述仍引用本文作为方向依据，其现行边界权威见该基线文档与 [docs/architecture/overview.md](../docs/architecture/overview.md)。后续上游升级不再复用本方案：按 §30 维护模式以各轮独立合并计划执行（v2.1.0 轮为 [docs/plans/2026-09-30-deerflow-v2.1.0-merge-plan.md](../docs/plans/2026-09-30-deerflow-v2.1.0-merge-plan.md)，亦已归档），现行双轨上游策略权威为[离线产品线治理方案](../docs/offline-product-line-governance-plan.md)。
 
 > **目标读者**：Coding Agent、项目维护者、架构评审者  
 > **制定日期**：2026-09-04  
