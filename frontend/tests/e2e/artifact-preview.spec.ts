@@ -421,9 +421,9 @@ test.describe("Artifact preview stability", () => {
     await page.reload();
 
     await expect(page.getByTestId("artifact-trigger")).toBeVisible();
-    await expect(
-      page.locator("#artifacts").getByText("Presented Report"),
-    ).toBeVisible();
+    await expect(artifactsPanel).toBeHidden();
+    await page.getByTestId("artifact-trigger").click();
+    await expect(artifactsPanel.getByText("Presented Report")).toBeVisible();
   });
 
   test("renders a PDF in an unsandboxed iframe so Chromium's viewer can display it (urlOfArtifact path)", async ({
