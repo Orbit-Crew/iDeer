@@ -348,7 +348,7 @@ def _resource_payload(
     current_user: UserModel | None = None,
     is_favorited: bool = False,
 ) -> dict[str, Any]:
-    """Create one knowledge regression case."""
+    """Serialize a resource row into its API response payload, deriving can_modify for the acting user."""
     can_modify = bool(
         current_user is not None
         and str(resource.owner_id) == str(current_user.id)
@@ -651,7 +651,7 @@ async def import_agent_resource(
     archive: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> dict[str, Any]:
-    """Read one knowledge regression case and its versions."""
+    """Import a validated .zip agent archive into the canonical catalog with resolved skill dependencies."""
     storage = ResourceStorage(get_paths().base_dir)
     archive_path: Path | None = None
     try:
@@ -745,7 +745,6 @@ async def import_skill_resource(
     archive: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> dict[str, Any]:
-    """Update one knowledge regression case."""
     """Import a validated .skill archive into the canonical catalog."""
     from deerflow.skills.parser import parse_skill_file
     from deerflow.skills.types import SkillCategory
