@@ -47,6 +47,15 @@ changed in this batch.
 | `tests/skills/test_video_generation.py` | `backend/tests/unit/skills/test_video_generation.py` | Unchanged (13 tests) | Yes | Same command as above |
 | `tests/skills/skill_loader.py` | `backend/tests/unit/skills/skill_loader.py` | Same `load()`/`FakeResp` contract; `REPO_ROOT` now `parents[4]` | Yes | Same command as above; `python3 scripts/test_inventory.py` lists all four files under lane `backend-standard` |
 
+Follow-up fix, same batch (`1c6497e3c`): the default SourceFileLoader bytecode
+cache made `load()` write `skills/public/<skill>/scripts/__pycache__/*.pyc`
+into the shipped packages, which the skill review
+(`backend/tests/test_skill_review_core.py`) fails as "not NUL-free UTF-8" and
+which pr-standard caught on `6282d2b5a`. `skill_loader.py` now suppresses
+bytecode writes around `exec_module`; regression test
+`backend/tests/unit/skills/test_skill_loader.py` (4 params, red first) pins
+that loading writes nothing into the packages.
+
 ## Batch 2026-10-05: task_tool core-logic duplicate removed, root copy kept
 
 Ticket `doc-disclosure-followup` issue 02. Two same-basename task_tool files
