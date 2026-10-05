@@ -512,7 +512,7 @@ async def list_resources(
     limit: int = Query(default=50, ge=1, le=200),
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> dict[str, Any]:
-    """List knowledge regression cases."""
+    """List visible resources across skill/agent/workflow/knowledge_base types."""
     async with _factory()() as session:
         page = await ResourceService(session, _resource_actor(current_user)).list_visible(
             resource_type=resource_type,
