@@ -719,3 +719,28 @@ def test_current_document_with_stale_package_path_is_reported(tmp_path: Path, ca
     assert hits[0]["severity"] == "error"
     assert hits[0]["location"].isdigit()
     assert "ideer.models.vllm_provider" in hits[0]["reason"]
+
+
+# --- Ticket 04 slice 2: blockquote metadata residue beside frontmatter ---
+
+
+def test_frontmatter_document_with_bold_blockquote_metadata_is_reported(tmp_path: Path, capsys) -> None:
+    # The bold Chinese-key status/date blockquotes are the pre-frontmatter
+    # header format; with frontmatter present they are migration residue.
+    # The sanctioned lowercase-key header (docs/README.md style) and
+    # documents without frontmatter are outside the rule.
+    files = _base_files()
+    files["docs/other.md"] = OTHER_MD.replace(
+        "# Other doc\n",
+        "# Other doc\n\n> **状态**: archived\n> **日期**: 2026-09-01\n",
+    ).encode("utf-8")
+    files["docs/clean.md"] = (CLEAN_MD + "\n> status: current<br>\n").encode("utf-8")
+    files["AGENTS.md"] = (AGENTS_MD + "\n> **状态**: none\n").encode("utf-8")
+    _materialize(tmp_path, files, _base_policy(files))
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    hits = _findings_by_rule(payload, "blockquote-metadata-residue")
+    assert [hit["file"] for hit in hits] == ["docs/other.md", "docs/other.md"]
+    assert all(hit["severity"] == "error" and hit["location"].isdigit() for hit in hits)
+    keys = " ".join(hit["reason"] for hit in hits)
+    assert "状态" in keys and "日期" in keys

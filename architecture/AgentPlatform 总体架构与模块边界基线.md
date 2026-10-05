@@ -10,11 +10,10 @@ verified-against: worktree docs/agent-doc-disclosure @ dc35cf985
 
 # AgentPlatform 总体架构与模块边界基线
 
-> **文档性质**：总体架构基线 / 模块边界基线 / 开发约束基线  
+> **文档性质**：总体架构基线 / 模块边界基线 / 开发约束基线（Baseline v1.0）  
 > **适用对象**：架构设计人员、项目维护者、Coding Agent、测试人员、部署人员  
 > **适用版本**：DeerFlow `main` 已收敛进入 AgentPlatform `develop` 后的目标架构  
-> **制定日期**：2026-09-06  
-> **状态**：Baseline v1.0  
+> source date: 2026-09-06  
 > **现行实现参考**：[架构概览](../docs/architecture/overview.md)描述当前已实现的系统边界与执行关系；本文件规定三线建设的**目标**架构与约束基线，两者范围不同、互不替代。
 
 ---

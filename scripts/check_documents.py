@@ -24,6 +24,7 @@ Rule IDs (stable):
   supersession-invalid          replacement naming, back-references, cycles
   evidence-missing              current-state verification evidence
   stale-package-path            old ideer package paths in current documents
+  blockquote-metadata-residue   legacy bold blockquote metadata beside frontmatter
   protected-fingerprint-mismatch  protected file content fingerprints
 
 Optional policy key ``task_routes``: a list of
@@ -71,6 +72,7 @@ RULE_ROUTE_INCOMPLETE = "route-incomplete"
 RULE_SUPERSESSION_INVALID = "supersession-invalid"
 RULE_EVIDENCE_MISSING = "evidence-missing"
 RULE_STALE_PACKAGE_PATH = "stale-package-path"
+RULE_BLOCKQUOTE_METADATA_RESIDUE = "blockquote-metadata-residue"
 RULE_PROTECTED_FINGERPRINT = "protected-fingerprint-mismatch"
 
 FRONTMATTER_REQUIRED_KEYS = ("id", "kind", "status", "owner", "scope")
@@ -1071,6 +1073,56 @@ def check_stale_package_paths(
     return findings
 
 
+# Legacy header format used before the frontmatter migration: a bold
+# Chinese-key status/date blockquote line. The sanctioned header that replaced
+# it uses lowercase keys ("> audience:", "> status:", "> canonical-path:") and
+# never matches. Documents without frontmatter are exempt: the blockquote is
+# then their only metadata carrier.
+_BLOCKQUOTE_RESIDUE_KEYS = ("状态", "当前状态", "日期", "制定日期", "创建日期", "生成日期")
+_BLOCKQUOTE_RESIDUE_RE = re.compile(
+    r"^[ \t]*>[ \t]*\*\*(" + "|".join(_BLOCKQUOTE_RESIDUE_KEYS) + r")\*\*[ \t]*[:：]"
+)
+_BLOCKQUOTE_RESIDUE_WINDOW = 15  # body lines considered "start of the body"
+
+
+def check_blockquote_metadata_residue(
+    policy: dict, texts: dict[PurePosixPath, str]
+) -> list[Finding]:
+    """Report legacy bold blockquote metadata lines at the start of the body.
+
+    When a document carries YAML frontmatter, the frontmatter is the
+    authoritative metadata carrier and the bold blockquote equivalent is
+    migration residue.
+    """
+    findings: list[Finding] = []
+    for row in policy["inventory"]["files"]:
+        path = PurePosixPath(str(row["path"]))
+        text = texts.get(path)
+        if text is None:
+            continue
+        frontmatter_lines = _frontmatter_line_count(text)
+        if frontmatter_lines == 0:
+            continue
+        lines = text.splitlines()
+        window_end = min(
+            frontmatter_lines + 1 + _BLOCKQUOTE_RESIDUE_WINDOW, len(lines) + 1
+        )
+        for number in range(frontmatter_lines + 1, window_end):
+            match = _BLOCKQUOTE_RESIDUE_RE.match(lines[number - 1])
+            if match:
+                findings.append(
+                    Finding(
+                        RULE_BLOCKQUOTE_METADATA_RESIDUE,
+                        "error",
+                        path.as_posix(),
+                        str(number),
+                        f"legacy blockquote metadata {match.group(1)!r} at body start; "
+                        "frontmatter is already authoritative",
+                    )
+                )
+    return findings
+
+
 def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings: list[Finding] = []
     findings.extend(check_inventory_coverage(policy, source))
@@ -1085,6 +1137,7 @@ def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings.extend(check_supersession(policy, texts, tracked))
     findings.extend(check_evidence(policy, texts))
     findings.extend(check_stale_package_paths(policy, texts))
+    findings.extend(check_blockquote_metadata_residue(policy, texts))
     return findings
 
 
