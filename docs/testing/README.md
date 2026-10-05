@@ -1,9 +1,19 @@
+---
+id: docs-testing-readme
+kind: index
+status: current
+owner: test maintainers
+scope: entry index of the testing documentation set: coverage matrix, test writing guidelines, migration ledger, test lane runbook, inventory and preflight scripts, execution entries, and the archive-evidence boundary rule
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
+---
+
 # 测试文档
 
 > audience: testers, developers, release maintainers<br>
 > status: current<br>
 > owner: test maintainers<br>
-> last-verified: 2026-10-01<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/testing/README.md`
 
 测试治理按职责分开维护；同一规则只在其权威文档中定义：

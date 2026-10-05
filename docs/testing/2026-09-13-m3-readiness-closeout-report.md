@@ -1,5 +1,16 @@
+---
+id: docs-testing-m3-readiness-closeout-report
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: M3 readiness closeout for candidate develop@d4acdc5c2c2849d814d8d87932039b500b5683fa (records dated 2026-09-13 to 2026-09-14) — gate-by-gate verdicts, focused and standard-lane records, real RAGFlow Gate 2/3/4 evidence, and the final READY (M7 Windows follow-up) judgment
+archived-reason: candidate-scoped closeout evidence; the 2026-09-24 multi-branch closeout and the v2.1.0 upstream rejoin (20261001_rejoin_upstream_line, 2026-10-01) evolved beyond it — its lane numbers and gate verdicts are that candidate's results, not current verification
+---
+
 # M3 开工基线收口报告
 
+> status: archived（候选 `develop@d4acdc5c2` 的 M3 收口证据，记录于 2026-09-13 至 2026-09-14，最终判定 READY）。后续收口记录见 [current-branches-closeout-report.md](current-branches-closeout-report.md)（候选 `4f256b6ab`，2026-09-24）；2026-10-01 上游 v2.1.0 合流后候选继续演进。本文 lane 数字与 gate 判定为该候选时期结果，不代表当前验证状态。正文按历史记录保留。
+>
 > 验收日期：2026-09-13
 > 候选版本：`develop@d4acdc5c2c2849d814d8d87932039b500b5683fa`（工作区含 M3 实现改动）
 > 工作区：保留既有未跟踪规格/验收材料，并包含本轮知识管理实现

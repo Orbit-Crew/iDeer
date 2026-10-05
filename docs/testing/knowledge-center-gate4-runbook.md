@@ -1,3 +1,13 @@
+---
+id: docs-testing-knowledge-center-gate4-runbook
+kind: reference
+status: current
+owner: knowledge maintainers
+scope: run instructions and result classification for the real Gate 4 acceptance — the backend live provider test plus the real-browser Knowledge Center spec, with isolated-dataset requirements and unexecuted-status rules
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
+---
+
 # Knowledge Center Gate4 验收运行说明
 
 Gate4 的真实验收由两个互补测试组成：
