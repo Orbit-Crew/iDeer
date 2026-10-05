@@ -13,7 +13,7 @@ verified-against: worktree docs/agent-doc-disclosure @ c9981aac3
 > audience: developers, database maintainers, operators<br>
 > canonical-path: `docs/governance/resource-governance-v2-migration-map.md`
 
-2026-10-04 核对：`resource_versions`、`resource_dependencies`、`run_resource_snapshots`、`resource_favorites` 表与共享记忆键 `(runner_id, agent_resource_id)` 在当前候选均存在；alias 解析多匹配返回 409。第 6 节命令中的 `ideer.scripts.resource_catalog_v2` 是旧版本（ideer 时期）的模块名，在本候选中不存在，属预期——迁移工具仅随旧版本交付。
+2026-10-04 核对：`resource_versions`、`resource_dependencies`、`run_resource_snapshots`、`resource_favorites` 表与共享记忆键 `(runner_id, agent_resource_id)` 在当前候选均存在；alias 解析多匹配返回 409。第 6 节命令中的迁移工具模块名是旧版本（ideer 时期）的命名，在本候选中不存在，属预期——迁移工具仅随旧版本交付，故第 6 节命令按原样保留该模块名。
 
 ## 映射原则
 

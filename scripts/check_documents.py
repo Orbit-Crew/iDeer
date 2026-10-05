@@ -23,6 +23,7 @@ Rule IDs (stable):
   route-incomplete              task-route reachability and validation pointers
   supersession-invalid          replacement naming, back-references, cycles
   evidence-missing              current-state verification evidence
+  stale-package-path            old ideer package paths in current documents
   protected-fingerprint-mismatch  protected file content fingerprints
 
 Optional policy key ``task_routes``: a list of
@@ -69,6 +70,7 @@ RULE_BROKEN_ANCHOR = "broken-anchor"
 RULE_ROUTE_INCOMPLETE = "route-incomplete"
 RULE_SUPERSESSION_INVALID = "supersession-invalid"
 RULE_EVIDENCE_MISSING = "evidence-missing"
+RULE_STALE_PACKAGE_PATH = "stale-package-path"
 RULE_PROTECTED_FINGERPRINT = "protected-fingerprint-mismatch"
 
 FRONTMATTER_REQUIRED_KEYS = ("id", "kind", "status", "owner", "scope")
@@ -422,6 +424,19 @@ def _parse_frontmatter(text: str) -> dict[str, object]:
     return fields
 
 
+def _frontmatter_line_count(text: str) -> int:
+    """Number of lines occupied by the frontmatter block; 0 when absent."""
+    if not text.startswith("---"):
+        return 0
+    lines = text.splitlines()
+    if len(lines) < 2 or lines[0].strip() != "---":
+        return 0
+    for index in range(1, len(lines)):
+        if lines[index].strip() == "---":
+            return index + 1
+    return 0
+
+
 def _document_texts(
     policy: dict, source: DocumentSource, tracked: set[PurePosixPath]
 ) -> dict[PurePosixPath, str]:
@@ -598,9 +613,12 @@ _EXTERNAL_SCHEME_RE = re.compile(
 )
 
 
-def _visible_lines(text: str) -> list[tuple[int, str]]:
-    """Return (line_number, line) outside fenced code blocks, inline code spans removed."""
-    lines: list[tuple[int, str]] = []
+def _iter_outside_fences(text: str) -> list[tuple[int, str]]:
+    """Return (line_number, line) pairs for lines outside fenced code blocks.
+
+    Lines are returned unmodified; inline code spans are still present.
+    """
+    entries: list[tuple[int, str]] = []
     fence = ""
     for number, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
@@ -612,8 +630,16 @@ def _visible_lines(text: str) -> list[tuple[int, str]]:
         if opening:
             fence = opening.group(1)
             continue
-        lines.append((number, re.sub(r"`[^`]*`", "", line)))
-    return lines
+        entries.append((number, line))
+    return entries
+
+
+def _visible_lines(text: str) -> list[tuple[int, str]]:
+    """Return (line_number, line) outside fenced code blocks, inline code spans removed."""
+    return [
+        (number, re.sub(r"`[^`]*`", "", line))
+        for number, line in _iter_outside_fences(text)
+    ]
 
 
 def _heading_anchors(text: str) -> set[str]:
@@ -997,6 +1023,54 @@ def check_evidence(policy: dict, texts: dict[PurePosixPath, str]) -> list[Findin
     return findings
 
 
+_STALE_PACKAGE_RE = re.compile(
+    # ``ideer.`` as a Python package/module prefix. The lookbehind keeps URL
+    # contexts out (``https://ideer.tech``, ``.../bytedance/ideer.git``): a
+    # domain or repository name is not a package path. The brand name "iDeer"
+    # in prose never matches (the pattern is lowercase and case-sensitive).
+    r"(?<![\w./])ideer\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*"
+    # Old harness directory prefix; the current home is harness/deerflow/.
+    r"|harness/ideer(?![\w-])"
+)
+
+
+def check_stale_package_paths(
+    policy: dict, texts: dict[PurePosixPath, str]
+) -> list[Finding]:
+    """Report old ``ideer`` package paths in documents whose status is current.
+
+    Historical and frozen documents (any other status, or no frontmatter) are
+    exempt. Fenced code blocks are skipped: they quote verbatim commands that
+    may deliberately document old-version tooling. Inline code is scanned: a
+    package path inside backticks is still the document's own claim about the
+    current system.
+    """
+    findings: list[Finding] = []
+    for row in policy["inventory"]["files"]:
+        path = PurePosixPath(str(row["path"]))
+        text = texts.get(path)
+        if text is None:
+            continue
+        if _parse_frontmatter(text).get("status") != "current":
+            continue
+        frontmatter_lines = _frontmatter_line_count(text)
+        for number, line in _iter_outside_fences(text):
+            if number <= frontmatter_lines:
+                continue
+            match = _STALE_PACKAGE_RE.search(line)
+            if match:
+                findings.append(
+                    Finding(
+                        RULE_STALE_PACKAGE_PATH,
+                        "error",
+                        path.as_posix(),
+                        str(number),
+                        f"current document references legacy package path {match.group(0)!r}",
+                    )
+                )
+    return findings
+
+
 def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings: list[Finding] = []
     findings.extend(check_inventory_coverage(policy, source))
@@ -1010,6 +1084,7 @@ def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings.extend(check_task_routes(policy, tracked))
     findings.extend(check_supersession(policy, texts, tracked))
     findings.extend(check_evidence(policy, texts))
+    findings.extend(check_stale_package_paths(policy, texts))
     return findings
 
 

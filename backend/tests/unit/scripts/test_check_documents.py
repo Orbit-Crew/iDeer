@@ -697,3 +697,25 @@ def test_text_output_lists_findings_and_summary(tmp_path: Path, capsys) -> None:
     assert code == 1
     assert "metadata-shape" in out
     assert "findings=1" in out
+
+
+# --- Ticket 04 slice 1: stale package paths in current documents ---
+
+STALE_PATH_APPENDIX = "vLLM 推理模型应使用 `ideer.models.vllm_provider:VllmChatModel`。\n\n官网见 https://ideer.tech ，历史命令仅作展示：\n\n```bash\npython -m ideer.scripts.resource_catalog_v2 audit\n```\n"
+
+
+def test_current_document_with_stale_package_path_is_reported(tmp_path: Path, capsys) -> None:
+    # The inline-code old package path is the document's own claim about the
+    # current system and is reported. The URL form (ideer.tech), the fenced
+    # command, and the draft document are outside the rule.
+    files = _base_files()
+    files["docs/clean.md"] = (CLEAN_MD + STALE_PATH_APPENDIX).encode("utf-8")
+    files["docs/other.md"] = (OTHER_MD + "Draft notes cite ideer.config too.\n").encode("utf-8")
+    _materialize(tmp_path, files, _base_policy(files))
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    hits = _findings_by_rule(payload, "stale-package-path")
+    assert [hit["file"] for hit in hits] == ["docs/clean.md"]
+    assert hits[0]["severity"] == "error"
+    assert hits[0]["location"].isdigit()
+    assert "ideer.models.vllm_provider" in hits[0]["reason"]
