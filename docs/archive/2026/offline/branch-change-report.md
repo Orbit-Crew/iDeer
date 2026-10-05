@@ -1,6 +1,18 @@
+---
+id: docs-archive-2026-offline-branch-change-report
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: offline_feature 分支（main→offline_feature，共 12 个提交，统计日期 2026-06-10）的五阶段变更深度分析报告：品牌重命名、内网/离线部署三层防御、RBAC 权限与管理后台、YAML 工作流引擎、三类 community 工具，附逐阶段文件变更清单与提交记录
+archived-reason: 时点分支变更报告，描述 backend/packages/harness/ideer/ 路径期（约 2026-06）候选；该路径布局其后移除，现行 harness 为 backend/packages/harness/deerflow/（deerflow-harness）。Phase 4 工作流引擎（workflows/ 包、routers/workflows.py、workflow_runs 单表）已不在当前候选（现行候选另有 workflow_v2 持久化模型与 workflow_runtime_config 配置，工作流能力以现行代码为准）；Phase 5 三工具（doc_reader/code_interpreter/data_analyzer）已从 community/ 移除。现行离线产品线权威：docs/offline-product-line-governance-plan.md、scripts/README-intranet.md
+---
+
 # offline_feature 分支变更深度分析报告
 
 > status: archived; current product-line authority: `docs/offline-product-line-governance-plan.md`
+>
+> source period: offline_feature 分支期候选（统计日期 2026-06-10；`backend/packages/harness/ideer/` 路径期，该布局其后移除，现行 harness 为 `backend/packages/harness/deerflow/`）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。仍成立：`scripts/package-intranet-offline.sh`、`scripts/deploy-intranet.sh`、`scripts/check-intranet.sh`、`scripts/README-intranet.md`、`docker/docker-compose.intranet.yaml`、`config.intranet.yaml`、`extensions_config.example.json` 均在当前候选（脚本目录另新增 `scripts/intranet_bundle_manifest.py`，正文未记载）；RBAC 仍在 `backend/app/gateway/authz.py`（`require_role`、`check_resource_access`）与 `backend/app/gateway/routers/admin.py`、`tools.py`、`agents.py`、`skills.py`、`backend/app/gateway/deps.py`；`IDEER_NETWORK_MODE` 与 `is_offline()` 仍为现行机制，实现已迁至 `backend/app/agentplatform/config/network_mode.py`（正文所述 harness ideer 路径失效）。已漂移：Phase 4 工作流引擎（`backend/packages/harness/ideer/workflows/`、`backend/app/gateway/routers/workflows.py`、`workflow_runs` 单表设计）已不在当前候选；Phase 5 三工具（`doc_reader`、`code_interpreter`、`data_analyzer`）已从 `community/` 移除，该目录现为搜索/抓取/沙箱等集成集合；附录所列 `backend/tests/test_*.py` 平铺测试路径已重组为 `backend/tests/unit/…`。
 
 > 统计范围：`main` → `offline_feature`（共 12 个提交）
 > 统计日期：2026-06-10
