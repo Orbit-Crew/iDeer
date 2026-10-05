@@ -21,7 +21,16 @@ def load(skill_name: str):
     spec = importlib.util.spec_from_file_location(mod_name, path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = module  # standard pattern; lets the module resolve itself
-    spec.loader.exec_module(module)
+    # SourceFileLoader would write __pycache__/*.pyc next to the source, i.e.
+    # into the shipped skill package, and the skill review scan then fails
+    # those directories as "not NUL-free UTF-8". Suppress bytecode writing for
+    # the duration of the exec (including imports performed by the script).
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
     return module
 
 
