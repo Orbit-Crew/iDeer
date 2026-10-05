@@ -52,4 +52,7 @@ Narrow ESLint, TypeScript (tsc --noEmit), and Prettier checks passed. Accepted r
 - frontend/tests/e2e/workflows/artifact-visualization.spec.ts
 - docs/testing/mock-e2e-recovery-E.md
 - docs/testing/mock-e2e-recovery-diagnosis.md
-- .scratch/test-system-first-batch/issues/03-E1-artifact-conflict-indicator.md
+
+The E1 sub-ticket lives only in the ignored local scratch area
+(`.scratch/test-system-first-batch/issues/03-E1-artifact-conflict-indicator.md`)
+and is not part of this commit; its evidence is restated in the #9 row above.

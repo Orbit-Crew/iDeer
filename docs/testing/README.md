@@ -13,7 +13,7 @@
 - [测试 Lane 运行手册](test-lane-runbook.md)：PR 与交付级 lane 的运行、判定和交接规则。
 - [测试清单](../../scripts/test_inventory.py)：复用文件发现结果，输出文件、节点、lane 归属和收集状态。
 - [运行前检查](../../scripts/test_preflight.py)：按 lane 检查工具、锁文件、浏览器、可写目录和 socket 条件。
-- [Mock E2E recovery A](mock-e2e-recovery-A.md) / [B](mock-e2e-recovery-B.md)：记录已确认失败的分类、修复和候选验证证据。
+- [Mock E2E recovery](mock-e2e-recovery-diagnosis.md)：55 项基线失败的逐项诊断索引；分组证据见 [A](mock-e2e-recovery-A.md) / [B](mock-e2e-recovery-B.md) / [C](mock-e2e-recovery-C.md) / [D](mock-e2e-recovery-D.md) / [E](mock-e2e-recovery-E.md) / [F](mock-e2e-recovery-F.md)。
 
 执行入口：
 
