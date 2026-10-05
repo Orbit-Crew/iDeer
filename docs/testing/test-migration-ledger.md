@@ -20,6 +20,30 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-05: task_tool core-logic duplicate removed, root copy kept
+
+Ticket `doc-disclosure-followup` issue 02. Two same-basename task_tool files
+collected concurrently without shadowing: `backend/tests/__init__.py` makes the
+root copy import as `tests.test_task_tool_core_logic` while the unit copy
+imports as `test_task_tool_core_logic` (no `__init__.py` under
+`backend/tests/unit/`), so one pytest run collected 82 + 39 = 121 tests.
+`backend/tests/test_task_tool_core_logic.py` is the current generation (last
+touched 2026-09-15, imports the live config systems `SubagentRuntimeConfig`,
+`deerflow.sandbox.security`, `SubagentExecutionCapacity`, and the
+`status_contract` keys) and is the maintained lineage. The deleted unit copy
+was the older fork (last touched 2026-09-07); 27 of its 39 collected test
+names duplicate root names, and both copies passed against the same product
+code, so the root versions supersede them. The root copy stays in place with
+its pre-deletion collection count of 82 intact; three still-unique tests were
+ported into it (85 collected after the port).
+
+| Removed/kept path | Superseded or retained coverage | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `backend/tests/unit/tools/test_task_tool_core_logic.py` deleted (39 tests, 27 names duplicated in root) | Kept `backend/tests/test_task_tool_core_logic.py` (82 tests) unchanged: cancellation/cleanup/terminal-event/skill-allowlist/tool-groups/bash-gate/polling-timeout coverage of the same names, plus the root-only deferred-cleanup and loop-pinning family | Equal-or-stronger: both copies passed on the same candidate; the kept copy carries seven subsequent feature commits of evolved assertions (status-contract kwargs, tool receipts, loop-bound contracts) that the unit fork lacks | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/test_task_tool_core_logic.py -q` (85 passed) |
+| `test_report_subagent_usage_records_from_callback_manager`, `test_report_subagent_usage_does_not_raise_for_unknown_callback_shape`, `test_task_tool_completed_path_reports_usage_from_callback_manager` (unit-only) | Ported into `backend/tests/test_task_tool_core_logic.py` with a `FakeUsageRecorder` helper; the end-to-end variant drops the old `app_config=SimpleNamespace(token_usage=...)` wiring (the registry now resolves `custom_agents` from app_config; the behavior under test — recorder resolution through an `AsyncCallbackManager` — does not need app_config) | Equal: same assertions (records delivered, `usage_reported` flag, unknown-shape no-raise, completed-path delivery) | Same command as above |
+| `_find_usage_recorder` shape matrix: `test_find_usage_recorder_accepts_callback_runtime_shapes` (3 params), `test_find_usage_recorder_accepts_langchain_async_callback_manager`, `test_find_usage_recorder_ignores_unknown_callback_shapes` (4 params) — unit-only names | `backend/tests/unit/tools/test_task_tool_usage_recorder.py` already owns this seam (9 tests: plain list, async/sync manager, none/empty/unknown/unwrapped/non-dict-config shapes) and is retained | Equal: same `_find_usage_recorder` contract at a dedicated home | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/tools/test_task_tool_usage_recorder.py -q` (9 passed) |
+| `test_poller_failure_propagates_and_defers_cleanup` (unit-only lightweight variant) | Root poller-failure family covers the behavior more deeply: `test_unexpected_poller_error_deferred_cleanup_survives_sync_invocation`, `test_unexpected_error_re_raised_promptly_via_short_grace`, and the broken-status-accessor deferred-cleaner test (re-raise of the original error, cooperative cancel request, deferred cleanup scheduling) | Stronger: the root tests exercise the real persistent-loop/threaded unwind instead of a stubbed isolated loop | Same command as the kept file above |
+
 ## Batch 2026-10-03: i18n key parity moves from runtime checks to the compiler
 
 Ticket `architecture-deepening` issue 09 (spec candidate 8, Q12=a). The
