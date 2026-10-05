@@ -1,3 +1,13 @@
+---
+id: backend-docs-api
+kind: reference
+status: current
+owner: repository maintainers
+scope: backend HTTP API reference: LangGraph-compatible threads/runs/streaming, resources, uploads, artifacts, projects/documents/trash, authentication, personal access tokens, and error conventions
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 00f4e3b85
+---
+
 # API Reference
 
 This document provides a complete reference for the iDeer backend APIs.
@@ -420,7 +430,7 @@ Content-Type: application/json
 
 ### Skills, Agents & Workflows (Resources)
 
-Skill、Agent、Workflow 统一由 Resource Catalog（canonical）管理，接口位于 `/api/resources`（旧 `/api/skills`、`/api/agents`、`/api/workflows` 路由已删除，返回 404）。
+Skill、Agent、Workflow 统一由 Resource Catalog（canonical）管理，接口位于 `/api/resources`（旧 `/api/agents`、`/api/workflows` 资源路由已删除，返回 404；`/api/skills` 路径仅保留上游能力页所需的自定义技能管理端点，如 `GET /api/skills` 列表与 `/api/skills/custom*`，不再是资源目录入口）。
 
 #### List Resources
 
@@ -482,7 +492,7 @@ POST /api/resources/import/agent
 Content-Type: multipart/form-data
 ```
 
-> 更多端点（workflow-draft、archive-draft、fork、archive、suspend、restore、transfer、visibility、dependencies、favorite、notifications）见 FastAPI 自述文档（`/docs`）与 `backend/app/gateway/routers/resources.py`。技能启用状态经 `extensions_config.json` 管理，不再有独立 `/api/skills` 端点。
+> 更多端点（workflow-draft、archive-draft、fork、archive、suspend、restore、transfer、visibility、dependencies、favorite、notifications）见 FastAPI 自述文档（`/docs`）与 `backend/app/gateway/routers/resources.py`。技能启用状态经 `extensions_config.json` 管理，`/api/skills` 下仅保留上游能力页所需的自定义技能管理端点（`backend/app/gateway/routers/skills.py`）。
 
 ### File Uploads
 
