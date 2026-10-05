@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-06-19-guardrail-request-attribution-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-19 design adding optional user-context and run/tool-call attribution fields (user_id, user_role, oauth_provider, oauth_id, run_id, thread_id, tool_call_id) to GuardrailRequest, injected from server-authenticated state into runtime.context by the gateway and consumed by GuardrailMiddleware
+archived-reason: implemented — the attribution fields exist on GuardrailRequest in backend/packages/harness/deerflow/guardrails/provider.py (which has since gained channel_user_id), the middleware reads them from runtime context (backend/packages/harness/deerflow/guardrails/middleware.py), inject_authenticated_user_context exists in backend/app/gateway/services.py, and both pinned test classes (TestGuardrailRequestAttribution, TestConfigAssembly) resolve, so the documented pytest verification command still matches this candidate
+---
+
 # GuardrailRequest 运行时用户上下文与归因字段补充
 
 ## 概述

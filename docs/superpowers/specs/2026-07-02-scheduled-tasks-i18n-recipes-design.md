@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-07-02-scheduled-tasks-i18n-recipes-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-02 frontend-only follow-up design (PR #3898 follow-up to commit 1ca27a73) adding full scheduledTasks i18n for the scheduled-tasks page and four built-in recipe templates (trending/news/issues/weekly) wired through a createNonce remount and case-insensitive regex e2e selectors
+archived-reason: implemented — frontend/src/core/scheduled-tasks/recipes.ts exports the four recipes and the scheduled-tasks page consumes the scheduledTasks i18n section with the enum lookup helpers; the referenced PR number and commit describe the period workspace state
+---
+
 # Scheduled-tasks page: full i18n + recipe templates — design
 
 Follow-up to the preset-driven schedule form (commit `1ca27a73`). Scope kept

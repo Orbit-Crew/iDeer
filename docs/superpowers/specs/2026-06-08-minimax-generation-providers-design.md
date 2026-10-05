@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-06-08-minimax-generation-providers-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-08 design to add MiniMax as an optional provider in the image/video/podcast generation skills via a _resolve_provider env-precedence helper (skill-level override, existing provider credentials, MINIMAX_API_KEY fallback) and a new skill-creator-based music-generation skill, with mocked pytest coverage at repo-root tests/skills/
+archived-reason: implemented for image, video, and music — _resolve_provider and MiniMax paths exist in skills/public/image-generation and skills/public/video-generation scripts, skills/public/music-generation/ exists with its frontend mock-list entry, and tests/skills/ covers all four skills; podcast-generation was not converted and remains Volcengine-only in this candidate, and the image skill's non-MiniMax fallback has since evolved (its error text names IMAGE_GENERATION_API_KEY/openai rather than the design's Gemini), so the section 2 provider table is the 2026-06-08 state
+---
+
 # MiniMax 接入生成类 Skill — 设计文档
 
 - 日期：2026-06-08

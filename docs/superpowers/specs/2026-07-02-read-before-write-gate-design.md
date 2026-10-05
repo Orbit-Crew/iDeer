@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-07-02-read-before-write-gate-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-02 design for the ReadBeforeWriteMiddleware freshness gate on write_file/str_replace (issue #3857 artifact layer) — sha256 read marks on ToolMessages, per-path locked check-before-write, fail-open error semantics including AIO/E2B swallowed read failures (#3912), and config wiring default-on
+archived-reason: implemented — backend/packages/harness/deerflow/agents/middlewares/read_before_write_middleware.py with the deerflow_read_mark key, backend/tests/test_read_before_write_middleware.py plus the cancellation tests, and the read_before_write config block (config_version landed as 16→17) all exist; the middleware has since gained elide_blocked_payloads and sandbox-authorization ownership recorded in agents/middlewares/AGENTS.md, so this text is the 2026-07-02 design state
+---
+
 # 产物层：修改已存在文件前强制先读（ReadBeforeWriteMiddleware）— 设计
 
 对应 issue #3857（parent）产物层子项。目标：用确定性的"版本闸"逼 agent 在修改已存在文件前看见文件现状，治"只追加、不回读"导致的重复产出（Case 2），并作为通用的文件写入新鲜度护栏。

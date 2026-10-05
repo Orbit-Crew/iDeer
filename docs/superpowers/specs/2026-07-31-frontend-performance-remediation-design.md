@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-07-31-frontend-performance-remediation-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-31 design remediating a seventeen-item frontend performance audit re-verified against origin/main@17461ee5 — nginx gzip, static root ownership, bundle boundaries and single-pass Shiki, bounded chat derivation/virtualization, streaming Markdown cadence, visibility-aware landing effects, binary Browser Live frames, range-bounded artifact previews, and async mock data, delivered as one PR of reviewable slices
+archived-reason: implemented as the four 2026-07-31 delivery plans in docs/superpowers/plans/ (baseline-delivery, bundle-static, chat-runtime, live-artifacts) — the route-asset measurement script (frontend/scripts/measure-route-assets.mjs), nginx gzip, the virtual list and bounded derivation, binary frames, and the 1 MiB preview limit all landed in this candidate; the pinned audit base 17461ee5 is a period revision, so the finding matrix describes that state
+---
+
 # Frontend performance remediation — design
 
 ## Background
