@@ -140,12 +140,20 @@ test.describe("Sidebar navigation", () => {
     };
 
     await expectInsideViewport(page.getByRole("textbox").first());
-    await expectInsideViewport(page.locator("[data-slot='suggestions-list']"));
+    await expectInsideViewport(page.getByTestId("scenario-tabs"));
+    const dailyScenario = page.getByRole("tab", { name: "日常办公" });
+    await expect(dailyScenario).toBeVisible();
+    await dailyScenario.click();
+    await expect(dailyScenario).toHaveAttribute("aria-selected", "true");
 
-    // The iDeer workbench welcome page is a mobile-first full-bleed layout:
-    // it intentionally has no mobile sidebar drawer. Verify the layout holds
-    // (no horizontal overflow) at phone width, then confirm the workspace
-    // sidebar with its navigation links is reachable at desktop width.
+    const expertQuickEntry = page.getByRole("tab", { name: "办公文档" });
+    await expect(expertQuickEntry).toBeVisible();
+    await expertQuickEntry.click();
+    await expect(page.getByTestId("task-chip-bar")).toBeVisible();
+
+    // The iDeer workbench welcome page has no mobile sidebar drawer. Verify
+    // the selected quick entries stay within the phone layout, then confirm
+    // workspace navigation remains available in the desktop sidebar.
     const overflowsHorizontally = await page.evaluate(
       () =>
         document.documentElement.scrollWidth >

@@ -86,8 +86,13 @@ test.describe("Agent chat", () => {
       .locator("[data-sidebar='trigger']:visible")
       .first();
     await expect(sidebarTrigger).toBeVisible({ timeout: 15_000 });
-    const triggerBox = await sidebarTrigger.boundingBox();
-    expect(triggerBox).not.toBeNull();
+    let triggerBox = await sidebarTrigger.boundingBox();
+    await expect(async () => {
+      triggerBox = await sidebarTrigger.boundingBox();
+      expect(triggerBox).not.toBeNull();
+      expect(triggerBox!.width).toBeGreaterThan(0);
+      expect(triggerBox!.height).toBeGreaterThan(0);
+    }).toPass();
     const triggerReceivesPointerEvents = await page.evaluate(
       ({ x, y }) => {
         const trigger = document.elementFromPoint(x, y);
