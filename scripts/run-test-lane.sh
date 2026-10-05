@@ -53,6 +53,9 @@ finish() {
     echo "TEST_LANE_BUDGET_EXCEEDED lane=${LANE:-unknown} limit=${TEST_LANE_MAX_SECONDS}s actual=${elapsed}s"
   fi
   echo "TEST_LANE_DURATION lane=${LANE:-unknown} seconds=${elapsed} status=${status}"
+  if [[ $status -ne 0 && ${ARTIFACT_DIR_CREATED:-0} == 1 ]]; then
+    echo "TEST_LANE_ARTIFACT lane=${LANE:-unknown} dir=${ARTIFACT_DIR}"
+  fi
   if [[ -n ${ARTIFACT_DIR:-} ]]; then
     printf 'finished=%s\nstatus=%s\nseconds=%s\n' "$(date -u +%FT%TZ)" "$status" "$elapsed" >>"$ARTIFACT_DIR/run.meta" || true
     if [[ -f "$ARTIFACT_DIR/lane-evidence.json" ]]; then
@@ -121,6 +124,8 @@ if ! mkdir -p "$ARTIFACT_DIR"; then
   echo "unable to create test lane artifact directory: $ARTIFACT_DIR" >&2
   exit 1
 fi
+# Only report ARTIFACT_DIR in finish() once the directory actually exists.
+ARTIFACT_DIR_CREATED=1
 printf 'lane=%s\ncommand=%q\nstarted=%s\n' "$LANE" "$0 $*" "$(date -u +%FT%TZ)" >"$ARTIFACT_DIR/run.meta"
 # Keep the full lane output next to the summary evidence so failures stay triageable.
 exec > >(tee -a "$ARTIFACT_DIR/run.log") 2>&1
