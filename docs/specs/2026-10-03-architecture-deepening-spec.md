@@ -1,4 +1,10 @@
 ---
+id: docs-specs-2026-10-03-architecture-deepening-spec
+kind: plan
+status: archived
+owner: repository maintainers
+scope: architecture-deepening design record for eight candidates — role-to-permission actor ladder, knowledge module seam, turn-submit and thread-page frontend modules, workflow_worker package split with run/registry seams, contract single ownership, skill-selection consolidation, and the i18n single seam; upstream attribution compared against deerflow v2.1.0 (345f08be)
+archived-reason: implemented in this candidate — backend/app/agentplatform/resources/actors.py, frontend/src/core/threads/use-thread-page.ts, frontend/src/core/skills/selection.ts, the backend/app/workflow_worker/ package (run_session.py, registry.py, entrypoint.py), and backend/tests/unit/resources/test_resource_actors.py all exist (checked 2026-10-04); the nine tickets lived in the delivery workspace .scratch/architecture-deepening/, which is not committed to the candidate, and no local branch architecture-deepening remains — the body's ticket and branch names are historical delivery references
 triage: ready-for-agent
 ---
 

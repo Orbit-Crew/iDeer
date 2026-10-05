@@ -1,4 +1,11 @@
 ---
+id: docs-specs-2026-10-04-doc-governance-dual-track-spec
+kind: plan
+status: current
+owner: repository maintainers
+scope: governing spec for documentation dual-track governance — the public docs-site three-batch track (status vocabulary, index repair, navigation, iDeer pages) and the engineering documentation disclosure track (checker, task routes, project state, guidance reduction, and the 49 body-audit batches, in progress as of 2026-10-04); the dual-track red lines (upstream add-only, local free, mixed semantic-merge) bind every batch
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ d964b3963
 triage: ready-for-agent
 ---
 

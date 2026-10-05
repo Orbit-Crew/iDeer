@@ -1,4 +1,10 @@
 ---
+id: docs-specs-2026-10-02-test-system-first-batch-spec
+kind: plan
+status: archived
+owner: test maintainers
+scope: first-batch test-system improvements — test-lane result-record consistency (unexecuted optional credentials, evidence-finalization failures), mock e2e order-dependency diagnosis and same-root-cause fix, and the three duplicate-assertion removals T4-T6; exploration baseline is develop@5c513ed0ac07 as named in Further Notes
+archived-reason: executed on branch fix/test-system-first-batch — result-record fix 0f509e95c, order diagnosis 4a2b2c2e4, serialization dedup 1750fe592, thread-ordering dedup df669c64e, message-merge dedup a4d564ae5, final validation recorded af4254571; that branch is NOT an ancestor of this candidate as of 2026-10-04, so the T4-T6 duplicate files it deletes (backend/tests/unit/runtime/test_serialize_message_content.py, frontend/tests/e2e/workflows/chat-thread-init-ordering.spec.ts, frontend/tests/unit/core/threads/message-merge-local.test.ts) still exist here — in this candidate treat those removals as pending merge, not as done
 triage: ready-for-agent
 ---
 
