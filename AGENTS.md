@@ -86,13 +86,13 @@ For each implementation slice, identify the public seam, add one focused regress
 
 For auth, RBAC, persistence, memory, admin, Agent, Skill, or Workflow changes, run the matching standard lane and `pr-standard`. GitHub Actions selects Real E2E for protected high-risk paths; report that selection when handing off a pull request. Do not run a repository-wide lane for each TDD slice.
 
-For a focused test or lane that hangs or times out, report it as incomplete with the exact command, elapsed time, and last observed test. Distinguish focused, standard-lane, PR-lane, and delivery-lane results. For `pr-standard` and `core-full`, report each sub-lane's final summary and the parent lane's `TEST_LANE_DURATION` status. A historical result does not replace a run on the current candidate.
+For a focused test or lane that hangs or times out, report it as incomplete with the exact command, elapsed time, and last observed test. Distinguish focused, standard-lane, PR-lane, and delivery-lane results. For `pr-standard` and `core-full`, report each sub-lane's final summary and the parent lane's `TEST_LANE_DURATION` status.
 
 ## Enterprise interfaces and validation assets
 
 KnowledgeBase list and create operations use `/api/resources` with Resource Governance visibility filtering. Responses expose canonical identity and visibility; provider infrastructure bindings stay server-side. Preserve these boundaries when editing Knowledge Center behavior.
 
-Qodo Cover configurations are local validation assets. Stagehand tests live in `frontend/tests/e2e/stagehand/` and require their explicit specialty lane. The archived `frontend-validator`, `backend-validator`, `qa-tester`, and `validation-orchestrator` designs are historical proposals, not callable skills in this worktree. Read the nearest guidance and the current architecture index for active module paths.
+Qodo Cover configurations are local validation assets. Stagehand tests live in `frontend/tests/e2e/stagehand/` and require their explicit specialty lane. The archived `frontend-validator`, `backend-validator`, `qa-tester`, and `validation-orchestrator` designs are historical proposals, not callable skills in this worktree.
 
 ## Commit & Pull Request Guidelines
 
@@ -100,29 +100,19 @@ Git history primarily uses Conventional Commit prefixes such as `fix(runs): ...`
 
 ## Security & Configuration Tips
 
-Do not commit local secrets. Start from `config.example.yaml`, `.env.example`, or `extensions_config.example.json`, then keep local values in untracked config files. Use `make doctor` to validate configuration and system requirements before reporting environment issues. For production-mode local startup, `scripts/start-local.sh` validates required commands, `config.yaml`, and configured model-key environment variable names before invoking `make start`; `START_TARGET` and `REQUIRED_ENV_VARS` accept only simple targets and identifiers.
+Do not commit local secrets; keep local values in untracked config files and run `make doctor` before reporting environment issues. Details: [local ops notes](docs/agents/local-ops-notes.md#security--configuration).
 
 ## Deployment Notes
 
-Nginx is the single public entry: it proxies `/api/*` to the Gateway (rewriting `/api/langgraph/*` onto the Gateway's native routes) and serves the frontend, compressing HTML and configured textual assets while deliberately leaving SSE, fonts, images, audio, and video uncompressed at the proxy layer. The main compose file publishes that entry as `"${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"` — **loopback by default**; a bare `"${PORT}:2026"` binds `0.0.0.0`, which does not. Nginx listening `default_server` on IPv4+IPv6 and the Gateway binding `0.0.0.0:8001` are container-internal on purpose: the published nginx port is the entire external surface, so any new published port needs an explicit bind address.
+Nginx on loopback is the single public entry; any new published port needs an explicit bind address. Details: [local ops notes](docs/agents/local-ops-notes.md#deployment).
 
 ## Session / Working Files (dev-log)
 
-Developer session artifacts (`task_plan.md`, `progress.md`, `findings.md`, and any scratch notes produced during a working session) must live in `dev-log/`, not the repo root. `dev-log/`, coverage outputs, qodo cover config, `pr-build/`, `.opencode/`, `.agents/`, and `.mimocode/` are git-ignored and guarded by a pre-commit hook — never `git add -f` them, and delete them when the session ends.
+Session artifacts belong in git-ignored `dev-log/`, never the repo root; never `git add -f` them. Details: [local ops notes](docs/agents/local-ops-notes.md#session--working-files-dev-log).
 
 ## Test Accounts (密码 = 邮箱名)
 
-数据库位置: `backend/.ideer/data/ideer.db`（运行时生成，未初始化的 worktree 不包含该文件）。
-
-| 角色 | 邮箱 | 密码 |
-|------|------|------|
-| 超级管理员 | `super_admin@test.com` | `super_admin@test.com` |
-| 部门管理员 | `department_admin@test.com` | `department_admin@test.com` |
-| 普通用户 | `user@test.com` | `user@test.com` |
-| 只读用户 | `viewer@test.com` | `viewer@test.com` |
-| 管理员 | `admin@test.com` | `admin@test.com` |
-
-**注意:** 这些账号仅适用于已初始化或已 seed 的本地数据库；进行角色测试前请确认实际角色值。若 `department_admin@test.com` 仍为 `user`，需先通过 admin 页面修改为 `department_admin`。
+Role verification needs a seeded local DB; passwords equal emails. Table: [test accounts](docs/agents/test-accounts.md).
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
