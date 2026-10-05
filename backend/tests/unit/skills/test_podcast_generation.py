@@ -53,19 +53,14 @@ def test_text_to_speech_decodes_base64(monkeypatch):
     assert captured["url"].endswith("/api/v1/tts")
     assert captured["headers"]["Authorization"] == "Bearer;t"
     assert captured["json"]["app"]["appid"] == "a"
-    assert (
-        captured["json"]["audio"]["voice_type"]
-        == "zh_male_yangguangqingnian_moon_bigtts"
-    )
+    assert captured["json"]["audio"]["voice_type"] == "zh_male_yangguangqingnian_moon_bigtts"
     assert captured["json"]["request"]["text"] == "hi"
 
 
 def test_text_to_speech_returns_none_on_http_error(monkeypatch):
     monkeypatch.setenv("VOLCENGINE_TTS_APPID", "a")
     monkeypatch.setenv("VOLCENGINE_TTS_ACCESS_TOKEN", "t")
-    monkeypatch.setattr(
-        pod.requests, "post", lambda *a, **k: FakeResp({}, status_code=500)
-    )
+    monkeypatch.setattr(pod.requests, "post", lambda *a, **k: FakeResp({}, status_code=500))
     assert pod.text_to_speech("hi", "voice") is None
 
 
@@ -152,9 +147,7 @@ def test_tts_node_skips_failed_lines(monkeypatch):
         return None if text == "b" else text.encode()
 
     monkeypatch.setattr(pod, "text_to_speech", fake_tts)
-    script = pod.Script(
-        lines=[pod.ScriptLine("male", "a"), pod.ScriptLine("female", "b")]
-    )
+    script = pod.Script(lines=[pod.ScriptLine("male", "a"), pod.ScriptLine("female", "b")])
 
     assert pod.tts_node(script) == [b"a"]
 
@@ -163,9 +156,7 @@ def test_tts_node_raises_when_all_lines_fail(monkeypatch):
     monkeypatch.setenv("VOLCENGINE_TTS_APPID", "a")
     monkeypatch.setenv("VOLCENGINE_TTS_ACCESS_TOKEN", "t")
     monkeypatch.setattr(pod, "text_to_speech", lambda *_: None)
-    script = pod.Script(
-        lines=[pod.ScriptLine("male", "a"), pod.ScriptLine("female", "b")]
-    )
+    script = pod.Script(lines=[pod.ScriptLine("male", "a"), pod.ScriptLine("female", "b")])
 
     with pytest.raises(ValueError, match="all 2 lines"):
         pod.tts_node(script)
@@ -179,16 +170,12 @@ def test_tts_node_default_workers(monkeypatch):
 
     class CapturingExecutor(real_executor):
         def __init__(self, *args, **kwargs):
-            captured["max_workers"] = kwargs.get(
-                "max_workers", args[0] if args else None
-            )
+            captured["max_workers"] = kwargs.get("max_workers", args[0] if args else None)
             super().__init__(*args, **kwargs)
 
     monkeypatch.setattr(pod, "ThreadPoolExecutor", CapturingExecutor)
     monkeypatch.setattr(pod, "text_to_speech", lambda *_: b"x")
-    script = pod.Script(
-        lines=[pod.ScriptLine("male", "a"), pod.ScriptLine("female", "b")]
-    )
+    script = pod.Script(lines=[pod.ScriptLine("male", "a"), pod.ScriptLine("female", "b")])
 
     assert pod.tts_node(script) == [b"x", b"x"]
     assert captured["max_workers"] == 4
@@ -204,9 +191,7 @@ def test_mix_audio_empty_raises():
 
 
 def test_generate_markdown_formats_speakers():
-    script = pod.Script(
-        lines=[pod.ScriptLine("male", "hello"), pod.ScriptLine("female", "world")]
-    )
+    script = pod.Script(lines=[pod.ScriptLine("male", "hello"), pod.ScriptLine("female", "world")])
 
     md = pod.generate_markdown(script, title="My Show")
     assert md.startswith("# My Show")
@@ -217,8 +202,7 @@ def test_generate_markdown_formats_speakers():
 def _script_file(tmp_path):
     script = tmp_path / "s.json"
     script.write_text(
-        '{"title":"T","locale":"en","lines":[{"speaker":"male","paragraph":"a"},'
-        '{"speaker":"female","paragraph":"b"}]}',
+        '{"title":"T","locale":"en","lines":[{"speaker":"male","paragraph":"a"},{"speaker":"female","paragraph":"b"}]}',
         encoding="utf-8",
     )
     return script

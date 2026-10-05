@@ -20,6 +20,33 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-05: Skill-script tests migrate into the backend unit tree
+
+Ticket `doc-disclosure-followup` issue 02. The root `tests/skills/` files (four
+skill-script suites plus the `skill_loader.py` helper) had no lane ownership:
+`scripts/test_inventory.py` deliberately scans only the lane-consumed roots
+(`backend/tests`, `frontend/tests`, `local-runtime/tests`), so nothing ever ran
+them — which is exactly how the podcast suite rotted for a month after the
+script it tested changed. Ownership is resolved by migrating the files into
+`backend/tests/unit/skills/` (which already owns bundled-skill asset tests such
+as `test_public_skill_catalog.py`) instead of widening the inventory scan:
+a scan would have listed the files while still leaving "no CI runs them" true,
+and honest scan ownership would have required lane-runner changes. After the
+move the inventory classifies them as `backend-standard` automatically (no
+special markers), so the hermetic backend PR lane now executes them.
+`skill_loader.py` gained one line of change: `REPO_ROOT` walks four parents
+instead of two to still reach the repository root. Test bodies are otherwise
+formatter-only churn from `backend/ruff.toml` (line-length 240); no assertion
+changed in this batch.
+
+| Old path | New path | Core assertions retained | Delete old path | Validation |
+| --- | --- | --- | --- | --- |
+| `tests/skills/test_image_generation.py` | `backend/tests/unit/skills/test_image_generation.py` | Unchanged (36 tests) | Yes | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/skills/test_image_generation.py tests/unit/skills/test_music_generation.py tests/unit/skills/test_podcast_generation.py tests/unit/skills/test_video_generation.py -q` (77 passed) |
+| `tests/skills/test_music_generation.py` | `backend/tests/unit/skills/test_music_generation.py` | Unchanged (9 tests) | Yes | Same command as above |
+| `tests/skills/test_podcast_generation.py` | `backend/tests/unit/skills/test_podcast_generation.py` | Unchanged from commit `b0486a782` (19 tests; that commit rewrote the assertions to the current Volcengine-only script — the MiniMax/retry coverage it dropped is recoverable from git history pending a diagnosis ticket) | Yes | Same command as above |
+| `tests/skills/test_video_generation.py` | `backend/tests/unit/skills/test_video_generation.py` | Unchanged (13 tests) | Yes | Same command as above |
+| `tests/skills/skill_loader.py` | `backend/tests/unit/skills/skill_loader.py` | Same `load()`/`FakeResp` contract; `REPO_ROOT` now `parents[4]` | Yes | Same command as above; `python3 scripts/test_inventory.py` lists all four files under lane `backend-standard` |
+
 ## Batch 2026-10-05: task_tool core-logic duplicate removed, root copy kept
 
 Ticket `doc-disclosure-followup` issue 02. Two same-basename task_tool files

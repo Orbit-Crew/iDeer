@@ -30,39 +30,29 @@ def test_resolve_prefers_gemini(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     monkeypatch.setenv("MINIMAX_API_KEY", "m")
     monkeypatch.setenv("IMAGE_GENERATION_API_KEY", "image-key")
-    assert (
-        img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", True) == "gemini"
-    )
+    assert img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", True) == "gemini"
 
 
 def test_resolve_falls_back_to_minimax(monkeypatch):
     monkeypatch.setenv("MINIMAX_API_KEY", "m")
-    assert (
-        img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", False) == "minimax"
-    )
+    assert img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", False) == "minimax"
 
 
 def test_resolve_falls_back_to_openai_after_minimax(monkeypatch):
     monkeypatch.setenv("MINIMAX_API_KEY", "m")
     monkeypatch.setenv("IMAGE_GENERATION_API_KEY", "image-key")
-    assert (
-        img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", False) == "minimax"
-    )
+    assert img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", False) == "minimax"
 
 
 def test_resolve_falls_back_to_openai(monkeypatch):
     monkeypatch.setenv("IMAGE_GENERATION_API_KEY", "image-key")
-    assert (
-        img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", False) == "openai"
-    )
+    assert img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", False) == "openai"
 
 
 def test_resolve_override_wins(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     monkeypatch.setenv("IMAGE_GENERATION_PROVIDER", "MiniMax")
-    assert (
-        img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", True) == "minimax"
-    )
+    assert img._resolve_provider("IMAGE_GENERATION_PROVIDER", "gemini", True) == "minimax"
 
 
 def test_resolve_errors_when_none(monkeypatch):
@@ -136,9 +126,7 @@ def test_minimax_raises_on_base_resp_error(monkeypatch, tmp_path):
     monkeypatch.setenv("MINIMAX_API_KEY", "m")
 
     def fake_post(url, headers=None, json=None, **kw):
-        return FakeResp(
-            {"base_resp": {"status_code": 1004, "status_msg": "auth failed"}}
-        )
+        return FakeResp({"base_resp": {"status_code": 1004, "status_msg": "auth failed"}})
 
     monkeypatch.setattr(img.requests, "post", fake_post)
     prompt_file = tmp_path / "p.json"
@@ -164,8 +152,7 @@ def test_minimax_extracts_json_prompt_field(monkeypatch, tmp_path):
     monkeypatch.setattr(img.requests, "post", fake_post)
     prompt_file = tmp_path / "p.json"
     prompt_file.write_text(
-        '{"prompt": "a red barn at dawn", "style": "watercolor", '
-        '"composition": "rule of thirds", "negative_prompt": "blurry"}',
+        '{"prompt": "a red barn at dawn", "style": "watercolor", "composition": "rule of thirds", "negative_prompt": "blurry"}',
         encoding="utf-8",
     )
     img.generate_image(str(prompt_file), [], str(tmp_path / "o.jpg"), "16:9")
@@ -276,9 +263,7 @@ def test_openai_compatible_generation_downloads_url(monkeypatch, tmp_path):
     monkeypatch.setattr(
         img.requests,
         "post",
-        lambda *args, **kwargs: FakeResp(
-            {"data": [{"url": "https://cdn.example/image.png"}]}
-        ),
+        lambda *args, **kwargs: FakeResp({"data": [{"url": "https://cdn.example/image.png"}]}),
     )
     monkeypatch.setattr(
         img.requests,
@@ -355,9 +340,7 @@ def test_openai_dall_e_rejects_non_png_output(monkeypatch, tmp_path, extension):
     prompt_file.write_text("a red deer", encoding="utf-8")
 
     with pytest.raises(ValueError, match=r"\.png extension"):
-        img.generate_image(
-            str(prompt_file), [], str(tmp_path / f"image{extension}"), "1:1"
-        )
+        img.generate_image(str(prompt_file), [], str(tmp_path / f"image{extension}"), "1:1")
 
 
 @pytest.mark.parametrize("model", ["dall-e-2", "dall-e-3"])
@@ -376,9 +359,7 @@ def test_openai_dall_e_rejects_reference_images(monkeypatch, tmp_path, model):
     reference.write_bytes(b"png")
 
     with pytest.raises(ValueError, match="reference-image editing is not supported"):
-        img.generate_image(
-            str(prompt_file), [str(reference)], str(tmp_path / "image.png"), "1:1"
-        )
+        img.generate_image(str(prompt_file), [str(reference)], str(tmp_path / "image.png"), "1:1")
 
 
 def test_openai_compatible_reference_images_use_edits(monkeypatch, tmp_path):
