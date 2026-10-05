@@ -5,7 +5,7 @@ status: current
 owner: repository maintainers
 scope: project overview, quick start, and feature summary for the public repository
 last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ ed87169e7
+verified-against: worktree docs/agent-doc-disclosure @ ba5c37163
 ---
 
 # 🦌 iDeer - 2.0
@@ -158,7 +158,7 @@ That prompt is intended for coding agents. It tells the agent to clone the repo 
 
      - name: qwen3-32b-vllm
        display_name: Qwen3 32B (vLLM)
-       use: ideer.models.vllm_provider:VllmChatModel
+       use: deerflow.models.vllm_provider:VllmChatModel
        model: Qwen/Qwen3-32B
        api_key: $VLLM_API_KEY
        base_url: http://localhost:8000/v1
@@ -173,7 +173,7 @@ That prompt is intended for coding agents. It tells the agent to clone the repo 
 
    To route OpenAI models through `/v1/responses`, keep using `langchain_openai:ChatOpenAI` and set `use_responses_api: true` with `output_version: responses/v1`.
 
-   For vLLM 0.19.0, use `ideer.models.vllm_provider:VllmChatModel`. For Qwen-style reasoning models, iDeer toggles reasoning with `extra_body.chat_template_kwargs.enable_thinking` and preserves vLLM's non-standard `reasoning` field across multi-turn tool-call conversations. Legacy `thinking` configs are normalized automatically for backward compatibility. Reasoning models may also require the server to be started with `--reasoning-parser ...`. If your local vLLM deployment accepts any non-empty API key, you can still set `VLLM_API_KEY` to a placeholder value.
+   For vLLM 0.19.0, use `deerflow.models.vllm_provider:VllmChatModel`. For Qwen-style reasoning models, iDeer toggles reasoning with `extra_body.chat_template_kwargs.enable_thinking` and preserves vLLM's non-standard `reasoning` field across multi-turn tool-call conversations. Legacy `thinking` configs are normalized automatically for backward compatibility. Reasoning models may also require the server to be started with `--reasoning-parser ...`. If your local vLLM deployment accepts any non-empty API key, you can still set `VLLM_API_KEY` to a placeholder value.
 
    CLI-backed provider examples:
 
@@ -181,14 +181,14 @@ That prompt is intended for coding agents. It tells the agent to clone the repo 
    models:
      - name: gpt-5.4
        display_name: GPT-5.4 (Codex CLI)
-       use: ideer.models.openai_codex_provider:CodexChatModel
+       use: deerflow.models.openai_codex_provider:CodexChatModel
        model: gpt-5.4
        supports_thinking: true
        supports_reasoning_effort: true
 
      - name: claude-sonnet-4.6
        display_name: Claude Sonnet 4.6 (Claude Code OAuth)
-       use: ideer.models.claude_provider:ClaudeChatModel
+       use: deerflow.models.claude_provider:ClaudeChatModel
        model: claude-sonnet-4-6
        max_tokens: 4096
        supports_thinking: true
@@ -768,7 +768,7 @@ Regression coverage includes Docker sandbox mode detection and provisioner kubec
 Backend blocking-IO diagnostics are available from the repository root with
 `make detect-blocking-io`: it statically scans backend business code for
 blocking IO that may run on the backend event loop, prints a concise summary,
-and writes complete JSON findings to `.ideer/blocking-io-findings.json`.
+and writes complete JSON findings to `.deer-flow/blocking-io-findings.json`.
 The JSON includes compact review records with `priority`, `location`,
 `blocking_call`, `event_loop_exposure`, `reason`, and `code`.
 Gateway artifact serving now forces active web content types (`text/html`, `application/xhtml+xml`, `image/svg+xml`) to download as attachments instead of inline rendering, reducing XSS risk for generated artifacts.

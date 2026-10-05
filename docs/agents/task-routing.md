@@ -34,7 +34,7 @@
 ## 2. 对话提交与流式状态（chat submit / stream state）
 
 - **当前契约**：[deerflow runtime 模块指南](../../backend/packages/harness/deerflow/runtime/AGENTS.md)——运行时模块的现行约束（任务涉及 `backend/packages/harness/deerflow/runtime/` 时读）；[STREAMING.md](../../backend/docs/STREAMING.md)——流式事件语义与按 message-id 去重不变量（改流式交付或消息合并时读）；[CONTEXT.md](../../CONTEXT.md)——Thread/Run/Turn 术语。
-- **代码入口**：Gateway 侧 `backend/app/gateway/routers/runs.py`、`backend/app/gateway/routers/thread_runs.py`；运行时侧 `backend/packages/harness/deerflow/runtime/runs/manager.py` 与 `backend/packages/harness/deerflow/runtime/stream_bridge/`；前端 `frontend/src/core/api/client.ts` 与 `frontend/src/components/workspace/chats/`。
+- **代码入口**：Gateway 侧 `backend/app/gateway/routers/runs.py`、`backend/app/gateway/routers/thread_runs.py`；运行时侧 `backend/packages/harness/deerflow/runtime/runs/manager.py` 与 `backend/packages/harness/deerflow/runtime/stream_bridge/`；前端 `frontend/src/core/api/client.ts` 与 `frontend/src/components/workspace/chats/`，turn-submit 生命周期 hook 在 `frontend/src/core/threads/use-thread-page.ts`（聊天页 `frontend/src/app/workspace/chats/[thread_id]/page.tsx` 经 `useThreadPage` 接线）。
 - **条件决策**：触及线程生命周期时读 [THREAD_LIFECYCLE.md](../../backend/docs/THREAD_LIFECYCLE.md)；改 run 事件流时读 [RUN_EVENT_STREAM.md](../../backend/docs/RUN_EVENT_STREAM.md)；触及 Run/Thread 生命周期、持久化或流契约时遵循根 `AGENTS.md`"Enterprise changes and upstream compatibility"节的保留约束。
 - **验证入口**：聚焦 pytest（`backend/tests/`）+ 最窄静态检查；实现完成跑匹配的标准 lane；PR gate 为 `pr-standard`。
 
@@ -43,7 +43,7 @@
 - **当前契约**：[permission-model-redesign.md](../permission-model-redesign.md)——授权模型设计（改授权语义前读）；[permission-matrix.md](../permission-matrix.md)——角色 × 操作矩阵（判断某角色能否做某事时读）。
 - **代码入口**：`backend/app/gateway/auth/`、`backend/app/gateway/routers/visibility_applications.py`、`backend/app/agentplatform/rbac_models.py`、`backend/app/agentplatform/visibility_models.py`、`backend/app/agentplatform/resource_service.py`。
 - **条件决策**：涉及设备/本地执行的授权时读[双层授权与本地否决权决策](../decisions/2026-09-08-local-authorization-veto.md)；涉及资源可见性生命周期时读[资源治理 V2 决策](../decisions/2026-08-14-resource-governance-v2.md)。
-- **验证入口**：auth/RBAC 变更必须跑匹配的标准 lane 与 `pr-standard`，并补齐对应 contract/integration 检查。
+- **验证入口**：auth/RBAC 变更必须跑匹配的标准 lane 与 `pr-standard`，并补齐对应 contract/integration 检查；GitHub Actions 对保护高危路径选择 Real E2E 时，交接 PR 须报告该选择（根 `AGENTS.md` 测试指引）。
 
 ## 4. KnowledgeBase（知识库）
 

@@ -30,6 +30,11 @@ Optional policy key ``task_routes``: a list of
 Every named path must exist in the candidate. When the key is absent the
 route check reports nothing.
 
+Optional policy key ``supplements``: registered inventory-only paths outside
+the seed. Every supplement path counts as covered and must exist in the
+candidate; its recorded sha256/lines stay point-in-time registration records,
+not enforced fingerprints.
+
 Path conventions: Markdown link/image targets resolve relative to the
 containing document (leading ``/`` resolves from the repository root);
 frontmatter path fields (``superseded-by``, ``supersedes``) and policy
@@ -253,6 +258,16 @@ def _exclusion_roots(policy: dict) -> tuple[set[PurePosixPath], list[str]]:
     return exact, prefixes
 
 
+def _supplement_paths(policy: dict) -> set[PurePosixPath]:
+    """Paths registered under ``supplements``: covered like inventory, must exist."""
+    supplements = policy.get("supplements")
+    if supplements is None:
+        return set()
+    if not isinstance(supplements, dict) or not isinstance(supplements.get("files"), list):
+        raise OperationalError("policy supplements.files must be a list")
+    return {PurePosixPath(str(row["path"])) for row in supplements["files"]}
+
+
 def check_inventory_coverage(policy: dict, source: DocumentSource) -> list[Finding]:
     findings: list[Finding] = []
     tracked = source.tracked_paths()
@@ -260,9 +275,10 @@ def check_inventory_coverage(policy: dict, source: DocumentSource) -> list[Findi
     inventory = _inventory_paths(policy)
     inventory_set = set(inventory)
     exact, prefixes = _exclusion_roots(policy)
+    supplements = _supplement_paths(policy)
 
     def covered(path: PurePosixPath) -> bool:
-        if path in inventory_set or path in exact:
+        if path in inventory_set or path in exact or path in supplements:
             return True
         posix = path.as_posix()
         return any(posix.startswith(prefix) for prefix in prefixes)
@@ -278,6 +294,20 @@ def check_inventory_coverage(policy: dict, source: DocumentSource) -> list[Findi
                     path.as_posix(),
                     "",
                     "inventory path missing from candidate",
+                )
+            )
+
+    for path in sorted(supplements - inventory_set):
+        try:
+            source.read(path)
+        except KeyError:
+            findings.append(
+                Finding(
+                    RULE_INVENTORY_COVERAGE,
+                    "error",
+                    path.as_posix(),
+                    "",
+                    "supplement path missing from candidate",
                 )
             )
 

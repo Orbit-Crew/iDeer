@@ -20,8 +20,8 @@
         "path": "docs/specs/2026-10-04-doc-governance-dual-track-spec.md",
         "baseline_sha256": "89bc2445290db0b6adc3845e2d843da17c197267ca93e6d24a7416e5a810b67e",
         "baseline_lines": 83,
-        "head_sha256": "f52d55b41a8a14281db173c27ae758c99f09b2bdfe1de73a13de19d53c71111e",
-        "head_lines": 167,
+        "head_sha256": "bf70be60a0db37216271dd5427a0b9e47cd305e3e47abc6780e9acb093dc910a",
+        "head_lines": 174,
         "reason": "the governing spec was extended by commit f0440eef (docs(spec): define progressive disclosure governance) after the baseline inventory was captured; inventory rows keep the baseline state and this delta records the sole deviation"
       }
     ],
@@ -2566,7 +2566,7 @@
     ]
   },
   "exclusions": {
-    "total_tracked_markdown": 701,
+    "total_tracked_markdown": 704,
     "excluded_count": 341,
     "categories": [
       {
@@ -3205,12 +3205,13 @@
     },
     {
       "topic": "domain-vocabulary",
-      "scope": "domain modeling guide and engineering glossary",
+      "scope": "engineering terminology authority and the domain modeling guide",
       "authorities": [
-        "docs/agents/domain.md",
-        "docs/plans/2026-08-26-term-glossary.md"
+        "CONTEXT.md",
+        "docs/agents/domain.md"
       ],
-      "declared_by": "docs/README.md current-source table"
+      "declared_by": "docs/README.md current-source table; CONTEXT.md terminology header",
+      "note": "the UI term table docs/plans/2026-08-26-term-glossary.md is scope-limited to interface display-language copy and is not an engineering-vocabulary authority"
     },
     {
       "topic": "agent-workflow-routing",
@@ -3274,62 +3275,106 @@
     }
   ],
   "supplements": {
-    "count": 7,
-    "purpose": "reference-closure documents reachable from inventoried current documents but outside the 360-path seed; tracked as inventory-only so closure is explicit and the seed count stays stable at 360",
+    "count": 10,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 3 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed)",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
+        "registration": "reference-closure",
         "sha256": "9c58ce8d6b3c48936ab0ec4fd5125cf10dde1501258c9cf4724c70e340ad5269",
         "lines": 413,
         "classification": "inventory-only-supplement",
+        "protected": false,
         "role": "sole current authority for harness local patches",
         "referenced_by": "docs/README.md, docs/offline-product-line-governance-plan.md, docs/testing/test-migration-ledger.md, root AGENTS.md"
       },
       {
         "path": "backend/README.md",
+        "registration": "reference-closure",
         "sha256": "aa1ea287917f471900249818770d986785c3cdac8c61aeba7e800eacab158277",
         "lines": 582,
         "classification": "inventory-only-supplement",
+        "protected": false,
         "role": "backend component README",
         "referenced_by": "README.md, CONTRIBUTING.md"
       },
       {
         "path": "deploy/helm/deer-flow/README.md",
+        "registration": "reference-closure",
         "sha256": "93ee1046f7c28331abec5283103857aad582eeae69ed561bbd35668b4c2892c9",
         "lines": 460,
         "classification": "inventory-only-supplement",
+        "protected": false,
         "role": "helm deployment README",
         "referenced_by": "docs/ARCHITECTURE.md"
       },
       {
         "path": "docker/provisioner/README.md",
+        "registration": "reference-closure",
         "sha256": "cc2bfdde4393aba24946cd6c67d5a7775fba58e6f9f23a818c3256ad1a237a8f",
         "lines": 360,
         "classification": "inventory-only-supplement",
+        "protected": false,
         "role": "provisioner deployment README",
         "referenced_by": "backend/docs/CONFIGURATION.md"
       },
       {
+        "path": "docs/agents/task-routing.md",
+        "registration": "post-baseline-addition",
+        "sha256": "95cf0e70cb8f2c7e8ffdb234546f73b0677030b49794f4e52f83edb31cd812f4",
+        "lines": 88,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "task-domain routing page referenced by the root AGENTS.md task map and docs/README.md current-source table",
+        "referenced_by": "AGENTS.md, docs/README.md, docs/project-state.md"
+      },
+      {
+        "path": "docs/governance/document-governance.md",
+        "registration": "post-baseline-addition",
+        "sha256": "10652bcde40d5cf2234a7f484daa4f95adaf862edb1783c971e1907e7133a749",
+        "lines": 58,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "policy schema, consumption, and reproduction contract for this policy file (created 2026-10-04 with the governance rollout)",
+        "referenced_by": "docs/specs/2026-10-04-doc-governance-dual-track-spec.md (maintainer-facing contract, conceptual); companion doc of document-policy.json"
+      },
+      {
+        "path": "docs/project-state.md",
+        "registration": "post-baseline-addition",
+        "sha256": "22912431179c7c8385dc26f08f6692d41932280672de4a7fc1dd674d6e8dd472",
+        "lines": 109,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "candidate-scoped seven-domain implementation/integration/verification state summary referenced by the decisions index and domain guides",
+        "referenced_by": "docs/decisions/README.md, docs/agents/domain.md, architecture plans"
+      },
+      {
         "path": "frontend/README.md",
+        "registration": "reference-closure",
         "sha256": "1c19ba008039db4ef383508fd2b0df592bc6887fe9fbc3be2c4f788bcbf9603c",
         "lines": 159,
         "classification": "inventory-only-supplement",
+        "protected": false,
         "role": "frontend component README",
         "referenced_by": "docs/development/learning-roadmap.md"
       },
       {
         "path": "scripts/README-intranet.md",
+        "registration": "reference-closure",
         "sha256": "20f3fe08d4a44ef661c1980874776506796c33642bdf1406ff44e50399bf88c7",
         "lines": 289,
         "classification": "inventory-only-supplement",
+        "protected": false,
         "role": "intranet scripts ops README",
         "referenced_by": "docs/document-retention-assessment.md"
       },
       {
         "path": "workflows/README.md",
+        "registration": "reference-closure",
         "sha256": "526d6937e79734ee4a63ba85ec657811280a9e3718c583acfea5aee998ebae45",
         "lines": 76,
         "classification": "inventory-only-supplement",
+        "protected": false,
         "role": "workflow assets README",
         "referenced_by": "docs/document-retention-assessment.md"
       }

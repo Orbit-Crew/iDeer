@@ -5,7 +5,7 @@ status: current
 owner: repository maintainers
 scope: develop 线候选的七域实现/集成/验证状态摘要
 last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ 9de1de284
+verified-against: worktree docs/agent-doc-disclosure @ ba5c37163
 ---
 
 # 项目状态（候选口径）
@@ -57,19 +57,19 @@ verified-against: worktree docs/agent-doc-disclosure @ 9de1de284
 - **Limitations**: 台账登记的待补测试（knowledge_metric 遥测断言、KnowledgeConfig 专测、扩展注册桶单测）；[总方案](../architecture/AgentPlatform_后续工作总方案_2026-09-08.md) D3 记录 2026-09-08 时点无可用 RAGFlow 实例（当时事实，现状未复核）；正式 Published Dataset 不允许从 Provider 侧直接编辑（决策后果）。
 - **Evidence**: [双层真源决策](decisions/2026-09-08-knowledge-dual-source-of-truth.md)、[根补丁台账](../UPSTREAM_PATCH_LEDGER.md)（PATCH-001/022/023/024/027/028）、[知识库实施方案](../architecture/AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md)、`docs/testing/knowledge-gate1-acceptance-report.md`、`docs/testing/knowledge-gate8-acceptance.md`（历史）。
 - **Current contract**: 根 `AGENTS.md`"Enterprise interfaces"节（KnowledgeBase 列表/创建走 `/api/resources` 并经治理可见性过滤）+ [双层真源决策](decisions/2026-09-08-knowledge-dual-source-of-truth.md)。
-- **Next work**: 补台账"待补"断言；[总方案](../architecture/AgentPlatform_后续工作总方案_2026-09-08.md)知识主线（M4）收尾事项。
+- **Next work**: 补台账"待补"断言；知识主线已过 M4——[M4 Gate 5/6 验收记录](knowledge/M4_GATE_ACCEPTANCE.md)记载 Gate 5/6 于 2026-09-15 验收通过（历史证据），Gate 7 验收见 [M5 验收报告](testing/m5-gate7-acceptance-report.md)（历史）；当前推进指向[总方案](../architecture/AgentPlatform_后续工作总方案_2026-09-08.md) M5 及后续里程碑。
 - **Owner**: knowledge 域维护者（据补丁台账 owner 列）。
 
 ## 4. Agent / Skill / Workflow（能力资源）
 
 - **Candidate/branch**: 本页候选（见页首）。
-- **Implementation**: [资源治理 V2](decisions/2026-08-14-resource-governance-v2.md) 决策状态 `implemented`：canonical-only 已硬切换（cutover §6 记录 2026-08-16 删除旧路由与模式开关）。故障归零执行内核按 [ADR-0004](adr/0004-fault-zeroing-hybrid-intake-and-shared-execution.md) 的 Implementation status（2026-09-29）记录为三入口端到端接线。[ADR-0007](adr/0007-agent-terminology-unification.md) 术语统一仅有 accepted 决策，跟踪文档无迁移落地记录——实现状态 **not recorded**（不得由决策推断）。
+- **Implementation**: [资源治理 V2](decisions/2026-08-14-resource-governance-v2.md) 决策状态 `implemented`：canonical-only 已硬切换（cutover §6 记录 2026-08-16 删除旧路由与模式开关）。故障归零执行内核按 [ADR-0004](adr/0004-fault-zeroing-hybrid-intake-and-shared-execution.md) 的 Implementation status（2026-09-29）记录为三入口端到端接线。[ADR-0007](adr/0007-agent-terminology-unification.md) 术语统一迁移已落地——依其 Implementation status 节（2026-10-04 核验，本工作树抽查可证）：`/workspace/agents` 路由与 `agent-*` 组件为 canonical，pre-unification `/workspace/capabilities/experts/*` 路径为永久重定向（`frontend/src` 无 `ExpertList` 与 expert 前缀组件，重定向辅助在 `frontend/src/app/workspace/agents/legacy-redirect.ts`）。
 - **Integration**: canonical Run 冻结依赖闭包与技能视图经 PATCH-010/012/013/021（[根补丁台账](../UPSTREAM_PATCH_LEDGER.md)）；bundled seed 幂等升级与冲突语义在 V2 决策内定义。
 - **Verification**: **not run at this candidate**。cutover §6 全量验收与 ADR-0004 所引集成测试（`backend/tests/` 内文件在树中存在）均为历史记录或未运行状态。
-- **Limitations**: 平台级 SRS Result Contract 缺口按 [ADR-0006](adr/0006-srs-validation-defers-result-contract.md) 递延并立项 [backlog](backlog.md) SRS-01；ADR-0006 附录记录会话 canonical Run 服务"已安装版本"而非"快照冻结版本"的残余权衡，及其按 frontmatter `name` 过滤的既存失效模式；ADR-0007 记录"半途迁移比任一一致形态更差"为重评触发之一。
+- **Limitations**: 平台级 SRS Result Contract 缺口按 [ADR-0006](adr/0006-srs-validation-defers-result-contract.md) 递延并立项 [backlog](backlog.md) SRS-01；ADR-0006 附录记录会话 canonical Run 服务"已安装版本"而非"快照冻结版本"的残余权衡，及其按 frontmatter `name` 过滤的既存失效模式；ADR-0007 的"半途迁移"重评触发已随迁移落地（2026-10-04）解除，其余重评触发见该 ADR。
 - **Evidence**: [V2 决策](decisions/2026-08-14-resource-governance-v2.md)、[cutover 手册](governance/resource-governance-v2-cutover.md)、[ADR-0002](adr/0002-code-evidence-package-static-analysis.md)、[ADR-0004](adr/0004-fault-zeroing-hybrid-intake-and-shared-execution.md)、[ADR-0006](adr/0006-srs-validation-defers-result-contract.md)、[ADR-0007](adr/0007-agent-terminology-unification.md)、[backlog](backlog.md)。
 - **Current contract**: [资源治理 V2 决策](decisions/2026-08-14-resource-governance-v2.md) + [任务路由 · Agent/Skill/Workflow](agents/task-routing.md)。
-- **Next work**: [backlog](backlog.md) SRS-01；核对 ADR-0007 术语迁移的落地状态并补实现记录。
+- **Next work**: [backlog](backlog.md) SRS-01（ADR-0007 迁移落地状态已核对并补实现记录，见其 Implementation status 节）。
 - **Owner**: engineering maintainers（据决策 owner 列）。
 
 ## 5. 本地运行时（local runtime）
