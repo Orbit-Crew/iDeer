@@ -6,7 +6,8 @@
 （扩展包）不属上游修改，无需登记。
 
 > **唯一权威登记处**（2026-10-01 起）：本文件是 harness 本地补丁的唯一权威台账。
-> 对照命令：`git diff 0f7d8709d3bbf0be26460b6277fbad9329302243 -- backend/packages/harness/deerflow`。
+> 对照命令（2026-10-05 起锁定 v2.1.0）：`git diff 345f08be00c8a9495079b732a39b46aa9af1584e -- backend/packages/harness/deerflow`
+> （`345f08be0` 即 `v2.1.0` 标签所指提交；登记裁决见 2026-10-05 巡检行）。
 > `docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_PATCH_LEDGER.md` 已冻结为历史档案，
 > 后续巡检只更新本文件。
 
@@ -18,6 +19,7 @@
 | 2026-09-13 | feature/m4-knowledge-revisions（M4 票 06 Gate 5/6 巡检） | 本轮涉及 `community/ragflow/client.py`（PATCH-001）；未发现未登记的上游修改。GitNexus 在本工作区不可用（无索引、npx 无法引导，见 dev-log），以人工调用方分析替代。 |
 | 2026-10-01 | v2.1.0 合并前置（票 01） | 发现 4 个未登记 sandbox 补丁文件并补登记（见 PATCH-016..019）；PATCH-016/017 与上游 v2.1.0 变更重叠。全面对账 44 个 harness 文件（43 个代码文件 + 1 个文档）后另发现 15 个未登记文件，补登记为 PATCH-020..032（其中 `config/app_config.py`、`runtime/runs/manager.py` 与既有行共享文件），44 个原始 harness 文件全部归属、未登记清零；本候选新增 17 个 CLAUDE.md 文档，预算据此从 44（43 代码 + 1 文档）修订为 61（43 代码 + 18 文档），代码预算仍为 43（见"2026-10-01 全量对账"）。 |
 | 2026-10-01 | v2.1.0 收敛票 10（合并后复评） | 对照 `git diff v2.1.0 --name-only -- backend/packages/harness/deerflow` 实测 44 个差异文件全部映射到 PATCH 行、未映射 0（PATCH-030 的 `skills/storage/user_scoped_skill_storage.py` 因被上游 v2.1.0 等价实现吸收而退出差异集；票 06 的 `versions/20261001_rejoin_upstream_line.py` 新进入差异集，归 PATCH-015）。逐行复评 PATCH-001..032：31 行 keep、PATCH-006 维持 closed、1 项 absorbed（P030 的 user_scoped 条款，其余 5 条款仍为本地差异，行保持 open）。另在 canonical 对照命令路径之外发现 `backend/packages/harness/pyproject.toml` 携带未登记本地差异（`python-docx>=1.1.2`，引入提交 `7ae6b5907`，与 PATCH-032 同提交），不在本轮登记范围，移交后续票补登记或明确豁免。 |
+| 2026-10-05 | D6 裁决票（v2.1.0 有效锁定 SHA 登记） | owner 裁决并经代码核对确认：v2.1.0 合并后的有效上游锁定点为 `v2.1.0` 标签所指提交 `345f08be00c8a9495079b732a39b46aa9af1584e`，头部对照命令已随之更新。依据：① 2026-10-01 合并后复评即以 `git diff v2.1.0` 为 canonical 对照命令，44 个差异文件全部映射到 PATCH 行；② 合并提交 `85075252a` 的上游侧父提交为本地集成线（`51dbcc14`，其上含 tag 之后 2416 个本地提交），tag 是唯一稳定的上游锚点，中间集成头属本地历史；③ 本轮复核 scoped 差异 65 个文件，与修订预算 61（43 代码 + 18 文档）及后续候选的持续登记口径相容。`backend/packages/harness/pyproject.toml`（python-docx）仍为既有行标注的待登记项。 |
 
 ### 2026-09-08 巡检逐项结论（2026-10-01 自历史档案迁入，内容保持原文）
 
