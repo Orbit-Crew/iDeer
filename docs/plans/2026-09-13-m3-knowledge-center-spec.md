@@ -1,9 +1,18 @@
+---
+id: docs-plans-2026-09-13-m3-knowledge-center-spec
+kind: plan
+status: archived
+owner: knowledge maintainers
+scope: to-spec for M3 Knowledge Center — real canonical KnowledgeBase list/detail, governed document upload/parse/index lifecycle with retry/rebuild/delete-draft, caller-scoped retrieval within Effective Knowledge Scope, and the confirmed testing boundary
+archived-reason: delivered — the documents API under /api/resources/{id}/documents, the knowledge service package backend/app/agentplatform/knowledge/ (documents, worker, provider) and the features-API knowledge status exist in the candidate; the BLOCKED/UNVERIFIED header is the pre-implementation state
+---
+
 # M3：文档管理与 Knowledge Center
 
 > 日期：2026-09-13
 > 类型：功能规格（to-spec）
-> 状态：测试边界已由用户确认；已发布至项目本地任务跟踪器，标记 `ready-for-agent`。
-> 实施状态：BLOCKED；M3 开工基线当前为 UNVERIFIED。规格就绪不等于准许实施或前置验收通过。
+> 状态：**archived（已实施）**——2026-10-04 核对：本规格的文档管理闭环已交付（`/api/resources/{id}/documents` 系列操作、`backend/app/agentplatform/knowledge/` 的 documents/worker/provider、`/api/features` 的 knowledge 状态）；下方 BLOCKED/UNVERIFIED 为实施前的历史门禁记录。
+> 实施状态：已交付；规格就绪时的 BLOCKED/UNVERIFIED 门禁不再适用。
 
 ## Problem Statement
 

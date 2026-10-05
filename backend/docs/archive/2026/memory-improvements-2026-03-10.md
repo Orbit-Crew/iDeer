@@ -1,6 +1,15 @@
+---
+id: backend-docs-archive-2026-memory-improvements
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: memory prompt-injection implementation status and TF-IDF roadmap as of 2026-03-10 on main
+archived-reason: point-in-time status snapshot; the format_memory_for_injection API it describes has since been replaced by the MemoryManager flow in backend/packages/harness/deerflow/agents/memory/manager.py
+---
+
 # Memory System Improvements
 
-> status: archived; current behavior reference: `backend/docs/MEMORY_SETTINGS_REVIEW.md`
+> status: archived; current memory implementation: `backend/packages/harness/deerflow/agents/memory/manager.py` (MemoryManager; the API shape below is historical)
 > source date: 2026-03-10
 > canonical-path: `backend/docs/archive/2026/memory-improvements-2026-03-10.md`
 

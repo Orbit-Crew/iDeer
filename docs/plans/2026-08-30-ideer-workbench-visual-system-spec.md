@@ -1,6 +1,15 @@
+---
+id: docs-plans-2026-08-30-ideer-workbench-visual-system-spec
+kind: plan
+status: archived
+owner: repository maintainers
+scope: warm-paper workbench visual system — fixed brand title, module guidance copy, three-level type hierarchy, scenario selector and recent-task ordering for the workspace home, with shared primitives and route-level test seams
+archived-reason: core decisions shipped — the production locale carries the fixed greeting "iDeer，落地你的idea" and the three module guidance lines (frontend/src/core/i18n/locales/zh-CN.ts), consumed by the workspace welcome surface; the visual prototype page remains at frontend/src/app/prototype/visual-system/page.tsx
+---
+
 # iDeer 工作台视觉系统落地规格
 
-> 状态：本地规格，待拆分实现任务
+> 状态：archived（核心决策已交付）。2026-10-04 核对：固定标题「iDeer，落地你的idea」与三条模块引导语已在生产 locale（`frontend/src/core/i18n/locales/zh-CN.ts`）并由工作台首页消费；原型页保留在 `frontend/src/app/prototype/visual-system/page.tsx`。本文保留为视觉方向的设计基准。
 > 来源：已确认的暖纸工作台视觉原型与设计讨论
 > 发布方式：仅保存在本地，不创建 Issue
 

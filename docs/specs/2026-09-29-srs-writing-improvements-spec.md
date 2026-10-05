@@ -1,4 +1,10 @@
 ---
+id: docs-specs-2026-09-29-srs-writing-improvements-spec
+kind: plan
+status: archived
+owner: repository maintainers
+scope: srs-writing Skill improvement spec — offline validator shipped in the skill package, runtime officecli detection, installer host-bash opt-in, structured requirement-confirmation cards, post-generation layout self-check, and per-task-book output subdirectories; scoped to the container-sandbox deployment form and touches no backend/frontend product code
+archived-reason: implemented — resources/skills/srs-writing/scripts/validate_srs_outputs.py grades errors (delivery-blocking) and warnings (vague wording), SKILL.md routes per-task-book srs-* output subdirectories with progress.json recovery, scripts/install_srs_writing_agent.py keeps allow_host_bash off behind explicit --host-bash with the risk notice, the deferral decision is ADR 0006 (current), and the platform-level Result Contract is registered as backlog SRS-01
 triage: ready-for-agent
 ---
 

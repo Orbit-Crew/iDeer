@@ -1,4 +1,14 @@
+---
+id: docs-bug-list-2026-06-09
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06-09 triage and fix-tracking table for the offline_feature vs main bug campaign (103+17 issues)
+archived-reason: point-in-time triage of a completed fix campaign; file/line references describe that era's code, current unfinished work lives in docs/backlog.md
+---
 # Bug List — Issue Analysis & Fix Tracking
+
+> status: archived（2026-06-09 时点分诊快照，scope：`offline_feature` vs `main` 修复战役）。文件/行号依据该时点代码，与当前候选（包名 `deerflow`、测试目录 `backend/tests/{unit,integration,contracts}`）不对应。当前未完成事项唯一入口：[backlog.md](backlog.md)；测试迁移记录见 [test-migration-ledger.md](testing/test-migration-ledger.md)。正文按历史记录保留。
 
 > Generated: 2026-06-09
 > Source: `known-issues.md` (103 issues) + `backend-unflashed-issues.md` (17 items)

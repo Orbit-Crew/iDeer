@@ -1,3 +1,13 @@
+---
+id: backend-docs-loop-detection
+kind: reference
+status: current
+owner: repository maintainers
+scope: loop detection middleware run-scoped state and decision-ordering invariants
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Loop detection lifecycle
 
 `LoopDetectionMiddleware` owns call-pattern detection. Its place in the chain

@@ -1,6 +1,15 @@
+---
+id: docs-plans-2026-09-01-workbench-navigation-bundled-resource-seeding-spec
+kind: plan
+status: archived
+owner: repository maintainers
+scope: workbench navigation consolidation (New conversation / Conversation history / Expert-Skill-Connector capability center / Workflow / Library) plus idempotent bundled-resource manifest seeding so every Agent Pill resolves to a canonical catalog resource
+archived-reason: implemented — seed_bundled_resources runs from backend/app/gateway/app.py and routers/auth.py over the tracked bundled-resources.json manifest (now 76 resources: 16 agents, 59 skills, 1 workflow — the manifest has grown beyond the 72-resource count noted below, per this spec's own derive-from-manifest rule), and the capability center lives at frontend/src/app/workspace/capabilities/ (experts/skills/connectors); navigation decisions are recorded in ADR 0001
+---
+
 # iDeer 工作台导航与预装资源同步规格
 
-> 状态：本地规格，待拆分实现任务
+> 状态：archived（已实施）。2026-10-04 核对：`seed_bundled_resources` 由 `backend/app/gateway/app.py` 与 `routers/auth.py` 依据仓库根 `bundled-resources.json` 执行（现清单 76 项：16 agents/59 skills/1 workflow，较本文 Further Notes 记载的 15+56+1 已增长，按本文"以清单派生预期值"的规则以现行清单为准）；能力中心路由在 `frontend/src/app/workspace/capabilities/`（experts/skills/connectors）；导航决策记录于 [ADR 0001](../adr/0001-workbench-capability-navigation.md)。
 > 来源：已确认的工作台导航改造讨论、资源目录核验与运行库诊断
 > 发布方式：仅保存在本地，不创建 Issue
 > 关联决策：[ADR 0001](../adr/0001-workbench-capability-navigation.md)

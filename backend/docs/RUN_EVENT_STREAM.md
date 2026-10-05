@@ -1,3 +1,13 @@
+---
+id: backend-docs-run-event-stream
+kind: reference
+status: current
+owner: repository maintainers
+scope: run event stream contract: envelope, categories, producers, consumers, and compatibility rules
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Run Event Stream
 
 The run event stream is DeerFlow's append-only record of what happened during

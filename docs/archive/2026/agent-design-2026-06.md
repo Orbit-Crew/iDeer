@@ -1,4 +1,15 @@
+---
+id: docs-archive-2026-agent-design-2026-06
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06 feasibility analysis and three-phase work plan for building the fault-zeroing agent on the ideer framework: capability mapping, gap list, task packages, and staffing as of that period
+archived-reason: point-in-time plan; fault-zeroing delivery has since been redesigned and executed (Workflow V2 engine, shared fault-zeroing kernel). Current progress entry is docs/fault-zeroing-agent/, current implementation status is docs/project-state.md with ADR-0004
+---
+
 # 基于 ideer 框架开发归零排故智能体的分析方案
+
+> status: archived（2026-06 时点的可行性分析与分工方案）。2026-10-04 核对：归零排故能力已按后续设计落地（Workflow V2 引擎与共享归零内核），当前进展以 `docs/fault-zeroing-agent/` 为准，实现状态以 `docs/project-state.md` 与 `docs/adr/0004-fault-zeroing-hybrid-intake-and-shared-execution.md` 为准。文中 ideer 时期的能力清单、`SOUL.md`/`config.yaml` 约定、路径与人员分工均为历史记录，不作现行依据。
 
 ## 1. 主要结论
 

@@ -1,4 +1,18 @@
+---
+id: docs-tech-debt-user-tables
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: users/users_ext dual-table debt record: table history, the since-removed update_user_role sync workaround, and the unexecuted merge plan
+archived-reason: the documented sync workaround no longer exists and users_ext is the sole authorization source; the table merge remains unexecuted; header records the 2026-10-04 verified behavior
+---
 # 技术债务：用户表合并
+
+> status: archived — 本 debt 快照记录的是同步方案仍存在时期的处置状态；2026-10-04 核对：
+> - 当前 `update_user_role`（`backend/app/gateway/routers/admin.py`）只更新 `users_ext` 角色，不再包含下文「当前解决方案」中的 `users.system_role` 同步代码；
+> - `users_ext` 是唯一授权来源，legacy 认证表的 `system_role` 不再被查询（`backend/app/gateway/deps.py` `is_admin_user`）；
+> - 两表合并迁移仍未实现（`backend/packages/harness/deerflow/persistence/migrations/versions/` 无对应迁移）；
+> - 当前用户/角色模型位置：`backend/app/gateway/auth/models.py`（`users_ext`）与 `backend/packages/harness/deerflow/persistence/user/model.py`（`users`）。
 
 ## 问题描述
 
@@ -57,8 +71,10 @@ if user_row is not None:
 
 ## 相关文件
 
-- `backend/packages/harness/ideer/persistence/user/model.py` (users 表)
-- `backend/packages/harness/ideer/persistence/models/user.py` (users_ext 表)
+（路径为记录时期状态；当前包名为 `deerflow`，`users_ext` 模型已移至 `backend/app/gateway/auth/models.py`）
+
+- `backend/packages/harness/deerflow/persistence/user/model.py` (users 表)
+- `backend/app/gateway/auth/models.py` (users_ext 表，原 `backend/packages/harness/ideer/persistence/models/user.py`)
 - `backend/app/gateway/routers/admin.py` (角色更新逻辑)
 - `backend/app/gateway/auth/repositories/sqlite.py` (用户仓储)
 

@@ -1,3 +1,13 @@
+---
+id: backend-docs-auth-upgrade
+kind: reference
+status: current
+owner: repository maintainers
+scope: operator guide for upgrading a pre-auth deployment to enforced authentication
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Authentication Upgrade Guide
 
 iDeer 内置了认证模块。本文档面向从无认证版本升级的用户。

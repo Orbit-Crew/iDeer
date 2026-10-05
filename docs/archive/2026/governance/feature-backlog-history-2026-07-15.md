@@ -1,4 +1,24 @@
+---
+id: docs-archive-2026-governance-feature-backlog-history-2026-07-15
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-07-15 backlog snapshot of that candidate: planned items (deployment/ops documentation set, visibility-application frontend entries, skill category unification, QA test-resource cleanup, i18n migration) and completed-feature records of the period
+archived-reason: point-in-time backlog tracking; the unfinished-work authority is now docs/backlog.md; body claims describe the 2026-07-15 candidate and are preserved as recorded
+---
+
 # 功能规划与开发跟踪
+
+> status: archived（2026-07-15 时点的功能规划与开发跟踪快照，scope：该时点候选）。当前未完成事项唯一入口：[backlog.md](/docs/backlog.md)。下方"追加规则"仅适用于该时点的活跃跟踪模式，本文档已冻结，不再追加。
+>
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。
+>
+> - 第一部分第 1 节来源 `docs/文档体系梳理与差距分析.md`，该文件已迁移至本目录 `document-system-audit-2026-06-28.md`。
+> - 第 2 节后端前提仍成立且前端缺口部分已收口：`backend/app/gateway/routers/visibility_applications.py`、`frontend/src/core/visibility-applications/{api,types}.ts` 在当前候选存在；agent 详情页（`[agent_name]/page.tsx`）已有申请可见性入口与 `agents.applyVisibility` i18n 键，编辑页已改为可见性变更确认流程（`visibilityChangeDialogOpen`）。2.3 技能申请入口现状 unverified——其前提 `submitSkillApplication` 已不在 `frontend/src/core/skills/api.ts`。
+> - 第 4 节提案未实施：`SkillCategory`（public/custom/legacy）仍在 `deerflow.skills.types` 与 `backend/app/gateway/routers/skills.py` 中使用。
+> - 第 5 节前提与当前代码不符：`backend/tests/qa/test_api_qa.py` 已不在当前候选（测试经分层重组织，记录见 `docs/testing/test-migration-ledger.md`）；`backend/app/gateway/routers/agents.py` 现无 `record_audit` 调用。
+> - 正文 `backend/.ideer/` 为 ideer 时期运行目录，当前为 `backend/.deer-flow/`（见 `backend/packages/harness/deerflow/config/runtime_paths.py`）；`skills/custom/` 与 `docs/fault-zeroing-agent/agent/` 已不在当前候选（`skills/public/`、`docs/fault-zeroing-agent/` 仍在）。
+> - 第二部分第 6 项（Skill 懒注册）提案形式的 `list_skills()` 懒注册未检索到；启动期 reconciliation 现覆盖 workflow/agent（`_reconcile_workflow_and_agent_metadata`）并有 `_seed_bundled_resources()`。第 6 节 i18n 迁移完成度：unverified，未逐项核对。
 
 本文档分为两部分：
 - **第一部分：未开发功能** — 已明确需求但尚未实现的特性，每个条目包含背景、接口就绪状态、前端缺口和实现要点。

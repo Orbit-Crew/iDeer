@@ -1,3 +1,13 @@
+---
+id: architecture-master-plan
+kind: plan
+status: current
+owner: repository maintainers
+scope: 三线工作统一编排——里程碑映射、依赖图与 M0~M12 任务卡索引，及 2026-09-08 评审决策记录
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ be5e328e3
+---
+
 # AgentPlatform 后续工作总方案
 
 > **文档性质**：三线工作统一编排 / 阶段映射 / 任务卡索引
@@ -5,6 +15,7 @@
 > **上位文档**：《AgentPlatform 总体架构与模块边界基线》（Baseline v1.0，2026-09-06）
 > **下位文档**：三份专项实施方案（DeerFlow 收敛 / 知识库 / Local Runtime，均 2026-09-04）
 > **决策来源**：2026-09-08 设计评审会话（见 §2 决策记录）
+> **何时读**：按 M 编号开工、查阅 D1~D5 评审决策或 C1~C5 冲突裁决时读取对应任务卡与章节，不整包装载。M0~M3 已交付，当前推进至 M4（知识主线收尾）；各里程碑的 Gate 验证状态与当前候选能力以[项目状态页](../docs/project-state.md)为准，本方案 §3 仅是 2026-09-08 编码前基线快照。
 
 ---
 
@@ -50,6 +61,8 @@
 
 以下为编码前核实过的事实，coding agent 不得凭旧印象假设状态：
 
+> **2026-10-04 复核注记**：本节是 2026-09-08 编码前基线快照，按原样保留作历史证据，不描述现状；当前候选的各域实现/集成/验证状态以[项目状态页](../docs/project-state.md)为准。与现状已核实的主要差异：`ResourceType` 已含 `knowledge_base`；`backend/app/agentplatform/knowledge/` 已存在；PATCH-006 已于 2026-09-08 关闭；PATCH-009 已于 2026-09-08 完成全量 DB 执行验证（patch 本身按台账保留）。
+
 **已完成（基线 Phase 0 收敛）：**
 
 - DeerFlow `main` 已锁定在 `0f7d8709` 并合入 `develop`（merge commit `cd28a054`）；
@@ -63,14 +76,14 @@
 
 **未开始：**
 
-- `ResourceType` 仍只有 `skill / agent / workflow`（`backend/app/agentplatform/resource_models.py:18`），无 `KNOWLEDGE_BASE`；
-- `knowledge/`、`devices/`、`local_runtime/` 模块均不存在；
-- 无任何 RAGFlow 部署（D3）。
+- `ResourceType` 仍只有 `skill / agent / workflow`（`backend/app/agentplatform/resource_models.py:18`），无 `KNOWLEDGE_BASE`；（2026-10-04 复核：已含 `knowledge_base`，M2 已落地）
+- `knowledge/`、`devices/`、`local_runtime/` 模块均不存在；（2026-10-04 复核：`backend/app/agentplatform/knowledge/` 与 `backend/packages/agentplatform-extension/agentplatform_extension/local_runtime/` 已存在；`backend/app/agentplatform/devices/`、`backend/app/agentplatform/local_runtime/` 仍不存在，M7 未开工）
+- 无任何 RAGFlow 部署（D3）。（2026-10-04 复核：`docker/docker-compose-knowledge-dev.yaml` profile 已在树中；实例运行状态未复核）
 
 **未清偿债务（Patch Ledger，均 open）：**
 
-- PATCH-006：双 `alembic_version` 表隔离，统一 forward-only migration 链未完成 → 阻塞 M2；
-- PATCH-009：Workflow V2 模型命名空间已建，但全量 DB 执行验证 incomplete → 阻塞 M10；
+- PATCH-006：双 `alembic_version` 表隔离，统一 forward-only migration 链未完成 → 阻塞 M2；（2026-10-04 复核：已于 2026-09-08 关闭，`alembic heads` 单头已验证）
+- PATCH-009：Workflow V2 模型命名空间已建，但全量 DB 执行验证 incomplete → 阻塞 M10；（2026-10-04 复核：2026-09-08 已完成 SQLite + PostgreSQL 全量 DB 执行验证并记入台账，patch 因移除条件未满足而保留）
 - 其余 11 个 patch：不阻塞，按 D2 巡检策略处理。
 
 ---

@@ -1,6 +1,15 @@
+---
+id: backend-docs-rfc-create-deerflow-agent
+kind: plan
+status: archived
+owner: repository maintainers
+scope: archived design RFC (proposed 2026-07, PR #1203) for the pure-parameter SDK factory API; applicable to the ideer.* pre-rename candidate line
+archived-reason: point-in-time design record; Phase 1 delivered as create_deerflow_agent + RuntimeFeatures (deerflow.agents.factory / deerflow.agents.features); the proposed Phase 2/3 iDeerClient parameters were not implemented as of 2026-10
+---
+
 # RFC: `create_ideer_agent` — 纯参数的 SDK 工厂 API
 
-> status: proposed; last-reviewed: 2026-07-15
+> 历史记录（2026-10-04 归档）：原文于 2026-07-15 提出（`status: proposed; last-reviewed: 2026-07-15`），按提出时的 `ideer.*` 模块名撰写，正文保持原样。其中 Phase 1（`create_deerflow_agent` 工厂 + `RuntimeFeatures`，见 `packages/harness/deerflow/agents/factory.py` 与 `packages/harness/deerflow/agents/features.py`）已交付；模块名随后由 `ideer.*` 更名为 `deerflow.*`。Phase 2/3 设想的 `iDeerClient` `config` / `features` / `extra_middleware` 构造参数截至 2026-10 未实现——现构造参数见 `packages/harness/deerflow/client.py`。当前事实参考：[middleware-execution-flow.md](middleware-execution-flow.md)。
 
 ## 1. 问题
 

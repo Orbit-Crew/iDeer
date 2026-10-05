@@ -1,4 +1,15 @@
+---
+id: docs-plans-2026-07-15-authz-phase1a-implementation-plan
+kind: plan
+status: archived
+owner: authorization maintainers
+scope: two-PR implementation plan for authorization Phase 1A — the trusted Principal chain (1A-1) and the built-in RBAC provider plus provider factory (1A-2), explicitly excluding Layer 1/Layer 2 wiring
+archived-reason: both PRs merged — Phase 1A-1 and Phase 1A-2 are recorded in the implementation notes decision log (2026-07-15/2026-07-17); backend/packages/harness/deerflow/authz/principal.py, rbac.py, runtime.py and tests test_authorization_principal.py, test_rbac_authorization_provider.py, test_authorization_runtime.py exist
+---
+
 # Phase 1A 实施计划：可信身份链路与内置 RBAC 核心
+
+> status: archived（计划已实施）。2026-10-04 核对：Phase 1A-1/1A-2 已合并（见[实施记录](2026-07-10-pluggable-authorization-implementation-notes.md)决策日志 2026-07-15 与 2026-07-17 条目），`authz/principal.py`、`authz/rbac.py`、`authz/runtime.py` 与 `tests/test_authorization_principal.py`、`test_rbac_authorization_provider.py`、`test_authorization_runtime.py` 均在候选中；后续阶段契约以实施记录为准。
 
 > RFC：`docs/plans/2026-07-10-pluggable-authorization-rfc.md`
 > 前情记录：`docs/plans/2026-07-10-pluggable-authorization-implementation-notes.md`

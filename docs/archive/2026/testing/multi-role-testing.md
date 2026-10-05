@@ -1,3 +1,13 @@
+---
+id: docs-archive-2026-testing-multi-role-testing
+kind: snapshot
+status: archived
+owner: test maintainers
+audience: testers, security reviewers
+scope: 2026-06 多角色权限测试指南（super_admin / department_admin / user / viewer 四角色）：backend/tests/qa/ 下 test_api_qa*.py 的运行命令、凭据环境变量、CI 集成示例与故障排除；归档核对日期 2026-07-15
+archived-reason: 其引用的 backend/tests/qa/ 已退出默认测试体系（当前候选中不存在该目录）；现行 RBAC 设计权威为 docs/permission-model-redesign.md，权限矩阵为 docs/permission-matrix.md，测试权威为 docs/testing/coverage-matrix.md 与 docs/testing/test-migration-ledger.md。正文按历史记录保留
+---
+
 # 多角色权限测试指南
 
 > audience: testers, security reviewers<br>

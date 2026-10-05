@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-07-01-scheduled-tasks-mvp-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-01 MVP design for durable scheduled tasks — scheduled_tasks/scheduled_task_runs persistence with atomic DB lease claims, an app-layer scheduler behind a scheduler: config gate, owner-scoped REST routes under /api/scheduled-tasks, and the /workspace/scheduled-tasks management page with once/cron schedules and explicit fresh/reuse context mode
+archived-reason: implemented — backend/app/scheduler/service.py, the scheduled_tasks persistence package, the scheduled_tasks gateway router, and frontend/src/app/workspace/scheduled-tasks/page.tsx all exist; the doc's own overlap-semantics section already records that the original skip rule was superseded by the durable enqueue behavior, and the migration chain has since advanced past this design, so the text is the 2026-07-01 design state
+---
+
 # DeerFlow Scheduled Tasks MVP Design
 
 **Date**: 2026-07-01

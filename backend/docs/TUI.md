@@ -1,3 +1,13 @@
+---
+id: backend-docs-tui
+kind: reference
+status: current
+owner: repository maintainers
+scope: terminal workbench (TUI): launch modes, surface and slash commands, module layout, shared thread persistence, and test entry points
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3811ef515
+---
+
 # DeerFlow Terminal Workbench (TUI)
 
 `deerflow` is a terminal-native workbench for the DeerFlow harness. It runs

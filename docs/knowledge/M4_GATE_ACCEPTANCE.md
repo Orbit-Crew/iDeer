@@ -1,4 +1,15 @@
+---
+id: docs-knowledge-m4-gate-acceptance
+kind: evidence
+status: archived
+owner: engineering maintainers
+scope: Gate 5/6 acceptance evidence for candidate feature/m4-knowledge-revisions (knowledge revisions, publish, run snapshots; real RAGFlow provider and real-model runs), recorded 2026-09-13 to 2026-09-15
+archived-reason: candidate-scoped acceptance record; later candidates (M5 gate7, knowledge-center gate4/gate8, and the v2.1.0 upstream rejoin 20261001_rejoin_upstream_line on 2026-10-01) evolved beyond it — its lane numbers are that candidate's results, not current verification
+---
+
 # M4 Gate 5／6 验收记录 — Knowledge Revision、Publish 与 Run Snapshot
+
+> status: archived（候选 `feature/m4-knowledge-revisions` 的 Gate 5/6 验收证据，验收日期 2026-09-15）。后续候选（M5 gate7、knowledge-center gate4/gate8、2026-10-01 上游 v2.1.0 合流 `20261001_rejoin_upstream_line`）已在其上继续演进；本文 lane 数字为该候选时期结果，不代表当前验证状态。后续验收记录：`docs/testing/m5-gate7-acceptance-report.md`、`docs/testing/knowledge-gate8-acceptance.md`。
 
 - 候选分支: `feature/m4-knowledge-revisions`
 - 验收日期: 2026-09-15

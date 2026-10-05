@@ -1,0 +1,3426 @@
+{
+  "schema_version": 1,
+  "policy_id": "engineering-document-governance",
+  "baseline": {
+    "commit": "867f6709642854721f209a15e362d79a96b3b489",
+    "commit_short": "867f67096",
+    "generated_from": [
+      ".scratch/agent-doc-disclosure/ticket-index.json",
+      "dev-log/governance-baseline.json",
+      "dev-log/import-baseline.json",
+      "dev-log/reading-evaluation-contract.json"
+    ],
+    "source_note": "the four inputs are gitignored working data captured at the accepted baseline; this tracked file is the durable copy",
+    "derivation": "git ls-files *.md filtered to root entrypoints, docs/, backend/docs/, architecture/, and all tracked AGENTS.md/CLAUDE.md",
+    "hash_algorithm": "sha256 over raw file bytes",
+    "line_count_rule": "lines as yielded by text-mode iteration (equals wc -l for files ending in a newline; all inventoried files end in a newline)",
+    "inventory_rows_record": "baseline state (path, classification, protected flag, sha256, lines) copied unchanged from the ticket index",
+    "baseline_delta": [
+      {
+        "path": "docs/specs/2026-10-04-doc-governance-dual-track-spec.md",
+        "baseline_sha256": "89bc2445290db0b6adc3845e2d843da17c197267ca93e6d24a7416e5a810b67e",
+        "baseline_lines": 83,
+        "head_sha256": "bf70be60a0db37216271dd5427a0b9e47cd305e3e47abc6780e9acb093dc910a",
+        "head_lines": 174,
+        "reason": "the governing spec was extended by commit f0440eef (docs(spec): define progressive disclosure governance) after the baseline inventory was captured; inventory rows keep the baseline state and this delta records the sole deviation"
+      }
+    ],
+    "delta_rule": "verify hashes at the baseline commit, or recompute at a new candidate and record the delta here before relying on the inventory; never overwrite rows silently"
+  },
+  "inventory": {
+    "count": 360,
+    "classification_counts": {
+      "engineering-body-review": 246,
+      "agent-guidance": 56,
+      "fixture-or-manual-inventory-only": 37,
+      "protected-baseline": 21
+    },
+    "protected_within_inventory": 61,
+    "classification_notes": {
+      "engineering-body-review": "locally maintained engineering bodies covered by the group-6 audit batches",
+      "agent-guidance": "AGENTS.md rule files and their generated CLAUDE.md mirrors",
+      "fixture-or-manual-inventory-only": "evaluation fixtures, samples, and public manual bodies: counted for coverage, not scheduled for body review",
+      "protected-baseline": "upstream-owned bodies, frozen upgrade records, and immutable evidence inside the seed filter"
+    },
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "ca9eccf86dffd2affed4279a3b25dc6082fb3a9519a149d6656414465036cc1c",
+        "lines": 161
+      },
+      {
+        "path": "CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "ca9eccf86dffd2affed4279a3b25dc6082fb3a9519a149d6656414465036cc1c",
+        "lines": 161
+      },
+      {
+        "path": "CONTEXT.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "2c0366b0201b784945b91197642de3a4a33aeb29ca9632f0bacd64bc8cb26adc",
+        "lines": 451
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "3bf1e0d254cf11c6db2b9308aedd2707ef6b51be8b047e00c977cd938276e02c",
+        "lines": 332
+      },
+      {
+        "path": "README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "7b2f22592080e5da490c3001999d39b4a0b6009e926bb722b9a863d79e5a0892",
+        "lines": 792
+      },
+      {
+        "path": "architecture/AgentPlatform 总体架构与模块边界基线.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "03456af66e1cfc102fcbb82b2a150f8addfc468c495ace68832fe2649abe6966",
+        "lines": 2295
+      },
+      {
+        "path": "architecture/AgentPlatform_Local_Runtime_桌面执行代理建设实施方案_CodingAgent版_2026-09-04.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "484e9190da28c3dfd0f929033bc96d16e86d6a047cff3371ba99510675da7a7f",
+        "lines": 2009
+      },
+      {
+        "path": "architecture/AgentPlatform_合并_DeerFlow_main_完整实施方案_CodingAgent版_2026-09-04.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "49a18e8af548e3560acf05735a878fa5537945ef17bf259bc1f83bfbdea802cf",
+        "lines": 2692
+      },
+      {
+        "path": "architecture/AgentPlatform_后续工作总方案_2026-09-08.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e02766d9536ab277283d6dd7e12605283f1c445cda1a70f9b250a08228d23f74",
+        "lines": 369
+      },
+      {
+        "path": "architecture/AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0de83390db901ba11f42849aca5765597af9ca3600933a6fa70d5264837da9ad",
+        "lines": 4009
+      },
+      {
+        "path": "backend/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "f843b56a842f7a528110f4c0c5b34baa43c6b16a7c51404beecd9ee12d12f70a",
+        "lines": 23
+      },
+      {
+        "path": "backend/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "f843b56a842f7a528110f4c0c5b34baa43c6b16a7c51404beecd9ee12d12f70a",
+        "lines": 23
+      },
+      {
+        "path": "backend/app/channels/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "0ad4c6b9836a4dace184b33b531c2bfd10dc30b4890865227a1a881d85508639",
+        "lines": 77
+      },
+      {
+        "path": "backend/app/channels/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "0ad4c6b9836a4dace184b33b531c2bfd10dc30b4890865227a1a881d85508639",
+        "lines": 77
+      },
+      {
+        "path": "backend/app/gateway/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "543b145d151b774bd79ab06808d0480d06f134a20691c1ac026df2cdc52dddb4",
+        "lines": 171
+      },
+      {
+        "path": "backend/app/gateway/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "543b145d151b774bd79ab06808d0480d06f134a20691c1ac026df2cdc52dddb4",
+        "lines": 171
+      },
+      {
+        "path": "backend/docs/API.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d2ab5ac6add7cab2fd779968254b8703af4fe851e811dff48e95917718463a78",
+        "lines": 1067
+      },
+      {
+        "path": "backend/docs/APPLE_CONTAINER.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "3b5c66179583b7406e141a64740a9d664928554e2f54bd151c174227b2c31851",
+        "lines": 238
+      },
+      {
+        "path": "backend/docs/ARCHITECTURE.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5b8cb96591c7f2a154a4bb158a966f672910efb09cef0be0a0e58c3d4d3c7c62",
+        "lines": 499
+      },
+      {
+        "path": "backend/docs/ARCHITECTURE_zh.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "f90a942f201d9e8d30020ee6001b0b31ee448e1bda9bd3970c86b253642ace78",
+        "lines": 483
+      },
+      {
+        "path": "backend/docs/AUTH_DESIGN.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "117f4b37e70668c31dc55b514d83fba379700776c382b3afbae67d81c1605b8e",
+        "lines": 331
+      },
+      {
+        "path": "backend/docs/AUTH_TEST_DOCKER_GAP.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "f825266ac7e960d70a981c460c431db63f453854d886fe982cf4da65b7f64899",
+        "lines": 77
+      },
+      {
+        "path": "backend/docs/AUTH_TEST_PLAN.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "95f34a769ce8ab0d5ebd1b695ad0b1d1c18b424242be05090979f3f9f43608f4",
+        "lines": 1824
+      },
+      {
+        "path": "backend/docs/AUTH_UPGRADE.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "46ca57de71f9b2a8f23af716a903d400be740484616b197e2df24cf9e4d5acbc",
+        "lines": 141
+      },
+      {
+        "path": "backend/docs/AUTO_TITLE_GENERATION.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8c162233cdee3a0a90a399d54e2e71be8dd8d2abdd165956236f2e02e25d5a17",
+        "lines": 258
+      },
+      {
+        "path": "backend/docs/BLOCKING_IO_DETECTION.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c1ea496275f5ae73875a03957460e0756cd72abc678cc2e5e59f7f5569e90ec3",
+        "lines": 159
+      },
+      {
+        "path": "backend/docs/CONFIGURATION.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e43baa5ae2a674f521d2b32c171b04179b807de8c8e804288f6300d78106a9ea",
+        "lines": 949
+      },
+      {
+        "path": "backend/docs/FILE_UPLOAD.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "61a03d6262f0e3be33078fbf7e7953cafba8537c3dca2f7b1ed3ca2d8563a6c7",
+        "lines": 322
+      },
+      {
+        "path": "backend/docs/GITHUB_AGENTS.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "18387a50eec9465fb9ef27402b46ade1d7474aec1865223ed012a0f9f166f780",
+        "lines": 308
+      },
+      {
+        "path": "backend/docs/GUARDRAILS.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "061d31aa757c80d3cc2dec4b03e18acd246edce0f94a03fdafb8ab3d20e4fb7e",
+        "lines": 385
+      },
+      {
+        "path": "backend/docs/IM_CHANNEL_CONNECTIONS.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1edfe0e6b443253f5a970d100fd8f091fdbba55a17a6e1f0d79640817c3f8ac8",
+        "lines": 493
+      },
+      {
+        "path": "backend/docs/LOOP_DETECTION.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "60ebd9012e423220041f1836683b17a384e93af1c84ae32bc3b9300457b83a7f",
+        "lines": 38
+      },
+      {
+        "path": "backend/docs/MCP_SERVER.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "f0ca6d14f3fed3c9015b712679e6da7f333fb2c314edafc04403cdb850d93a46",
+        "lines": 156
+      },
+      {
+        "path": "backend/docs/MEMORY_SETTINGS_REVIEW.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d8ac8cdb1107f2b1440ddce90a5871583cdbd60057f2920574f81a5dbf11e4af",
+        "lines": 63
+      },
+      {
+        "path": "backend/docs/PATH_EXAMPLES.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "98121cc6bd0b7b910a05fc9f04083594796916bd3678574472e79b7576dce82f",
+        "lines": 289
+      },
+      {
+        "path": "backend/docs/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "745d052bf0b94a7153e1fdc364170644447908dcd12550dc5a2f287ba1d2e078",
+        "lines": 58
+      },
+      {
+        "path": "backend/docs/REPLAY_E2E.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "fd6820c1fd2b282068ae2c595f0826e0ade112c72afb8f0850d0d35c512e1cab",
+        "lines": 120
+      },
+      {
+        "path": "backend/docs/RUN_EVENT_STREAM.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "62a0af3b56f10810cbf4e151e943e5b893ab1843241bcf4f054664e1b107f587",
+        "lines": 233
+      },
+      {
+        "path": "backend/docs/SANDBOX_MEMORY_PROFILING.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "bf37d7b5a782f45c884dea46a72a0e66ef302e74eb0f69fe97ccbe8883da8168",
+        "lines": 81
+      },
+      {
+        "path": "backend/docs/SETUP.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "f9b9973780053f2491d1f8c289e401b5a490cb42661f2c4a95b7317f7c11a46e",
+        "lines": 98
+      },
+      {
+        "path": "backend/docs/SSO.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0050f129116206ac49b63c00bdcef1f1d32ef3dc42211cdff2e7cc6bc6b698b0",
+        "lines": 280
+      },
+      {
+        "path": "backend/docs/STREAMING.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5149ba97bec56c4f8a47f653ab92d0ebd91843fb6cd31c86dcdfa9730560774c",
+        "lines": 351
+      },
+      {
+        "path": "backend/docs/THREAD_LIFECYCLE.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "7f098cc64fd04e0c569d425ce0585bc60aeee467bf8afac2781d50d6f98ed7f4",
+        "lines": 38
+      },
+      {
+        "path": "backend/docs/TUI.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5b54960302f3933b5c728b37e658ce9112ce99cc092f84326eae5ddafe8458b5",
+        "lines": 145
+      },
+      {
+        "path": "backend/docs/archive/2026/auth-test-docker-gap.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "f6361f89c7b71a4b6757be2216cbeeba7c6d6ba9aa566efabf5baf2baa408dc4",
+        "lines": 81
+      },
+      {
+        "path": "backend/docs/archive/2026/auth-test-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "2e5cd5f1b3035f01562e228262f4939c865f9d53a060842b00c290be857d2f14",
+        "lines": 1849
+      },
+      {
+        "path": "backend/docs/archive/2026/backend-improvements-2026-06-09.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "dd96bcdfd5ec96965f92c71d03d02547e075556b176f94d0bc2e663e4a571994",
+        "lines": 666
+      },
+      {
+        "path": "backend/docs/archive/2026/memory-improvements-2026-03-10.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ff40810cad4f2097103b67140d5b480875947edc8c86f6e90a69c7349e1db13b",
+        "lines": 69
+      },
+      {
+        "path": "backend/docs/archive/2026/memory-improvements-summary-2026-03-10.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "28f1ccde4204cbd07bc45285cf579d4cc46f914454685dbeb534f37836de3be8",
+        "lines": 42
+      },
+      {
+        "path": "backend/docs/archive/2026/task-tool-improvements.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e86af22c41f1cb4680b8eeab0239d82e93786bf003735eb255d8a14e708f3900",
+        "lines": 178
+      },
+      {
+        "path": "backend/docs/archive/2026/title-generation-implementation-2026-07-15.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a5f0634e011a6c5685bf7821344ee4c2dfbc7d3540a816c0b89f0466259b2c3b",
+        "lines": 226
+      },
+      {
+        "path": "backend/docs/checkpoint-retention-contract.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ee141b00fa6cc92aa92da8f90a1539e7afc6158c74986b85c28db9222c6ec217",
+        "lines": 110
+      },
+      {
+        "path": "backend/docs/development-reference.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "135e68726e37eda4386d4428740e94aff6e457fab11110fb4cefb07ec434c5d1",
+        "lines": 695
+      },
+      {
+        "path": "backend/docs/engineering-backlog.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a8bbf1e6cc049c5d221724c2dab0b716c4b8feb7f5ea34aa678ac58892d4d9a8",
+        "lines": 19
+      },
+      {
+        "path": "backend/docs/middleware-execution-flow.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "97b9f08607adb9efab7dc2a675e5c48547ff60a76bbd65d1ffc1c834d6396815",
+        "lines": 305
+      },
+      {
+        "path": "backend/docs/plan_mode_usage.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "99cd2f9c4ab7a9137d90e19d706010efc9c83607f658929a07d66b1c65a003d0",
+        "lines": 204
+      },
+      {
+        "path": "backend/docs/rfc-create-deerflow-agent.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1bf805e8fec6e1a060ae6f99d0fe2d02d4494b7abd04ce6399dd3271dd4db8ad",
+        "lines": 505
+      },
+      {
+        "path": "backend/docs/rfc-extract-shared-modules.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "28da5fe18ebdbd79cf9906c50ef43d8faa3bef0edb0b3247d4abdcba11757800",
+        "lines": 192
+      },
+      {
+        "path": "backend/docs/rfc-grep-glob-tools.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "161e4187d1b09ed8cd8b033ec54aec76863edd487234ce1ef054c9507d4f3e6a",
+        "lines": 448
+      },
+      {
+        "path": "backend/docs/summarization.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "74f83016c6af01288ab249ad16b0d06e531f1cd1e1c838a25980553e513d5903",
+        "lines": 381
+      },
+      {
+        "path": "backend/packages/harness/deerflow/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "bf960bf1b1cc403d2d0d79b88f0d00045fc940a50cbd4cf16f745646ea0d5bc2",
+        "lines": 145
+      },
+      {
+        "path": "backend/packages/harness/deerflow/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "bf960bf1b1cc403d2d0d79b88f0d00045fc940a50cbd4cf16f745646ea0d5bc2",
+        "lines": 145
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "603e5e58bba15de0538a6dc1b52e511ca1efb264a1cd8ec66e775bfc3e110f2e",
+        "lines": 47
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "603e5e58bba15de0538a6dc1b52e511ca1efb264a1cd8ec66e775bfc3e110f2e",
+        "lines": 47
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "21d092c195265824a27a0c040564abaa1b9e4c28e3ba6b8d68d8d1c4c4dc6906",
+        "lines": 302
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "21d092c195265824a27a0c040564abaa1b9e4c28e3ba6b8d68d8d1c4c4dc6906",
+        "lines": 302
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/middlewares/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "e64a47f710ec4839674b38db45820c820a1f53f3ca71d94df357a4316cd85cd9",
+        "lines": 126
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/middlewares/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "e64a47f710ec4839674b38db45820c820a1f53f3ca71d94df357a4316cd85cd9",
+        "lines": 126
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/tavily/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "7c4b136d9aa64fdb60a1aacf4a156fbdcf17228353f10a92c020b707b51b2c3c",
+        "lines": 6
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/tavily/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "7c4b136d9aa64fdb60a1aacf4a156fbdcf17228353f10a92c020b707b51b2c3c",
+        "lines": 6
+      },
+      {
+        "path": "backend/packages/harness/deerflow/config/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "57de0bd0a820972aa594d51a4c817f2dd200a755c324038c655c21097d358fbe",
+        "lines": 101
+      },
+      {
+        "path": "backend/packages/harness/deerflow/config/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "57de0bd0a820972aa594d51a4c817f2dd200a755c324038c655c21097d358fbe",
+        "lines": 101
+      },
+      {
+        "path": "backend/packages/harness/deerflow/extensions/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "0a4f9cea989d5ce5a5dc4a25a729927915d82bcf6e43f97ea8de5ee0751cfae6",
+        "lines": 380
+      },
+      {
+        "path": "backend/packages/harness/deerflow/extensions/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "0a4f9cea989d5ce5a5dc4a25a729927915d82bcf6e43f97ea8de5ee0751cfae6",
+        "lines": 380
+      },
+      {
+        "path": "backend/packages/harness/deerflow/mcp/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "7cb7244b1d1ddc7718098d279b12162180f599f57af6f0e41dcf5609fb853ccf",
+        "lines": 54
+      },
+      {
+        "path": "backend/packages/harness/deerflow/mcp/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "7cb7244b1d1ddc7718098d279b12162180f599f57af6f0e41dcf5609fb853ccf",
+        "lines": 54
+      },
+      {
+        "path": "backend/packages/harness/deerflow/models/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "c3d6ac66dbd8e43fe6b6533f4a0536eb212dec2c4bb9daefde6c3fa54f8b09e8",
+        "lines": 30
+      },
+      {
+        "path": "backend/packages/harness/deerflow/models/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "c3d6ac66dbd8e43fe6b6533f4a0536eb212dec2c4bb9daefde6c3fa54f8b09e8",
+        "lines": 30
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/migrations/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "35accbe415a541dda56dea407a97b8351449b2c2e78d1bbce360274e2c58ad30",
+        "lines": 167
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/migrations/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "35accbe415a541dda56dea407a97b8351449b2c2e78d1bbce360274e2c58ad30",
+        "lines": 167
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/user/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "8d11658ce03ad1368ac0de8ab789df99b3b67679984f8359df164dfd1c44b602",
+        "lines": 12
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/user/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "8d11658ce03ad1368ac0de8ab789df99b3b67679984f8359df164dfd1c44b602",
+        "lines": 12
+      },
+      {
+        "path": "backend/packages/harness/deerflow/reflection/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "43eb08b231dba8977321ff48353a5415029afbbd2deb266f59b9d2abb1fe5f83",
+        "lines": 4
+      },
+      {
+        "path": "backend/packages/harness/deerflow/reflection/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "43eb08b231dba8977321ff48353a5415029afbbd2deb266f59b9d2abb1fe5f83",
+        "lines": 4
+      },
+      {
+        "path": "backend/packages/harness/deerflow/runtime/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "29519149425a388d76a0c665e50f4dd5c451360eaec5448f2598804584ec9ddd",
+        "lines": 364
+      },
+      {
+        "path": "backend/packages/harness/deerflow/runtime/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "29519149425a388d76a0c665e50f4dd5c451360eaec5448f2598804584ec9ddd",
+        "lines": 364
+      },
+      {
+        "path": "backend/packages/harness/deerflow/sandbox/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "b4bff8d1c3c86ffe3c8d53e4649131784c194dac4f3636af02bdb4d4c1cdcceb",
+        "lines": 105
+      },
+      {
+        "path": "backend/packages/harness/deerflow/sandbox/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "b4bff8d1c3c86ffe3c8d53e4649131784c194dac4f3636af02bdb4d4c1cdcceb",
+        "lines": 105
+      },
+      {
+        "path": "backend/packages/harness/deerflow/skills/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "3581f608112b201e61dee784f157b4534f9617b209753f9227a142ca5b2160f3",
+        "lines": 40
+      },
+      {
+        "path": "backend/packages/harness/deerflow/skills/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "3581f608112b201e61dee784f157b4534f9617b209753f9227a142ca5b2160f3",
+        "lines": 40
+      },
+      {
+        "path": "backend/packages/harness/deerflow/subagents/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "ec966773ed0381a715509d33809de7ea0f9d7025e317d10984124cf0bdf5b5c4",
+        "lines": 43
+      },
+      {
+        "path": "backend/packages/harness/deerflow/subagents/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "ec966773ed0381a715509d33809de7ea0f9d7025e317d10984124cf0bdf5b5c4",
+        "lines": 43
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tools/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "17d8953c00d530e18ad916fff11b8bee8cb4c58990196b49ea54e7579317fb0f",
+        "lines": 56
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tools/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "17d8953c00d530e18ad916fff11b8bee8cb4c58990196b49ea54e7579317fb0f",
+        "lines": 56
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tracing/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "85964dc56e55bf6a4a8e2ed3b151ff53f1ebb8a0d65afcc8de1d9fa5bf9dee14",
+        "lines": 24
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tracing/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "85964dc56e55bf6a4a8e2ed3b151ff53f1ebb8a0d65afcc8de1d9fa5bf9dee14",
+        "lines": 24
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tui/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "2d4a33d6c3bbd0b34b714564c7e52077ad9845ebcfc09fe0565c5593495ba12a",
+        "lines": 15
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tui/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "2d4a33d6c3bbd0b34b714564c7e52077ad9845ebcfc09fe0565c5593495ba12a",
+        "lines": 15
+      },
+      {
+        "path": "backend/packages/harness/deerflow/utils/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "db4ea1813659b2a6fb9b6a325f6c34e8db3f2c9d1fb895f42005568814dd8229",
+        "lines": 3
+      },
+      {
+        "path": "backend/packages/harness/deerflow/utils/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": true,
+        "sha256": "db4ea1813659b2a6fb9b6a325f6c34e8db3f2c9d1fb895f42005568814dd8229",
+        "lines": 3
+      },
+      {
+        "path": "backend/tests/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "f4cdfb4b268d18964bc8ceeca048534dd42c9554ac5f7ac2c68375fdcd5acdb6",
+        "lines": 15
+      },
+      {
+        "path": "backend/tests/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "f4cdfb4b268d18964bc8ceeca048534dd42c9554ac5f7ac2c68375fdcd5acdb6",
+        "lines": 15
+      },
+      {
+        "path": "docs/ARCHITECTURE.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "10d2ff251e638598251456f67876af1f72a28d385132472963e20edcaec4de9b",
+        "lines": 195
+      },
+      {
+        "path": "docs/AgentPlatform 多附件对话首字延迟排查与优化任务书.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "03a46a226096d14c4ac89c6421ee57655dd8482abfb76d3f0b10cff0d27e9fba",
+        "lines": 845
+      },
+      {
+        "path": "docs/CODE_CHANGE_SUMMARY_BY_FILE.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "690eaadfb8aae08efec25b7c017f4729311e3029454ecf7f008896a8c186f965",
+        "lines": 5
+      },
+      {
+        "path": "docs/OPENVIKING.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "84097673e1cb29be7fed6b38394714e43f1664c90250547e8676710d4300c1b5",
+        "lines": 183
+      },
+      {
+        "path": "docs/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "978fac893a8b9ac5be95f8b82a218f90890cf01f0cdfe29359332ae0574537fd",
+        "lines": 43
+      },
+      {
+        "path": "docs/SKILL_NAME_CONFLICT_FIX.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0224c3a33f1e68084f838013879a3b333753cfa155d704bbafc7b9efd11ef684",
+        "lines": 865
+      },
+      {
+        "path": "docs/adr/0001-workbench-capability-navigation.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e23569e2f7f630cdb03a6ebabd1f999e3da86bf2ac82d373de7976dda92c3b2e",
+        "lines": 7
+      },
+      {
+        "path": "docs/adr/0002-code-evidence-package-static-analysis.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1b367f68ab5d3222c18a6851e2a2fd8c84037ab54c5ab08ca14a1415ec94968f",
+        "lines": 3
+      },
+      {
+        "path": "docs/adr/0003-fault-zeroing-evidence-modes.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1a19f2bbce77a446081807b34d23fa1b2912f5fe98eb939ab3f42cf5e66a538e",
+        "lines": 7
+      },
+      {
+        "path": "docs/adr/0004-fault-zeroing-hybrid-intake-and-shared-execution.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0bb9e7f2c23460050304f2d1b4a30543734487346fdea39a417ed60f9f15ed80",
+        "lines": 25
+      },
+      {
+        "path": "docs/adr/0005-preserve-workbench-experience-when-adopting-deerflow-features.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "86300c255adb1364dfe3d566b44ba134c763c3c94c8b01bc409b5a9bbe45a91f",
+        "lines": 3
+      },
+      {
+        "path": "docs/adr/0006-srs-validation-defers-result-contract.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "186dab65b789eb71f0e984cf311709eb7b4698f4cb770663fe3a74691cc0c093",
+        "lines": 32
+      },
+      {
+        "path": "docs/adr/0007-agent-terminology-unification.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1437794dbe4602b5c291c1ec3be9b60cd831a6989fbc2cc62fb3808e032aee0c",
+        "lines": 25
+      },
+      {
+        "path": "docs/agents/domain.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "996955fc7425e60edf7fdaa97cb1ec0ca1ee399513bd73c51809f8fcb1343804",
+        "lines": 55
+      },
+      {
+        "path": "docs/agents/issue-tracker.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "4756dfccaf32165a43d4015b1d0fa57ba17ab7e6fa950e7179944089b72aa368",
+        "lines": 49
+      },
+      {
+        "path": "docs/agents/local-ops-notes.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e75c02762411623d05bc70765d0abc2a0351e52a0e80fd6cb136b89c3ee3ee47",
+        "lines": 17
+      },
+      {
+        "path": "docs/agents/maintainer-orchestrator-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ebb100e238613b6a21a4ce156a1855c6c7b2e8bef00c11ed194468bcdba398cc",
+        "lines": 69
+      },
+      {
+        "path": "docs/agents/skill-routing.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "64d7428c90ad6dedfeb3ae7b951862e160f60af2bde85ea64d8ad09da79f0d17",
+        "lines": 55
+      },
+      {
+        "path": "docs/agents/test-accounts.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "49c510f178b06f59e447d36248cc009fc0314fd09d5d2d24ab7d1e94affb29c5",
+        "lines": 19
+      },
+      {
+        "path": "docs/agents/triage-labels.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "9b2e500110fca8a711a274421695d932d6ffa94f9e6d93f69e45a105992ba48f",
+        "lines": 17
+      },
+      {
+        "path": "docs/architecture/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "262f3256c8ef16f39e592be372aed8194b9db78bf74ae51ef341a08d6ab387cc",
+        "lines": 14
+      },
+      {
+        "path": "docs/architecture/overview.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d34fa11ec75a00573eca3ec403fb17eb8e0f7ec40b6773e5ff8a6a1452985a8d",
+        "lines": 639
+      },
+      {
+        "path": "docs/archive/2026/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "6af4cee45ca6971099c832aa041ae50c9cd870fb6484983b8fbed2a07a9b3cfb",
+        "lines": 25
+      },
+      {
+        "path": "docs/archive/2026/agent-design-2026-06.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "378c5f0708a74f9a25bc13a1313507874557c55a7898a0e23bf9f24fe8d26096",
+        "lines": 82
+      },
+      {
+        "path": "docs/archive/2026/decisions/intranet-source-import-decision-2026-07-15.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "2f479345db98c5835ee9b453db090538fc69d93c4ddf2ec3b4d00fea33ceda48",
+        "lines": 133
+      },
+      {
+        "path": "docs/archive/2026/governance/document-system-audit-2026-06-28.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "6735caa90a03de3e9d736e12bdb10d4084928a443d00912ed1eb3eb932c8026f",
+        "lines": 180
+      },
+      {
+        "path": "docs/archive/2026/governance/feature-backlog-history-2026-07-15.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "3c7309c036b5a72fe064dc615f1c0ce60727a2d873fd1ef12137486074b85902",
+        "lines": 872
+      },
+      {
+        "path": "docs/archive/2026/offline-feature-fix-summary.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a4249c6916d187593a6aa1dc4c375252f9fda2b7f2ee5cc91bd30df2b2171f9c",
+        "lines": 242
+      },
+      {
+        "path": "docs/archive/2026/offline-feature-issue-report.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "4cca2a163a5d1aff7ed935beac56ebdc00153f5277c0f17c4027f5fa41785c44",
+        "lines": 102
+      },
+      {
+        "path": "docs/archive/2026/offline/branch-change-report.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "55397a5a8832b9d58366f06f2126caf951ddf21369b702c8b5eea415bc586677",
+        "lines": 1109
+      },
+      {
+        "path": "docs/archive/2026/offline/code-change-summary-by-file.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "20cf641fd624fa5225dd8c76f342bd5643d02ccddbf032076586ae63beba42da",
+        "lines": 941
+      },
+      {
+        "path": "docs/archive/2026/offline/incidents/2026-05-28-offline-docker-streaming-409.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "341381f6daab3a6b5890716aec14de8cc6dc9ec07ac8c10a1f9c53539d83c8f3",
+        "lines": 159
+      },
+      {
+        "path": "docs/archive/2026/offline/incidents/2026-06-23-offline-docker-deployment-review.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "fdd71164bcfd20106aecfb2ea87098b9e6df87c0e8f4c2a2a2daae4aee6df5dc",
+        "lines": 623
+      },
+      {
+        "path": "docs/archive/2026/offline/incidents/2026-06-23-offline-docker-image-build.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "724db4ba36ef38e141be56151619676bdcfec683b8701f425efd0b6e54fa234f",
+        "lines": 433
+      },
+      {
+        "path": "docs/archive/2026/offline/incidents/2026-06-23-offline-docker-remediation.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "015899a9d4678e05334807f70c56ac0b8007dd12307d7fe25336a3840182d8f5",
+        "lines": 502
+      },
+      {
+        "path": "docs/archive/2026/offline/incidents/2026-07-15-agent-memory-path-shadowing.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "28444a8d9adfc1c196693af4e48c0263ae10c5faf9230b2e200755636f697de8",
+        "lines": 189
+      },
+      {
+        "path": "docs/archive/2026/offline/offline-deployment-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8649e96e1ba455e41d04d78c57f971f1fb19a1b116bcebfc2044acce86eccc1d",
+        "lines": 276
+      },
+      {
+        "path": "docs/archive/2026/optimization/01-bug-fix-and-feature-completion.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b5dec433c89165ad99964762ae86da8fcef1a27d568b704d03783f5520a8c0ac",
+        "lines": 246
+      },
+      {
+        "path": "docs/archive/2026/optimization/02-testing-improvement.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "7758587a8fb8c3dde6969e509e7e5b71680c72f629f7ec512c2b6face9408c80",
+        "lines": 712
+      },
+      {
+        "path": "docs/archive/2026/optimization/03-documentation.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b39a24788264a4c30b6d49fbd5f628c9c8d8c16a8cd9780a259d4c48e76d1cbf",
+        "lines": 471
+      },
+      {
+        "path": "docs/archive/2026/optimization/04-performance-optimization.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "558d5a984d5d749a363555fd90dc4028daec256d1dc5a419f0f9aa836390ae77",
+        "lines": 404
+      },
+      {
+        "path": "docs/archive/2026/optimization/05-security-hardening.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "44ff11ee4ec60124645a522ccea2e9cf42737b9d80c8b99e57a9d71472ab800e",
+        "lines": 676
+      },
+      {
+        "path": "docs/archive/2026/optimization/INDEX.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b6970c72f4672fb9e557a67e63bbc4f60d006ba740f66ac490dfe122aa163127",
+        "lines": 121
+      },
+      {
+        "path": "docs/archive/2026/optimization/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5e1eab5be8427dbde14ce223c7eb734b21d98183071832ca9747cd29f6ef62bb",
+        "lines": 26
+      },
+      {
+        "path": "docs/archive/2026/optimization/implementation-roadmap.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "aea38ad4c167d1239848db25accefb747f1cd638d9fd8b1514d6a7768adb8bf4",
+        "lines": 360
+      },
+      {
+        "path": "docs/archive/2026/optimization/legacy-optimization-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "892f9e69bdfb8a9137e42b6afe516a6d140c72feca94dd474937ec098dbe7302",
+        "lines": 11
+      },
+      {
+        "path": "docs/archive/2026/permission/permission-backlog-history-2026-07-06.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "056c49eec2a3509d7907b50fd5f499a11d2d80a409bdf754cf35b1c2dd3e9c17",
+        "lines": 876
+      },
+      {
+        "path": "docs/archive/2026/permission/permission-model-audit-2026-07-05.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8b368f9ecf329846f1c99eedd2f3aea7b3dc38903ea9b95a9b636c4e16e79211",
+        "lines": 163
+      },
+      {
+        "path": "docs/archive/2026/testing/ai-code-validation-executive-summary.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ac3d5126f561fdcc73a2b760581f7bfdd1bdfa875a4a7711db9f890d29f9a1ad",
+        "lines": 223
+      },
+      {
+        "path": "docs/archive/2026/testing/ai-code-validation-skill-analysis.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "470ed472295c92c70fbe04e8f92ceb8054290048c8d1439f07d2cd9dfb7267fa",
+        "lines": 1011
+      },
+      {
+        "path": "docs/archive/2026/testing/ai-test-tools-integration.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "6564774f9325a3b47aa0374f58a6faa07df9fad06f8c72a6952f9b5e1d3254b2",
+        "lines": 154
+      },
+      {
+        "path": "docs/archive/2026/testing/frontend-test-coverage-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b36e257ea381949e859484348dea814c8ca5faccafd04d869bd047238c559ab9",
+        "lines": 485
+      },
+      {
+        "path": "docs/archive/2026/testing/frontend-test-coverage-summary.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "436587d1958dd6f3f16777f2da6342b85559af306d6e56170f556399353c5f3e",
+        "lines": 136
+      },
+      {
+        "path": "docs/archive/2026/testing/multi-role-testing.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "4729279ff238982e69d955dc6646d866a29150ab88f50d629bb8c1c64c4ea98e",
+        "lines": 254
+      },
+      {
+        "path": "docs/archive/2026/testing/screenshot-test-coverage-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ee72d7f20869cafc987eac606b9b092d1bba5aa5c2605be5748d12419a08915c",
+        "lines": 283
+      },
+      {
+        "path": "docs/archive/2026/testing/test-coverage-improvement-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d0820832e5cf4e57017f1c19b706afd19c8d2a02f4ceffc8573dc234a5f77b5f",
+        "lines": 320
+      },
+      {
+        "path": "docs/archive/2026/testing/test-enhancement-roadmap.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ff32912717b9aedf1c1a70b64be6895207ec97e0908afe7c124e87d411263564",
+        "lines": 695
+      },
+      {
+        "path": "docs/archive/2026/testing/test-reorganization-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "395c435507f78a0246781698539cbacac6af7f9b77e6828dbed53f4352cff959",
+        "lines": 690
+      },
+      {
+        "path": "docs/archive/2026/testing/testing-gap-remediation-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "bcc7d8c45a9ec8dff833d5286635ea37b011d9ed0991b7cd5ca2d8d96faa0540",
+        "lines": 735
+      },
+      {
+        "path": "docs/archive/2026/testing/testing-tools-integration-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0d2e588cbd0f9c70fef21516b865bafeda58d811079758b371e1a89e96811158",
+        "lines": 923
+      },
+      {
+        "path": "docs/archive/2026/testing/validation-best-practices.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0c9d2cef86af1a16ffc7a41016efc4e316df78fe08c96b9bfb668e98ed5db1e0",
+        "lines": 550
+      },
+      {
+        "path": "docs/archive/2026/testing/validation-gap-analysis.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "210be36a7e9a0b1ef87f65dad7125a16bd4dbccc6c4bdf385491bf23d7c1f431",
+        "lines": 297
+      },
+      {
+        "path": "docs/archive/2026/testing/validation-log.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a4dc9901123c828bcdeeef4a4ebdc756fa62d2cb159070aea74b8121b8271ebe",
+        "lines": 136
+      },
+      {
+        "path": "docs/archive/2026/testing/validation-orchestrator-implementation-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d520fef0277f4fa88e92df6653ee9d36ecc7f19d8ef167e927d3ab708cefda1c",
+        "lines": 818
+      },
+      {
+        "path": "docs/archive/2026/testing/validation-remaining-issues-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ac78c28e2c62d80efe6abb2748435c4d1b7acb288070733ad3b40630b0475405",
+        "lines": 394
+      },
+      {
+        "path": "docs/archive/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "49bd64f5b511c307f04fc0f982c7ec8d725f3d2b891096a3790a09b9b4e7537b",
+        "lines": 17
+      },
+      {
+        "path": "docs/archive/task-briefs/2026-05-23-start-local-and-fault-zeroing-brief.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d2707d5183117c62720f09627cee1e2a24d986880159bfd30b31ca255ae652ea",
+        "lines": 36
+      },
+      {
+        "path": "docs/backend-validator-coverage-gap-analysis.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1278c546ce46f2d03d72639ac68d2ea00606365c05767c454fb258010c17e11e",
+        "lines": 207
+      },
+      {
+        "path": "docs/backend-validator-coverage-summary.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d2e84ec1e46c620fa25e43cb48e425765c0748b41746270c350f5216cd160455",
+        "lines": 201
+      },
+      {
+        "path": "docs/backlog.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "baad97772afbd43b03b67b02f378db930053608f1703e8323df3a1d0a4990c2a",
+        "lines": 20
+      },
+      {
+        "path": "docs/bug-list.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "3dc7abeb55207b16b32c8da224f7155fb254f8086c47ceb61a7e1a0e57d329f8",
+        "lines": 352
+      },
+      {
+        "path": "docs/compose/plans/2026-07-02-admin-user-crud.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "fc4fb6f4f3d73b22eef6fcdb9c5b2249ab51a23d0af71c1f9953d061b4904b17",
+        "lines": 658
+      },
+      {
+        "path": "docs/compose/plans/2026-07-03-permission-model-refactor.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "9c637e83dedb0b9f45d9a9ad3370276aa548f4c58916808a5f8b3572eca86b91",
+        "lines": 1433
+      },
+      {
+        "path": "docs/database-forward-revision-recovery.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8f1f5a63d101af11b30f4750759ed25e48a772b36c4f1764f1e0854c52f9e114",
+        "lines": 79
+      },
+      {
+        "path": "docs/decisions/2026-08-14-resource-governance-v2.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "490f9066ddf1f8246f3e770368fba71450507edc374fa99f03d8e778e05d5109",
+        "lines": 164
+      },
+      {
+        "path": "docs/decisions/2026-09-08-execution-target-first-class-dimension.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c61ae5a860d2cce429722a46be032c1e2aa023399e71f608677588a7fb284e0e",
+        "lines": 30
+      },
+      {
+        "path": "docs/decisions/2026-09-08-knowledge-dual-source-of-truth.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "017bd27955a488d3c4ea396901fd003191a4baddaf92d55e7ced1f09333accb1",
+        "lines": 31
+      },
+      {
+        "path": "docs/decisions/2026-09-08-local-authorization-veto.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "6827d1b049c937b81c0a43d3caf8f6f6506ff8c51279b1952ec2e48b59ce1853",
+        "lines": 31
+      },
+      {
+        "path": "docs/decisions/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e3a3b53dd65c0f2babecdc41f1360c0415728aa0c3157689445d68302cc49f9a",
+        "lines": 35
+      },
+      {
+        "path": "docs/deployment/MCP工具运维排故手册.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e6d752e3c1cda221928ef59ac1e27de72f0edd84bc3d816eec85e44029013035",
+        "lines": 846
+      },
+      {
+        "path": "docs/deployment/禁公网内网离线部署作业指导书.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8bf51e1a86faffe3be31bb92d799879db1b47765cefacc4832812753f2fad168",
+        "lines": 975
+      },
+      {
+        "path": "docs/development/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "f3552a65a79192479c99fe4c10f16657bab2516b36560e1543558f99d1691377",
+        "lines": 18
+      },
+      {
+        "path": "docs/development/learning-roadmap.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b281e88fb692c0297d8060ad5a5010be831b2b54c48129c08ae60ab855a4f48f",
+        "lines": 226
+      },
+      {
+        "path": "docs/document-retention-assessment.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "2e6f62cf076feeaf09868fee5915a058cb00438ff9cca4fc1619360ce9eb2586",
+        "lines": 446
+      },
+      {
+        "path": "docs/experiments/task-continuity-20260912/CASE_NOTES.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d72cfa56806abf29a3d29fcad7f2df051884a4a5ad1b40e6472c62059971379e",
+        "lines": 59
+      },
+      {
+        "path": "docs/experiments/task-continuity-20260912/CONCLUSIONS.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d8443644e31e012d6a18d7549d6b135f59174503ce59d7bb3e4bec0c30bd925e",
+        "lines": 26
+      },
+      {
+        "path": "docs/experiments/task-continuity-20260912/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "58552ef21739dc58301718a83739491c0911abe5889afeb2981d9a7627c5827b",
+        "lines": 67
+      },
+      {
+        "path": "docs/experiments/task-continuity-20260912/REPORT.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "7d54d411f5e75e2091f07fcbf553d2a8d0266ab0000c63e262bbfa6a64165e4e",
+        "lines": 224
+      },
+      {
+        "path": "docs/experiments/task-continuity-20260912/VALIDATION.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "375e1160c0154b96e7f5322db56625d4f2c2b76d632e669f77051fab8ac2d15f",
+        "lines": 127
+      },
+      {
+        "path": "docs/fault-zeroing-agent/adversarial-review-2026-07-15.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "156b77bda44dbcb2464b1d7cb4d1c77fcf864084db8a7ab58266ba15bc66c1e0",
+        "lines": 292
+      },
+      {
+        "path": "docs/fault-zeroing-agent/implementation-path.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "7322c01772eb7a7153f9d86660b50b24d13330de2036083991b3ecb4ae8d0cdd",
+        "lines": 182
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-01/design_docs/interface_constraints.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "8c2dee9636f3465f50fa330a882c385f26ef7a3327d600b0406a3a6e57387391",
+        "lines": 5
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-01/logs/system_log.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "d05d94bcf4304590087ed080de8f0e978f0bafd3f28b3b12d3180c6700129f90",
+        "lines": 9
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-01/problem_statement.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "7ccc506178cc5a076d8d52de2ba0fb063a91a29b8991d9d7a601496669aafb2f",
+        "lines": 9
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-01/test_records/reproduction_record.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "d1c70ac0fc69a08857bf93c00749c3db7006e50dfd09728624142c56691f6b22",
+        "lines": 8
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-02/historical_cases/similar_case.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "4058a9c1c793413a45511742a410c74acbe8a6c348bf5701dd873355943a5664",
+        "lines": 3
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-02/logs/system_log.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "52277a313fb9cb355f8cb658808bfd059f4c8a3a6a74ea8fedb07302e747314a",
+        "lines": 8
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-02/problem_statement.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "fba19804065988d7ea999b954ac0d171ed197496a0811092c0556a0421253571",
+        "lines": 7
+      },
+      {
+        "path": "docs/fault-zeroing-agent/samples/case-02/test_records/reproduction_record.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "426bb1418b6ac9954e665107ee90199a8be325e8a81a3b927ae4419adffe5ae0",
+        "lines": 7
+      },
+      {
+        "path": "docs/fault-zeroing-agent/归零智能体建设进展汇报.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1b650f4be86bee93fac723eba88f04c8174d9ca9f1ed01a534a1ca06a7f11a3f",
+        "lines": 279
+      },
+      {
+        "path": "docs/fault-zeroing-agent/收口清单-fault-zeroing-toolchain.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8622462fbbb17c0dea64d7a0dcd68ea6b7b2fdc008f9844167c9e66e961e6135",
+        "lines": 56
+      },
+      {
+        "path": "docs/fault-zeroing-agent/验证记录.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c8f3fd009c2f462dea2127f3cb898e7e791385e35ae201f5e1fc1895da2834fd",
+        "lines": 90
+      },
+      {
+        "path": "docs/governance/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "6fca53ac85a33900f7dc1f3482a3ace6703cb7b8378b174fda2a2f97a00c5faf",
+        "lines": 16
+      },
+      {
+        "path": "docs/governance/resource-governance-v2-cutover.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d094a71823fbee777fe26d39b9d34c48af7bebe8343f146c2b3114ecb240b9a8",
+        "lines": 76
+      },
+      {
+        "path": "docs/governance/resource-governance-v2-migration-map.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "aff48ce9bfb97f8b982c2abc44b53c07bbfc08ddff5b87c8b4b63e1dd1fedb19",
+        "lines": 76
+      },
+      {
+        "path": "docs/knowledge/IMPLEMENTATION_INVENTORY.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "fe137da8cb088915b2187775ab0c2f52bf04cfa01d6e70e1876fc0c142c29ff6",
+        "lines": 172
+      },
+      {
+        "path": "docs/knowledge/KNOWLEDGE_ARCHITECTURE.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "648523c23ec5adfaf522a8bd73ce808c63506ae027c56a9cc030b0beedf53184",
+        "lines": 93
+      },
+      {
+        "path": "docs/knowledge/M4_GATE_ACCEPTANCE.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0cbcba3776f1765f96993bff5dbe6f9d628a619afd6a03a2933bda9b64713a28",
+        "lines": 107
+      },
+      {
+        "path": "docs/knowledge/SCHEMA_PLAN.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d24f9b6240d13376fa2f426a0cff068f2798eefffd8b50c838651685df797e6a",
+        "lines": 124
+      },
+      {
+        "path": "docs/knowledge/TEST_MATRIX.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a89be2862621ba6bd0f7c615c78951d0a79a3b9540d4bbf8f1001e68794eaf52",
+        "lines": 93
+      },
+      {
+        "path": "docs/local-runtime/ARCHITECTURE.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "4da73c0f2f0fa0678320ed0e9d388922c5699717d94e82771f0e75afd10ebca6",
+        "lines": 78
+      },
+      {
+        "path": "docs/local-runtime/IMPLEMENTATION_INVENTORY.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c028b43d3892d1f582bc4cd776167a9b27c2a5d97447f75066bfbaa6c3e3724c",
+        "lines": 60
+      },
+      {
+        "path": "docs/local-runtime/M9_DELIVERY_REPORT.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "4741e845dd281fd8a295cc1398ff4ff15a59a50db1e05474e5a957f310edc8ed",
+        "lines": 138
+      },
+      {
+        "path": "docs/local-runtime/PATCH_LEDGER.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "54ab32a0714acce3ab08f1e5e77ab2ea4758f2cccd3b2f1450a919d96d193584",
+        "lines": 61
+      },
+      {
+        "path": "docs/local-runtime/SECURITY_MODEL.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "44a90c03584f55a40c1b540fca3087aa72351da2c1302eb25698dd517ac18e3d",
+        "lines": 83
+      },
+      {
+        "path": "docs/local-runtime/TEST_MATRIX.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "dd19a97fdf4a56e7b80756236ab48cb38402af8e17b0a78aa095fc9b25be59ee",
+        "lines": 112
+      },
+      {
+        "path": "docs/manual-generation-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e519588067f80266946f2a4b94b149a609760449d8809cf2a7e75a83b254c177",
+        "lines": 796
+      },
+      {
+        "path": "docs/manual/README.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "1b7c7e4a96e46d2efd8e147b9e108c49f404fba391d034ea61484f2df9bd2cd9",
+        "lines": 141
+      },
+      {
+        "path": "docs/manual/devops-manual.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "7806ada6f0ce943873e377fee2e72eba8fc04125e62bc229c1a25e7de2626d6b",
+        "lines": 1548
+      },
+      {
+        "path": "docs/manual/screenshot-issues.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "a4c810947a2ca3cb81f3c3ee91bbe8be53ac49f53e3fe2e58aaca542cc6b52ab",
+        "lines": 117
+      },
+      {
+        "path": "docs/manual/user-manual-simple.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "b79c9dc0d0e0b437b72dd8209d0b8036a544356e96db15dbc1cb5c682d275bdf",
+        "lines": 664
+      },
+      {
+        "path": "docs/manual/user-manual.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "f63d774ba089a8fcb155af3bf4dbc47737a30f4649f565895725c3ec8f2578e1",
+        "lines": 821
+      },
+      {
+        "path": "docs/offline-product-line-governance-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "62be82efbb17927207f11aa84b7a16d46e848951a32b390232690648ab95f4d5",
+        "lines": 175
+      },
+      {
+        "path": "docs/operations/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0caf058bfcff2d2818ce466893a39f4bba3c4b3005bec522d11dec22d681fa16",
+        "lines": 17
+      },
+      {
+        "path": "docs/permission-matrix.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "630dad2923475515cbe166e331f0135d5d7d2259eb31ee8a7c7d04e0cd6daede",
+        "lines": 456
+      },
+      {
+        "path": "docs/permission-model-redesign.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c317f9efeafd7df9b0e103b5367c1ee88006a08b54d824b8a8297e3118cd90b5",
+        "lines": 1536
+      },
+      {
+        "path": "docs/plans/2026-04-01-langfuse-tracing.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "2d4f16ef84c74eeba807bbe1caa5ae1cf0d91eb27225286e89b67b6899350e51",
+        "lines": 105
+      },
+      {
+        "path": "docs/plans/2026-05-21-subagent-unavailable-fix-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c7d4d4286f4f92ab31d25bb55e0c0152e6f5fdcffedd84d624b7e45bd8c1c2db",
+        "lines": 116
+      },
+      {
+        "path": "docs/plans/2026-07-10-pluggable-authorization-implementation-notes.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a966ed03c281fa6e0eb4945d1e06174b72d599e027d714499b8b2f51f86b7a36",
+        "lines": 461
+      },
+      {
+        "path": "docs/plans/2026-07-10-pluggable-authorization-rfc.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "19a47a9d6914029f3933285cd442b27dd40389d048c6d7b0e4abb36a985d70a4",
+        "lines": 531
+      },
+      {
+        "path": "docs/plans/2026-07-15-authz-phase1a-implementation-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8b276d95ca69590684715afd72ecd82cdb6667bec849bcc2d7321dee09ba4461",
+        "lines": 398
+      },
+      {
+        "path": "docs/plans/2026-07-15-authz-phase1a1-trusted-principal-implementation-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "86576a19ac36703f54a16d524d572a414afba3ca724d92d454f85061f0eb6727",
+        "lines": 514
+      },
+      {
+        "path": "docs/plans/2026-07-17-remember-login.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8aaa986924b48de63d652c874ee8ce09db0b6058297915e3818ff040c0c13fb5",
+        "lines": 102
+      },
+      {
+        "path": "docs/plans/2026-08-24-subagent-batch-capacity-implementation.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "88c5caff07ec92bd745915c489ffba06c89a314b3995a436dcae8cbb48fd8d9a",
+        "lines": 260
+      },
+      {
+        "path": "docs/plans/2026-08-26-novice-onboarding-optimization-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "f19f2f5580d0d8769bceac90c59a609e08e26997071e7457623b03e2f0c371fc",
+        "lines": 196
+      },
+      {
+        "path": "docs/plans/2026-08-26-term-glossary.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1920acb92cd545bab458b7b08de7fcc0e41ffc804ed92645cfd06fa5dec03976",
+        "lines": 35
+      },
+      {
+        "path": "docs/plans/2026-08-28-scenario-binding-agent-skill-prd.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b225b33ca2af2c42cbc03b037ada27504d3a11585dd219ab86d2bef508019ce2",
+        "lines": 208
+      },
+      {
+        "path": "docs/plans/2026-08-29-scenario-binding-deep-module-gap-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "54d286f350fa20f521c31a164effb9a20c775907d4a6d560052d30894465dc9d",
+        "lines": 68
+      },
+      {
+        "path": "docs/plans/2026-08-30-ideer-workbench-visual-system-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8e224c36dd7fa61d0dfe6de0572ee611f84e44a58d2a29165ce96a7b3c28b9e8",
+        "lines": 118
+      },
+      {
+        "path": "docs/plans/2026-09-01-chip-software-development-package-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "9bed5fb3f7cbe6cc2f4e349208d3b922a6a2a83706c5eec0c2baaaa0b9462e16",
+        "lines": 82
+      },
+      {
+        "path": "docs/plans/2026-09-01-fault-zeroing-code-evidence-package-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "180ff1db38ea7a21872b1c8ea6ab0cd5f72add82ca95bb97ef19a17645f416ab",
+        "lines": 99
+      },
+      {
+        "path": "docs/plans/2026-09-01-workbench-navigation-and-bundled-resource-seeding-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5ae51f144e328295d5d4f5356d563df4659bdf83288557d58a728fbb4a281af8",
+        "lines": 100
+      },
+      {
+        "path": "docs/plans/2026-09-13-m3-document-management-next-stage.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "3af453eaabe8a4e6ca94a0b5b436cd12148b598cdff56ea533acc6c15034999d",
+        "lines": 42
+      },
+      {
+        "path": "docs/plans/2026-09-13-m3-knowledge-center-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "002220ec8398411143cb838ef89c0debab4d3186c60a8182828c054fff6cfbf5",
+        "lines": 97
+      },
+      {
+        "path": "docs/plans/2026-09-13-m3-readiness-closeout-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a8bc3e751b2a09ffb1bf88597faaea5cd7feb86beb9befb2b283d38b0311aefa",
+        "lines": 126
+      },
+      {
+        "path": "docs/plans/2026-09-21-real-acceptance-excluding-win7.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "94bf962277d20fc72a95fbb0b21b2c2c79ff20260c6f0d0eb03e096c06209deb",
+        "lines": 143
+      },
+      {
+        "path": "docs/plans/2026-09-29-fault-zeroing-unified-kernel-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "637a16a5c28d7c17fd5ccfb4b58828096cf4beb9ae174dc0f45fb4bd6b0e7434",
+        "lines": 92
+      },
+      {
+        "path": "docs/plans/2026-09-30-deerflow-v2.1.0-merge-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "415a23e9711d2e26626306a85241b884777f37d11908e66e92a3680940fa8cda",
+        "lines": 221
+      },
+      {
+        "path": "docs/plans/2026-09-30-fault-zeroing-toolchain-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0cde7a211df6a4d2a9e5d684056ad3956afca8348dd532613f9519ef4697c731",
+        "lines": 61
+      },
+      {
+        "path": "docs/plans/OPENVIKING_HTTP_MEMORY_INTEGRATION.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "25ea2fb51064b6c352f33b0574c52f2fd368e091424d2e5f7398c43b275fb8bf",
+        "lines": 1037
+      },
+      {
+        "path": "docs/plans/STORAGE_REWRITE_CHANGES.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a38a0b02254e6327fb31c55485633cbb442356d870fb90d8d4be6fc07bae25d9",
+        "lines": 260
+      },
+      {
+        "path": "docs/plans/STORAGE_REWRITE_PLAN.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "739d5a1a25b54ee73078c32d483c5b2c15158547449fead4c3ecb05e57e2738c",
+        "lines": 224
+      },
+      {
+        "path": "docs/platform-dev-summary.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "852f3b42ba28c0460dd2124a4bc57092c4307abc920078e37643ac8006922f2c",
+        "lines": 269
+      },
+      {
+        "path": "docs/releases/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d27ec8add55db187de06352be091e391e4153bf283035fb4657bbaf2712e788b",
+        "lines": 8
+      },
+      {
+        "path": "docs/skill-rbac-api.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0fb969bdf650fe39d2a0ca16e736e5157eadf86a687a20dda21805c639587c29",
+        "lines": 386
+      },
+      {
+        "path": "docs/specs/2026-09-25-deerflow-frontend-experience-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "94fc261edb8f0dddc74354e58b88c0920b03fbb3784d620e1cd10ced453c29f6",
+        "lines": 116
+      },
+      {
+        "path": "docs/specs/2026-09-29-srs-writing-improvements-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "4916ee746eafafda36c65cda01ee6e717cb4e5465c0d0aa876ceb3fb9c8f327e",
+        "lines": 94
+      },
+      {
+        "path": "docs/specs/2026-10-02-test-system-first-batch-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "86f47b13dc6fae4527cfe486df801a953e1cbc9d550e28351c7886a674ff9e86",
+        "lines": 201
+      },
+      {
+        "path": "docs/specs/2026-10-03-architecture-deepening-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1eaa2f05b7716e0dd3720e62e8779ff414de24de9215eb994d477320c3ce8cad",
+        "lines": 87
+      },
+      {
+        "path": "docs/specs/2026-10-04-doc-governance-dual-track-spec.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "89bc2445290db0b6adc3845e2d843da17c197267ca93e6d24a7416e5a810b67e",
+        "lines": 83
+      },
+      {
+        "path": "docs/srs-writing-agent/samples/taskbook_detection_management.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "8a51ed23c32331792897e48e06d1fbbb594e8b93f69c0c8ebca119a007c63fa5",
+        "lines": 96
+      },
+      {
+        "path": "docs/superpowers/plans/2026-04-10-event-store-history.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "20e7fa920b913a2eb480ea5234fa0de799d4f5a3ff808c32ed9a97fd0494b346",
+        "lines": 471
+      },
+      {
+        "path": "docs/superpowers/plans/2026-05-19-fault-zeroing-agent-poc.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "bfca2b5cc5784f1ef86eacd4140aac1d4856bc896dc0894e8670eeae72aec05c",
+        "lines": 735
+      },
+      {
+        "path": "docs/superpowers/plans/2026-05-23-validate-fault-zeroing-review-fixes.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "abe03ed3d238b7dd5e1cacc24ea10f52ffbf1e6ba2a4c136d97c830a2bd27788",
+        "lines": 276
+      },
+      {
+        "path": "docs/superpowers/plans/2026-06-08-minimax-generation-providers.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "6dd3492156798f6827979cacff7c21a45e6ee3af59aaa3ca7764a72384c55023",
+        "lines": 1546
+      },
+      {
+        "path": "docs/superpowers/plans/2026-06-12-telegram-streaming.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "090a6ace73db13fbd794ecee8af54f2534e713bcde01df9164adc7c320db4fa1",
+        "lines": 770
+      },
+      {
+        "path": "docs/superpowers/plans/2026-06-19-guardrail-request-attribution.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1af08e3e77ce2ebdefb5269a955f8b0780596e6831071dfb3454d9c9cf25c147",
+        "lines": 186
+      },
+      {
+        "path": "docs/superpowers/plans/2026-06-29-community-browserless-web-capture.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "ae9ecac7c09a3bc1eab32da39f9d2ac5b6282439af7ecdd37e75b163fb40c461",
+        "lines": 247
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-01-scheduled-tasks-mvp.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "de34b1037bfa595f31cd3b07d99e220ef4aeafc4b25b9f36bbe9f20640c5e812",
+        "lines": 2136
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-02-read-before-write-gate.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "bc860e16ca643579a910c9a811e546139bbbc349d9aea15361118ee856b5131a",
+        "lines": 786
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-15-test-gate-simplification.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "64cb8b6eca649bff52d3fc4a035d84bb0a46506d15550bfa8695b742194ecefe",
+        "lines": 263
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-24-issue-4416-run-metadata-secrets.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "47058342c022cb5ac2589491768ec252ce86193bf815f8b02c8580c5b41a9fdc",
+        "lines": 805
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-31-frontend-performance-baseline-delivery.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "0fada1f6029981a57aa7552c178e917bf63ef9d86926b3eb785c44e51f904ef6",
+        "lines": 84
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-31-frontend-performance-bundle-static.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "543894a3a886f929fe8261de4286ef6f125adbff77d484fb7e40153400ecbc3f",
+        "lines": 102
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-31-frontend-performance-chat-runtime.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5403ecc14f2f91aa2b2a0ed53921fbea10af750f0d71aec0996505d304f81cb5",
+        "lines": 95
+      },
+      {
+        "path": "docs/superpowers/plans/2026-07-31-frontend-performance-live-artifacts.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d96fb7aac1975646f2e9614777ade993e7cce685a1eb99acdce439bc5cc908e5",
+        "lines": 106
+      },
+      {
+        "path": "docs/superpowers/plans/2026-08-03-fault-zeroing-workflow-gap-closure.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "47dc21906062f7a943fc22d2a4410b613a78b4589626e54504548924376cf989",
+        "lines": 62
+      },
+      {
+        "path": "docs/superpowers/plans/2026-08-06-fault-zeroing-workflow-test-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c2dd1a39a9108e5316621e64b434806cfb7a54ea6329b901370b6917cf4f9be9",
+        "lines": 123
+      },
+      {
+        "path": "docs/superpowers/plans/2026-09-13-projects-mvp-phase2-implementation-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "6b18ba3e59651f10d788d364293def43b36629d0dda5df38ccb0cb073771bd00",
+        "lines": 112
+      },
+      {
+        "path": "docs/superpowers/specs/2026-04-11-runjournal-history-evaluation.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "40b1da164774bd623525a9554cc0a9df29d99b5768817f1a3bcf5e94541cac39",
+        "lines": 191
+      },
+      {
+        "path": "docs/superpowers/specs/2026-04-11-summarize-marker-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "e27ae8f4421442b6cd2b458c670f257e0d52d10a61568ac320f438486e8960e3",
+        "lines": 203
+      },
+      {
+        "path": "docs/superpowers/specs/2026-05-19-fault-zeroing-agent-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "9d7444aa96bbede3684b57bc04daaaf4b5446315ed40b16cdb60dc4efa972202",
+        "lines": 268
+      },
+      {
+        "path": "docs/superpowers/specs/2026-06-08-minimax-generation-providers-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "adf9715a90d4e894d907ae238b2a2744578debc7fe9d66703c52014a87b8dbe4",
+        "lines": 175
+      },
+      {
+        "path": "docs/superpowers/specs/2026-06-12-telegram-streaming-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "1d2a6a8b9b826617793e7cdf884f3a1a472a94ae5bbd3cb82ee8d030bb44f883",
+        "lines": 79
+      },
+      {
+        "path": "docs/superpowers/specs/2026-06-13-deerflow-tui.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "33cc916233c449bc5eef0ab89685b3d69a2048915d2da929f381767adb2da52e",
+        "lines": 257
+      },
+      {
+        "path": "docs/superpowers/specs/2026-06-19-guardrail-request-attribution-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d7d3cca8cb509a3e71b9618730b921642db294d0294de9a8f5ca00c19d3c52ae",
+        "lines": 134
+      },
+      {
+        "path": "docs/superpowers/specs/2026-07-01-scheduled-tasks-mvp-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b22955ec3409624376c4549b253e85bb15d7fa8439dee88d3e354192d84729c5",
+        "lines": 596
+      },
+      {
+        "path": "docs/superpowers/specs/2026-07-02-read-before-write-gate-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "59fe4d8a2072472eda2f1a30d665952f07185df49243c9ec2873b6c7fc41d24a",
+        "lines": 51
+      },
+      {
+        "path": "docs/superpowers/specs/2026-07-02-scheduled-tasks-i18n-recipes-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5b76a795ae6343f7cb0ea64de956ce249f2682b4488e05cbcdc6c82e41928d4f",
+        "lines": 78
+      },
+      {
+        "path": "docs/superpowers/specs/2026-07-31-frontend-performance-remediation-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "c4e52a69d12ff07e8e690efaeb0373b40293c1fe5438f170d9fc46341fcda2be",
+        "lines": 317
+      },
+      {
+        "path": "docs/superpowers/specs/2026-09-12-projects-mvp-phase2-design.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d5465d363487e8ea4e482463a4ea8802fbd75de09bc00d770c6ca35fa02b0c62",
+        "lines": 606
+      },
+      {
+        "path": "docs/superpowers/specs/2026-09-12-projects-mvp-phase2-design.zh.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "5633d14b5dde000042226db00cb5ea3209715837f377b27b03ecbf2a4dad1613",
+        "lines": 630
+      },
+      {
+        "path": "docs/task-continuity.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "38e242b80a2134247fef0094b6663184a365705540c7ed38ae62039b371812dc",
+        "lines": 132
+      },
+      {
+        "path": "docs/tech-debt-user-tables.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "471a41a711863dfe3f861b65c9b28e2e11605e72108905200ac49c2e531c8745",
+        "lines": 70
+      },
+      {
+        "path": "docs/testing-guidelines.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "54e1cd39547d0515f1e64ca264b2db9969fae4533884f23863178ef7c6707f78",
+        "lines": 248
+      },
+      {
+        "path": "docs/testing/2026-09-13-m3-readiness-closeout-report.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "eb34fcc29a0ed5c42f29ad0f8015a9be8762265532a6fc74498f3ef82a814c48",
+        "lines": 219
+      },
+      {
+        "path": "docs/testing/README.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "89c6b524db4ead6f413cc7de85718b8803d15d233bcd431070418453229e2d00",
+        "lines": 25
+      },
+      {
+        "path": "docs/testing/coverage-matrix.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "13deab510bba10035c662cec83f7210f9761685d16c4cab6772339bdaa20237f",
+        "lines": 66
+      },
+      {
+        "path": "docs/testing/current-branches-closeout-report.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b2bb8c5e21c07f22e46c8af31d4d6ac9c9a67a6031f5feda473b5c860fe789e2",
+        "lines": 304
+      },
+      {
+        "path": "docs/testing/knowledge-center-gate4-runbook.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "de98ef84ce3f6377af42a4975d85dbf4b82080c5f870e7deb70ecdaf5bef592c",
+        "lines": 41
+      },
+      {
+        "path": "docs/testing/knowledge-gate1-acceptance-report.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b295568cf567bea87c2179b98277539a18ce62121ac7021343b5b5d2b4a5d297",
+        "lines": 215
+      },
+      {
+        "path": "docs/testing/knowledge-gate8-acceptance.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "07778d7f44e1d296c04bea9b99babb7780763b793618852f6d62e6a6f450d5b6",
+        "lines": 84
+      },
+      {
+        "path": "docs/testing/m5-gate7-acceptance-report.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "a4ae616295f7f495a7abdec0b38e83b1592314ff025b65f0fe99f7950cec4576",
+        "lines": 145
+      },
+      {
+        "path": "docs/testing/resource-governance-v2-acceptance-matrix.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "55da179fddaba7007a3fd94fb471b1ff792ab299fda90767b08bc706cc77f6d8",
+        "lines": 68
+      },
+      {
+        "path": "docs/testing/test-lane-runbook.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "72d6328e7a36153a7b504a14dcdb4d550b91b8c050fbf5b8ddb67bfe826cc3b4",
+        "lines": 147
+      },
+      {
+        "path": "docs/testing/test-migration-ledger.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "71763616cfb64915ba5ef43620a97cf8e89aa653d1433a13412776c33c183be3",
+        "lines": 565
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/AUTHORIZATION_ACCEPTANCE_REPORT.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "537c3eb00e8086d25720144a6fa30aa39204f61d6edfe07940334acff5f315b9",
+        "lines": 21
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/BASELINE_REPORT.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "10ca2838ee80882f54e387314cd09b332a473906474af0e01de9774edde51d32",
+        "lines": 761
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/CONFLICT_LEDGER.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "bc828527af91e0828949d17e56df30ca0b30d61c55b53a23259fad163fdd9ad4",
+        "lines": 58
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/DoD_CHECKLIST.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "2f48817fbdc9a58b8b58208935785299d5a40b357a009ce5e3510fd013332476",
+        "lines": 65
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/EXTERNAL_ACCEPTANCE_HANDOFF.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "46c578da0346d3c735fa52fbcacddb4095f1b8c529da37aa38cb6505190fb17b",
+        "lines": 100
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/FEATURE_ADOPTION_MATRIX.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "0a750e33fc4ca086138cfdf4c2d549979995812e832ee830548c2e4a1e295d8d",
+        "lines": 13
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/FRONTEND_MERGE_PRINCIPLES.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "366bea615378487e0522ead7f398d6c466a50e057224c2eac941c8a9030e20ae",
+        "lines": 87
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/FRONTEND_UX_ADOPTION_DECISIONS.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "dc14f06b87d22cdd5cfdc899f22da37c46318f2ae7edd10bdb7de555e314a7c1",
+        "lines": 36
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/MIGRATION_ACCEPTANCE_REPORT.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "a2799a8ad4a82ef7d7489f3cae7931eaef771e5a179f677d84a00a2b2f56c7d7",
+        "lines": 59
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/NETWORK_EGRESS_REPORT.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "8f96b3a409e48171d55e3fbb3a7ace44c6113d51f9f0f497b78155c025b58963",
+        "lines": 37
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/PATH_POLICY.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "9b5c48db7bca27fb5ea6462bc630dd2805f4419c3352a2edf0409aa3177af532",
+        "lines": 4
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/PR_MATERIALS.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "3881b4a83d76cd7493b09c9690341af9e7526af495b46d2de62f8fd097bd0779",
+        "lines": 110
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/SUBAGENT_ACCEPTANCE_REPORT.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "bac720c47938104861ad515e83c75b431b720c1fa7ad8c8f3586b1b0f460de17",
+        "lines": 11
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "049a100e25781dbd7c483d63021e4a71d33b6d3016c494dfcb5b31fddcf41d45",
+        "lines": 10
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_PATCH_LEDGER.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "629ffa792e5a021e489148d47c738273c54c8971aaa49cee7c886effc9a83d33",
+        "lines": 83
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/CONFLICT_LEDGER.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "8111012e174e231f8be3d819616243837de0ab860bdb483ded4565f224d2ab52",
+        "lines": 123
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/DoD_CHECKLIST.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "a7f0220723b8e6463a9da6ff7902f41c4d273ac058c7ffa8bd87eaf3e7b3a5fd",
+        "lines": 65
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/PATH_POLICY.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "9b5c48db7bca27fb5ea6462bc630dd2805f4419c3352a2edf0409aa3177af532",
+        "lines": 4
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/PR_MATERIALS.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "149b5d37fbe3f057b53592a164a482b31d02a61bf3018364860a43e0f127a3fc",
+        "lines": 69
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/UPSTREAM_LOCK.md",
+        "classification": "protected-baseline",
+        "protected": true,
+        "sha256": "0c58f156c3ebe3190dbccba9f91eb88c92bd13d5bf778b873f2b0afffbeb07be",
+        "lines": 8
+      },
+      {
+        "path": "docs/workflow-langgraph-runtime-v2-implementation-plan.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "96dbed94c89aefef72273ef03d5f2223c9a8de1a89cee3f173111e6796a3e5bc",
+        "lines": 56
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/README.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "5157b1372533ac469641cbe1e2b28cc94144b093c0e1b2374d920313f3a50667",
+        "lines": 35
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_01_execution_process_evaluation.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "cc04820f188c49b1a8a3318f157b25c5f0251f506bde95b61cd44259449f8d47",
+        "lines": 130
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_01_wind_tunnel_heat_flux_drift/00_problem_statement.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "3a06018d76891f2520e8de23c496dbc9aef33ae469a694c8e4b48096abb04228",
+        "lines": 24
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_01_wind_tunnel_heat_flux_drift/01_design方案.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "cc1d9f5d7da235710c168a0ab654c273796cedb7f267a5c2faacb86e687843b4",
+        "lines": 21
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_01_wind_tunnel_heat_flux_drift/02_test_outline试验大纲.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "69791292c4e188cbf4f12dd4a6a45569c39a758a6cfa3a575f6b56e4b7fc4ed1",
+        "lines": 21
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_01_wind_tunnel_heat_flux_drift/03_test_summary试验总结报告.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "bf830999d4efc7ce404a7a81adf7c7e73c5282ecf45a9d759cb8a200ead03f30",
+        "lines": 25
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_01_wind_tunnel_heat_flux_drift/05_historical_or_review_notes.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "047cb14db7787ca1f24d274ad7bbddbf4dd35113b4ad05963d1df88e3e555af4",
+        "lines": 9
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_01_wind_tunnel_heat_flux_drift/06_expected_analysis.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "491184db68c4bb7e29749fbcc99629fcc341e9ee85f223aaa526ba1fdeb4a597",
+        "lines": 23
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_02_thermal_vacuum_temp_overshoot/00_problem_statement.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "0de0204b1a500d0b4ec304024c46424a25aaf5713786c399193556d1add5bc8c",
+        "lines": 16
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_02_thermal_vacuum_temp_overshoot/01_design方案.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "94135f8a4d3956b8fa7933bbe0a4268be60fffdb6f91986dc76d90adc1112ab1",
+        "lines": 21
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_02_thermal_vacuum_temp_overshoot/02_test_outline试验大纲.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "13d06f61781b92b26ac8d99c52186458685a721bcc788abe73f68fc08e97ca16",
+        "lines": 22
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_02_thermal_vacuum_temp_overshoot/03_test_summary试验总结报告.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "d3c772711cd44ee57f2ec8f9c90cc778e566a55ebfc6769066e83c9ae5c53c57",
+        "lines": 25
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_02_thermal_vacuum_temp_overshoot/05_historical_or_review_notes.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "d70e9bdac7e28e9ec7d765b8821d4c001f22f2f26d9860579442a5dba7d27b7d",
+        "lines": 9
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_02_thermal_vacuum_temp_overshoot/06_expected_analysis.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "40fdbc3ccde3931675708d679a671ace985102b25ff7947247c8cedd1c101f2a",
+        "lines": 23
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_03_arc_heated_ablation_anomaly/00_problem_statement.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "4222b833564101e30fc0bc128d2d2a08e57b94d84d4b0c90b12ca956eda933eb",
+        "lines": 16
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_03_arc_heated_ablation_anomaly/01_design方案.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "d778703dfad31efa755e196062818c219823fba7394b3da52b559fc171592826",
+        "lines": 20
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_03_arc_heated_ablation_anomaly/02_test_outline试验大纲.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "1b5e75f3d0de1282b690b5eabc7fefdacc2d3299eec737d282f1ee2906bbddb5",
+        "lines": 23
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_03_arc_heated_ablation_anomaly/03_test_summary试验总结报告.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "9076bb4d8d45de8b69ec3bfc5b784c95e1e203f7422c975bf9cf628244d7d02e",
+        "lines": 26
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_03_arc_heated_ablation_anomaly/05_historical_or_review_notes.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "ebb74e18699ef5196017ff7a0a43a684ea438cfa05bcf9cbbc0998ff5ddab7b2",
+        "lines": 9
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_03_arc_heated_ablation_anomaly/06_expected_analysis.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "6ab4959d50250521326a4bd6364beca9cbf71a04590cb39c40861de4432bc01c",
+        "lines": 24
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_04_hybrid_code_evidence_scan_disclosure/00_README.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "9f1a0648070ffc4262c273f97edf635c377013310c34dddaf150e396533fdf52",
+        "lines": 55
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_04_hybrid_code_evidence_scan_disclosure/01_设计方案骨架.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "1a3ba235c6525b06d90eed6de625bd8bf0110d62307b2688fcaaa28a95e7196b",
+        "lines": 80
+      },
+      {
+        "path": "docs/zero_agent_eval_cases/case_04_hybrid_code_evidence_scan_disclosure/02_problem_statement.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "874eb1d70a0fc0bd030ba89e65fd06f16907a12024253a0309752f422a5df80a",
+        "lines": 25
+      },
+      {
+        "path": "docs/多附件首字延迟诊断报告.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "dbc16f35e14ff8fcf62567cbecfb30cc60bbe2c5f6d1e342a3c4d4c6e995c7ac",
+        "lines": 76
+      },
+      {
+        "path": "docs/归零智能体工作流引擎重构设计方案.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "50d9a8f3ed46b934ae6c789b8b585b23f16b0f2d0fad28d39b8457ab3f61a24d",
+        "lines": 959
+      },
+      {
+        "path": "frontend/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "81e19d9143f982615d25724b94496f5bc7b744abd0d545ddb0346653624c962a",
+        "lines": 21
+      },
+      {
+        "path": "frontend/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "81e19d9143f982615d25724b94496f5bc7b744abd0d545ddb0346653624c962a",
+        "lines": 21
+      },
+      {
+        "path": "frontend/src/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "e9731aae81f659becb34ad9d4e2c971f6be8f06a126ef874ed6ab36e468f9360",
+        "lines": 177
+      },
+      {
+        "path": "frontend/src/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "e9731aae81f659becb34ad9d4e2c971f6be8f06a126ef874ed6ab36e468f9360",
+        "lines": 177
+      },
+      {
+        "path": "scripts/AGENTS.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "8ce3a5af84b7914a6c62073f2593af4a5a4725751998a1d2c7daa283f289d7cb",
+        "lines": 285
+      },
+      {
+        "path": "scripts/CLAUDE.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "8ce3a5af84b7914a6c62073f2593af4a5a4725751998a1d2c7daa283f289d7cb",
+        "lines": 285
+      }
+    ]
+  },
+  "exclusions": {
+    "total_tracked_markdown": 704,
+    "excluded_count": 341,
+    "categories": [
+      {
+        "id": "agent-skills-and-resources",
+        "count": 282,
+        "reason": "Agent skill packages and their bundled materials. docs/README.md declares skills/** outside the engineering-documentation entry point; they are neither engineering rules nor engineering references.",
+        "path_prefixes": [
+          ".agent/skills/",
+          "resources/agents/",
+          "resources/skills/",
+          "skills/"
+        ]
+      },
+      {
+        "id": "scratch-planning-artifacts",
+        "count": 13,
+        "reason": "Tracked local ticket/planning scratch from earlier efforts (m4-knowledge-revisions, chip-software-development-package). Session planning material, not maintained engineering documentation.",
+        "paths": [
+          ".scratch/chip-software-development-package/issues/01-core-knowledge-package-extraction.md",
+          ".scratch/chip-software-development-package/issues/02-source-set-identity-and-gap-validation.md",
+          ".scratch/chip-software-development-package/issues/03-evidence-status-and-review-gate.md",
+          ".scratch/chip-software-development-package/issues/04-embedded-development-knowledge-coverage.md",
+          ".scratch/chip-software-development-package/issues/05-controlled-consumption-and-offline-release.md",
+          ".scratch/chip-software-development-package/issues/06-sanitized-source-set-acceptance.md",
+          ".scratch/m4-knowledge-revisions/README.md",
+          ".scratch/m4-knowledge-revisions/issues/01-revision-candidate.md",
+          ".scratch/m4-knowledge-revisions/issues/02-immutable-revision-publish.md",
+          ".scratch/m4-knowledge-revisions/issues/03-live-run-snapshot.md",
+          ".scratch/m4-knowledge-revisions/issues/04-pinned-revision-run.md",
+          ".scratch/m4-knowledge-revisions/issues/05-revision-reconciliation.md",
+          ".scratch/m4-knowledge-revisions/issues/06-gate5-gate6-acceptance.md"
+        ]
+      },
+      {
+        "id": "upstream-harness-docs",
+        "count": 6,
+        "reason": "Upstream DeerFlow harness README files under backend/packages/harness/. Protected upstream bodies: covered by the protected_files fingerprint set instead of the body-review inventory; content changes go through the upstream patch ledger.",
+        "paths": [
+          "backend/packages/harness/deerflow/agents/memory/backends/README.md",
+          "backend/packages/harness/deerflow/agents/memory/backends/honcho/README.md",
+          "backend/packages/harness/deerflow/agents/memory/backends/mem0/README.md",
+          "backend/packages/harness/deerflow/community/boxlite/README.md",
+          "backend/packages/harness/deerflow/community/opensandbox/README.md",
+          "backend/packages/harness/deerflow/community/tenki/README.md"
+        ]
+      },
+      {
+        "id": "public-demo-assets",
+        "count": 4,
+        "reason": "Generated demo thread outputs under frontend/public/. Runtime sample content, not maintained documentation. Public docs-site pages are .mdx/.ts files and fall outside the tracked-*.md scope entirely.",
+        "paths": [
+          "frontend/public/demo/threads/3823e443-4e2b-4679-b496-a9506eae462b/user-data/outputs/fei-fei-li-podcast-timeline.md",
+          "frontend/public/demo/threads/7f9dc56c-e49c-4671-a3d2-c492ff4dce0c/user-data/outputs/leica-master-photography-article.md",
+          "frontend/public/demo/threads/d3e5adaf-084c-4dd5-9d29-94f1d6bccd98/user-data/outputs/diana_hu_research.md",
+          "frontend/public/demo/threads/fe3f7974-1bcb-4a01-a950-79673baafefd/user-data/outputs/research_deerflow_20260201.md"
+        ]
+      },
+      {
+        "id": "root-upstream-patch-ledger",
+        "count": 1,
+        "reason": "Current sole authority for harness local patches (since 2026-10-01). Outside the seed filter (root entrypoints, docs/, backend/docs/, architecture/, tracked AGENTS.md/CLAUDE.md), therefore excluded from the 360-path inventory and registered under supplements with its fingerprint.",
+        "paths": [
+          "UPSTREAM_PATCH_LEDGER.md"
+        ]
+      },
+      {
+        "id": "github-agent-config-and-templates",
+        "count": 2,
+        "reason": "Repository automation config and PR template. .github/copilot-instructions.md is additionally covered by the import-baseline fingerprint record.",
+        "paths": [
+          ".github/copilot-instructions.md",
+          ".github/pull_request_template.md"
+        ]
+      },
+      {
+        "id": "root-community-and-release-docs",
+        "count": 10,
+        "reason": "Community, release, and localized README entrypoints (CHANGELOG, CODE_OF_CONDUCT, Install, README_zh/fr/ja/ru, RELEASING, SECURITY). Release-facing material rather than engineering rules or references.",
+        "paths": [
+          "CHANGELOG.md",
+          "CHANGELOG_zh.md",
+          "CODE_OF_CONDUCT.md",
+          "Install.md",
+          "README_fr.md",
+          "README_ja.md",
+          "README_ru.md",
+          "README_zh.md",
+          "RELEASING.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "id": "component-and-ops-docs",
+        "count": 23,
+        "reason": "Component READMEs and ops/support docs outside the seed filter. Seven of them are reachable from inventoried current documents and are registered under supplements as reference-closure additions; the rest stay plain exclusions.",
+        "paths": [
+          "backend/CONTRIBUTING.md",
+          "backend/README.md",
+          "backend/README_zh.md",
+          "backend/app/agentplatform/community/code_interpreter/README.md",
+          "backend/app/agentplatform/community/data_analyzer/README.md",
+          "backend/app/agentplatform/community/doc_reader/README.md",
+          "backend/app/agentplatform/workflows/README.md",
+          "backend/samples/other_agent_demo/README.md",
+          "backend/scripts/benchmark/context_snapshot/README.md",
+          "backend/scripts/benchmark/deermem_eviction/README.md",
+          "backend/test-baseline.md",
+          "backend/tests/factories/README.md",
+          "backend/tests/monocle/README.md",
+          "deploy/helm/deer-flow/README.md",
+          "docker/lark-cli-broker/README.md",
+          "docker/lark-cli-init/README.md",
+          "docker/provisioner/README.md",
+          "examples/deerflow-extension-example/README.md",
+          "frontend/README.md",
+          "frontend/src/components/workspace/settings/about.md",
+          "plans/subagent-card-runtime-metadata.md",
+          "scripts/README-intranet.md",
+          "workflows/README.md"
+        ]
+      }
+    ]
+  },
+  "protected_files": {
+    "count": 67,
+    "source": "dev-log/governance-baseline.json protected_sha256",
+    "outside_inventory_count": 6,
+    "rule": "bodies are preserved; applicability is described here, never by rewriting content; the checker compares these fingerprints",
+    "fingerprints": [
+      {
+        "path": "backend/packages/harness/deerflow/AGENTS.md",
+        "sha256": "bf960bf1b1cc403d2d0d79b88f0d00045fc940a50cbd4cf16f745646ea0d5bc2"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/CLAUDE.md",
+        "sha256": "bf960bf1b1cc403d2d0d79b88f0d00045fc940a50cbd4cf16f745646ea0d5bc2"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/AGENTS.md",
+        "sha256": "603e5e58bba15de0538a6dc1b52e511ca1efb264a1cd8ec66e775bfc3e110f2e"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/CLAUDE.md",
+        "sha256": "603e5e58bba15de0538a6dc1b52e511ca1efb264a1cd8ec66e775bfc3e110f2e"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/AGENTS.md",
+        "sha256": "21d092c195265824a27a0c040564abaa1b9e4c28e3ba6b8d68d8d1c4c4dc6906"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/CLAUDE.md",
+        "sha256": "21d092c195265824a27a0c040564abaa1b9e4c28e3ba6b8d68d8d1c4c4dc6906"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/backends/README.md",
+        "sha256": "100a8f357fb9f2e7a67a7a88920d693b0dee164b16d8cfb689bef6cda554252c"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/backends/honcho/README.md",
+        "sha256": "5d6251ad2a494a153de7a56cf2de95e9971aba409c35018a692b29f1153863fc"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/backends/mem0/README.md",
+        "sha256": "0ea66f63e32bad39f76c276fbbe3c05306fc71c4e9c6bc6e718218e0629904e4"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/middlewares/AGENTS.md",
+        "sha256": "e64a47f710ec4839674b38db45820c820a1f53f3ca71d94df357a4316cd85cd9"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/middlewares/CLAUDE.md",
+        "sha256": "e64a47f710ec4839674b38db45820c820a1f53f3ca71d94df357a4316cd85cd9"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/boxlite/README.md",
+        "sha256": "b3696475b579b390afe04ecb0ca0a92f93c58e209ecef7b3f86dd90dae10e3c8"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/opensandbox/README.md",
+        "sha256": "073819924e003126465118f9f4d80f75e9b62efc616f6e49d66e9d12ccde1ef5"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/tavily/AGENTS.md",
+        "sha256": "7c4b136d9aa64fdb60a1aacf4a156fbdcf17228353f10a92c020b707b51b2c3c"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/tavily/CLAUDE.md",
+        "sha256": "7c4b136d9aa64fdb60a1aacf4a156fbdcf17228353f10a92c020b707b51b2c3c"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/tenki/README.md",
+        "sha256": "02173475158010899fcee578d69d9ee4f87ef6b68d84a34078007a9737de091b"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/config/AGENTS.md",
+        "sha256": "57de0bd0a820972aa594d51a4c817f2dd200a755c324038c655c21097d358fbe"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/config/CLAUDE.md",
+        "sha256": "57de0bd0a820972aa594d51a4c817f2dd200a755c324038c655c21097d358fbe"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/extensions/AGENTS.md",
+        "sha256": "0a4f9cea989d5ce5a5dc4a25a729927915d82bcf6e43f97ea8de5ee0751cfae6"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/extensions/CLAUDE.md",
+        "sha256": "0a4f9cea989d5ce5a5dc4a25a729927915d82bcf6e43f97ea8de5ee0751cfae6"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/mcp/AGENTS.md",
+        "sha256": "7cb7244b1d1ddc7718098d279b12162180f599f57af6f0e41dcf5609fb853ccf"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/mcp/CLAUDE.md",
+        "sha256": "7cb7244b1d1ddc7718098d279b12162180f599f57af6f0e41dcf5609fb853ccf"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/models/AGENTS.md",
+        "sha256": "c3d6ac66dbd8e43fe6b6533f4a0536eb212dec2c4bb9daefde6c3fa54f8b09e8"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/models/CLAUDE.md",
+        "sha256": "c3d6ac66dbd8e43fe6b6533f4a0536eb212dec2c4bb9daefde6c3fa54f8b09e8"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/migrations/AGENTS.md",
+        "sha256": "35accbe415a541dda56dea407a97b8351449b2c2e78d1bbce360274e2c58ad30"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/migrations/CLAUDE.md",
+        "sha256": "35accbe415a541dda56dea407a97b8351449b2c2e78d1bbce360274e2c58ad30"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/user/AGENTS.md",
+        "sha256": "8d11658ce03ad1368ac0de8ab789df99b3b67679984f8359df164dfd1c44b602"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/user/CLAUDE.md",
+        "sha256": "8d11658ce03ad1368ac0de8ab789df99b3b67679984f8359df164dfd1c44b602"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/reflection/AGENTS.md",
+        "sha256": "43eb08b231dba8977321ff48353a5415029afbbd2deb266f59b9d2abb1fe5f83"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/reflection/CLAUDE.md",
+        "sha256": "43eb08b231dba8977321ff48353a5415029afbbd2deb266f59b9d2abb1fe5f83"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/runtime/AGENTS.md",
+        "sha256": "29519149425a388d76a0c665e50f4dd5c451360eaec5448f2598804584ec9ddd"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/runtime/CLAUDE.md",
+        "sha256": "29519149425a388d76a0c665e50f4dd5c451360eaec5448f2598804584ec9ddd"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/sandbox/AGENTS.md",
+        "sha256": "b4bff8d1c3c86ffe3c8d53e4649131784c194dac4f3636af02bdb4d4c1cdcceb"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/sandbox/CLAUDE.md",
+        "sha256": "b4bff8d1c3c86ffe3c8d53e4649131784c194dac4f3636af02bdb4d4c1cdcceb"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/skills/AGENTS.md",
+        "sha256": "3581f608112b201e61dee784f157b4534f9617b209753f9227a142ca5b2160f3"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/skills/CLAUDE.md",
+        "sha256": "3581f608112b201e61dee784f157b4534f9617b209753f9227a142ca5b2160f3"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/subagents/AGENTS.md",
+        "sha256": "ec966773ed0381a715509d33809de7ea0f9d7025e317d10984124cf0bdf5b5c4"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/subagents/CLAUDE.md",
+        "sha256": "ec966773ed0381a715509d33809de7ea0f9d7025e317d10984124cf0bdf5b5c4"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tools/AGENTS.md",
+        "sha256": "17d8953c00d530e18ad916fff11b8bee8cb4c58990196b49ea54e7579317fb0f"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tools/CLAUDE.md",
+        "sha256": "17d8953c00d530e18ad916fff11b8bee8cb4c58990196b49ea54e7579317fb0f"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tracing/AGENTS.md",
+        "sha256": "85964dc56e55bf6a4a8e2ed3b151ff53f1ebb8a0d65afcc8de1d9fa5bf9dee14"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tracing/CLAUDE.md",
+        "sha256": "85964dc56e55bf6a4a8e2ed3b151ff53f1ebb8a0d65afcc8de1d9fa5bf9dee14"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tui/AGENTS.md",
+        "sha256": "2d4a33d6c3bbd0b34b714564c7e52077ad9845ebcfc09fe0565c5593495ba12a"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tui/CLAUDE.md",
+        "sha256": "2d4a33d6c3bbd0b34b714564c7e52077ad9845ebcfc09fe0565c5593495ba12a"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/utils/AGENTS.md",
+        "sha256": "db4ea1813659b2a6fb9b6a325f6c34e8db3f2c9d1fb895f42005568814dd8229"
+      },
+      {
+        "path": "backend/packages/harness/deerflow/utils/CLAUDE.md",
+        "sha256": "db4ea1813659b2a6fb9b6a325f6c34e8db3f2c9d1fb895f42005568814dd8229"
+      },
+      {
+        "path": "docs/ARCHITECTURE.md",
+        "sha256": "10d2ff251e638598251456f67876af1f72a28d385132472963e20edcaec4de9b"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/AUTHORIZATION_ACCEPTANCE_REPORT.md",
+        "sha256": "537c3eb00e8086d25720144a6fa30aa39204f61d6edfe07940334acff5f315b9"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/BASELINE_REPORT.md",
+        "sha256": "10ca2838ee80882f54e387314cd09b332a473906474af0e01de9774edde51d32"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/CONFLICT_LEDGER.md",
+        "sha256": "bc828527af91e0828949d17e56df30ca0b30d61c55b53a23259fad163fdd9ad4"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/DoD_CHECKLIST.md",
+        "sha256": "2f48817fbdc9a58b8b58208935785299d5a40b357a009ce5e3510fd013332476"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/EXTERNAL_ACCEPTANCE_HANDOFF.md",
+        "sha256": "46c578da0346d3c735fa52fbcacddb4095f1b8c529da37aa38cb6505190fb17b"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/FEATURE_ADOPTION_MATRIX.md",
+        "sha256": "0a750e33fc4ca086138cfdf4c2d549979995812e832ee830548c2e4a1e295d8d"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/FRONTEND_MERGE_PRINCIPLES.md",
+        "sha256": "366bea615378487e0522ead7f398d6c466a50e057224c2eac941c8a9030e20ae"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/FRONTEND_UX_ADOPTION_DECISIONS.md",
+        "sha256": "dc14f06b87d22cdd5cfdc899f22da37c46318f2ae7edd10bdb7de555e314a7c1"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/MIGRATION_ACCEPTANCE_REPORT.md",
+        "sha256": "a2799a8ad4a82ef7d7489f3cae7931eaef771e5a179f677d84a00a2b2f56c7d7"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/NETWORK_EGRESS_REPORT.md",
+        "sha256": "8f96b3a409e48171d55e3fbb3a7ace44c6113d51f9f0f497b78155c025b58963"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/PATH_POLICY.md",
+        "sha256": "9b5c48db7bca27fb5ea6462bc630dd2805f4419c3352a2edf0409aa3177af532"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/PR_MATERIALS.md",
+        "sha256": "3881b4a83d76cd7493b09c9690341af9e7526af495b46d2de62f8fd097bd0779"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/SUBAGENT_ACCEPTANCE_REPORT.md",
+        "sha256": "bac720c47938104861ad515e83c75b431b720c1fa7ad8c8f3586b1b0f460de17"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md",
+        "sha256": "049a100e25781dbd7c483d63021e4a71d33b6d3016c494dfcb5b31fddcf41d45"
+      },
+      {
+        "path": "docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_PATCH_LEDGER.md",
+        "sha256": "629ffa792e5a021e489148d47c738273c54c8971aaa49cee7c886effc9a83d33"
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/CONFLICT_LEDGER.md",
+        "sha256": "8111012e174e231f8be3d819616243837de0ab860bdb483ded4565f224d2ab52"
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/DoD_CHECKLIST.md",
+        "sha256": "a7f0220723b8e6463a9da6ff7902f41c4d273ac058c7ffa8bd87eaf3e7b3a5fd"
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/PATH_POLICY.md",
+        "sha256": "9b5c48db7bca27fb5ea6462bc630dd2805f4419c3352a2edf0409aa3177af532"
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/PR_MATERIALS.md",
+        "sha256": "149b5d37fbe3f057b53592a164a482b31d02a61bf3018364860a43e0f127a3fc"
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/UPSTREAM_LOCK.md",
+        "sha256": "0c58f156c3ebe3190dbccba9f91eb88c92bd13d5bf778b873f2b0afffbeb07be"
+      }
+    ]
+  },
+  "guidance": {
+    "pair_count": 28,
+    "definition": "28 AGENTS.md rule files, each with a generated CLAUDE.md mirror (56 inventory rows); synchronize with scripts/sync_agent_guidance.py --write then --check",
+    "bytes": [
+      {
+        "path": "AGENTS.md",
+        "bytes": 16363
+      },
+      {
+        "path": "backend/AGENTS.md",
+        "bytes": 2085
+      },
+      {
+        "path": "backend/app/channels/AGENTS.md",
+        "bytes": 42470
+      },
+      {
+        "path": "backend/app/gateway/AGENTS.md",
+        "bytes": 43605
+      },
+      {
+        "path": "backend/packages/harness/deerflow/AGENTS.md",
+        "bytes": 12682
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/AGENTS.md",
+        "bytes": 5635
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/memory/AGENTS.md",
+        "bytes": 14573
+      },
+      {
+        "path": "backend/packages/harness/deerflow/agents/middlewares/AGENTS.md",
+        "bytes": 36319
+      },
+      {
+        "path": "backend/packages/harness/deerflow/community/tavily/AGENTS.md",
+        "bytes": 331
+      },
+      {
+        "path": "backend/packages/harness/deerflow/config/AGENTS.md",
+        "bytes": 12495
+      },
+      {
+        "path": "backend/packages/harness/deerflow/extensions/AGENTS.md",
+        "bytes": 29425
+      },
+      {
+        "path": "backend/packages/harness/deerflow/mcp/AGENTS.md",
+        "bytes": 25542
+      },
+      {
+        "path": "backend/packages/harness/deerflow/models/AGENTS.md",
+        "bytes": 5103
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/migrations/AGENTS.md",
+        "bytes": 21481
+      },
+      {
+        "path": "backend/packages/harness/deerflow/persistence/user/AGENTS.md",
+        "bytes": 706
+      },
+      {
+        "path": "backend/packages/harness/deerflow/reflection/AGENTS.md",
+        "bytes": 247
+      },
+      {
+        "path": "backend/packages/harness/deerflow/runtime/AGENTS.md",
+        "bytes": 42270
+      },
+      {
+        "path": "backend/packages/harness/deerflow/sandbox/AGENTS.md",
+        "bytes": 41326
+      },
+      {
+        "path": "backend/packages/harness/deerflow/skills/AGENTS.md",
+        "bytes": 27572
+      },
+      {
+        "path": "backend/packages/harness/deerflow/subagents/AGENTS.md",
+        "bytes": 40956
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tools/AGENTS.md",
+        "bytes": 12093
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tracing/AGENTS.md",
+        "bytes": 5766
+      },
+      {
+        "path": "backend/packages/harness/deerflow/tui/AGENTS.md",
+        "bytes": 3376
+      },
+      {
+        "path": "backend/packages/harness/deerflow/utils/AGENTS.md",
+        "bytes": 776
+      },
+      {
+        "path": "backend/tests/AGENTS.md",
+        "bytes": 958
+      },
+      {
+        "path": "frontend/AGENTS.md",
+        "bytes": 3271
+      },
+      {
+        "path": "frontend/src/AGENTS.md",
+        "bytes": 39340
+      },
+      {
+        "path": "scripts/AGENTS.md",
+        "bytes": 17999
+      }
+    ]
+  },
+  "import_baseline": {
+    "count": 10,
+    "source": "dev-log/import-baseline.json",
+    "purpose": "hashes of the ten files imported unchanged into the isolated baseline worktree",
+    "fingerprints": [
+      {
+        "path": ".github/copilot-instructions.md",
+        "sha256": "1f762353dd61965def79a20dc3af70efb1190080a8380da8a659dfb1a524be86"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "ca9eccf86dffd2affed4279a3b25dc6082fb3a9519a149d6656414465036cc1c"
+      },
+      {
+        "path": "CLAUDE.md",
+        "sha256": "ca9eccf86dffd2affed4279a3b25dc6082fb3a9519a149d6656414465036cc1c"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "sha256": "3bf1e0d254cf11c6db2b9308aedd2707ef6b51be8b047e00c977cd938276e02c"
+      },
+      {
+        "path": "docs/README.md",
+        "sha256": "978fac893a8b9ac5be95f8b82a218f90890cf01f0cdfe29359332ae0574537fd"
+      },
+      {
+        "path": "docs/agents/local-ops-notes.md",
+        "sha256": "e75c02762411623d05bc70765d0abc2a0351e52a0e80fd6cb136b89c3ee3ee47"
+      },
+      {
+        "path": "docs/agents/test-accounts.md",
+        "sha256": "49c510f178b06f59e447d36248cc009fc0314fd09d5d2d24ab7d1e94affb29c5"
+      },
+      {
+        "path": "docs/specs/2026-10-04-doc-governance-dual-track-spec.md",
+        "sha256": "89bc2445290db0b6adc3845e2d843da17c197267ca93e6d24a7416e5a810b67e"
+      },
+      {
+        "path": "frontend/AGENTS.md",
+        "sha256": "81e19d9143f982615d25724b94496f5bc7b744abd0d545ddb0346653624c962a"
+      },
+      {
+        "path": "frontend/CLAUDE.md",
+        "sha256": "81e19d9143f982615d25724b94496f5bc7b744abd0d545ddb0346653624c962a"
+      }
+    ]
+  },
+  "authority_topics": [
+    {
+      "topic": "public-user-and-product-docs",
+      "scope": "end-user and public-developer product documentation",
+      "authorities": [
+        "/zh/docs",
+        "/en/docs"
+      ],
+      "declared_by": "docs/README.md current-source table",
+      "note": "docs-site content (.mdx/.ts under frontend/src/content) and public manual bodies are outside this engineering inventory's body-review scope"
+    },
+    {
+      "topic": "test-coverage-and-migration",
+      "scope": "capability-to-test-layer mapping; test move/delete acceptance",
+      "authorities": [
+        "docs/testing/coverage-matrix.md",
+        "docs/testing/test-migration-ledger.md"
+      ],
+      "declared_by": "docs/README.md current-source table; docs/testing/README.md"
+    },
+    {
+      "topic": "test-lane-contract",
+      "scope": "lane selection, aggregation, and handoff rules",
+      "authorities": [
+        "docs/testing/test-lane-runbook.md"
+      ],
+      "declared_by": "docs/README.md current-source table; root AGENTS.md"
+    },
+    {
+      "topic": "test-inventory-record",
+      "scope": "discovered test files, nodes, execution ownership, status",
+      "authorities": [
+        "scripts/test_inventory.py"
+      ],
+      "declared_by": "root AGENTS.md",
+      "note": "executable record rather than Markdown; outside the *.md inventory"
+    },
+    {
+      "topic": "permission-model",
+      "scope": "authorization model and permission matrix",
+      "authorities": [
+        "docs/permission-model-redesign.md",
+        "docs/permission-matrix.md"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "offline-product-line-governance",
+      "scope": "branch governance: mirror updates, product integration, compatibility validation",
+      "authorities": [
+        "docs/offline-product-line-governance-plan.md"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "offline-deployment-runbook",
+      "scope": "intranet offline deployment operations",
+      "authorities": [
+        "docs/deployment/禁公网内网离线部署作业指导书.md"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "architecture-baseline",
+      "scope": "system boundaries and execution relationships",
+      "authorities": [
+        "docs/architecture/README.md",
+        "docs/architecture/overview.md",
+        "backend/docs/README.md"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "domain-vocabulary",
+      "scope": "engineering terminology authority and the domain modeling guide",
+      "authorities": [
+        "CONTEXT.md",
+        "docs/agents/domain.md"
+      ],
+      "declared_by": "docs/README.md current-source table; CONTEXT.md terminology header",
+      "note": "the UI term table docs/plans/2026-08-26-term-glossary.md is scope-limited to interface display-language copy and is not an engineering-vocabulary authority"
+    },
+    {
+      "topic": "agent-workflow-routing",
+      "scope": "skill routing precedence; local spec/ticket tracker contract",
+      "authorities": [
+        "docs/agents/skill-routing.md",
+        "docs/agents/issue-tracker.md"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "pending-engineering-specs",
+      "scope": "to-spec outputs awaiting implementation (ready-for-agent)",
+      "authorities": [
+        "docs/specs/"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "architecture-decisions",
+      "scope": "ADR index and dated decisions; status enum and supersession",
+      "authorities": [
+        "docs/decisions/README.md"
+      ],
+      "declared_by": "docs/README.md current-source table; docs/decisions/README.md"
+    },
+    {
+      "topic": "upstream-compat-baseline",
+      "scope": "upstream-implementation: frozen lock record and frozen patch ledger for deerflow-main-0f7d8709",
+      "authorities": [
+        "docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md",
+        "docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_PATCH_LEDGER.md"
+      ],
+      "declared_by": "docs/README.md current-source table",
+      "note": "frozen historical archive since 2026-10-01; protected-baseline members of the inventory"
+    },
+    {
+      "topic": "harness-local-patches",
+      "scope": "upstream-implementation: current harness patch registration and removal conditions",
+      "authorities": [
+        "UPSTREAM_PATCH_LEDGER.md"
+      ],
+      "declared_by": "docs/README.md current-source table; UPSTREAM_PATCH_LEDGER.md header",
+      "note": "root-level file; excluded from the 360 seed and registered under supplements; scope-distinct from offline-product-line-governance (product governance) and from the frozen upgrade ledger"
+    },
+    {
+      "topic": "local-runtime-patches",
+      "scope": "product control-plane (backend/app, local-runtime) patch registration",
+      "authorities": [
+        "docs/local-runtime/PATCH_LEDGER.md"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "current-work-backlog",
+      "scope": "unfinished engineering work list",
+      "authorities": [
+        "docs/backlog.md"
+      ],
+      "declared_by": "docs/README.md current-source table"
+    }
+  ],
+  "supplements": {
+    "count": 10,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 3 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed)",
+    "files": [
+      {
+        "path": "UPSTREAM_PATCH_LEDGER.md",
+        "registration": "reference-closure",
+        "sha256": "9c58ce8d6b3c48936ab0ec4fd5125cf10dde1501258c9cf4724c70e340ad5269",
+        "lines": 413,
+        "classification": "inventory-only-supplement",
+        "protected": false,
+        "role": "sole current authority for harness local patches",
+        "referenced_by": "docs/README.md, docs/offline-product-line-governance-plan.md, docs/testing/test-migration-ledger.md, root AGENTS.md"
+      },
+      {
+        "path": "backend/README.md",
+        "registration": "reference-closure",
+        "sha256": "aa1ea287917f471900249818770d986785c3cdac8c61aeba7e800eacab158277",
+        "lines": 582,
+        "classification": "inventory-only-supplement",
+        "protected": false,
+        "role": "backend component README",
+        "referenced_by": "README.md, CONTRIBUTING.md"
+      },
+      {
+        "path": "deploy/helm/deer-flow/README.md",
+        "registration": "reference-closure",
+        "sha256": "93ee1046f7c28331abec5283103857aad582eeae69ed561bbd35668b4c2892c9",
+        "lines": 460,
+        "classification": "inventory-only-supplement",
+        "protected": false,
+        "role": "helm deployment README",
+        "referenced_by": "docs/ARCHITECTURE.md"
+      },
+      {
+        "path": "docker/provisioner/README.md",
+        "registration": "reference-closure",
+        "sha256": "cc2bfdde4393aba24946cd6c67d5a7775fba58e6f9f23a818c3256ad1a237a8f",
+        "lines": 360,
+        "classification": "inventory-only-supplement",
+        "protected": false,
+        "role": "provisioner deployment README",
+        "referenced_by": "backend/docs/CONFIGURATION.md"
+      },
+      {
+        "path": "docs/agents/task-routing.md",
+        "registration": "post-baseline-addition",
+        "sha256": "95cf0e70cb8f2c7e8ffdb234546f73b0677030b49794f4e52f83edb31cd812f4",
+        "lines": 88,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "task-domain routing page referenced by the root AGENTS.md task map and docs/README.md current-source table",
+        "referenced_by": "AGENTS.md, docs/README.md, docs/project-state.md"
+      },
+      {
+        "path": "docs/governance/document-governance.md",
+        "registration": "post-baseline-addition",
+        "sha256": "10652bcde40d5cf2234a7f484daa4f95adaf862edb1783c971e1907e7133a749",
+        "lines": 58,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "policy schema, consumption, and reproduction contract for this policy file (created 2026-10-04 with the governance rollout)",
+        "referenced_by": "docs/specs/2026-10-04-doc-governance-dual-track-spec.md (maintainer-facing contract, conceptual); companion doc of document-policy.json"
+      },
+      {
+        "path": "docs/project-state.md",
+        "registration": "post-baseline-addition",
+        "sha256": "22912431179c7c8385dc26f08f6692d41932280672de4a7fc1dd674d6e8dd472",
+        "lines": 109,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "candidate-scoped seven-domain implementation/integration/verification state summary referenced by the decisions index and domain guides",
+        "referenced_by": "docs/decisions/README.md, docs/agents/domain.md, architecture plans"
+      },
+      {
+        "path": "frontend/README.md",
+        "registration": "reference-closure",
+        "sha256": "1c19ba008039db4ef383508fd2b0df592bc6887fe9fbc3be2c4f788bcbf9603c",
+        "lines": 159,
+        "classification": "inventory-only-supplement",
+        "protected": false,
+        "role": "frontend component README",
+        "referenced_by": "docs/development/learning-roadmap.md"
+      },
+      {
+        "path": "scripts/README-intranet.md",
+        "registration": "reference-closure",
+        "sha256": "20f3fe08d4a44ef661c1980874776506796c33642bdf1406ff44e50399bf88c7",
+        "lines": 289,
+        "classification": "inventory-only-supplement",
+        "protected": false,
+        "role": "intranet scripts ops README",
+        "referenced_by": "docs/document-retention-assessment.md"
+      },
+      {
+        "path": "workflows/README.md",
+        "registration": "reference-closure",
+        "sha256": "526d6937e79734ee4a63ba85ec657811280a9e3718c583acfea5aee998ebae45",
+        "lines": 76,
+        "classification": "inventory-only-supplement",
+        "protected": false,
+        "role": "workflow assets README",
+        "referenced_by": "docs/document-retention-assessment.md"
+      }
+    ]
+  },
+  "evaluation_fixture": {
+    "baseline": "867f67096",
+    "task_classes": 8,
+    "runs_per_task": 2,
+    "sessions_total": 16,
+    "orientation_limit_seconds": 300,
+    "task_prompts": {
+      "ui": "修改普通前端显示组件，保留项目约定。",
+      "chat": "修复聊天提交重复或流式状态错误，定位责任边界和验证。",
+      "knowledge": "修改知识库列表行为，确定规范 API、身份和可见性约束。",
+      "permissions": "调整资源权限，确定授权、治理真源和测试要求。",
+      "runtime": "修改 Harness 运行时取消或恢复行为，确定扩展及兼容约束。",
+      "tests": "新增或移动测试文件，确定归属、清单、验收与证据要求。",
+      "upstream": "处理上游同步与本地补丁，确定镜像、产品集成和兼容验证边界。",
+      "history": "追溯 Agent 命名及知识治理历史决策，判断哪些约束仍适用。"
+    },
+    "protocol": [
+      "two fresh independent sessions per task class on the same model/tool setup",
+      "each session starts without conversation history and reads only repository guidance available at the selected candidate",
+      "reading starts at the candidate's root AGENTS.md",
+      "orientation limit 300 seconds per session before the answer must be recorded",
+      "evaluators receive only the candidate revision and the task prompt"
+    ],
+    "recorded_metrics": [
+      "elapsed_seconds",
+      "unique_bytes_read",
+      "historical_authority_misuse",
+      "six_answer_fields"
+    ],
+    "answer_fields": [
+      "entry",
+      "constraints",
+      "authorities",
+      "relevant_decisions",
+      "validation",
+      "unknowns"
+    ],
+    "baseline_run": {
+      "status": "pending",
+      "detail": "the 16 baseline session records live in the coordinator-owned gitignored dev-log and are not yet scored; no measurement, threshold, or correctness claim is made in this tracked file"
+    },
+    "restricted_material": "scoring rubric and thresholds are coordinator-owned and deliberately absent from this tracked file; evaluation agents must not read them"
+  }
+}

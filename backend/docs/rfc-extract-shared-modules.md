@@ -1,6 +1,15 @@
+---
+id: backend-docs-rfc-extract-shared-modules
+kind: plan
+status: archived
+owner: repository maintainers
+scope: archived design RFC (proposed 2026-07) for extracting the shared skill installer and upload manager into the harness; applicable to the ideer.* pre-rename candidate line
+archived-reason: delivered as proposed — deerflow.skills.installer (SkillAlreadyExistsError, install_skill_from_archive) and deerflow.uploads.manager exist and are used by both Gateway and Client; module names renamed ideer.* → deerflow.* at delivery; preserved as the design record
+---
+
 # RFC: Extract Shared Skill Installer and Upload Manager into Harness
 
-> status: proposed; last-reviewed: 2026-07-15
+> 历史记录（2026-10-04 归档）：原文于 2026-07-15 提出（`status: proposed; last-reviewed: 2026-07-15`），按提出时的 `ideer.*` 模块名撰写，正文保持原样。该方案已按设计交付：共享模块现为 `packages/harness/deerflow/skills/installer.py`（`SkillAlreadyExistsError`、`install_skill_from_archive`）与 `packages/harness/deerflow/uploads/manager.py`（`ensure_uploads_dir`、`normalize_filename`、`list_files_in_dir`、`delete_file_safe` 等），Gateway 与 Client 均已改为调用共享实现。
 
 ## 1. Problem
 

@@ -1,3 +1,13 @@
+---
+id: backend-docs-sandbox-memory-profiling
+kind: reference
+status: current
+owner: repository maintainers
+scope: repeatable sandbox memory measurement baseline and candidate-runtime evidence matrix
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Sandbox Memory Profiling
 
 This guide records a repeatable baseline before changing the sandbox runtime.

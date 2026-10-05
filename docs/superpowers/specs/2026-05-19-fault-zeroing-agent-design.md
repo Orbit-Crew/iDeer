@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-05-19-fault-zeroing-agent-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-05-19 PoC design for a fault-zeroing agent built from a custom agent identity plus a fault-zeroing Skill and five custom subagents reading file-based knowledge sources to produce fault tree, bottom-event assessment, and Markdown zeroing-report artifacts
+archived-reason: the PoC shape was not built — skills/custom/fault-zeroing does not exist in this candidate (skills/custom/ is empty); the fault-zeroing capability was later delivered through the workflow-engine implementation under backend/app/agentplatform/fault_zeroing/ (kernel/contract/intake/policy), the line recorded by docs/归零智能体工作流引擎重构设计方案.md and the 2026-08 fault-zeroing plans, so this text is the pre-implementation design state
+---
+
 # 归零排故智能体 PoC 设计
 
 ## 背景

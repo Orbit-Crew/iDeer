@@ -1,9 +1,20 @@
+---
+id: docs-testing-current-branches-closeout-report
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: multi-branch closeout evidence for backend candidate develop@4f256b6ab7a45134fa3cd5b46a123322e1374a01 (records dated 2026-09-21 to 2026-09-24) — the 16/16 Gate 7 matrix pass, amended Gate 8 artifact, M9 production receipts, lane tables, integration record, and the historical task board
+archived-reason: candidate-scoped closeout evidence (the filename's "current" refers to the 2026-09-24 candidate, not a standing status); the v2.1.0 upstream rejoin (20261001_rejoin_upstream_line, 2026-10-01) evolved beyond it — its lane numbers and gate results belong to that candidate and are not current verification
+---
+
 # Current branches closeout report
 
-Date: 2026-09-24
-Updated: 2026-09-24
-Baseline: `develop@ca65c5770`  
-Candidate code commit: `develop@4f256b6ab7a45134fa3cd5b46a123322e1374a01`, including the canonical MCP argument and Run Evidence receipt fix plus the Gate 7 runner corrections.
+> status: archived（后端候选 `4f256b6ab` 的收口证据，记录于 2026-09-21 至 2026-09-24；文件名中的 "current" 指该 2026-09-24 候选，非现行状态）。2026-10-01 上游 v2.1.0 合流后的候选已在其上继续演进；本文 lane 数字与 gate 结论为该候选时期结果，不代表当前验证状态。正文按历史记录保留。
+>
+> Date: 2026-09-24
+> Updated: 2026-09-24
+> Baseline: `develop@ca65c5770`  
+> Candidate code commit: `develop@4f256b6ab7a45134fa3cd5b46a123322e1374a01`, including the canonical MCP argument and Run Evidence receipt fix plus the Gate 7 runner corrections.
 
 Status: **Linux Gate 7, Gate 8, and M9 acceptance checks passed after targeted Gate 8 snapshot revalidation**. Current scope is Gate 7, Gate 8, M9, and Linux delivery verification; fault-zeroing cases are out of scope per the user's 2026-09-24 direction. `4f256b6ab7a45134fa3cd5b46a123322e1374a01` remains the frozen backend candidate. Frontend stream-mode request normalization was updated to match the Gateway contract; no backend runtime code or database schema changed. Other current uncommitted changes include real-E2E/lane fixes and internal Gate 8 acceptance tooling. The backend candidate has production M9 evidence for stdio, HTTP (recovered retry), deny, revoke, and timeout paths. Windows 7 is outside this delivery target; modern Windows native support remains a separate platform validation item. Gate 7 passed on the current candidate with 16/16 rows, strict artifact validation, live source-chain validation, and live provider retrieval. Gate 8's original artifact retained two failed Codex Runs and now fails the strengthened validator; the amended same-commit artifact replaces only that row with an independent isolated real-provider snapshot run. Both new Codex Runs succeeded, and their persisted old/new revision bindings were checked after the pointer switch. The approved temporary public KB grant in the earlier RBAC scenario was immediately revoked. Provider timeout evidence remains an archived zero-result provider error, not a partial Agent Run receipt.
 

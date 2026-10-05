@@ -1,4 +1,14 @@
+---
+id: docs-plans-2026-08-26-novice-onboarding-optimization-plan
+kind: plan
+status: draft
+owner: repository maintainers
+scope: three-phase proposal for first-time-user onboarding — phase 1 workbench home (recommendation cards, agent showcase, recent chats), phase 2 plain-language execution progress with collapsed intermediates, phase 3 terminology humanization; not yet scheduled or implemented as written
+---
+
 # iDeer 小白用户上手体验优化实施方案
+
+> status: draft（已评审、待排期；按原文尚未实施）。2026-10-04 核对：第一期 `frontend/src/components/workspace/workbench/` 目录与第二期 `process-progress.tsx`、`stage-mapping.ts` 均不存在；第三期术语文案已由 [2026-08-26-term-glossary.md](2026-08-26-term-glossary.md) 单独执行。首页方向其后已由已实施的 `2026-08-30-ideer-workbench-visual-system-spec.md` 与场景绑定规格（`frontend/src/core/scenarios/` 静态配置）以不同方案交付，本计划若重启需按现行首页结构重排第一期文件清单。
 
 - 日期：2026-08-26
 - 状态：已评审（grill-me 访谈收敛），待排期

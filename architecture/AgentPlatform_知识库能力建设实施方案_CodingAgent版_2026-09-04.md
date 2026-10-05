@@ -1,4 +1,16 @@
+---
+id: architecture-knowledge-plan
+kind: plan
+status: current
+owner: repository maintainers
+scope: 企业知识库能力建设实施方案——KnowledgeBase 第四类一等 Resource、双层真源、Knowledge Revision/Publish、Effective Knowledge Scope、Run Snapshot、Retrieval Receipt、Knowledge Center、Eval 与离线分发的执行设计与 Phase 0~10 / Gate 1~8 序列；总方案 M1~M5 里程碑的指定文档切片，Phase 0~8 已交付（Gate 1/4/5+6/7/8 验收记录在案），Phase 9 延后不排期，Phase 10 离线包完整验收未核实；现行契约权威见文首状态注记
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ ac84b11ba
+---
+
 # AgentPlatform 知识库能力建设实施方案（Coding Agent 版）
+
+> **状态**：current（执行中方案：Phase 0~8 已交付，Phase 9 延后不排期，Phase 10 部分落地）。2026-10-04 核对：本方案是[总方案](AgentPlatform_后续工作总方案_2026-09-08.md) M1~M5 任务卡的指定"文档切片"，仍为现行下位执行依据，不因阶段推进而归档。已交付证据：Phase 0 勘察产物在 `docs/knowledge/`（IMPLEMENTATION_INVENTORY / SCHEMA_PLAN / TEST_MATRIX 为各自候选时点的历史快照，现行架构描述见 [KNOWLEDGE_ARCHITECTURE.md](../docs/knowledge/KNOWLEDGE_ARCHITECTURE.md)）；Gate 1 / 4 / 5+6 / 7 / 8 验收记录见 [Gate 1 报告](../docs/testing/knowledge-gate1-acceptance-report.md)、[Gate 4 runbook](../docs/testing/knowledge-center-gate4-runbook.md)、[M4 Gate 5/6 验收](../docs/knowledge/M4_GATE_ACCEPTANCE.md)（候选 `feature/m4-knowledge-revisions`，2026-09-15，20/20）、[Gate 7 报告](../docs/testing/m5-gate7-acceptance-report.md)、[Gate 8 runbook](../docs/testing/knowledge-gate8-acceptance.md)——各报告的 lane 数字为其所属候选的历史结果，不代表当前候选验证状态，现行验证状态以[项目状态页](../docs/project-state.md)为准（当前记 not run at this candidate）。Phase 9（Knowledge Routing）按总方案"延后不排期"（本方案 §68 亦明确不提前复杂化）；Phase 10 离线分发已有 dev 栈（[docker/docker-compose-knowledge-dev.yaml](../docker/docker-compose-knowledge-dev.yaml)、`docker/ragflow/`），完整离线包（SBOM / SHA256 / air-gap 验收）状态未核实（unverified）。落点修正按总方案裁决 C3/C5 执行：企业模块在 [backend/app/agentplatform/knowledge/](../backend/app/agentplatform/knowledge/)、运行时适配层在 [backend/packages/agentplatform-extension/agentplatform_extension/knowledge/](../backend/packages/agentplatform-extension/agentplatform_extension/knowledge/)，而非 §19 的 `backend/app/knowledge/` 建议；§3 双层真源的现行权威是[知识双层真源决策](../docs/decisions/2026-09-08-knowledge-dual-source-of-truth.md)；§74 canonical API 以根 [AGENTS.md](../AGENTS.md) "Enterprise interfaces" 节为准。正文中的"当前/建议"表述保留制定时（2026-09-04）的设计状态，按原样保留。
 
 > **目标读者**：Coding Agent、项目维护者、架构评审者  
 > **制定日期**：2026-09-04  

@@ -21,6 +21,21 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: python3 scripts/check_agent_guidance.py --before "$BEFORE_SHA" --after "$HEAD_SHA"
 
+  document-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # Read-only, full-inventory check of the pushed candidate revision.
+      # The checker never repairs files; a non-zero exit fails the job.
+      - name: Validate document governance contracts
+        run: python3 scripts/check_documents.py --repo-root .
+
   lint:
     runs-on: ubuntu-latest
     steps:

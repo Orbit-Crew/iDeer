@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-06-29-community-browserless-web-capture
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-29 plan adding the opt-in community web_capture tool backed by Browserless /screenshot — capture_screenshot client, web_capture_tool with artifact-path Command updates, config/doctor/docs wiring, and client/tool tests
+archived-reason: implemented — `BrowserlessClient.capture_screenshot` (community/browserless/browserless_client.py), `web_capture_tool` (community/browserless/tools.py), backend/tests/test_browserless_client.py, the doctor web_capture checks, and the commented web_capture block in config.example.yaml all exist; the surrounding harness layout has since evolved past the plan's line-level references
+---
+
 # Community Browserless Web Capture Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:test-driven-development for code changes. Commit and push steps are intentionally deferred because this local branch must stay uncommitted until user review.

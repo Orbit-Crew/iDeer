@@ -1,3 +1,13 @@
+---
+id: backend-docs-apple-container
+kind: reference
+status: current
+owner: repository maintainers
+scope: Apple Container runtime detection and Docker fallback for the AIO sandbox on macOS
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Apple Container Support
 
 iDeer now supports Apple Container as the preferred container runtime on macOS, with automatic fallback to Docker.
@@ -48,7 +58,7 @@ container system start
 
 ### Automatic Detection
 
-The `AioSandboxProvider` automatically detects the available container runtime:
+The `LocalContainerBackend` used by `AioSandboxProvider` automatically detects the available container runtime:
 
 1. On macOS: Try `container --version`
    - Success → Use Apple Container
@@ -80,9 +90,9 @@ docker stop <id>     # Auto-removes due to --rm
 
 ### Implementation Details
 
-The implementation is in `backend/packages/harness/ideer/community/aio_sandbox/aio_sandbox_provider.py`:
+The implementation is in `backend/packages/harness/deerflow/community/aio_sandbox/local_backend.py` (`LocalContainerBackend`):
 
-- `_detect_container_runtime()`: Detects available runtime at startup
+- `_detect_runtime()`: Detects available runtime at startup (restricted `sandbox.network` modes always use Docker)
 - `_start_container()`: Uses detected runtime, skips Docker-specific options for Apple Container
 - `_stop_container()`: Uses appropriate stop command for the runtime
 
@@ -93,14 +103,14 @@ No configuration changes are needed! The system works automatically.
 However, you can verify the runtime in use by checking the logs:
 
 ```
-INFO:ideer.community.aio_sandbox.aio_sandbox_provider:Detected Apple Container: container version 0.1.0
-INFO:ideer.community.aio_sandbox.aio_sandbox_provider:Starting sandbox container using container: ...
+INFO:deerflow.community.aio_sandbox.local_backend:Detected Apple Container: container version 0.1.0
+INFO:deerflow.community.aio_sandbox.local_backend:Starting container using container: ...
 ```
 
 Or for Docker:
 ```
-INFO:ideer.community.aio_sandbox.aio_sandbox_provider:Apple Container not available, falling back to Docker
-INFO:ideer.community.aio_sandbox.aio_sandbox_provider:Starting sandbox container using docker: ...
+INFO:deerflow.community.aio_sandbox.local_backend:Apple Container not available, falling back to Docker
+INFO:deerflow.community.aio_sandbox.local_backend:Starting container using docker: ...
 ```
 
 ## Container Images
@@ -109,7 +119,7 @@ Both runtimes use OCI-compatible images. The default image works with both:
 
 ```yaml
 sandbox:
-  use: ideer.community.aio_sandbox:AioSandboxProvider
+  use: deerflow.community.aio_sandbox:AioSandboxProvider
   image: enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest  # Default image
 ```
 
@@ -176,14 +186,8 @@ Test the container runtime detection:
 
 ```bash
 cd backend
-python test_container_runtime.py
+uv run pytest tests/test_aio_sandbox_local_backend.py -k "apple or runtime"
 ```
-
-This will:
-1. Detect the available runtime
-2. Optionally start a test container
-3. Verify connectivity
-4. Clean up
 
 ## Troubleshooting
 

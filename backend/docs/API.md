@@ -1,3 +1,13 @@
+---
+id: backend-docs-api
+kind: reference
+status: current
+owner: repository maintainers
+scope: backend HTTP API reference: LangGraph-compatible threads/runs/streaming, resources, uploads, artifacts, projects/documents/trash, authentication, personal access tokens, and error conventions
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 00f4e3b85
+---
+
 # API Reference
 
 This document provides a complete reference for the iDeer backend APIs.
@@ -420,7 +430,7 @@ Content-Type: application/json
 
 ### Skills, Agents & Workflows (Resources)
 
-Skill、Agent、Workflow 统一由 Resource Catalog（canonical）管理，接口位于 `/api/resources`（旧 `/api/skills`、`/api/agents`、`/api/workflows` 路由已删除，返回 404）。
+Skill、Agent、Workflow 统一由 Resource Catalog（canonical）管理，接口位于 `/api/resources`（旧 `/api/agents`、`/api/workflows` 资源路由已删除，返回 404；`/api/skills` 路径仅保留上游能力页所需的自定义技能管理端点，如 `GET /api/skills` 列表与 `/api/skills/custom*`，不再是资源目录入口）。
 
 #### List Resources
 
@@ -482,7 +492,36 @@ POST /api/resources/import/agent
 Content-Type: multipart/form-data
 ```
 
-> 更多端点（workflow-draft、archive-draft、fork、archive、suspend、restore、transfer、visibility、dependencies、favorite、notifications）见 FastAPI 自述文档（`/docs`）与 `backend/app/gateway/routers/resources.py`。技能启用状态经 `extensions_config.json` 管理，不再有独立 `/api/skills` 端点。
+> 更多端点（workflow-draft、archive-draft、fork、archive、suspend、restore、transfer、visibility、dependencies、favorite、notifications）见 FastAPI 自述文档（`/docs`）与 `backend/app/gateway/routers/resources.py`。技能启用状态经 `extensions_config.json` 管理，`/api/skills` 下仅保留上游能力页所需的自定义技能管理端点（`backend/app/gateway/routers/skills.py`）。
+
+#### Export a Custom Skill
+
+Two admin-only endpoints export a custom skill's saved files (implementation: `backend/app/gateway/routers/skills.py`, `backend/app/gateway/skill_export.py`, `backend/packages/harness/deerflow/skills/export.py`). Both require an admin user; non-admins get 403 with "Admin privileges required to manage skills."
+
+Preview the manifest (file list, sizes, requirements, warnings/blockers):
+
+```http
+GET /api/skills/custom/{skill_name}/export-manifest
+```
+
+**Response** (fields omitted when unset; `Cache-Control: private, no-store`):
+
+- `skill_name`, `revision` (snapshot revision hash, or `null`), `can_export`
+- `file_count`, `directory_count`, `total_bytes`
+- `files[]`: `path`, `type` (`file` | `directory`), `size`, `executable`
+- `requirements`: `compatibility`, `allowed_tools`, `required_secrets[]` (`name`, `optional`)
+- `warnings[]`, `blockers[]`: `code`, `message`, optional `path`
+
+Download the archive (streams a zip attachment):
+
+```http
+GET /api/skills/custom/{skill_name}/export?expected_revision={revision}
+```
+
+- `expected_revision` is required (64 lowercase hex chars) and must equal the preview's `revision`; a mismatch returns `409 skill_changed` — refresh the manifest and retry.
+- Success streams `application/zip` with `Content-Disposition: attachment; filename="{skill_name}.skill"`, `Content-Length`, and `Cache-Control: private, no-store`.
+
+**Limits and errors** (both endpoints): exports share 2 slots per Gateway process — `429 skill_export_busy` when both are in use. Other codes: `404 skill_not_found`; `422 skill_export_unsupported` (invalid skill name or revision, or blockers present); `413 skill_export_limit_exceeded`; `503 skill_export_timeout` / `503 skill_export_cancelled`; `500 skill_export_failed`. If the client disconnects mid-transfer the server returns `204` with no body. Error bodies are `{"code", "message"[, "path"]}` with generic diagnostics — no skill source content is echoed. Export packages saved files as-is; it is not a secret audit.
 
 ### File Uploads
 

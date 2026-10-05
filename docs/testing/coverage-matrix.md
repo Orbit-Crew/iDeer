@@ -1,9 +1,19 @@
+---
+id: docs-testing-coverage-matrix
+kind: reference
+status: current
+owner: test maintainers
+scope: authority for the capability-to-test-layer responsibility mapping and current migration rules; the manual guardrail to update when moving or deleting tests
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
+---
+
 # Test Coverage Matrix
 
 > audience: testers, developers, release maintainers<br>
 > status: current<br>
 > owner: test maintainers<br>
-> last-verified: 2026-07-15<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/testing/coverage-matrix.md`
 
 This matrix is the manual guardrail for the test-suite reorganization. Update it when moving or deleting tests, and do not delete a file until the same or stronger behavior assertion is listed in the target bucket.

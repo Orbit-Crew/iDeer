@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-06-12-telegram-streaming
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-12 plan making the Telegram channel stream replies by editing one message in place — capability flip, placeholder registration, 1s throttle with 4096-char truncation and 429 drop, final edit with overflow split, and channel docs updates
+archived-reason: implemented — `TelegramChannel.supports_streaming` returns True (backend/app/channels/telegram.py) with telegram True in CHANNEL_CAPABILITIES (backend/app/channels/manager.py), and the `_stream_messages` edit-in-place flow exists; line anchors pre-date later channel changes and the Task 6 doc updates targeted the now-generated backend/CLAUDE.md
+---
+
 # Telegram Streaming Output Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

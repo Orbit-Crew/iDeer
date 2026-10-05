@@ -1,4 +1,15 @@
+---
+id: docs-plans-2026-07-17-remember-login
+kind: plan
+status: archived
+owner: repository maintainers
+scope: keep-me-signed-in design for the management UI — remember_me on the local login form, one SessionCookiePolicy deciding session versus persistent cookies, and matching CSRF cookie lifetime, without ever storing passwords
+archived-reason: implemented — remember_me is handled in backend/app/gateway (auth/session_cookie.py, routers/auth.py, csrf_middleware.py, auth/oidc_state.py) and the login page frontend/src/app/(auth)/login/page.tsx
+---
+
 # 管理页面保持登录方案
+
+> status: archived（方案已实施）。2026-10-04 核对：`remember_me` 与 `SessionCookiePolicy` 在 `backend/app/gateway/auth/session_cookie.py`、`routers/auth.py`、`csrf_middleware.py`、`auth/oidc_state.py` 落地，前端登录页 `frontend/src/app/(auth)/login/page.tsx` 提供保持登录勾选；本方案保留为历史设计记录，现行行为以代码与契约测试为准。
 
 ## 方案结论
 

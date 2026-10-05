@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-07-24-issue-4416-run-metadata-secrets
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-24 plan rejecting the legacy top-level metadata.auth_token at run admission, preserving request-scoped MCP credentials in config.context.secrets, and hiding the legacy key from historical API responses (issue #4416)
+archived-reason: implemented — LEGACY_AUTH_TOKEN_METADATA_KEY / validate_run_metadata_secrets / redact_metadata_secrets in backend/packages/harness/deerflow/runtime/secret_context.py, the admission check in backend/app/gateway/services.py start_run, and backend/tests/test_run_metadata_secret_safety.py all exist; the response-surface line anchors describe the 2026-07-24 routers
+---
+
 # Issue 4416 Run Metadata Secrets Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

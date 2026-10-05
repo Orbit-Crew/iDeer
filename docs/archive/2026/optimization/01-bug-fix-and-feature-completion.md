@@ -1,4 +1,14 @@
+---
+id: docs-archive-2026-optimization-01-bug-fix-and-feature-completion
+kind: plan
+status: archived
+owner: repository maintainers
+scope: offline_feature-era bug-fix and feature-completion plan (finalized approx. 2026-06-10): 2 CRITICAL + 8 HIGH backend bugs, 9 MEDIUM backend items, frontend defects F01-F18, and selections from the era bug-list, all referenced to the ideer package layout of that candidate
+archived-reason: point-in-time plan for the ideer-harness candidate; the harness package is now backend/packages/harness/deerflow with a different runtime layout, individual fixes landed piecemeal, and current unfinished work is tracked in docs/backlog.md
+---
 # Bug 修复与功能完善方案
+
+> status: archived（offline_feature 时期优化计划，约 2026-06-10 定稿）。2026-10-04 对照当前候选抽查：C02 已修复（`backend/app/gateway/authz.py` 对真实 Request 记 SECURITY 日志并落入正常认证，bypass 不再生效）；F01 已修复（`frontend/src/app/workspace/admin/layout.tsx` 校验 `system_role`）。正文所引 `backend/packages/harness/ideer/` 包路径与 `workflows/executor.py` 在当前候选不存在（现为 `backend/packages/harness/deerflow/`，无 `workflows/` 子包）。当前未完成事项入口：[backlog.md](../../../backlog.md)。正文按历史记录保留。
 
 ## 概述
 

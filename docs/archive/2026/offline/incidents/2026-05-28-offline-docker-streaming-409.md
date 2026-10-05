@@ -1,4 +1,17 @@
+---
+id: docs-archive-2026-offline-incidents-2026-05-28-offline-docker-streaming-409
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-05 离线 Docker 部署候选的一次流式 409 故障记录：多 Gateway worker 与进程内 active run/流式缓冲不匹配导致归零分析 SSE 重连返回 HTTP 409；含 env.intranet 与 runtime/.env 的插值时机区别、单 worker 默认值修复，以及新旧离线包的处置步骤
+archived-reason: 单次故障的根因分析与修复记录，按历史证据保留；现行内网部署权威：scripts/README-intranet.md、docs/deployment/禁公网内网离线部署作业指导书.md；GATEWAY_WORKERS 现行语义以 docker/docker-compose.intranet.yaml 与 scripts/deploy-intranet.sh 为准
+---
+
 # 离线 Docker 归零分析 409 问题原因与修复
+
+> status: archived; current intranet deployment authorities: `scripts/README-intranet.md`、`docs/deployment/禁公网内网离线部署作业指导书.md`
+> source period: 2026-05 离线 Docker 部署候选（`${GATEWAY_WORKERS:-1}` 默认值修复落地前后）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。仍成立：409 错误 `Run ... is not active on this worker and cannot be streamed` 仍在 `backend/app/gateway/routers/thread_runs.py`（store_only run 且 stream bridge 不支持跨进程时返回）；`docker/docker-compose.yaml` 与 `docker/docker-compose.intranet.yaml` 默认 `--workers ${GATEWAY_WORKERS:-1}`；`scripts/deploy-intranet.sh` 以 `--env-file env.intranet` 调用 compose（插值期读取），`runtime/.env` 仅作容器内 env 注入；`scripts/package-intranet-offline.sh` 与 `deploy-intranet.sh` 的 `prepare`/`up`/`restart` 子命令存在。已漂移：正文所述 `MemoryStreamBridge` 类名已不在当前代码，现行 gateway 经 app-state `stream_bridge` 的 `supports_cross_process` 属性表达同一约束；"当前源码修复措施"一节的修复事实以现行两个 compose 文件为准。
 
 ## 问题现象
 

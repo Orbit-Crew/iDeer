@@ -1,3 +1,13 @@
+---
+id: backend-docs-file-upload
+kind: reference
+status: current
+owner: repository maintainers
+scope: thread upload API, limits, path conventions, and document conversion behavior
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # 文件上传功能
 
 ## 概述

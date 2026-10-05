@@ -1,4 +1,14 @@
+---
+id: docs-archive-2026-optimization-02-testing-improvement
+kind: plan
+status: archived
+owner: repository maintainers
+scope: offline_feature-era testing plan (finalized approx. 2026-06-10): planned Admin API, workflow executor integration, and frontend E2E test additions with sample cases, fixtures, and a CI workflow for that candidate
+archived-reason: plan written against the ideer-harness test layout; the named test files (test_admin_api.py, test_workflow_executor_integration.py) do not exist in the current candidate, whose suite is organized under backend/tests/{unit,integration,contracts} and frontend/tests/{unit,e2e}
+---
 # 测试完善方案
+
+> status: archived（offline_feature 时期测试计划，约 2026-06-10 定稿）。2026-10-04 核对：计划中的测试文件路径（`backend/tests/test_admin_api.py`、`backend/tests/test_workflow_executor_integration.py`、`frontend/tests/e2e/admin.spec.ts` 等）在当前候选不存在；现行测试布局为 `backend/tests/{unit,integration,contracts}` 与 `frontend/tests/{unit,e2e}`。现行测试责任以 [coverage-matrix.md](../../../testing/coverage-matrix.md) 与迁移账本为准。正文按历史记录保留。
 
 ## 概述
 

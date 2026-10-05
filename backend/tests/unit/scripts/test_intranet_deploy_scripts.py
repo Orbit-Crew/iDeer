@@ -651,15 +651,14 @@ def test_check_script_warns_when_env_file_is_missing(tmp_path: Path):
 def test_guide_documents_bundled_agent_and_workflow_hooks():
     guide = GUIDE_FILE.read_text(encoding="utf-8")
 
-    assert "installing bundled fault-zeroing agent for super admin (public)..." in guide
-    assert "installing bundled srs-writing agent for super admin (public)..." in guide
+    assert "installing bundled resources for super admin" in guide
     assert "agents_api" in guide
     assert "officecli" in guide
     assert "bundled-resources.json" in guide
     assert "seed" in guide
     assert "super_admin@test.com" in guide
     assert "公开" in guide
-    assert "users/<" in guide or "users/" in guide
+    assert "超级管理员的公开资源" in guide
 
 
 def _signature_annotations(tree: ast.AST):

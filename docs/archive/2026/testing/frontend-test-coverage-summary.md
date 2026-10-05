@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-frontend-test-coverage-summary
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 前端测试补全完成总结（offline_feature vs main）：最终测试数据（E2E 8→13 spec、22→73 用例；单元 22→27 文件、135→170 用例）、新增测试文件清单、基础设施改动与修复记录
+archived-reason: 时点验证证据——测试计数与验证结果描述该分支当时候选，不代表当前验证状态；无同名现行替代。现行测试权威：docs/testing/coverage-matrix.md。正文按历史记录保留
+---
+
 # 前端测试覆盖补全工作总结
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-10 时点完成总结，offline_feature vs main 战役，验证数据按当时候选保留）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 分支: `offline_feature` vs `main`
 > 完成日期: 2026-06-10

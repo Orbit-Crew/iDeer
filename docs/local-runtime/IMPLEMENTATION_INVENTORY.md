@@ -1,9 +1,21 @@
+---
+id: docs-local-runtime-implementation-inventory
+kind: reference
+status: current
+owner: repository maintainers
+scope: Local Runtime line implementation inventory — code seams from the M7 device control plane through M8/M9 file and Python hardening, local MCP, secrets, tray, and production Agent assembly, mapped to current backend, extension-package, and local-runtime locations
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 4d2496136
+---
+
 # Local Runtime implementation inventory
 
-This inventory records the current code seams used by the M7 implementation.
-Paths and symbols below are implemented on the M7 branch.
+This inventory records the code seams of the Local Runtime line — the M7 device
+control plane plus the M8/M9 file/Python hardening, local MCP, secrets, and
+tray work. Paths and symbols below are landed on the current candidate and were
+spot-verified on 2026-10-04.
 
-| Concern | Current location | Symbol / evidence | M7 use |
+| Concern | Current location | Symbol / evidence | Use |
 | --- | --- | --- | --- |
 | Gateway application lifecycle | `backend/app/gateway/app.py` | `_configure_extensions`, `create_app`, router includes around the `app.include_router` block | Register device routes and broker lifecycle without changing the harness |
 | Route authentication | `backend/app/gateway/authz.py` | `AuthContext`, `get_auth_context`, `require_auth`, `require_permission`, `get_current_rbac_user` | Browser/admin identity and owner checks |
@@ -15,7 +27,7 @@ Paths and symbols below are implemented on the M7 branch.
 | Tool assembly | `backend/app/agentplatform/tools/assembly.py` | `ToolSet`, `assemble_tools` | Apply server authorization and registered device capabilities before model exposure |
 | Extension contract | `backend/packages/extension-api/deerflow_extension_api/contracts.py` | `RunEvidenceEnvelope`, `TaskInfo`, `TaskOutcome`, `ExtensionService`, `ExtensionRegistry` | Additive integration point for receipts and runtime services |
 | Evidence implementation | `backend/packages/agentplatform-extension/agentplatform_extension/evidence.py` | `RunEvidenceBinding`, `build_run_evidence_envelope` | Attach local execution receipts to the canonical run evidence |
-| Workflow evidence | `backend/app/agentplatform/workflows/v2/store.py` and `backend/app/workflow_worker.py` | `_canonical_run_evidence`, `_workflow_run_evidence_context` | Preserve run ownership and receipt lineage |
+| Workflow evidence | `backend/app/agentplatform/workflows/v2/store.py` and `backend/app/workflow_worker/run_session.py` | `_canonical_run_evidence`, `_workflow_run_evidence_context` | Preserve run ownership and receipt lineage |
 | Existing run cancellation | `backend/app/gateway/routers/thread_runs.py`, `backend/app/gateway/routers/runs.py` | run lifecycle request/response models and handlers | Parent semantics for local task cancel/expiry |
 | Extension loading | `backend/packages/harness/deerflow/extensions/` and `backend/app/gateway/app.py` | extension loader plus `_configure_extensions` | Keep Local Runtime integration outside harness patches |
 | Device control plane | `backend/app/device_control/` | `models.py`, `pairing.py`, `protocol.py`, `broker.py`, `service.py` | Pairing, owner confirmation, sessions, signed broker, and lifecycle |

@@ -1,5 +1,15 @@
+---
+id: docs-testing-knowledge-gate1-acceptance-report
+kind: evidence
+status: archived
+owner: knowledge maintainers
+scope: Gate 1 acceptance evidence for the 2026-09-10 M1 knowledge-line candidate (AgentPlatform + DeerFlow Runtime + RAGFlow three-ring link) — tool receipts, error-path sanitization, and the real air-gapped full-chain run
+archived-reason: candidate-scoped acceptance record for the 2026-09-10 candidate; the M3 closeout (develop@d4acdc5c2, 2026-09-13) explicitly declined to upgrade it to a current pass, and later candidates evolved beyond it — its lane numbers are that candidate's results, not current verification
+---
+
 # Knowledge Gate 1 验收报告（Ticket 06 — Receipt / 脱敏 / 断网）
 
+> status: archived（2026-09-10 候选的 Gate 1 验收证据）。M3 收口报告未将该历史证据升级为当前 PASS，后续候选已在其上继续演进；本文 lane 数字为该候选时期结果，不代表当前验证状态。现行知识验收入口：[Gate 4 运行说明](knowledge-center-gate4-runbook.md)、[Gate 8 验收](knowledge-gate8-acceptance.md)。正文按历史记录保留。
 > audience: developers, reviewers, QA, release engineering
 > status: binding acceptance record
 > last-verified: 2026-09-10

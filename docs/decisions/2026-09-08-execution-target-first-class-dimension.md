@@ -1,3 +1,13 @@
+---
+id: docs-decisions-2026-09-08-execution-target-first-class-dimension
+kind: decision
+status: current
+owner: engineering maintainers
+scope: execution location is an explicit first-class run dimension with SERVER | USER_DEVICE as the first-stage values; the Workflow step execution_target fields are the M10 deliverable and are not yet implemented at the current candidate, so this record is the semantic baseline
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
+---
+
 # ExecutionTarget 作为一等运行维度
 
 > audience: developers, architects, reviewers

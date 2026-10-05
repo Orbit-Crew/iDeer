@@ -1,4 +1,14 @@
+---
+id: docs-archive-2026-optimization-05-security-hardening
+kind: plan
+status: archived
+owner: repository maintainers
+scope: offline_feature-era security hardening plan (finalized approx. 2026-06-10): role-based API rate limiting, input validation types (SafeString/SafePath/Username/Password/WorkflowYAML), audit logging, security headers, and middleware ordering proposed for that candidate
+archived-reason: the proposed middleware files (rate_limit_middleware.py, validators.py, audit_middleware.py) do not exist under those names in the current candidate; login throttling remains in-memory in backend/app/gateway/routers/auth.py and audit recording lives in backend/app/gateway/audit.py
+---
 # 安全加固方案
+
+> status: archived（offline_feature 时期安全加固方案，约 2026-06-10 定稿）。2026-10-04 核对：`rate_limit_middleware.py`、`validators.py`、`audit_middleware.py` 未按文中路径创建；当前候选中登录限流仍为 `backend/app/gateway/routers/auth.py` 的内存 `_login_attempts`，关键操作审计在 `backend/app/gateway/audit.py`。01 文档中的 auth bypass 修复已落地（见该文头部标注）。现行安全行为以 `backend/app/gateway/` 现有中间件与代码为准。正文按历史记录保留。
 
 ## 概述
 

@@ -1,9 +1,19 @@
+---
+id: docs-testing-test-migration-ledger
+kind: reference
+status: current
+owner: test maintainers
+scope: living ledger and deletion gate for test moves and deletions — per-batch records of removed/kept paths, replacement strength, and validation commands; authority together with coverage-matrix.md for test-coverage-and-migration
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
+---
+
 # Test Migration Ledger
 
 > audience: testers, developers, release maintainers<br>
 > status: current<br>
 > owner: test maintainers<br>
-> last-verified: 2026-10-01<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/testing/test-migration-ledger.md`
 
 This ledger is the deletion and move gate for the test-suite reorganization.

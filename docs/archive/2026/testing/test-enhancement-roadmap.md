@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-test-enhancement-roadmap
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 测试增强路线图（2026-06 测试建设期末，基于后端 98.6%/前端 98.01% 覆盖率基线）：盲区治理、变异/属性/快照测试、契约与集成测试、性能与安全测试、CI 分片与测试可维护性方案
+archived-reason: 方案针对 2026-06 时点的测试布局与规模（后端约 280 文件 / 11,071 用例）；其中测试目录重组已按 backend/tests/{unit,integration,contracts} 落地，其余条目（变异测试、schemathesis、testcontainers 等）是否实施未逐一核对（unverified）。现行测试权威：docs/testing/coverage-matrix.md 与 docs/testing/test-lane-runbook.md。正文按历史记录保留
+---
+
 # 测试增强路线图
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06 测试建设期末时点路线图，基线数据按当时候选保留；目录重组条目已落地，其余条目实施状态 unverified）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 基于当前覆盖率基线（后端 98.6%、前端 98.01%），制定后续测试质量与深度提升方案。
 

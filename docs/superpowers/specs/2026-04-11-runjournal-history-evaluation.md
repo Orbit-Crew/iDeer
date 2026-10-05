@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-04-11-runjournal-history-evaluation
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-04-11 evaluation of the 2026-04-10 event-store-history plan — problem/data reconciliation for the summarize message-loss symptom, candidate approaches A-D, dual Claude/Codex review with the limit=1000 pagination and in-place dict mutation findings, merged Top-3 revisions, and the feedback runIdByAiIndex misalignment analysis
+archived-reason: period review record for docs/superpowers/plans/2026-04-10-event-store-history.md, which was not landed as written — get_thread_history still serves checkpoint messages stamped through stamp_messages_with_seq (backend/app/gateway/routers/threads.py with backend/packages/harness/deerflow/runtime/events/message_seq.py), not the plan's event-store override helper, so neither the recommended approach nor the Top-3 revisions were adopted as written; the file's line anchors (threads.py:587-589, hooks.ts:203-210, journal.py) and the ideer-era data paths describe the 2026-04-11 branch state
+---
+
 # RunJournal 替换 History Messages — 方案评估与对比
 
 **日期**：2026-04-11

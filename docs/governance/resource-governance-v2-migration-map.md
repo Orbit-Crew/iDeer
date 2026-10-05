@@ -1,9 +1,19 @@
+---
+id: docs-governance-resource-governance-v2-migration-map
+kind: reference
+status: current
+owner: repository maintainers
+scope: data mapping and deployment-side migration contract for Resource Governance V2 — legacy resource_metadata to canonical UUID catalog rules, non-migratable user state, ownership and alias rules, and the old-version-only audit/migrate/verify tooling contract
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c9981aac3
+---
+
 # Resource Governance V2 迁移映射
 
-> audience: developers, database maintainers, operators
-> status: implementation contract
-> last-verified: 2026-08-17
+> audience: developers, database maintainers, operators<br>
 > canonical-path: `docs/governance/resource-governance-v2-migration-map.md`
+
+2026-10-04 核对：`resource_versions`、`resource_dependencies`、`run_resource_snapshots`、`resource_favorites` 表与共享记忆键 `(runner_id, agent_resource_id)` 在当前候选均存在；alias 解析多匹配返回 409。第 6 节命令中的 `ideer.scripts.resource_catalog_v2` 是旧版本（ideer 时期）的模块名，在本候选中不存在，属预期——迁移工具仅随旧版本交付。
 
 ## 映射原则
 

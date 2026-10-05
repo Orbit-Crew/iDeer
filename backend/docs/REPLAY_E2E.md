@@ -1,3 +1,13 @@
+---
+id: backend-docs-replay-e2e
+kind: reference
+status: current
+owner: repository maintainers
+scope: record/replay E2E layers, fixture recording workflow, and CI gating for front-back contract verification
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Record/Replay E2E — front-back contract verification
 
 Deterministic, **key-free** end-to-end checks that a backend change can't

@@ -71,6 +71,11 @@ jobs:
         env:
           HEAD_SHA: ${{ github.sha }}
         run: python3 scripts/sync_agent_guidance.py --check --revision "$HEAD_SHA"
+      # Read-only, full-inventory check of the PR merge commit (the actual
+      # candidate revision). The checker never repairs files; a non-zero
+      # exit fails this job and with it the PR Standard Gate.
+      - name: Verify document governance contracts at the candidate revision
+        run: python3 scripts/check_documents.py --repo-root .
       - name: Verify registered upstream patches
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

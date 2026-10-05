@@ -1,3 +1,13 @@
+---
+id: docs-decisions-2026-09-08-knowledge-dual-source-of-truth
+kind: decision
+status: current
+owner: engineering maintainers
+scope: the KB UUID is the only enterprise identity, Providers hold index-state truth only, provider dataset IDs are opaque external mappings the model never touches, and the three-layer split is AgentPlatform governs / Provider indexes / Harness runtime searches
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
+---
+
 # 知识双层真源：治理真源与索引真源分离
 
 > audience: developers, architects, security reviewers
@@ -26,6 +36,6 @@ DeerFlow 上游 RAGFlow 集成 RFC 的设计是「Provider = Knowledge Base 状�
 
 ## 后果
 
-- 需要 Provider 对账机制（dataset 存在性、文档一致性、orphan 检测、DRIFTED 状态），见知识方案 §86~88。
+- 需要 Provider 对账机制（dataset 存在性、文档一致性、orphan 检测、DRIFTED 状态），见[知识方案 §86~88](../../architecture/AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md)。
 - Provider 侧直接人工编辑会造成漂移，正式 Published Dataset 不允许从 Provider UI 编辑。
 - 未来接入第二 Provider 时只新增 Provider 实现，不改治理模型。

@@ -1,7 +1,16 @@
+---
+id: docs-plans-2026-09-30-fault-zeroing-toolchain-spec
+kind: plan
+status: archived
+owner: fault-zeroing maintainers
+scope: toolchain slice after the unified kernel — analyze_code_evidence with scanner repairs and per-language dispatch, code_interpreter/data_analyzer enablement, scanner binary deployment, GB18030 encoding sniffing, binary whitelist plus read_binary_hex, and the Scanner Status disclosure gate in the Result Contract
+archived-reason: implemented — scanner_status/scanners_unavailable live in backend/packages/harness/deerflow/uploads/code_analysis.py, the code tool group with analyze_code_evidence/code_interpreter/data_analyzer is declared in config.example.yaml, GB18030 sniffing landed in backend/packages/harness/deerflow/sandbox/ (encoding.py, tools.py, search.py), read_binary_hex exists in backend/app/agentplatform/tools/, and backend/Dockerfile pins clang-tidy and cppcheck
+---
+
 # 归零智能体工具链切片 — Spec
 
 - date: 2026-09-30
-- status: ready-for-agent
+- status: archived（已实施）——2026-10-04 核对：scanner_status/`scanners_unavailable`（`backend/packages/harness/deerflow/uploads/code_analysis.py`）、`code` 工具组与 `analyze_code_evidence`/`code_interpreter`/`data_analyzer`（`config.example.yaml`）、GB18030 嗅探（`backend/packages/harness/deerflow/sandbox/encoding.py`、`tools.py`、`search.py`）、`read_binary_hex`（`backend/app/agentplatform/tools/`）及 `backend/Dockerfile` 的 clang-tidy/cppcheck pin 均在候选。
 - base: develop @ 93131a40d（统一内核合并后）
 - 前序：docs/plans/2026-09-29-fault-zeroing-unified-kernel-spec.md（已合并交付）
 

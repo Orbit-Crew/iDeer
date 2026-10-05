@@ -1,4 +1,15 @@
+---
+id: docs-experiments-task-continuity-20260912-case-notes
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: verified case notes from the 2026-09-12 prototype run — budget-resume recoveries, note-retention, retrieval recall versus answer quality, and judge-boundary case studies over saved trajectories
+archived-reason: the experiment concluded and its integration PR landed; current feature reference is docs/task-continuity.md — these notes explain saved trajectories of that candidate only
+---
+
 # 已核对的案例
+
+> 历史记录（2026-09-12 原型实验）：适用期间为该实验及其集成 PR 评审；现行功能参考见 [task-continuity.md](../../task-continuity.md)。
 
 这些说明只解释已保存的轨迹，不修改原评分，也不据此调整检索或提示词。
 

@@ -1,3 +1,13 @@
+---
+id: backend-docs-auth-test-plan
+kind: reference
+status: current
+owner: repository maintainers
+scope: manual auth regression runbook: environment bootstrap, API/attack/UI cases, upgrade scenario, reentrancy, deployment-mode differences, and red-team checks for the Gateway auth module
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 00c648f8b
+---
+
 # Auth 模块测试计划
 
 ## 测试矩阵
@@ -29,7 +39,7 @@ make dev
 
 **验证点：**
 - [ ] 控制台不输出 admin 邮箱或明文密码
-- [ ] 控制台提示 `First boot detected — no admin account exists.`
+- [ ] 控制台提示 `First boot detected — no active super_admin account exists.`
 - [ ] 控制台提示访问 `/setup` 完成 admin 创建
 - [ ] `GET /api/v1/auth/setup-status` 返回 `{"needs_setup": true}`
 - [ ] 前端访问 `/login` 会跳转 `/setup`
@@ -50,7 +60,8 @@ make dev
 
 | 变量 | 验证 |
 |------|------|
-| `AUTH_JWT_SECRET` 未设 | 启动时 warning，自动生成临时密钥 |
+| `AUTH_JWT_SECRET` 未设（非生产） | 启动时 warning，自动生成密钥并持久化到 `.deer-flow/.jwt_secret`，重启后 session 保持 |
+| `AUTH_JWT_SECRET` 未设（`IDEER_ENVIRONMENT=production`） | 启动失败，要求显式设置 `AUTH_JWT_SECRET` |
 | `AUTH_JWT_SECRET` 已设 | 无 warning，重启后 session 保持 |
 
 ---
@@ -93,7 +104,7 @@ curl -s -X POST $BASE/api/v1/auth/initialize \
 
 **预期：**
 - 状态码 201
-- Body: `{"id": "...", "email": "admin@example.com", "system_role": "admin", "needs_setup": false}`
+- Body: `{"id": "...", "email": "admin@example.com", "system_role": "super_admin", "needs_setup": false}`
 - `cookies.txt` 包含 `access_token`（HttpOnly）和 `csrf_token`（非 HttpOnly）
 
 #### TC-API-03: 获取当前用户
@@ -102,7 +113,7 @@ curl -s -X POST $BASE/api/v1/auth/initialize \
 curl -s $BASE/api/v1/auth/me -b cookies.txt | jq .
 ```
 
-**预期：** `{"id": "...", "email": "admin@example.com", "system_role": "admin", "needs_setup": false}`
+**预期：** `{"id": "...", "email": "admin@example.com", "system_role": "super_admin", "needs_setup": false}`
 
 #### TC-API-04: 改密码流程
 
@@ -375,8 +386,8 @@ curl -s -D - -X POST $BASE/api/v1/auth/login/local \
 ```
 
 **预期：**
-- `access_token`: `HttpOnly; Path=/; SameSite=lax`，无 `Secure`，无 `Max-Age`
-- `csrf_token`: `Path=/; SameSite=strict`，无 `HttpOnly`（JS 需要读取），无 `Secure`
+- `access_token`: `HttpOnly; Path=/; SameSite=lax`，无 `Secure`；`localhost` 上默认 remember-me 生效，带 `Max-Age=604800`（非本机 HTTP 且未设 `DEER_FLOW_AUTH_ALLOW_INSECURE_PERSISTENT_COOKIE` 时为 session cookie，无 `Max-Age`）
+- `csrf_token`: `Path=/; SameSite=strict`，无 `HttpOnly`（JS 需要读取），无 `Secure`，`Max-Age` 与 session cookie 一致
 
 ```bash
 # 注册
@@ -457,7 +468,7 @@ done
 | HttpOnly | Yes | Yes | No | No |
 | Secure | No | **Yes** | No | **Yes** |
 | SameSite | Lax | Lax | Strict | Strict |
-| Max-Age | 无（session cookie） | **604800**（7天） | 无 | 无 |
+| Max-Age（localhost 默认 remember-me） | **604800**（7天） | **604800**（7天） | **604800** | **604800** |
 
 ### 3.4 越权访问
 
@@ -522,7 +533,7 @@ curl -s -X POST $BASE/api/v1/auth/register \
 sqlite3 backend/.deer-flow/data/deerflow.db "SELECT email, password_hash FROM users LIMIT 3;"
 ```
 
-**预期：** `password_hash` 以 `$2b$` 开头（bcrypt 格式）
+**预期：** `password_hash` 以 `$dfv2$` 开头（当前 v2 包装格式：SHA-256 预哈希 + bcrypt；兼容读取旧 `$dfv1$` / 裸 bcrypt 数据）
 
 ---
 
@@ -638,6 +649,8 @@ sqlite3 backend/.deer-flow/data/deerflow.db "SELECT email, password_hash FROM us
 ## 五、升级测试
 
 > 模拟从无 auth 版本（main 分支）升级到 auth 版本（feat/rfc-001-auth-module）。
+>
+> **历史场景说明：** 这对分支描述的是 RFC-001 落地期的升级演练（远端分支保留至今，现行 `main` 已包含 auth 模块，照原样执行不再成立）。现行 pre-auth 部署的升级操作指引见同目录 `AUTH_UPGRADE.md`。
 
 ### 5.1 准备旧版数据
 
@@ -770,9 +783,9 @@ grep AUTH_JWT_SECRET backend/.env || echo "NOT SET"
 ```
 
 **预期：**
-- [ ] 启动时 warning：`AUTH_JWT_SECRET is not set — using auto-generated ephemeral secret`
+- [ ] 启动时 warning：`AUTH_JWT_SECRET is not set — using an auto-generated secret persisted to .jwt_secret`
 - [ ] 服务正常可用
-- [ ] 重启后旧 session 失效（临时密钥变了）
+- [ ] 重启后旧 session 仍有效（密钥持久化在 `.deer-flow/.jwt_secret`，随数据目录保留）
 
 #### TC-UPG-08: 旧 config.yaml 无 auth 相关配置
 
@@ -867,7 +880,7 @@ curl -s -X POST $BASE/api/v1/auth/register \
 ```
 
 **预期：**
-- [ ] 当前代码允许注册普通用户并自动登录（201，角色为 `user`）
+- [ ] 当前代码允许注册普通用户并自动登录（201，角色为 `user`；`auth.local.allow_registration: false` 可关闭自助注册，但不存在 admin-exists gate）
 - [ ] 但 `setup-status` 仍为 `{"needs_setup": true}`，因为 admin 仍不存在
 - [ ] 这是一个产品策略边界：若要求“必须先有 admin”，需要在 `/register` 增加 admin-exists gate
 
@@ -915,7 +928,7 @@ curl -s $BASE/api/v1/auth/me -b admin.txt | jq '{email, needs_setup}'
 
 ```bash
 # 场景：admin 未登录期间，运维更换了 AUTH_JWT_SECRET
-# 1. 首次启动用自动生成的临时密钥
+# 1. 首次启动自动生成密钥并持久化到 .jwt_secret
 # 2. 某天运维在 .env 设置了固定密钥
 echo "AUTH_JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env
 make stop && make dev
@@ -1464,13 +1477,13 @@ curl -s -w "%{http_code}" -o /dev/null $BASE/api/v1/auth/me -b docker_cookies.tx
 
 **预期：**
 - 有 `AUTH_JWT_SECRET` → 200（session 保持）
-- 无 `AUTH_JWT_SECRET` → 401（每次启动生成新临时密钥，旧 JWT 签名失效）
+- 无 `AUTH_JWT_SECRET` → 200（自动生成的密钥持久化到 `DEER_FLOW_HOME/.jwt_secret`，随 volume 保留；仅当清空该 volume 时旧 JWT 签名失效返回 401）
 
 #### TC-DOCKER-03: 多 Worker 下 Rate Limiter 独立
 
 ```bash
-# docker-compose.yaml 中 gateway 默认 4 workers
-# 每个 worker 有独立的 _login_attempts dict
+# docker-compose.yaml 中 gateway workers 由 GATEWAY_WORKERS 控制（默认 1）
+# 多 worker 时每个 worker 有独立的 _login_attempts dict
 # 限速可能不精确（请求分散到不同 worker），但不会完全失效
 
 for i in $(seq 1 20); do
@@ -1480,7 +1493,7 @@ for i in $(seq 1 20); do
 done
 ```
 
-**预期：** 在某个点开始返回 429（每个 worker 独立计数，阈值可能在 5~20 之间触发，取决于负载均衡分布）。
+**预期：** 默认单 worker 时第 6 次开始返回 429；多 worker 时每个 worker 独立计数，阈值按 worker 数放大。
 
 **已知限制：** In-process rate limiter 不跨 worker 共享。生产环境如需精确限速，需要 Redis 等外部存储。
 
@@ -1491,7 +1504,7 @@ done
 # 请求携带 process-local internal auth header，并带匹配的 CSRF cookie/header
 
 # 验证方式：检查 gateway 日志中 channel manager 的请求不包含 auth 错误
-docker logs deer-flow-gateway 2>&1 | grep -E "ChannelManager|channel" | head -10
+docker logs ideer-gateway 2>&1 | grep -E "ChannelManager|channel" | head -10
 ```
 
 **预期：** 无 auth 相关错误。渠道不依赖浏览器 cookie；服务端通过内部认证头把请求归入 `default` 用户桶。
@@ -1500,7 +1513,7 @@ docker logs deer-flow-gateway 2>&1 | grep -E "ChannelManager|channel" | head -10
 
 ```bash
 # 首次启动不会自动生成 admin 密码。先重置已有 admin，凭据文件写在挂载到宿主机的 DEER_FLOW_HOME 下。
-docker exec deer-flow-gateway python -m app.gateway.auth.reset_admin --email docker-test@example.com
+docker exec ideer-gateway python -m app.gateway.auth.reset_admin --email docker-test@example.com
 
 ls -la ${DEER_FLOW_HOME:-backend/.deer-flow}/admin_initial_credentials.txt
 # 预期文件权限: -rw------- (0600)
@@ -1509,11 +1522,11 @@ cat ${DEER_FLOW_HOME:-backend/.deer-flow}/admin_initial_credentials.txt
 # 预期内容: email + password 行
 
 # 容器日志只输出文件路径，不输出密码本身
-docker logs deer-flow-gateway 2>&1 | grep -E "Credentials written to|Admin account"
+docker logs ideer-gateway 2>&1 | grep -E "Credentials written to|Admin account"
 # 预期看到: "Credentials written to: /...../admin_initial_credentials.txt (mode 0600)"
 
 # 反向验证: 日志里 NEVER 出现明文密码
-docker logs deer-flow-gateway 2>&1 | grep -iE "Password: .{15,}" && echo "FAIL: leaked" || echo "OK: not leaked"
+docker logs ideer-gateway 2>&1 | grep -iE "Password: .{15,}" && echo "FAIL: leaked" || echo "OK: not leaked"
 ```
 
 **预期：**
@@ -1529,8 +1542,8 @@ docker logs deer-flow-gateway 2>&1 | grep -iE "Password: .{15,}" && echo "FAIL: 
 sleep 15
 
 # 确认 gateway 容器存在
-docker ps --filter name=deer-flow-gateway --format '{{.Names}}'
-# 预期: deer-flow-gateway
+docker ps --filter name=ideer-gateway --format '{{.Names}}'
+# 预期: ideer-gateway
 
 # auth 流程正常：未登录受保护接口返回 401
 curl -s -w "%{http_code}" -o /dev/null $BASE/api/models
@@ -1605,15 +1618,15 @@ curl -s -D - -X POST $BASE/api/v1/auth/login/local \
 
 **预期：** `access_token` → `SameSite=lax`，`csrf_token` → `SameSite=strict`
 
-#### TC-EDGE-05: HTTP 无 max_age / HTTPS 有 max_age
+#### TC-EDGE-05: Max-Age 随 remember-me 与部署上下文变化
 
 ```bash
 GW=http://localhost:8001
 
-# HTTP
+# HTTP（localhost）
 curl -s -D - -X POST $GW/api/v1/auth/login/local \
   -d "username=admin@example.com&password=正确密码" 2>/dev/null \
-  | grep "access_token=" | grep -oi "max-age=[0-9]*" || echo "NO max-age (HTTP session cookie)"
+  | grep "access_token=" | grep -oi "max-age=[0-9]*"
 
 # HTTPS：直连 Gateway 才能用 X-Forwarded-Proto 模拟 HTTPS；nginx 会覆盖该 header
 curl -s -D - -X POST $GW/api/v1/auth/login/local \
@@ -1622,7 +1635,7 @@ curl -s -D - -X POST $GW/api/v1/auth/login/local \
   | grep "access_token=" | grep -oi "max-age=[0-9]*"
 ```
 
-**预期：** HTTP 无 `Max-Age`（session cookie，浏览器关闭即失效），HTTPS 有 `Max-Age=604800`（7 天）
+**预期：** `localhost` 上 HTTP 与 HTTPS 均带 `Max-Age=604800`（7 天；默认 remember-me 持久化）。非本机 HTTP 主机在未设 `DEER_FLOW_AUTH_ALLOW_INSECURE_PERSISTENT_COOKIE` 时为 session cookie（无 `Max-Age`）。
 
 #### TC-EDGE-06: public 路径 trailing slash
 
@@ -1785,13 +1798,16 @@ cd backend && PYTHONPATH=. python3 -c "
 from app.gateway.app import create_app
 app = create_app()
 public_prefixes = ['/health', '/docs', '/redoc', '/openapi.json',
-                   '/api/v1/auth/login', '/api/v1/auth/register',
-                   '/api/v1/auth/logout', '/api/v1/auth/setup-status']
+                   '/api/v1/auth/oauth/', '/api/v1/auth/callback/',
+                   '/api/webhooks/']
+public_exact = {'/api/v1/auth/login/local', '/api/v1/auth/register',
+                '/api/v1/auth/logout', '/api/v1/auth/setup-status',
+                '/api/v1/auth/initialize', '/api/v1/auth/providers'}
 for route in app.routes:
     path = getattr(route, 'path', '')
     if not path or not path.startswith('/api'):
         continue
-    is_public = any(path.startswith(p) for p in public_prefixes)
+    is_public = path in public_exact or any(path.startswith(p) for p in public_prefixes)
     if not is_public:
         print(f'  {path}')
 " 2>/dev/null
@@ -1806,7 +1822,7 @@ for route in app.routes:
 每次 auth 相关代码变更后必须通过：
 
 ```bash
-# 单元测试（168 个）
+# 单元测试（282 个；2026-10-04 用下方收集命令核对）
 cd backend && PYTHONPATH=. uv run pytest \
   tests/test_auth.py \
   tests/test_auth_config.py \

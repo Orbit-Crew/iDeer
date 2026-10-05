@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-08-06-fault-zeroing-workflow-test-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-08-06 test plan for the fault-zeroing workflow on the refactor/workflow-module branch — L1-L4 layered strategy, backend/frontend/e2e case lists, real-link acceptance checklist, and the 2026-08-06 execution results appendix
+archived-reason: period record of that regression round — the recorded backend 222 passed / frontend 7853 passed / e2e 125 passed results and the case-01 real acceptance (run fz-01-20260806T125834Z-5172d9) are historical results that never satisfy current validation; case 02/03 were never executed and the validator round ended exit 1 unresolved; referenced paths (test_workflow_run_record_download.py, the install/seed scripts, workflows/fault-zeroing.yaml) have since moved or been removed from the candidate
+---
+
 # 归零工作流测试计划（2026-08-06）
 
 ## 1. 目标

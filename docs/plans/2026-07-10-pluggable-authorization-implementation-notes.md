@@ -1,4 +1,16 @@
+---
+id: docs-plans-pluggable-authorization-implementation-notes
+kind: plan
+status: current
+owner: authorization maintainers
+scope: cumulative implementation record for the pluggable authorization RFC (upstream issue #4063) — merged contracts per phase, reviewer-confirmed decisions, invariants, pre-PR checklists and the append-only decision log that later authorization PRs must read and update
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c6d64451b
+---
+
 # 可插拔授权系统实施记录
+
+> 2026-10-04 核对：记录的合并契约与当前代码一致——`backend/packages/harness/deerflow/authz/`（`principal.py` 的 `build_principal_from_context`、`runtime.py` 的 `resolve_authorization_provider`/`resolve_authorization_provider_spec`/`construct_authorization_provider`、`tool_filter.py` 的 `apply_tool_authorization`、`rbac.py`）、`backend/app/gateway/authz.py` 的 `resolve_route_permissions`、三层装配路径接入及 `tests/test_models_authorization.py`、`test_sandbox_authorization.py`、`tests/blocking_io/test_sandbox_authorization.py` 均在候选中。后续授权 PR 仍须按本文档的必读要求与固定清单执行并追加决策日志。
 
 <!-- Language: Chinese. This document is the cumulative handoff record for the
      pluggable authorization system (RFC #4063). An English summary is provided

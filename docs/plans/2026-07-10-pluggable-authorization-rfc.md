@@ -1,3 +1,11 @@
+---
+id: docs-plans-pluggable-authorization-rfc
+kind: decision
+status: current
+owner: authorization maintainers
+scope: accepted two-layer design decision for pluggable fine-grained authorization — one AuthorizationProvider policy brain enforced as assembly-time capability filtering plus run-time execution deny via the existing GuardrailMiddleware, with a built-in RbacAuthorizationProvider; Phase 0-3 (protocol/adapter, trusted principal, RBAC provider, tool/route/model/sandbox enforcement) are implemented, frontend permission display and management-route provider migration remain deferred, and RFC examples yield to the merged contracts recorded in the implementation notes
+---
+
 <!-- Authored by @zhfeng, discussed in https://github.com/bytedance/deer-flow/issues/4063.
      Added to the PR per @WillemJiang's request for design tracking. -->
 
@@ -7,6 +15,8 @@
 > 代码及测试不一致时，以已合并契约为准。
 
 # RFC: Pluggable Fine-Grained Authorization
+
+> 2026-10-04 核对：本 RFC 的设计已被接受并按阶段实施——`backend/packages/harness/deerflow/authz/`（Protocol、`RbacAuthorizationProvider`、adapter、runtime factory、tool filter）、`backend/app/gateway/authz.py` 的 provider 派生 route 权限、`config.example.yaml` 的 `authorization:` 段均已在候选中；实际契约以同目录[实施记录](2026-07-10-pluggable-authorization-implementation-notes.md)为准（其 Phase 0 条目明确覆盖本文 `filter_resources` 默认实现等草案示例）。
 
 **Status:** Draft for feedback (responds to [#3462](https://github.com/bytedance/deer-flow/issues/3462)).
 **Affects:** `backend/packages/harness/deerflow/authz/` (new), `backend/app/gateway/authz.py`, `backend/packages/harness/deerflow/guardrails/`, `backend/packages/harness/deerflow/agents/lead_agent/agent.py`, `backend/packages/harness/deerflow/client.py`, `backend/packages/harness/deerflow/subagents/executor.py`, `backend/app/gateway/services.py`, `config.example.yaml`.

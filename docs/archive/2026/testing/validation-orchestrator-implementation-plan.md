@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-validation-orchestrator-implementation-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 validation-orchestrator skill 实施计划：SKILL.md 元数据与工作流定义、变更检测/报告生成脚本全文、quick-standard-full 三级别编排、测试计划与 4 天实施时间表
+archived-reason: validation-orchestrator 为已归档的历史设计——根 AGENTS.md 明确其为历史方案、当前工作树不可调用，.claude/skills/ 下无该目录，计划未在当前候选中保持实施状态。现行验证路径：docs/testing/test-lane-runbook.md 与仓库 CI。正文按历史记录保留
+---
+
 # Validation Orchestrator 实施计划
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-10 时点实施计划，正文按当时候选保留；orchestrator 为历史设计，非当前可调用技能）；current testing authority: `docs/testing/coverage-matrix.md`
 
 ## 文档信息
 

@@ -1,4 +1,15 @@
+---
+id: docs-fault-zeroing-agent-adversarial-review-2026-07-15
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: adversarial review (recorded 2026-07-06) of the three then-current fault-zeroing documents D1/D2/D3 — requirement soundness, cross-document contradictions, implementation gaps (knowledge base, fault-tree constraints, probability rules), and plan granularity findings with priorities
+archived-reason: point-in-time review of the 2026-06/07 document set; the reviewed documents have since evolved (D1 archived at docs/archive/2026/agent-design-2026-06.md, D2 archived at docs/fault-zeroing-agent/implementation-path.md) and delivery moved to the Workflow V2 engine plus the shared fault-zeroing kernel — findings must not be cited as open issues without re-checking current code
+---
+
 # 归零智能体建设 — 对抗式审查评估报告
+
+> status: archived（对抗式审查记录，审查日期按正文为 2026-07-06，文件名标注 2026-07-15）。2026-10-04 核对：所评 D1 现存于 [agent-design-2026-06.md](../archive/2026/agent-design-2026-06.md)（已归档），D2 即 [implementation-path.md](implementation-path.md)（已归档），D3 即 [归零智能体建设进展汇报.md](归零智能体建设进展汇报.md)（历史快照）；文中「当前/建议」结论均为审查时点状态，现行事实以代码与[收口清单](收口清单-fault-zeroing-toolchain.md)为准。正文按历史记录保留。
 
 > 审查日期: 2026-07-06
 > 审查范围: 归零智能体建设三份核心文档（分析方案、可行性与实现路径、进展汇报）

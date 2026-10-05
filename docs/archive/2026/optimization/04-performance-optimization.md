@@ -1,4 +1,14 @@
+---
+id: docs-archive-2026-optimization-04-performance-optimization
+kind: plan
+status: archived
+owner: repository maintainers
+scope: offline_feature-era performance plan (finalized approx. 2026-06-10): proposed workflow_runs indexes, workflow store query tuning, connection-pool settings, and Next.js/Nextra frontend loading optimizations for that candidate
+archived-reason: plan references alembic hex revisions (16147afec43b, f3a2b1c4d5e6, d7e0060b1ebc) and ideer package paths of that era; current migrations are numbered from 0001_baseline under backend/packages/harness/deerflow/persistence/migrations and the proposed ix_workflow_runs_* indexes are not present
+---
 # 性能优化方案
+
+> status: archived（offline_feature 时期性能优化方案，约 2026-06-10 定稿）。2026-10-04 核对：正文迁移号（`16147afec43b` 等）与 `backend/packages/harness/ideer/` 路径为该时点事实；当前迁移目录为 `backend/packages/harness/deerflow/persistence/migrations/versions/`（自 `0001_baseline` 起编号），所拟 `ix_workflow_runs_*` 索引未在当前 persistence 迁移与引导代码中检索到；`frontend/next.config.js` 与 nextra 依赖仍在（package.json `nextra ^4.6.1`）。正文按历史记录保留。
 
 ## 概述
 

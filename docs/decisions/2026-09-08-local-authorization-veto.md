@@ -1,3 +1,13 @@
+---
+id: docs-decisions-2026-09-08-local-authorization-veto
+kind: decision
+status: current
+owner: engineering maintainers
+scope: server authorization decides delegation and the device locally decides execution; both layers must pass with Local DENY always overriding Server ALLOW; no device-side enterprise RBAC, consent bound to the request hash, and outbound-only device connections
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
+---
+
 # 双层授权与本地否决权
 
 > audience: developers, architects, security reviewers

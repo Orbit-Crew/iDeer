@@ -1,3 +1,13 @@
+---
+id: backend-docs-memory-settings-review
+kind: reference
+status: current
+owner: repository maintainers
+scope: local manual review procedure for the Memory Settings flow and its sample fixture
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Memory Settings Review
 
 Use this when reviewing the Memory Settings add/edit flow locally with the fewest possible manual steps.

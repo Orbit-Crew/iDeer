@@ -1,4 +1,15 @@
+---
+id: docs-compose-plans-2026-07-03-permission-model-refactor
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-03 compose implementation plan for the unified permission model refactor: resource_metadata and visibility_applications tables replacing .meta.json files and skill_applications, unified owner-only authz check_resource_access/check_resource_modify, visibility application API with approval flow, .meta.json and skill_applications data migration scripts, and the workspace admin visibility-applications approval page
+archived-reason: plan fully implemented — resource_metadata and visibility_applications models live in backend/app/agentplatform/resource_models.py and backend/app/agentplatform/visibility_models.py with migration backend/app/agentplatform/persistence/migrations/versions/xxx_create_resource_tables.py, the approval API is backend/app/gateway/routers/visibility_applications.py registered in backend/app/gateway/app.py, backend/app/gateway/authz.py implements the planned owner-only check_resource_modify and check_resource_access, the duplicate router functions and update_skill_visibility endpoint are gone, backend/app/gateway/routers/admin_skill_applications.py returns 410 Gone, data migration scripts live under backend/app/agentplatform/persistence/scripts/, and the approval page is frontend/src/app/workspace/admin/visibility-applications/page.tsx; the persistence layer moved from the planned backend/packages/harness/ideer/... layout to backend/app/agentplatform/..., so the planned file structure, line-number anchors, and step commands describe the 2026-07-03 pre-implementation state and are kept as history
+---
+
 # 权限模型重构 Implementation Plan
+
+> status: archived（2026-07-03 compose 实施计划；2026-10-04 对照当前候选抽查，统一权限模型已按计划落地但实现路径有迁移：resource_metadata/visibility_applications 模型在 `backend/app/agentplatform/resource_models.py` 与 `backend/app/agentplatform/visibility_models.py`，审批 API 为 `backend/app/gateway/routers/visibility_applications.py`，authz.py 已收敛为 owner-only 修改，旧 admin skill-applications 端点返回 410，正文按历史记录保留）；current implementation: `backend/app/agentplatform/resource_models.py`、`backend/app/agentplatform/visibility_models.py`、`backend/app/gateway/routers/visibility_applications.py`、`backend/app/gateway/authz.py`、`frontend/src/app/workspace/admin/visibility-applications/page.tsx`
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use compose:subagent (recommended) or compose:execute to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

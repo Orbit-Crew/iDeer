@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-ai-code-validation-skill-analysis
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 validator/qa-tester skill 体系分析与优化方案：frontend-validator、backend-validator、qa-tester 三 skill 职责/验证级别/触发方式，AI 生成代码全流程测试验证环节与能力缺口分析，validation-orchestrator 统一编排设计与 Phase 1-4 实施计划
+archived-reason: 分析对象为已归档的 validator/orchestrator skill 设计——根 AGENTS.md 明确其为历史方案、当前工作树不可调用，.claude/skills/ 下无对应目录；无同名现行替代（validation-orchestrator-implementation-plan.md 为其时点实施计划）。第四部分优化方案为时点提案：.claude/skills/validation-orchestrator/ 与 .ideer/validation-history/ 未落地，提案中的 scripts/detect-changes.sh 为唯一存活产物（offline_feature 批次引入，独立于 skill 体系）；正文 Phase 3 路径 backend/packages/harness/ideer/ 已迁移（现行 backend/packages/harness/deerflow/）。现行测试权威：docs/testing/coverage-matrix.md（覆盖矩阵）、docs/testing/test-lane-runbook.md（测试车道）、docs/testing-guidelines.md（测试规范）。正文按历史记录保留
+---
+
 # AI 生成代码全流程测试验证 Skill 分析与优化方案
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-10 时点分析与优化方案，validator/orchestrator 为历史设计、当前工作树不可调用，正文按当时候选保留）；current testing authority: `docs/testing/coverage-matrix.md`。2026-10-04 抽查：`.claude/skills/` 下无 validator/qa-tester/orchestrator 目录；提案产物中仅 `scripts/detect-changes.sh` 存活；正文引用的 `backend/packages/harness/ideer/` 路径已迁移（现行 `backend/packages/harness/deerflow/`）
 
 ## 文档信息
 

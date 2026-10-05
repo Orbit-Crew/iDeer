@@ -1,5 +1,11 @@
 ---
-status: accepted
+id: adr-0007-agent-terminology-unification
+kind: decision
+status: current
+owner: repository maintainers
+scope: code-level and route vocabulary unifies on "agent" with permanent redirects for pre-unification expert paths; the display word 专家 stays only in zh-CN locale strings; the data source does not move
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 02af2a4e8
 ---
 
 # Code-level vocabulary unifies on "agent"; 专家 survives only as a display word
@@ -15,6 +21,10 @@ Code and route vocabulary unifies on "agent". Expert-named routes move to agent-
 ## Trade-offs
 
 The unification is a one-time migration of roughly 30-60 files (expert routes, components, unit tests, e2e) plus permanent redirects so existing bookmarks and chat history links keep working, and it concedes the differentiated word in code — 专家 remains visible to users but greps for it stop finding routes. Keeping the split was the alternative: it would preserve today's naming and instead tax every future convergence with rewrites, transplants, and a human-maintained terminology map (CONTEXT.md glossary entry plus a merge-playbook check). That map is still recorded as the transition-period safety net, but the mapping it documents should stop growing once the rename lands.
+
+## Implementation status (2026-10-04)
+
+Landed and verified in the candidate: `/workspace/agents` routes and `agent-*` components are canonical (`agent-card`, `agent-settings-dialog` helpers restored), pre-unification `/workspace/capabilities/experts/*` paths are permanent redirects, no `ExpertList` or expert-prefixed components remain in `frontend/src`, and 专家 appears only in the `zh-CN` locale strings.
 
 ## Re-evaluation triggers
 

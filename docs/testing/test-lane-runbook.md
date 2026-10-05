@@ -1,9 +1,19 @@
+---
+id: docs-testing-test-lane-runbook
+kind: policy
+status: current
+owner: test maintainers
+scope: lane contract for cross-stack PR and delivery-level verification via scripts/run-test-lane.sh — lane selection and aggregation, status vocabulary, restricted-environment handling, and handoff record requirements
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
+---
+
 # 测试 Lane 运行手册
 
 > audience: developers, testers, release maintainers<br>
 > status: current<br>
 > owner: test maintainers<br>
-> last-verified: 2026-10-01<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/testing/test-lane-runbook.md`
 
 `scripts/run-test-lane.sh` 是测试 lane 的唯一权威入口。本手册说明如何
