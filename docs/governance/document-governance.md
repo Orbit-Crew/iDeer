@@ -29,6 +29,8 @@
 
 按规格（`docs/specs/2026-10-04-doc-governance-dual-track-spec.md` 的 Engineering Documentation Disclosure Track 一节），组 2 将新增只读检查器 `scripts/check_documents.py`（`--repo-root`、`--revision`、`--json`；退出码 0/1/2）。该检查器以本 policy 文件为范围、排除、保护指纹与权威主题的持久来源：无 `--revision` 时检查工作树，有 `--revision` 时只读该候选。检查器落地前，本文件的核验依靠下一节的手工步骤。CI 只在候选修订上做校验，不修复、不改写文档。
 
+标准巡检入口：`scripts/check_doc_hygiene.sh` 一条命令依次运行上述检查器、guidance 镜像一致性（`sync_agent_guidance.py --check`）与保护指纹独立复核（对 `protected_files.fingerprints` 的 67 条重算 sha256），输出按入口前缀区分，任一失败即非零退出并输出聚合摘要；全绿输出一行 PASS。该脚本只检查工作树，指纹读自本 policy（受跟踪），不依赖 git-ignored 的基线捕获文件；候选修订核验仍用检查器的 `--revision`。
+
 ## 清单核验复现
 
 对一个候选修订（工作树或 `--revision` 指定的检出）：
