@@ -1,4 +1,15 @@
+---
+id: docs-superpowers-plans-2026-07-01-scheduled-tasks-mvp
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-01 implementation plan for the scheduled-tasks MVP — scheduler config plus scheduled_tasks/scheduled_task_runs harness persistence, an app-layer ScheduledTaskService behind a default-off scheduler config gate, owner-scoped /api/scheduled-tasks REST routes, and the /workspace/scheduled-tasks management page with thread-attached once/cron runs
+archived-reason: substantially implemented and since evolved — SchedulerConfig (backend/packages/harness/deerflow/config/scheduler_config.py) is wired into AppConfig, the scheduled_tasks and scheduled_task_runs persistence packages, deerflow/scheduler/schedules.py, backend/app/scheduler/service.py (ScheduledTaskService), the /api/scheduled-tasks router (backend/app/gateway/routers/scheduled_tasks.py), the frontend workspace page (frontend/src/app/workspace/scheduled-tasks/page.tsx with frontend/src/core/scheduled-tasks/ and thread-scheduled-tasks-link.tsx) all exist; divergences from the plan — the migration landed as 0003_scheduled_tasks.py (not 0002, later followed by 0007/0015/0022), scheduler/clock.py was never created, SchedulerConfig grew multi_instance/queue_timeout_seconds/recursion_limit, write routes now also require the runs:create permission, the planned skip overlap policy was superseded by durable enqueue behavior, and frontend/src/core/scheduled-tasks/ gained cron.ts, recipes.ts, and run-history.ts beyond the planned three files; companion design record is docs/superpowers/specs/2026-07-01-scheduled-tasks-mvp-design.md
+---
+
 # Scheduled Tasks MVP Implementation Plan
+
+> **Status: archived (2026-07-01 implementation plan; archived after the 2026-10-04 documentation review).** The MVP landed and has since evolved — see the frontmatter `archived-reason` for the divergences (migration numbering, config and route surface, overlap policy). The body below is preserved as written on 2026-07-01; current behavior is defined by `backend/app/scheduler/service.py`, `backend/app/gateway/routers/scheduled_tasks.py`, and `frontend/src/core/scheduled-tasks/`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
