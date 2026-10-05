@@ -2,9 +2,11 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 import {
   handleRunStream,
+  MOCK_RUN_ID,
   MOCK_THREAD_ID,
   MOCK_THREAD_ID_2,
   mockLangGraphAPI,
+  type MockThread,
 } from "./utils/mock-api";
 
 // ── Upstream v2.1.0: project-scoped submit staleness regressions ──
@@ -183,19 +185,39 @@ test.describe("Streaming message actions", () => {
       id: "edit-chat-human-2-replacement",
       content: [{ type: "text", text: "Edited latest question" }],
     };
-    mockLangGraphAPI(page, {
-      threads: [
-        {
-          thread_id: MOCK_THREAD_ID,
-          title: "Editable conversation",
-          messages: [firstHuman, firstAI, latestHuman, latestAI],
-        },
-      ],
-    });
+    const thread = {
+      thread_id: MOCK_THREAD_ID,
+      title: "Editable conversation",
+      messages: [firstHuman, firstAI, latestHuman, latestAI],
+    };
+    mockLangGraphAPI(page, { threads: [thread] });
+    let historyRows = [firstHuman, firstAI, latestHuman, latestAI].map(
+      (content) => ({ run_id: `run-${MOCK_THREAD_ID}`, content }),
+    );
+    await page.route(
+      `**/api/threads/${MOCK_THREAD_ID}/messages/page`,
+      (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            data: historyRows.map((row, index) => ({
+              run_id: row.run_id,
+              seq: index + 1,
+              content: row.content,
+              metadata: { caller: "lead_agent" },
+              created_at: `2025-01-01T00:00:${String(index).padStart(2, "0")}Z`,
+            })),
+            has_more: false,
+            next_before_seq: null,
+          }),
+        }),
+    );
 
     let prepareBody:
       | { human_message_id?: string; replacement_text?: string }
       | undefined;
+    let replayStreamDelivered = false;
     await page.route(
       `**/api/threads/${MOCK_THREAD_ID}/runs/edit-regenerate/prepare`,
       (route) => {
@@ -231,14 +253,24 @@ test.describe("Streaming message actions", () => {
     );
     await page.route(
       `**/api/langgraph/threads/${MOCK_THREAD_ID}/runs/stream`,
-      (route) =>
-        handleRunStream(route, {}, undefined, {
-          responseMessage: {
-            type: "ai",
-            id: "edit-chat-ai-rerun",
-            content: "Answer to edited question",
-          },
-        }),
+      (route) => {
+        replayStreamDelivered = true;
+        const rerunAnswer = {
+          type: "ai",
+          id: "edit-chat-ai-rerun",
+          content: "Answer to edited question",
+        };
+        thread.messages = [firstHuman, firstAI, replacementHuman, rerunAnswer];
+        historyRows = [
+          { run_id: `run-${MOCK_THREAD_ID}`, content: firstHuman },
+          { run_id: `run-${MOCK_THREAD_ID}`, content: firstAI },
+          { run_id: MOCK_RUN_ID, content: replacementHuman },
+          { run_id: MOCK_RUN_ID, content: rerunAnswer },
+        ];
+        return handleRunStream(route, {}, undefined, {
+          streamedMessages: [replacementHuman, rerunAnswer],
+        });
+      },
     );
 
     await page.goto(`/workspace/chats/${MOCK_THREAD_ID}`);
@@ -274,9 +306,19 @@ test.describe("Streaming message actions", () => {
         human_message_id: latestHuman.id,
         replacement_text: "Edited latest question",
       });
-    await expect(page.getByText("Earlier answer")).toBeVisible();
-    await expect(page.getByText("Edited latest question")).toBeVisible();
-    await expect(page.getByText("Answer to edited question")).toBeVisible();
+    await expect.poll(() => replayStreamDelivered).toBe(true);
+    await expect(
+      page.getByText("Earlier answer", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Edited latest question", { exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByText("Original latest question", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("Answer to edited question", { exact: true }),
+    ).toHaveCount(1);
   });
 
   test("keeps a completed answer copyable while the next turn starts", async ({
@@ -525,11 +567,46 @@ test.describe("Chat workspace", () => {
   test("keeps text and selected skill isolated while switching conversations", async ({
     page,
   }) => {
+    const conversationB: MockThread = {
+      thread_id: MOCK_THREAD_ID_2,
+      title: "Draft conversation B",
+    };
     mockLangGraphAPI(page, {
       threads: [
         { thread_id: MOCK_THREAD_ID, title: "Draft conversation A" },
-        { thread_id: MOCK_THREAD_ID_2, title: "Draft conversation B" },
+        conversationB,
       ],
+      runStreamHandler: (route) => {
+        const request = route.request().postDataJSON() as {
+          input?: {
+            messages?: Array<{
+              type?: string;
+              id?: string;
+              content?: unknown;
+            }>;
+          };
+        };
+        const submittedHuman = request.input?.messages?.find(
+          (message) => message.type === "human",
+        );
+        if (!submittedHuman?.id) {
+          throw new Error(
+            "The B conversation stream omitted its human message",
+          );
+        }
+        const streamedMessages = [
+          {
+            type: "human",
+            id: submittedHuman.id,
+            content: submittedHuman.content,
+          },
+          { type: "ai", id: "msg-ai-1", content: "Hello from iDeer!" },
+        ];
+        conversationB.messages = streamedMessages;
+        return handleRunStream(route, undefined, undefined, {
+          streamedMessages,
+        });
+      },
     });
 
     await page.goto(`/workspace/chats/${MOCK_THREAD_ID}`);
@@ -1185,20 +1262,146 @@ test.describe("Chat workspace", () => {
     // without assigning the requested project.
     const events: string[] = [];
     let createProjectId: string | null = null;
+    let createdThreadId: string | null = null;
+    let activeGoalState: Record<string, unknown> | undefined;
+    let goalPutStatus: number | undefined;
+    let savedGoalObjective: string | undefined;
+    const sdkCreatedThreadIds: string[] = [];
+    const streamRequests: Array<{
+      method: string;
+      path: string;
+      pathThreadId?: string;
+      contextThreadId?: string;
+    }> = [];
     page.on("request", (request) => {
       const url = request.url();
       if (request.method() === "POST" && url.endsWith("/api/threads")) {
         events.push("create-thread");
-        createProjectId =
-          (request.postDataJSON() as { project_id?: string } | null)
-            ?.project_id ?? null;
+        const body = request.postDataJSON() as {
+          thread_id?: string;
+          project_id?: string;
+        } | null;
+        createProjectId = body?.project_id ?? null;
+        createdThreadId = body?.thread_id ?? null;
+      }
+      if (
+        request.method() === "POST" &&
+        url.endsWith("/api/langgraph/threads")
+      ) {
+        const body = request.postDataJSON() as { thread_id?: string } | null;
+        sdkCreatedThreadIds.push(body?.thread_id ?? "");
       }
       if (
         request.method() === "PUT" &&
         /\/api\/threads\/[^/]+\/goal$/.test(url)
       ) {
         events.push("save-goal");
+        const body = request.postDataJSON() as { objective?: string } | null;
+        savedGoalObjective = body?.objective;
+        const now = new Date().toISOString();
+        activeGoalState = {
+          objective: body?.objective ?? "",
+          status: "active",
+          created_at: now,
+          updated_at: now,
+          continuation_count: 0,
+          max_continuations: 3,
+          no_progress_count: 0,
+          max_no_progress_continuations: 2,
+        };
       }
+      const path = new URL(url).pathname;
+      if (path.endsWith("/runs/stream")) {
+        const body = request.postDataJSON() as {
+          context?: { thread_id?: string };
+        } | null;
+        streamRequests.push({
+          method: request.method(),
+          path,
+          pathThreadId:
+            /\/api\/langgraph\/threads\/([^/]+)\/runs\/stream$/.exec(path)?.[1],
+          contextThreadId: body?.context?.thread_id,
+        });
+      }
+    });
+    page.on("response", (response) => {
+      if (
+        response.request().method() === "PUT" &&
+        /\/api\/threads\/[^/]+\/goal$/.test(response.url())
+      ) {
+        goalPutStatus = response.status();
+      }
+    });
+    // The shared mock's generic create route is for sidecars and always
+    // returns MOCK_SIDECAR_THREAD_ID. This project-scoped case models the
+    // native create contract: preserve the requested thread and project.
+    await page.route("**/api/threads", (route) => {
+      if (route.request().method() !== "POST") {
+        return route.fallback();
+      }
+      const body = route.request().postDataJSON() as {
+        thread_id?: string;
+        project_id?: string;
+      };
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          thread_id: body.thread_id,
+          metadata: { project_id: body.project_id },
+          status: "idle",
+          values: { title: "Project-scoped chat" },
+        }),
+      });
+    });
+    // The SDK create is a distinct endpoint from the project pre-create. Its
+    // create response must honor the supplied ID so the stream uses the same
+    // thread whose project and goal were just stored.
+    await page.route("**/api/langgraph/threads", (route) => {
+      if (route.request().method() !== "POST") {
+        return route.fallback();
+      }
+      const body = route.request().postDataJSON() as { thread_id?: string };
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          thread_id: body.thread_id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: { project_id: createProjectId },
+          status: "idle",
+          values: { title: "Project-scoped chat" },
+        }),
+      });
+    });
+    await page.route(/\/api\/langgraph\/threads\/([^/]+)$/, (route) => {
+      const threadId = decodeURIComponent(
+        new URL(route.request().url()).pathname.split("/").at(-1) ?? "",
+      );
+      if (
+        route.request().method() !== "GET" ||
+        !createdThreadId ||
+        threadId !== createdThreadId
+      ) {
+        return route.fallback();
+      }
+      const now = new Date().toISOString();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          thread_id: threadId,
+          created_at: now,
+          updated_at: now,
+          metadata: { project_id: createProjectId },
+          status: "idle",
+          values: {
+            title: "Project-scoped chat",
+            ...(activeGoalState ? { goal: activeGoalState } : {}),
+          },
+        }),
+      });
     });
 
     await page.goto("/workspace/chats/new?project=proj-1");
@@ -1208,11 +1411,26 @@ test.describe("Chat workspace", () => {
     await textarea.fill("/goal finish all tests");
     await textarea.press("Enter");
 
+    // Capture the request contract and the thread/stream state that feeds the
+    // visible GoalStatus.
+    await expect.poll(() => goalPutStatus).toBe(200);
     await expect(
       page.locator("span.font-medium", { hasText: "finish all tests" }),
     ).toBeVisible();
     expect(createProjectId).toBe("proj-1");
+    expect(createdThreadId).toBeTruthy();
+    expect(savedGoalObjective).toBe("finish all tests");
     expect(events.slice(0, 2)).toEqual(["create-thread", "save-goal"]);
+    expect(sdkCreatedThreadIds).toEqual([createdThreadId]);
+    await expect.poll(() => streamRequests.length).toBe(1);
+    expect(streamRequests).toEqual([
+      {
+        method: "POST",
+        path: `/api/langgraph/threads/${createdThreadId}/runs/stream`,
+        pathThreadId: createdThreadId,
+        contextThreadId: createdThreadId,
+      },
+    ]);
   });
 
   test("goal command keeps the welcome header clear of the goal status", async ({
@@ -1383,7 +1601,7 @@ test.describe("Chat workspace", () => {
     });
   });
 
-  test("blocks suggestion template placeholders until replaced", async ({
+  test("blocks unresolved composer template placeholders until replaced", async ({
     page,
   }) => {
     let streamCalled = false;
@@ -1416,7 +1634,9 @@ test.describe("Chat workspace", () => {
     const textarea = page.getByPlaceholder(/how can i assist you/i);
     await expect(textarea).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole("button", { name: /research/i }).click();
+    await textarea.fill(
+      "Conduct a deep dive research on [topic], and summarize the findings.",
+    );
     await expect(textarea).toHaveValue(
       "Conduct a deep dive research on [topic], and summarize the findings.",
     );

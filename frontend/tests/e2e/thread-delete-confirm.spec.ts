@@ -185,7 +185,9 @@ for (const active of [true, false]) {
     await expect.poll(() => cleanupAttempts).toBe(2);
     expect(remoteAttempts).toBe(2);
     await expect(page).toHaveURL(
-      active ? /\/workspace\/chats\/new$/ : new RegExp(`${originalPath}$`),
+      active
+        ? new RegExp(`/workspace/chats/${other}$`)
+        : new RegExp(`${originalPath}$`),
     );
   });
 }

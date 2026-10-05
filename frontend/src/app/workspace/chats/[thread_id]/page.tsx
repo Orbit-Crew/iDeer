@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +33,7 @@ import {
   SidecarProvider,
   SidecarTrigger,
 } from "@/components/workspace/sidecar";
+import { ThreadArchiveStatus } from "@/components/workspace/thread-archive-status";
 import { ThreadBackgroundTasks } from "@/components/workspace/thread-background-tasks";
 import { ThreadScheduledTasksLink } from "@/components/workspace/thread-scheduled-tasks-link";
 import { ThreadTitle } from "@/components/workspace/thread-title";
@@ -56,7 +58,9 @@ import type { ScenarioId } from "@/core/scenarios/types";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
 import { resolveThreadContext } from "@/core/settings/store";
 import { useSkills } from "@/core/skills/hooks";
+import { createThread } from "@/core/threads/api";
 import {
+  INFINITE_THREADS_QUERY_KEY_PREFIX,
   useBranchThread,
   useThreadMetadata,
   useThreadStream,
@@ -144,6 +148,8 @@ export default function ChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedAgent = searchParams.get("agent");
+  const projectParam = searchParams.get("project");
+  const queryClient = useQueryClient();
   const {
     threadId,
     setThreadId,
@@ -251,6 +257,40 @@ export default function ChatPage() {
   const selectionContext = selectionBinding.valid
     ? selectionBinding.context
     : { ...settings.context };
+
+  // Keep the identity current during render so pending preparation can detect
+  // thread switches and query-only project-scope changes immediately.
+  const submissionIdentityRef = useRef({ threadId, projectParam });
+  submissionIdentityRef.current = { threadId, projectParam };
+
+  const prepareProjectThread = useCallback(async () => {
+    if (!isNewThread || !projectParam) {
+      return;
+    }
+    const submissionIdentity = { threadId, projectParam };
+    try {
+      await createThread(threadId, projectParam);
+      void queryClient.invalidateQueries({
+        queryKey: INFINITE_THREADS_QUERY_KEY_PREFIX,
+      });
+    } catch (error) {
+      toast.error(t.projects.projectUnavailable);
+      throw error;
+    }
+    const currentIdentity = submissionIdentityRef.current;
+    if (
+      currentIdentity.threadId !== submissionIdentity.threadId ||
+      currentIdentity.projectParam !== submissionIdentity.projectParam
+    ) {
+      throw new Error("thread-submission-stale");
+    }
+  }, [
+    isNewThread,
+    projectParam,
+    queryClient,
+    t.projects.projectUnavailable,
+    threadId,
+  ]);
 
   const handleRemoveTag = useCallback(
     (id: string) => {
@@ -409,10 +449,19 @@ export default function ChatPage() {
   ]);
 
   const handleSubmit = useCallback(
-    (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
+    async (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
       if (!selectionBinding.valid) {
         toast.error(selectionBinding.reason);
         return;
+      }
+      const submissionIdentity = { threadId, projectParam };
+      await prepareProjectThread();
+      const currentIdentity = submissionIdentityRef.current;
+      if (
+        currentIdentity.threadId !== submissionIdentity.threadId ||
+        currentIdentity.projectParam !== submissionIdentity.projectParam
+      ) {
+        throw new Error("thread-submission-stale");
       }
       const sendPromise = sendMessage(
         threadId,
@@ -425,7 +474,13 @@ export default function ChatPage() {
       }
       void sendPromise;
     },
-    [selectionBinding, sendMessage, threadId],
+    [
+      selectionBinding,
+      sendMessage,
+      threadId,
+      projectParam,
+      prepareProjectThread,
+    ],
   );
   const handleStop = useCallback(async () => {
     await thread.stop();
@@ -505,6 +560,14 @@ export default function ChatPage() {
                   thread={thread}
                   canonicalTitle={threadMetadata.data?.values?.title}
                 />
+                {!isNewThread &&
+                  !isMock &&
+                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" && (
+                    <ThreadArchiveStatus
+                      threadId={threadId}
+                      metadata={threadMetadata.data?.metadata}
+                    />
+                  )}
               </div>
               <div className="flex items-center gap-2">
                 <TokenUsageIndicator
@@ -679,6 +742,7 @@ export default function ChatPage() {
                           }
                         }}
                         onGoalChange={setLocalGoal}
+                        onPrepareThread={prepareProjectThread}
                         onSubmit={handleSubmit}
                         onStop={handleStop}
                       />

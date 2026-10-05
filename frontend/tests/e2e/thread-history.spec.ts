@@ -1,6 +1,7 @@
 import { expect, test, type Route } from "@playwright/test";
 
 import {
+  handleRunStream,
   mockLangGraphAPI,
   MOCK_THREAD_ID,
   MOCK_THREAD_ID_2,
@@ -281,11 +282,33 @@ test.describe("Thread history", () => {
         created_at: "2025-06-03T12:00:03Z",
       };
     });
+    const followUpRow = {
+      run_id: "run-shifted",
+      seq: 149,
+      content: {
+        type: "human",
+        id: "follow-up-prompt",
+        content: [{ type: "text", text: followUpPrompt }],
+      },
+      metadata: { caller: "lead_agent" },
+      created_at: "2025-06-03T12:02:00Z",
+    };
+    const followUpAnswerRow = {
+      run_id: "run-shifted",
+      seq: 150,
+      content: {
+        type: "ai",
+        id: "follow-up-answer",
+        content: "Follow-up response",
+      },
+      metadata: { caller: "lead_agent" },
+      created_at: "2025-06-03T12:02:01Z",
+    };
     const shiftedRows = [
-      ...Array.from({ length: 50 }, (_, index) => {
+      ...Array.from({ length: 48 }, (_, index) => {
         const seq = index + 101;
         return {
-          run_id: "run-shifted",
+          run_id: "run-initial",
           seq,
           content: {
             type: "ai",
@@ -296,20 +319,21 @@ test.describe("Thread history", () => {
           created_at: "2025-06-03T12:01:00Z",
         };
       }),
-      {
-        run_id: "run-shifted",
-        seq: 151,
-        content: {
-          type: "human",
-          id: "follow-up-prompt",
-          content: [{ type: "text", text: followUpPrompt }],
-        },
-        metadata: { caller: "lead_agent" },
-        created_at: "2025-06-03T12:02:00Z",
-      },
+      followUpRow,
+      followUpAnswerRow,
     ];
     let latestPageRequestCount = 0;
     let cursorPageRequestCount = 0;
+    let submittedHuman: { id: string; text: string } | undefined;
+    let streamedMessages: Array<{
+      type?: string;
+      id?: string;
+      content?: unknown;
+    }> = [];
+    let latestHistoryRows: Array<{ id: string; seq: number; runId: string }> =
+      [];
+    let cursorHistoryRows: Array<{ id: string; seq: number; runId: string }> =
+      [];
 
     mockLangGraphAPI(page, {
       threads: [
@@ -324,6 +348,52 @@ test.describe("Thread history", () => {
         },
       ],
     });
+    await page.route(
+      `**/api/langgraph/threads/${MOCK_THREAD_ID}/runs/stream`,
+      (route) => {
+        const request = route.request().postDataJSON() as {
+          input?: {
+            messages?: Array<{
+              type?: string;
+              id?: string;
+              content?: Array<{ type?: string; text?: string }>;
+            }>;
+          };
+        };
+        const requestHuman = request.input?.messages?.find(
+          (message) => message.type === "human",
+        );
+        if (!requestHuman?.id) {
+          throw new Error(
+            "The follow-up stream did not submit a human identity",
+          );
+        }
+        submittedHuman = {
+          id: requestHuman.id,
+          text:
+            requestHuman.content
+              ?.filter((part) => part.type === "text")
+              .map((part) => part.text ?? "")
+              .join("") ?? "",
+        };
+        followUpRow.content.id = requestHuman.id;
+        return handleRunStream(route, {}, undefined, {
+          runId: "run-shifted",
+          streamedMessages: [
+            {
+              type: "human",
+              id: requestHuman.id,
+              content: [{ type: "text", text: followUpPrompt }],
+            },
+            {
+              type: "ai",
+              id: "follow-up-answer",
+              content: "Follow-up response",
+            },
+          ],
+        });
+      },
+    );
     await page.route(
       new RegExp(`/api/threads/${MOCK_THREAD_ID}/messages/page(?:\\?.*)?$`),
       async (route) => {
@@ -342,6 +412,16 @@ test.describe("Thread history", () => {
           : beforeSeq === "101"
             ? initialRows
             : olderRows;
+        const capturedRows = rows.map((row) => ({
+          id: row.content.id,
+          seq: row.seq,
+          runId: row.run_id,
+        }));
+        if (isLatestPage && latestPageRequestCount > 0) {
+          latestHistoryRows = capturedRows;
+        } else if (!isLatestPage) {
+          cursorHistoryRows = capturedRows;
+        }
         const hasMore = isLatestPage || beforeSeq === "101";
         await route.fulfill({
           status: 200,
@@ -381,14 +461,94 @@ test.describe("Thread history", () => {
     await expect(page.getByText("Completed in 11m 44s")).toBeVisible();
 
     const latestPageRequestsBeforeSubmit = latestPageRequestCount;
+    const cursorPageRequestsBeforeSubmit = cursorPageRequestCount;
+    const streamResponsePromise = page.waitForResponse((response) =>
+      response
+        .url()
+        .includes(`/api/langgraph/threads/${MOCK_THREAD_ID}/runs/stream`),
+    );
     const textarea = page.locator("textarea[name='message']");
     await textarea.fill(followUpPrompt);
     await textarea.press("Enter");
+    const streamResponse = await streamResponsePromise;
+    const streamText = await streamResponse.text();
+    const valuesEvent = /event: values\ndata: (.+)\n/.exec(streamText);
+    if (!valuesEvent?.[1]) {
+      throw new Error("The follow-up stream did not return a values event");
+    }
+    streamedMessages = JSON.parse(valuesEvent[1]).messages;
 
     await expect
       .poll(() => latestPageRequestCount, { timeout: 15_000 })
       .toBeGreaterThan(latestPageRequestsBeforeSubmit);
-    await expect(page.getByText(followUpPrompt)).toBeVisible();
+    await expect
+      .poll(() => cursorPageRequestCount)
+      .toBeGreaterThan(cursorPageRequestsBeforeSubmit);
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    expect(submittedHuman).toEqual({
+      id: followUpRow.content.id,
+      text: followUpPrompt,
+    });
+    expect(submittedHuman?.id).toMatch(/^local-human-[0-9a-f-]+$/i);
+    expect(latestHistoryRows).toHaveLength(50);
+    expect(latestHistoryRows.slice(-2)).toEqual([
+      {
+        id: followUpRow.content.id,
+        seq: 149,
+        runId: "run-shifted",
+      },
+      {
+        id: followUpAnswerRow.content.id,
+        seq: 150,
+        runId: "run-shifted",
+      },
+    ]);
+    expect(latestHistoryRows).toContainEqual({
+      id: followUpRow.content.id,
+      seq: 149,
+      runId: "run-shifted",
+    });
+    expect(latestHistoryRows).toContainEqual({
+      id: followUpAnswerRow.content.id,
+      seq: 150,
+      runId: "run-shifted",
+    });
+    expect(cursorHistoryRows.length).toBeGreaterThan(0);
+    expect(streamedMessages).toEqual([
+      {
+        type: "human",
+        id: submittedHuman?.id,
+        content: [{ type: "text", text: followUpPrompt }],
+      },
+      {
+        type: "ai",
+        id: "follow-up-answer",
+        content: "Follow-up response",
+      },
+    ]);
+    const visibleMessageText = await page
+      .locator("[data-message-group-index]")
+      .evaluateAll((groups) => groups.map((group) => group.textContent ?? ""));
+    expect(visibleMessageText).toContain("Follow-up response");
+    const responseGroupIndex = Number(
+      await page
+        .getByText("Follow-up response", { exact: true })
+        .evaluate((element) =>
+          element
+            .closest("[data-message-group-index]")
+            ?.getAttribute("data-message-group-index"),
+        ),
+    );
+    const promptGroup = page.locator(
+      `[data-message-group-index="${responseGroupIndex - 1}"]`,
+    );
+    await expect(promptGroup).toContainText(followUpPrompt);
+    await expect(
+      promptGroup.getByText(followUpPrompt, { exact: true }),
+    ).toHaveCount(1);
 
     let preservedDurationFound = false;
     for (let step = 0; step <= 12; step += 1) {
@@ -413,7 +573,29 @@ test.describe("Thread history", () => {
       element.scrollTop = element.scrollHeight;
       element.dispatchEvent(new Event("scroll"));
     });
-    await expect(page.getByText(followUpPrompt)).toBeVisible();
+    await expect(
+      page.getByText("Follow-up response", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(followUpPrompt, { exact: true })).toHaveCount(
+      1,
+    );
+    const finalPromptGroupIndex = await page
+      .getByText(followUpPrompt, { exact: true })
+      .evaluate((element) =>
+        element
+          .closest("[data-message-group-index]")
+          ?.getAttribute("data-message-group-index"),
+      );
+    const finalResponseGroupIndex = await page
+      .getByText("Follow-up response", { exact: true })
+      .evaluate((element) =>
+        element
+          .closest("[data-message-group-index]")
+          ?.getAttribute("data-message-group-index"),
+      );
+    expect(Number(finalPromptGroupIndex)).toBeLessThan(
+      Number(finalResponseGroupIndex),
+    );
   });
 
   test("shows a completed run duration once after multi-step history", async ({
@@ -717,6 +899,21 @@ test.describe("Thread history", () => {
   }) => {
     mockLangGraphAPI(page);
     let cleanupAttempts = 0;
+    let deletedCheckpointRequests = 0;
+    await page.route(
+      new RegExp(`/threads/${MOCK_THREAD_ID}/history(?:\\?.*)?$`),
+      (route) => {
+        if (cleanupAttempts >= 2) {
+          deletedCheckpointRequests++;
+          return route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: "[]",
+          });
+        }
+        return route.fallback();
+      },
+    );
     await page.route(/\/api\/threads\/[^/]+$/, (route) => {
       if (route.request().method() === "DELETE" && ++cleanupAttempts === 1) {
         return route.fulfill({
@@ -758,7 +955,7 @@ test.describe("Thread history", () => {
     // The first attempt failed: keep the dialog and streamed content until
     // the user retries the remaining cleanup.
     await expect(
-      page.getByText("Failed to delete conversation", { exact: true }),
+      page.getByText("Local cleanup failed", { exact: true }),
     ).toBeVisible();
     await expect(page.getByText("Hello from iDeer!")).toBeVisible();
     await page
@@ -774,6 +971,7 @@ test.describe("Thread history", () => {
     await expect(page.getByPlaceholder(/how can i assist you/i)).toBeVisible();
 
     await page.goto(`/workspace/chats/${MOCK_THREAD_ID}`);
+    await expect.poll(() => deletedCheckpointRequests).toBeGreaterThan(0);
     await page.waitForURL("**/workspace/chats/new");
     await expect(page.getByText("Hello from iDeer!")).toHaveCount(0);
     await expect(page.getByPlaceholder(/how can i assist you/i)).toBeVisible();

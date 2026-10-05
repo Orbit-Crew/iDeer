@@ -281,6 +281,11 @@ test.describe("Thread message ordering", () => {
   }) => {
     const messages = buildFixtureMessages();
     const rows = toFeedRows(messages);
+    let submittedHumanId: string | undefined;
+    const compactionRequests: Array<{
+      method: string;
+      pathThreadId?: string;
+    }> = [];
     mockLangGraphAPI(page, {
       threads: [{ ...THREAD, messages: [...messages] }],
     });
@@ -292,21 +297,36 @@ test.describe("Thread message ordering", () => {
     // answer and the end of the run. The feed grows by the new turn so the
     // finishing history refetch observes it.
     const compactionStream = async (route: Route) => {
+      const request = route.request();
+      const pathThreadId =
+        /\/api\/langgraph\/threads\/([^/]+)\/runs\/stream$/.exec(
+          new URL(request.url()).pathname,
+        )?.[1];
+      compactionRequests.push({
+        method: request.method(),
+        pathThreadId,
+      });
       const submitted = (
-        route.request().postDataJSON() as {
+        request.postDataJSON() as {
           input?: { messages?: FeedMessage[] };
         }
       )?.input?.messages;
       const submittedHuman = (submitted ?? []).find(
         (message) => message.type === "human",
       );
+      if (typeof submittedHuman?.id !== "string") {
+        throw new Error(
+          "The compaction submit did not include a human identity",
+        );
+      }
+      submittedHumanId = submittedHuman.id;
       // The runtime keeps the just-submitted human in the post-compaction
-      // checkpoint state — the SDK-side human count only advances if the
-      // stream echoes it, which is also what hides the optimistic copy.
+      // checkpoint state, retaining the client identity so the stream and
+      // persisted history reconcile with the optimistic copy.
       const serverHuman: FeedMessage = {
         type: "human",
-        id: "h-turn-32",
-        content: submittedHuman?.content ?? "final-turn question",
+        id: submittedHuman.id,
+        content: submittedHuman.content ?? "final-turn question",
       };
       const retainedTail = [...turnMessages(31)];
       const removeAll = { id: "__remove_all__", type: "remove" };
@@ -368,11 +388,9 @@ test.describe("Thread message ordering", () => {
         body,
       });
     };
-    await page.route("**/api/langgraph/threads/*/runs/stream", (route) =>
-      compactionStream(route),
-    );
-    await page.route("**/api/langgraph/runs/stream", (route) =>
-      compactionStream(route),
+    await page.route(
+      `**/api/langgraph/threads/${MOCK_THREAD_ID}/runs/stream`,
+      (route) => compactionStream(route),
     );
 
     await page.goto(`/workspace/chats/${MOCK_THREAD_ID}`);
@@ -384,39 +402,75 @@ test.describe("Thread message ordering", () => {
     await textarea.fill("final-turn question");
     await textarea.press("Enter");
 
-    // The streamed answer lands below the submitted question. Note: the
-    // count-based optimistic clearing does not fire when compaction shrinks
-    // the SDK human count below its pre-submit value (a known limitation
-    // tracked with the turn-ownership work), so a trailing optimistic twin
-    // can remain; the ordering contract asserted here is about the canonical
-    // server copy.
+    // The submitted identity is echoed in the checkpoint and persisted feed,
+    // so the optimistic copy reconciles to one canonical human row.
     await expect(page.getByText("final-turn answer")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(
+      page.getByText("final-turn question", { exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByText("final-turn answer", { exact: true }),
+    ).toHaveCount(1);
+    expect(compactionRequests).toEqual([
+      { method: "POST", pathThreadId: MOCK_THREAD_ID },
+    ]);
+    expect(submittedHumanId).toBeTruthy();
+    expect(
+      rows.filter(
+        (row) =>
+          row.content.id === submittedHumanId && row.content.type === "human",
+      ),
+    ).toHaveLength(1);
+    expect(
+      rows.filter(
+        (row) => row.content.id === "a-turn-32" && row.content.type === "ai",
+      ),
+    ).toHaveLength(1);
+    expect(rows.slice(-2).map((row) => row.content.id)).toEqual([
+      submittedHumanId,
+      "a-turn-32",
+    ]);
     // DOM relative order, not viewport coordinates: stick-to-bottom smooth
     // scrolling makes two separate boundingBox reads race each other.
-    const questionBeforeAnswer = await page.evaluate(() => {
-      const list = document.querySelector('[data-testid="main-message-list"]');
-      if (!list) {
-        return null;
-      }
-      const leaf = (text: string) =>
-        [...list.querySelectorAll("div, p")].find(
-          (element) =>
-            element.children.length === 0 && element.textContent === text,
-        );
-      const question = leaf("final-turn question");
-      const answer = leaf("final-turn answer");
-      if (!question || !answer) {
-        return null;
-      }
-      return (
-        (question.compareDocumentPosition(answer) &
-          Node.DOCUMENT_POSITION_FOLLOWING) !==
-        0
-      );
-    });
-    expect(questionBeforeAnswer).toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const list = document.querySelector(
+            '[data-testid="main-message-list"]',
+          );
+          const groups = Array.from(
+            list?.querySelectorAll<HTMLElement>("[data-message-group-index]") ??
+              [],
+          );
+          const questions = groups.filter((group) =>
+            group.textContent?.includes("final-turn question"),
+          );
+          const answers = groups.filter((group) =>
+            group.textContent?.includes("final-turn answer"),
+          );
+          const question = questions[0];
+          const answer = answers[0];
+          return {
+            questionGroupCount: questions.length,
+            answerGroupCount: answers.length,
+            questionIndex: question?.dataset.messageGroupIndex ?? null,
+            answerIndex: answer?.dataset.messageGroupIndex ?? null,
+            questionBeforeAnswer:
+              question !== undefined &&
+              answer !== undefined &&
+              (question.compareDocumentPosition(answer) &
+                Node.DOCUMENT_POSITION_FOLLOWING) !==
+                0,
+          };
+        }),
+      )
+      .toMatchObject({
+        questionGroupCount: 1,
+        answerGroupCount: 1,
+        questionBeforeAnswer: true,
+      });
 
     // The finishing refetch observed the extended feed; the established
     // order — including the compacted head — is unchanged.
@@ -434,6 +488,9 @@ test.describe("Thread message ordering", () => {
     await expect(page.getByText("final-turn answer")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(
+      page.getByText("final-turn question", { exact: true }),
+    ).toHaveCount(1);
     await expectGroupIndicesAscending(page);
   });
 

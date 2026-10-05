@@ -5,24 +5,67 @@ import { mockLangGraphAPI } from "./utils/mock-api";
 const CHAT = "00000000-0000-0000-0000-000000000901";
 const OTHER = "00000000-0000-0000-0000-000000000902";
 
+function mockArchiveAwareSearch(
+  page: Parameters<typeof mockLangGraphAPI>[0],
+  threads: Array<{
+    thread_id: string;
+    title: string;
+    updated_at?: string;
+    metadata?: Record<string, unknown>;
+  }>,
+) {
+  void page.route("**/api/threads/search", (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const request = route.request().postDataJSON() as {
+      archived?: boolean;
+      limit?: number;
+      offset?: number;
+    };
+    const matches = threads
+      .filter((thread) =>
+        request.archived === undefined
+          ? true
+          : (thread.metadata?.deerflow_archived === true) === request.archived,
+      )
+      .sort(
+        (a, b) =>
+          Date.parse(b.updated_at ?? "0") - Date.parse(a.updated_at ?? "0"),
+      )
+      .slice(request.offset ?? 0, (request.offset ?? 0) + (request.limit ?? 50))
+      .map((thread) => ({
+        thread_id: thread.thread_id,
+        created_at: "2025-01-01T00:00:00Z",
+        updated_at: thread.updated_at ?? "2025-01-01T00:00:00Z",
+        metadata: thread.metadata ?? {},
+        status: "idle",
+        values: { title: thread.title },
+      }));
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(matches),
+    });
+  });
+}
+
 test("archive keeps the open conversation, supports undo and restores from the archive", async ({
   page,
 }, testInfo) => {
-  mockLangGraphAPI(page, {
-    threads: [
-      {
-        thread_id: CHAT,
-        title: "Finished report",
-        updated_at: "2026-07-04T10:00:00Z",
-        metadata: { deerflow_pinned: true },
-      },
-      {
-        thread_id: OTHER,
-        title: "Current work",
-        updated_at: "2026-07-05T10:00:00Z",
-      },
-    ],
-  });
+  const threads = [
+    {
+      thread_id: CHAT,
+      title: "Finished report",
+      updated_at: "2026-07-04T10:00:00Z",
+      metadata: { deerflow_pinned: true },
+    },
+    {
+      thread_id: OTHER,
+      title: "Current work",
+      updated_at: "2026-07-05T10:00:00Z",
+    },
+  ];
+  mockLangGraphAPI(page, { threads });
+  mockArchiveAwareSearch(page, threads);
   await page.goto(`/workspace/chats/${CHAT}`, {
     waitUntil: "domcontentloaded",
   });
@@ -108,23 +151,21 @@ test("failed archive keeps the chat visible", async ({ page }) => {
 test("active list includes legacy chats beyond a full page of archived chats", async ({
   page,
 }) => {
-  mockLangGraphAPI(page, {
-    threads: [
-      ...Array.from({ length: 55 }, (_, index) => ({
-        thread_id: `archived-${index}`,
-        title: `Archived ${index}`,
-        updated_at: new Date(
-          Date.UTC(2026, 7, 1) - index * 60000,
-        ).toISOString(),
-        metadata: { deerflow_archived: true },
-      })),
-      {
-        thread_id: CHAT,
-        title: "Legacy chat",
-        updated_at: "2020-01-01T00:00:00Z",
-      },
-    ],
-  });
+  const threads = [
+    ...Array.from({ length: 55 }, (_, index) => ({
+      thread_id: `archived-${index}`,
+      title: `Archived ${index}`,
+      updated_at: new Date(Date.UTC(2026, 7, 1) - index * 60000).toISOString(),
+      metadata: { deerflow_archived: true },
+    })),
+    {
+      thread_id: CHAT,
+      title: "Legacy chat",
+      updated_at: "2020-01-01T00:00:00Z",
+    },
+  ];
+  mockLangGraphAPI(page, { threads });
+  mockArchiveAwareSearch(page, threads);
   await page.goto("/workspace/chats", { waitUntil: "domcontentloaded" });
   await expect(
     page.locator("main").getByText("Legacy chat", { exact: true }),
