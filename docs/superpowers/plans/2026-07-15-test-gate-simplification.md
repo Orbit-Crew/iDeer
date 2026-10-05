@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-07-15-test-gate-simplification
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-15 CI plan trimming duplicate frontend coverage runs, narrowing the PR browser gate to mock smoke, and selecting real E2E by a risk-path script with a fixed Real E2E Gate summary job
+archived-reason: implemented — .github/scripts/should-run-real-e2e.sh with its test script, the select_real_e2e/real_e2e_gate jobs in .github/workflows/real-e2e-tests.yml, and the smoke/workflows collection rules recorded in docs/testing/coverage-matrix.md all exist; workflow line anchors describe the 2026-07-15 files
+---
+
 # Test Gate Simplification Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-04-10-event-store-history
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-04-10 gateway plan to serve thread state/history messages from the append-only run event store instead of checkpoint state, with deterministic id patching, legacy Command-repr sanitization, and frontend feedback pagination
+archived-reason: not landed as written — `_get_event_store_messages` and `backend/tests/test_thread_state_event_store.py` do not exist in this candidate and the harness package was renamed ideer→deerflow; thread history instead stamps message seq/run ids through the run_n store (`stamp_messages_with_seq`, `backend/tests/test_thread_state_promoted.py`), and Task 2 (flush threshold) was explicitly deferred in the plan; the evidence chain remains at docs/superpowers/specs/2026-04-11-runjournal-history-evaluation.md
+---
+
 # Event Store History — Backend Compatibility Layer
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

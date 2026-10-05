@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-09-13-projects-mvp-phase2-implementation-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-09-13 sequencing plan for Projects MVP phase 2 — five slices covering instructions injection, shelf storage/delivery/reads, promotion and thread-files, trash completion, and frontend completion, with design authority owned by the phase-2 spec's deviation register
+archived-reason: implemented in this candidate — the project_documents/project_thread_files/trash routers, ProjectsConfig, migration 0024_project_documents, the DynamicContextMiddleware wrap_model_call hooks, the deerflow/projects package, and the workspace trash route all exist; the branch/worktree references (projects-mvp-phase2, ../deer-flow-phase2, base main @ 6f81daef) describe the implementation workspace, not the current one
+---
+
 # DeerFlow Projects MVP — Phase 2 Implementation Plan
 
 **Date**: 2026-09-13

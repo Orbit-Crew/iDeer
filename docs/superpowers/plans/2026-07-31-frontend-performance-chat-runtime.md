@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-07-31-frontend-performance-chat-runtime
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-31 plan keeping streaming chat, long histories, Markdown, and chat navigation proportional to changed or visible data — indexed message derivation, focus-stable history pagination, bounded Markdown commits, TanStack Virtual windows, and normalized bounded chat lists
+archived-reason: implemented — frontend/src/components/workspace/messages/virtual-message-list.tsx, frontend/src/core/messages/derived-state.ts, frontend/src/core/threads/thread-list-model.ts, and the @tanstack/react-virtual dependency all exist; per-task line anchors describe the pre-implementation files
+---
+
 # Frontend Chat Runtime Performance Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

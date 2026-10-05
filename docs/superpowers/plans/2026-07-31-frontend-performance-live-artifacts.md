@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-07-31-frontend-performance-live-artifacts
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-31 plan pausing hidden decorative animations, negotiating binary Browser Live JPEG frames with legacy base64 fallback, presenting frames outside React render cadence, and bounding text artifact previews to 1 MiB with range requests
+archived-reason: implemented with one rename — frame-format negotiation and websocket.send_bytes exist in the browser router and browser_automation session, FrameBuffer lives at frontend/src/components/workspace/browser-view/frame-buffer.ts, ARTIFACT_PREVIEW_MAX_BYTES bounds frontend/src/core/artifacts/loader.ts previews, FileResponse serves ranged previews in the artifacts router, and the visibility hook landed as frontend/src/core/dom/render-activity.ts (plan named use-render-activity.ts); task line anchors describe the 2026-07-31 tree
+---
+
 # Frontend Live Media and Artifact Performance Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
