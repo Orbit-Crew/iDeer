@@ -1,6 +1,15 @@
+---
+id: docs-plans-openviking-http-memory-integration
+kind: plan
+status: archived
+owner: repository maintainers
+scope: design record for the first OpenViking HTTP memory backend — backend package layout, trusted-mode identity and session-id mapping, write watermark, retrieval/injection and failure-policy design; first version shipped via PR #4509 and the delivered integration now runs on the official langchain-openviking adapter (PR #4707) with owner_user_id USER-key binding
+archived-reason: implemented once per this design (PR #4509) and then replaced in implementation by the official adapter (PR #4707), whose config rejects the trusted mode and the custom HTTP client fields prescribed here; the current contract for this topic is docs/OPENVIKING.md — body preserved as the original design draft
+---
+
 # OpenViking HTTP Memory Backend 接入实现方案
 
-> 状态：设计稿
+> 状态：archived（设计稿；首版已按本方案实现，后被官方适配器方案取代）——2026-10-04 核对：PR #4509（feat(memory): add OpenViking HTTP backend）首版落地本文设计；PR #4707（refactor(memory): use official OpenViking adapter）改用官方 `langchain-openviking` 适配器并移除 trusted 模式与自研 HTTP Client，`openviking/config.py` 现显式拒绝 `auth_mode`/`account`/`connect_timeout_seconds` 等字段，身份绑定改为 `owner_user_id` + USER API key。现行契约见 [docs/OPENVIKING.md](../OPENVIKING.md) 与 `config.example.yaml` 的 OpenViking 示例块；以下正文按设计原稿保留。
 > 范围：通过 HTTP 将 OpenViking 接入为 DeerFlow 的可选 `MemoryManager` 后端
 > 默认行为：DeerMem 继续作为默认后端，OpenViking 需要显式启用
 > 非目标：本文不包含代码实现、DeerMem 存量数据迁移、OpenViking 服务端开发
