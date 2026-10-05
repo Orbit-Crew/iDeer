@@ -1,6 +1,15 @@
+---
+id: docs-plans-2026-09-01-chip-software-development-package-spec
+kind: plan
+status: archived
+owner: repository maintainers
+scope: requirement spec for a chip software development package extraction Skill — evidence-bound knowledge brief plus structured worksheet with confirmed/review_required status over a same-model-same-package datasheet set
+archived-reason: implemented — resources/skills/chip-software-development-package/ and backend/app/agentplatform/skills/chip_software_package.py (with backend/tests/unit/skills/test_chip_software_package.py) exist and the skill ships in bundled-resources.json
+---
+
 # 芯片软件开发包提取需求规格
 
-> 状态：需求已确认，尚未实施
+> 状态：archived（需求已实施）。2026-10-04 核对：Skill 位于 `resources/skills/chip-software-development-package/`，领域抽取边界在 `backend/app/agentplatform/skills/chip_software_package.py`（单测 `backend/tests/unit/skills/test_chip_software_package.py`），并已入 `bundled-resources.json` 预装清单。
 > 日期：2026-09-01
 
 ## Problem Statement

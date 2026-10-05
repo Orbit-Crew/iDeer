@@ -1,3 +1,12 @@
+---
+id: docs-plans-2026-08-26-term-glossary
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: point-in-time record of the 2026-08-26 phase-3 UI copy renames (agents/workflows descriptions, run/token wording) plus the terms deliberately kept and deferred candidates; UI display language only
+archived-reason: executed rename batch — the recorded zh/en copy changes landed in frontend/src/core/i18n/locales/ (spot-checked 2026-10-04, since further evolved e.g. agents wording now says 专家 per ADR 0007); engineering terminology authority remains CONTEXT.md
+---
+
 # 小白友好术语对照表（第三期）
 
 - 日期：2026-08-26

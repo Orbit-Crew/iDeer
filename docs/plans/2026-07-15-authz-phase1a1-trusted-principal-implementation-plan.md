@@ -1,4 +1,15 @@
+---
+id: docs-plans-2026-07-15-authz-phase1a1-trusted-principal-plan
+kind: plan
+status: archived
+owner: authorization maintainers
+scope: single-PR plan extracted from the Phase 1A plan for the trusted Principal chain only — server-owned identity fields in the Gateway, one Principal builder shared by adapter and Layer 1, and unconditional subagent propagation
+archived-reason: merged as Phase 1A-1 — recorded in the implementation notes decision log (2026-07-15) with 323 passing boundary tests; build_principal_from_context lives in backend/packages/harness/deerflow/authz/principal.py and the Gateway derives is_internal from request.state.auth_source
+---
+
 # Phase 1A-1 实施计划：可信 Principal 链路
+
+> status: archived（计划已实施）。2026-10-04 核对：`build_principal_from_context` 位于 `backend/packages/harness/deerflow/authz/principal.py`，Gateway 侧 `is_internal` 由 `request.state.auth_source == AUTH_SOURCE_INTERNAL` 派生并写回 runtime context（`backend/app/gateway/services.py`），服务端身份字段防伪与 subagent 无条件写回均有测试；实现组织（如服务端字段集合常量的命名与位置）随后续重构有调整，契约以[实施记录](2026-07-10-pluggable-authorization-implementation-notes.md)为准。
 
 建议 PR 标题：
 

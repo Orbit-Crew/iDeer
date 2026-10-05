@@ -1,7 +1,17 @@
+---
+id: docs-plans-storage-rewrite-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: design record for the DeerMem storage rewrite (PR #4279) — canonical Markdown fact layout, per-user/agent scoping, compatibility boundary, repository contract, concurrency/journal model, migration and fixed invariants
+archived-reason: implemented as its header states — the deermem backend lives at backend/packages/harness/deerflow/agents/memory/backends/deermem/ and is the delivered design record retained during review
+---
+
 # DeerMem Storage Rewrite Plan
 
 > Status: implemented in PR #4279 and retained as the design record requested during review.
 > Scope: file-backed storage only. Retrieval ranking, embeddings, project scope, and recall policy remain separate work.
+> 2026-10-04 抽核：实现位于 `backend/packages/harness/deerflow/agents/memory/backends/deermem/`；实施说明见同目录 [STORAGE_REWRITE_CHANGES.md](STORAGE_REWRITE_CHANGES.md)。
 
 ## 1. Objective
 

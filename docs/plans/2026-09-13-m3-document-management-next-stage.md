@@ -1,9 +1,17 @@
+---
+id: docs-plans-2026-09-13-m3-document-management-next-stage
+kind: plan
+status: archived
+owner: knowledge maintainers
+scope: post-closeout plan for M3 document management and the Knowledge Center — canonical documents sub-resource API, provider adapter with validation/hash/isolated storage, frontend Knowledge Center over platform APIs, retrieval budgets and the acceptanceloop
+archived-reason: executed — the documents sub-resource API (list/upload/get/patch/retry/rebuild-index under /api/resources/{id}/documents in backend/app/gateway/routers/resources.py), the knowledge service package (backend/app/agentplatform/knowledge/ with documents.py and worker.py) and the /api/features knowledge status exist; the plan's UNVERIFIED/待用户确认 gate is historical
+---
+
 # M3 下一阶段计划：文档管理与 Knowledge Center
 
 > 制定日期：2026-09-13
-> 状态：**待用户确认**
+> 状态：**archived（已实施）**——2026-10-04 核对：文档子资源 API（`/api/resources/{id}/documents` 列表/上传/详情/更新/重试/重建索引，`backend/app/gateway/routers/resources.py`）与知识服务包（`backend/app/agentplatform/knowledge/`，含 `documents.py`、`worker.py`）已在候选，`/api/features` 提供知识能力状态；本文"待用户确认/UNVERIFIED"为开工前的历史状态。
 > 前置报告：[M3 开工基线收口报告](../testing/2026-09-13-m3-readiness-closeout-report.md)
-> 当前结论：M3 **UNVERIFIED**，本计划在解除硬前置前不进入实现。
 
 ## 目标
 

@@ -1,4 +1,15 @@
+---
+id: docs-plans-2026-08-24-subagent-batch-capacity
+kind: plan
+status: archived
+owner: repository maintainers
+scope: delivered behavior and operational contract for one process-wide subagent execution capacity (subagent_runtime) plus the explicit durable batch_task mode (subagent_batches) with owner-scoped HTTP API and JSONL export
+archived-reason: implemented as stated in the body — subagents_config.py, tools/builtins/batch_task_tool.py, migration 0016_subagent_batches, gateway routers/subagent_batches.py and the frontend batch panel exist in the candidate; retained as the behavior/operations reference for this subsystem
+---
+
 # Subagent Capacity and Durable Batch Execution
+
+> status: archived（已实施，保留为该子系统的行为与运维契约记录）。2026-10-04 抽核：`subagent_runtime`/`subagent_batches` 配置在 `backend/packages/harness/deerflow/config/subagents_config.py`，`batch_task` 工具、`backend/app/gateway/routers/subagent_batches.py` 路由与迁移 `0016_subagent_batches.py`（含 `0021_batch_acceptance.py`）均在候选中。
 
 ## Status
 

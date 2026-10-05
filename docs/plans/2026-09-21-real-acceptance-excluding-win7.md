@@ -1,6 +1,16 @@
+---
+id: docs-plans-2026-09-21-real-acceptance-excluding-win7
+kind: plan
+status: archived
+owner: repository maintainers
+scope: serial real-acceptance execution plan excluding Windows 7 — fix candidate/environment (P0), build evidence tooling (P1), then Gate 7 (P2), Gate 8 (P3), M9 real Local Runtime→MCP→Evidence (P4), fault-zeroing attachment TTFT (P5) and final review/database handoff (P6)
+archived-reason: executed for the Linux scope — the P1 tooling exists (backend/tests/gate7_acceptance.py, gate8_acceptance.py, test_knowledge_gate7_live.py, test_knowledge_gate8_live.py, scripts/acceptance/run_gate7_*/run_gate8_* validators, scripts/benchmark/, frontend/tests/e2e/real/) and the outcome is recorded in docs/testing/current-branches-closeout-report.md (2026-09-24): Gate 7 16/16 rows, amended Gate 8 artifact and M9 stdio/HTTP/deny/revoke/timeout passed on the frozen candidate; fault-zeroing cases and database-retention checks remain explicitly out of scope/unverified there, and Windows 7 stays excluded by design
+---
+
 # 除 Windows 7 外的真实验收执行计划
 
 日期：2026-09-21。核对基线：develop@094e7cc9。本文件是待执行计划，不是通过报告。
+2026-10-04 状态标注：archived——Linux 范围（P0–P4 为主）已执行，结果与剩余未执行项（故障归零用例、数据库保留审计、Windows 7）记录于 [current-branches-closeout-report](../testing/current-branches-closeout-report.md)（2026-09-24）；本文保留为执行过程记录，不代表通过报告。
 
 ## 目标和边界
 

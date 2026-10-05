@@ -1,7 +1,16 @@
+---
+id: docs-plans-2026-09-13-m3-readiness-closeout-plan
+kind: plan
+status: archived
+owner: knowledge maintainers
+scope: one-shot closeout plan to fix the M3 starting baseline — verify M0-T0.1/M1/M2 hard prerequisites and M7/M8 acceptance state on a fixed candidate, then produce the readiness report and the next-stage M3 plan
+archived-reason: executed — its deliverable exists at docs/testing/2026-09-13-m3-readiness-closeout-report.md and the follow-up plan docs/plans/2026-09-13-m3-document-management-next-stage.md was produced; M3 itself has since been implemented
+---
+
 # M3 开工基线短收口计划
 
 > 制定日期：2026-09-13
-> 状态：待执行；本文件创建不代表已开始收口或验收
+> 状态：**archived（已执行）**——交付物 [M3 开工基线收口报告](../testing/2026-09-13-m3-readiness-closeout-report.md) 已产出，并据此形成 [M3 下一阶段计划](2026-09-13-m3-document-management-next-stage.md)；M3 本体其后已实施。本文保留为执行过程记录。
 > 目标：先做一次短收口，确认 M3 开工基线，完成后总结工作、规划下一阶段，并等待用户确认。
 > 初始参考：此前分析基于 `develop@2eba51fd`；执行时必须重新确认候选提交和工作区状态。
 

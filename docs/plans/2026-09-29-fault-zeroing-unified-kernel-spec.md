@@ -1,9 +1,18 @@
+---
+id: docs-plans-2026-09-29-fault-zeroing-unified-kernel-spec
+kind: plan
+status: archived
+owner: fault-zeroing maintainers
+scope: three-entry one-kernel spec unifying Skill/Expert/Workflow fault-zeroing runs through the Fault-zeroing Execution Kernel with Hybrid Evidence Intake, snapshot-pinned Result Contract gating and removal of the chat inline five-artifact mode
+archived-reason: implemented — backend/app/agentplatform/fault_zeroing/kernel.py and entries.py, the zeroing_run_tool chat entry, workflows/v2/result_contract.py and the entry-equivalence integration test (backend/tests/integration/workflows/test_fault_zeroing_entry_equivalence.py) exist; the follow-up toolchain slice is docs/plans/2026-09-30-fault-zeroing-toolchain-spec.md
+---
+
 # 归零智能体「三入口一内核」统一执行内核 — Spec
 
 - **date**: 2026-09-29
-- **status**: ready-for-agent（本地 triage 标记；迁移 tracker 时映射为 `ready-for-agent` 标签）
+- **status**: archived（已实施）——2026-10-04 核对：统一内核位于 `backend/app/agentplatform/fault_zeroing/`（`kernel.py`、`entries.py`），聊天发起工具 `zeroing_run_tool`、契约门 `backend/app/agentplatform/workflows/v2/result_contract.py` 与三入口等价性集成测试均在候选；后续工具链切片见 [2026-09-30-fault-zeroing-toolchain-spec.md](2026-09-30-fault-zeroing-toolchain-spec.md)。
 - **source**: 会话《归零智能体 skill-agent-workflow 三级机制审查》→ grill-with-docs 需求澄清 → to-spec
-- **tickets**: `.scratch/fault-zeroing-unified-kernel/issues/01..05`
+- **tickets**: `.scratch/fault-zeroing-unified-kernel/issues/01..05`（会话临时区，历史）
 
 ## Problem Statement
 
