@@ -14,7 +14,7 @@ def _completed(command: list[str], *, stdout: bytes = b"", returncode: int = 0) 
 
 
 def _write_skill(repo_root: Path, package: str) -> Path:
-    skill_md = repo_root / "skills" / "public" / package / "SKILL.md"
+    skill_md = repo_root / "resources" / "skills" / package / "SKILL.md"
     skill_md.parent.mkdir(parents=True, exist_ok=True)
     skill_md.write_text("---\nname: demo\ndescription: Demo skill.\n---\n", encoding="utf-8")
     return skill_md
@@ -25,7 +25,7 @@ def _empty_waiver_manifests(monkeypatch) -> None:
     monkeypatch.setattr(runner, "load_waiver_manifests", lambda args, repo_root: (EMPTY_MANIFEST, EMPTY_MANIFEST))
 
 
-def test_main_skips_successfully_when_no_public_skill_changed(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_main_skips_successfully_when_no_skill_package_changed(tmp_path: Path, monkeypatch, capsys) -> None:
     def fake_run(command, **kwargs):
         assert command == [
             "git",
@@ -34,7 +34,7 @@ def test_main_skips_successfully_when_no_public_skill_changed(tmp_path: Path, mo
             "-z",
             "base...head",
             "--",
-            runner.PUBLIC_SKILL_PACKAGE_PATHSPEC,
+            runner.SKILL_PACKAGE_PATHSPEC,
         ]
         assert kwargs["cwd"] == tmp_path
         assert kwargs["capture_output"] is True
@@ -42,7 +42,7 @@ def test_main_skips_successfully_when_no_public_skill_changed(tmp_path: Path, mo
         return _completed(command)
 
     def fail_review(*args, **kwargs):
-        raise AssertionError("review should not run when no public skill package file changed")
+        raise AssertionError("review should not run when no skill package file changed")
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
     monkeypatch.setattr(runner, "run_review", fail_review)
@@ -60,7 +60,7 @@ def test_main_skips_successfully_when_no_public_skill_changed(tmp_path: Path, mo
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert "No changed public skill package files; skipping review." in output
+    assert "No changed skill package files; skipping review." in output
 
 
 def test_main_reviews_changed_public_skill_and_skips_deleted_skill_md(
@@ -73,13 +73,13 @@ def test_main_reviews_changed_public_skill_and_skips_deleted_skill_md(
     diff_output = b"\0".join(
         [
             b"M",
-            b"skills/public/alpha/SKILL.md",
+            b"resources/skills/alpha/SKILL.md",
             b"M",
-            b"skills/public/alpha/evals/fixtures/blocked/SKILL.md",
+            b"resources/skills/alpha/evals/fixtures/blocked/SKILL.md",
             b"D",
-            b"skills/public/deleted/SKILL.md",
+            b"resources/skills/deleted/SKILL.md",
             b"M",
-            b"skills/public/alpha/references/guide.md",
+            b"resources/skills/alpha/references/guide.md",
             b"M",
             b"skills/private/not-public/SKILL.md",
             b"",
@@ -113,10 +113,10 @@ def test_main_reviews_changed_public_skill_and_skips_deleted_skill_md(
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert reviewed == ["skills/public/alpha"]
-    assert "Queued package: skills/public/alpha" in output
-    assert "Skipping deleted SKILL.md: skills/public/deleted/SKILL.md" in output
-    assert "All changed public skill packages passed review." in output
+    assert reviewed == ["resources/skills/alpha"]
+    assert "Queued package: resources/skills/alpha" in output
+    assert "Skipping deleted SKILL.md: resources/skills/deleted/SKILL.md" in output
+    assert "All changed skill packages passed review." in output
 
 
 def test_main_skips_fully_deleted_skill_package(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -125,11 +125,11 @@ def test_main_skips_fully_deleted_skill_package(tmp_path: Path, monkeypatch, cap
     diff_output = b"\0".join(
         [
             b"D",
-            b"skills/public/removed/SKILL.md",
+            b"resources/skills/removed/SKILL.md",
             b"D",
-            b"skills/public/removed/scripts/helper.py",
+            b"resources/skills/removed/scripts/helper.py",
             b"D",
-            b"skills/public/removed/assets/logo.png",
+            b"resources/skills/removed/assets/logo.png",
             b"",
         ]
     )
@@ -156,9 +156,9 @@ def test_main_skips_fully_deleted_skill_package(tmp_path: Path, monkeypatch, cap
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert "Skipping deleted SKILL.md: skills/public/removed/SKILL.md" in output
-    assert "Skipping fully removed package: skills/public/removed" in output
-    assert "No changed public skill package files; skipping review." in output
+    assert "Skipping deleted SKILL.md: resources/skills/removed/SKILL.md" in output
+    assert "Skipping fully removed package: resources/skills/removed" in output
+    assert "No changed skill package files; skipping review." in output
 
 
 def test_main_reviews_package_when_skill_md_deleted_but_sibling_file_remains(
@@ -175,9 +175,9 @@ def test_main_reviews_package_when_skill_md_deleted_but_sibling_file_remains(
     diff_output = b"\0".join(
         [
             b"D",
-            b"skills/public/broken/SKILL.md",
+            b"resources/skills/broken/SKILL.md",
             b"M",
-            b"skills/public/broken/scripts/helper.py",
+            b"resources/skills/broken/scripts/helper.py",
             b"",
         ]
     )
@@ -206,8 +206,8 @@ def test_main_reviews_package_when_skill_md_deleted_but_sibling_file_remains(
 
     output = capsys.readouterr().out
     assert exit_code == 1
-    assert reviewed == ["skills/public/broken"]
-    assert "Queued package: skills/public/broken" in output
+    assert reviewed == ["resources/skills/broken"]
+    assert "Queued package: resources/skills/broken" in output
     assert "One or more skill reviews failed." in output
 
 
@@ -217,11 +217,11 @@ def test_main_reviews_package_when_only_support_file_changed(
     capsys,
 ) -> None:
     _write_skill(tmp_path, "alpha")
-    diff_output = b"M\0skills/public/alpha/references/guide.md\0"
+    diff_output = b"M\0resources/skills/alpha/references/guide.md\0"
     reviewed: list[str] = []
 
     def fake_git_diff(command, **kwargs):
-        assert command[-1] == runner.PUBLIC_SKILL_PACKAGE_PATHSPEC
+        assert command[-1] == runner.SKILL_PACKAGE_PATHSPEC
         return _completed(command, stdout=diff_output)
 
     def fake_review(package: Path, repo_root: Path, python_executable: str, manifest: WaiverManifest) -> int:
@@ -244,8 +244,8 @@ def test_main_reviews_package_when_only_support_file_changed(
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert reviewed == ["skills/public/alpha"]
-    assert "Queued package: skills/public/alpha" in output
+    assert reviewed == ["resources/skills/alpha"]
+    assert "Queued package: resources/skills/alpha" in output
 
 
 def test_main_maps_eval_fixture_changes_to_owner_package(
@@ -254,7 +254,7 @@ def test_main_maps_eval_fixture_changes_to_owner_package(
 ) -> None:
     _write_skill(tmp_path, "skill-reviewer")
     _write_skill(tmp_path, "skill-reviewer/evals/fixtures/blocked")
-    diff_output = b"M\0skills/public/skill-reviewer/evals/fixtures/blocked/SKILL.md\0"
+    diff_output = b"M\0resources/skills/skill-reviewer/evals/fixtures/blocked/SKILL.md\0"
     reviewed: list[str] = []
 
     def fake_git_diff(command, **kwargs):
@@ -279,12 +279,12 @@ def test_main_maps_eval_fixture_changes_to_owner_package(
     )
 
     assert exit_code == 0
-    assert reviewed == ["skills/public/skill-reviewer"]
+    assert reviewed == ["resources/skills/skill-reviewer"]
 
 
 def test_main_exits_nonzero_when_review_cli_reports_error(tmp_path: Path, monkeypatch, capsys) -> None:
     _write_skill(tmp_path, "bad")
-    diff_output = b"M\0skills/public/bad/SKILL.md\0"
+    diff_output = b"M\0resources/skills/bad/SKILL.md\0"
     calls: list[list[str]] = []
 
     def fake_run(command, **kwargs):
@@ -296,7 +296,7 @@ def test_main_exits_nonzero_when_review_cli_reports_error(tmp_path: Path, monkey
             "test-python",
             "-m",
             "deerflow.skills.review.cli",
-            "skills/public/bad",
+            "resources/skills/bad",
             "--format",
             "json",
             "--fail-on",
@@ -327,14 +327,14 @@ def test_main_exits_nonzero_when_review_cli_reports_error(tmp_path: Path, monkey
     captured = capsys.readouterr()
     assert exit_code == 1
     assert [call[0] for call in calls] == ["git", "test-python"]
-    assert "Failed: skills/public/bad" in captured.out
+    assert "Failed: resources/skills/bad" in captured.out
     assert "One or more skill reviews failed." in captured.out
-    assert "Analyzer failed for skills/public/bad (exit 1)." in captured.err
+    assert "Analyzer failed for resources/skills/bad (exit 1)." in captured.err
 
 
 def test_main_falls_back_to_empty_tree_when_push_before_is_missing(tmp_path: Path, monkeypatch, capsys) -> None:
     _write_skill(tmp_path, "alpha")
-    diff_output = b"M\0skills/public/alpha/SKILL.md\0"
+    diff_output = b"M\0resources/skills/alpha/SKILL.md\0"
     calls: list[list[str]] = []
     reviewed: list[str] = []
 
@@ -364,24 +364,24 @@ def test_main_falls_back_to_empty_tree_when_push_before_is_missing(tmp_path: Pat
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert reviewed == ["skills/public/alpha"]
+    assert reviewed == ["resources/skills/alpha"]
     assert calls[1][4:6] == [runner.EMPTY_TREE_SHA, "a" * 40]
     assert "Fallback diff:" in output
 
 
 def test_is_fully_removed_package_true_when_all_deletions_and_directory_missing(tmp_path: Path) -> None:
-    package_rel = PurePosixPath("skills/public/removed")
+    package_rel = PurePosixPath("resources/skills/removed")
     assert runner.is_fully_removed_package(package_rel, ["D", "D"], tmp_path) is True
 
 
 def test_is_fully_removed_package_false_when_directory_still_exists(tmp_path: Path) -> None:
-    package_rel = PurePosixPath("skills/public/broken")
+    package_rel = PurePosixPath("resources/skills/broken")
     (tmp_path / package_rel).mkdir(parents=True)
     assert runner.is_fully_removed_package(package_rel, ["D", "D"], tmp_path) is False
 
 
 def test_is_fully_removed_package_false_when_any_status_is_not_a_deletion(tmp_path: Path) -> None:
-    package_rel = PurePosixPath("skills/public/partial")
+    package_rel = PurePosixPath("resources/skills/partial")
     assert runner.is_fully_removed_package(package_rel, ["D", "M"], tmp_path) is False
 
 

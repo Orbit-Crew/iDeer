@@ -1,43 +1,44 @@
-"""Validate every bundled SKILL.md under skills/public/.
+"""Registry behavior for the bundled (resources/skills) skill tree.
 
-Catches regressions like #2443 — a SKILL.md whose YAML front-matter fails to
-parse (e.g. an unquoted description containing a colon, which YAML interprets
-as a nested mapping). Each bundled skill is checked individually so the
-failure message identifies the exact file.
+The bundled-tree frontmatter sweep lives in
+``backend/tests/unit/skills/test_public_skill_catalog.py`` — the resources
+tree is the authoritative bundled skill set and is governed by the app-side
+enterprise validator whose key set matches it. The upstream harness validator
+(``deerflow.skills.validation``) keeps its own synthetic unit coverage in
+``backend/tests/test_skills_validation.py``; it is an installer-path contract
+and is deliberately not swept over the enterprise tree (its upstream key set
+does not accept the enterprise governance keys, and the runtime never applies
+it to the bundled tree). See the 2026-10-06 batch in
+``docs/testing/test-migration-ledger.md``.
 """
 
 from pathlib import Path
 
-import pytest
-
-from deerflow.skills.package_paths import is_eval_fixture_skill_md
 from deerflow.skills.storage import get_or_new_skill_storage
-from deerflow.skills.validation import _validate_skill_frontmatter
-
-SKILLS_PUBLIC_DIR = Path(__file__).resolve().parents[2] / "skills" / "public"
 
 
-BUNDLED_SKILL_DIRS = sorted(p.parent for p in SKILLS_PUBLIC_DIR.rglob("SKILL.md") if not is_eval_fixture_skill_md(p.relative_to(SKILLS_PUBLIC_DIR)))
+def test_runtime_registry_excludes_eval_fixture_skills(tmp_path: Path) -> None:
+    """Nested ``evals/fixtures`` SKILL.md files must never register as skills.
 
+    The registry walks the whole ``public/`` tree, so a fixture package nested
+    under an owner skill's ``evals/fixtures/`` is physically present; the
+    storage must filter it out by path rather than by trust in the tree shape.
+    """
+    skills_root = tmp_path / "skills"
+    owner = skills_root / "public" / "fixture-owner"
+    (owner / "evals" / "fixtures" / "blocked").mkdir(parents=True)
+    (owner / "SKILL.md").write_text(
+        "---\nname: fixture-owner\ndescription: Owner skill that must register.\n---\n",
+        encoding="utf-8",
+    )
+    (owner / "evals" / "fixtures" / "blocked" / "SKILL.md").write_text(
+        "---\nname: blocked-fixture\ndescription: Nested fixture skill that must not register.\n---\n",
+        encoding="utf-8",
+    )
 
-@pytest.mark.parametrize(
-    "skill_dir",
-    BUNDLED_SKILL_DIRS,
-    ids=lambda p: str(p.relative_to(SKILLS_PUBLIC_DIR)),
-)
-def test_bundled_skill_frontmatter_is_valid(skill_dir: Path) -> None:
-    valid, msg, name = _validate_skill_frontmatter(skill_dir)
-    assert valid, f"{skill_dir.relative_to(SKILLS_PUBLIC_DIR)}: {msg}"
-    assert name, f"{skill_dir.relative_to(SKILLS_PUBLIC_DIR)}: no name extracted"
-
-
-def test_skills_public_dir_has_skills() -> None:
-    assert BUNDLED_SKILL_DIRS, f"no SKILL.md found under {SKILLS_PUBLIC_DIR}"
-
-
-def test_runtime_registry_excludes_skill_reviewer_eval_fixtures() -> None:
-    skills = get_or_new_skill_storage(skills_path=SKILLS_PUBLIC_DIR.parent).load_skills(enabled_only=False)
+    skills = get_or_new_skill_storage(skills_path=skills_root).load_skills(enabled_only=False)
     names = {skill.name for skill in skills}
 
-    assert "skill-reviewer" in names
+    assert "fixture-owner" in names
+    assert "blocked-fixture" not in names
     assert all("evals/fixtures" not in skill.skill_file.as_posix() for skill in skills)

@@ -1,4 +1,4 @@
-"""Tests for skills/public/podcast-generation/scripts/generate.py.
+"""Tests for resources/skills/podcast-generation/scripts/generate.py.
 
 The script is dual-provider (Volcengine + MiniMax) with retry/backoff.
 The MiniMax + retry coverage follows the #3437 lineage (cd5bedaa7 plus

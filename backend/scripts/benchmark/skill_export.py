@@ -70,8 +70,8 @@ def run(case):
         name = "skill-creator" if case == "public" else "benchmark"
         root = storage.get_custom_skill_dir(name)
         if case == "public":
-            public = Path(__file__).resolve().parents[3] / "skills/public/skill-creator"
-            shutil.copytree(public, root, ignore=shutil.ignore_patterns("__pycache__"))
+            source_tree = Path(__file__).resolve().parents[3] / "resources/skills/skill-creator"
+            shutil.copytree(source_tree, root, ignore=shutil.ignore_patterns("__pycache__"))
         else:
             root.mkdir(parents=True)
             (root / "SKILL.md").write_text("---\nname: benchmark\ndescription: Export benchmark\n---\n", encoding="utf-8")

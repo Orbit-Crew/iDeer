@@ -1,6 +1,6 @@
 """Regression tests for the skill_loader helper used by the skill-script suites.
 
-``load()`` executes ``skills/public/<skill>/scripts/generate.py`` in place.
+``load()`` executes ``resources/skills/<skill>/scripts/generate.py`` in place.
 The default SourceFileLoader writes ``__pycache__/*.pyc`` NEXT TO that source,
 i.e. into a shipped skill package; the skill review scan
 (``backend/tests/test_skill_review_core.py``) then fails those directories as
@@ -20,7 +20,7 @@ SKILL_NAMES = ["image-generation", "music-generation", "podcast-generation", "vi
 
 
 def _scripts_dir(skill_name: str) -> Path:
-    return REPO_ROOT / "skills" / "public" / skill_name / "scripts"
+    return REPO_ROOT / "resources" / "skills" / skill_name / "scripts"
 
 
 @pytest.mark.parametrize("skill_name", SKILL_NAMES)

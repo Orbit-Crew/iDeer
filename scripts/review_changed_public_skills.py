@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run deterministic skill review for changed public skills."""
+"""Run deterministic skill review for changed governed skill packages."""
 
 from __future__ import annotations
 
@@ -27,7 +27,10 @@ HARNESS_PATH = REPO_ROOT / "backend" / "packages" / "harness"
 if HARNESS_PATH.is_dir():
     sys.path.insert(0, str(HARNESS_PATH))
 
-PUBLIC_SKILL_PACKAGE_PATHSPEC = ":(glob)skills/public/**"
+# The authoritative skill tree: resources/skills is what ships to the runtime
+# (docker bind-mount) and what the enterprise maintains. skills/public is the
+# upstream landing zone and is deliberately not reviewed here.
+SKILL_PACKAGE_PATHSPEC = ":(glob)resources/skills/**"
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
@@ -57,7 +60,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"[skill-review] Diff: git diff {' '.join(diff_args)}")
 
     result = subprocess.run(
-        ["git", "diff", *diff_args, "--", PUBLIC_SKILL_PACKAGE_PATHSPEC],
+        ["git", "diff", *diff_args, "--", SKILL_PACKAGE_PATHSPEC],
         cwd=repo_root,
         capture_output=True,
         check=False,
@@ -65,7 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if result.returncode != 0:
         fallback_args = build_force_push_fallback_diff_args(args)
         if fallback_args is None:
-            sys.stderr.write("[skill-review] Failed to collect changed public skill files.\n")
+            sys.stderr.write("[skill-review] Failed to collect changed skill files.\n")
             sys.stderr.write(result.stderr.decode("utf-8", errors="replace"))
             return result.returncode
         sys.stderr.write("[skill-review] Primary push diff failed; falling back to empty-tree comparison.\n")
@@ -73,23 +76,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         diff_args = fallback_args
         print(f"[skill-review] Fallback diff: git diff {' '.join(diff_args)}")
         result = subprocess.run(
-            ["git", "diff", *diff_args, "--", PUBLIC_SKILL_PACKAGE_PATHSPEC],
+            ["git", "diff", *diff_args, "--", SKILL_PACKAGE_PATHSPEC],
             cwd=repo_root,
             capture_output=True,
             check=False,
         )
         if result.returncode != 0:
-            sys.stderr.write("[skill-review] Failed to collect changed public skill files.\n")
+            sys.stderr.write("[skill-review] Failed to collect changed skill files.\n")
             sys.stderr.write(result.stderr.decode("utf-8", errors="replace"))
             return result.returncode
 
     changes = parse_name_status(result.stdout)
     packages = select_skill_packages(changes, repo_root)
     if not packages:
-        print("[skill-review] No changed public skill package files; skipping review.")
+        print("[skill-review] No changed skill package files; skipping review.")
         return 0
 
-    print(f"[skill-review] Reviewing {len(packages)} changed public skill package(s).")
+    print(f"[skill-review] Reviewing {len(packages)} changed skill package(s).")
     failed = False
     for package in packages:
         if run_review(package, repo_root, args.python, effective_manifest) != 0:
@@ -99,7 +102,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("[skill-review] One or more skill reviews failed.")
         return 1
 
-    print("[skill-review] All changed public skill packages passed review.")
+    print("[skill-review] All changed skill packages passed review.")
     return 0
 
 
@@ -137,7 +140,7 @@ def validate_proposed_manifest(manifest: WaiverManifest, repo_root: Path, python
 
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=("Review public skill packages whose SKILL.md changed in a PR or push diff."))
+    parser = argparse.ArgumentParser(description=("Review skill packages whose SKILL.md changed in a PR or push diff."))
     parser.add_argument(
         "--base-ref",
         "--base_ref",
@@ -220,16 +223,16 @@ def select_skill_packages(changes: Sequence[ChangedPath], repo_root: Path) -> li
     resolutions: list[tuple[ChangedPath, PurePosixPath]] = []
 
     for change in changes:
-        if not is_public_skill_package_path(change.path):
+        if not is_skill_package_path(change.path):
             continue
 
-        if change.status.startswith("D") and is_public_skill_md(change.path):
+        if change.status.startswith("D") and is_skill_package_md(change.path):
             print(f"[skill-review] Skipping deleted SKILL.md: {change.path}")
             continue
 
-        package_rel = find_public_skill_package(change.path, repo_root)
+        package_rel = find_skill_package(change.path, repo_root)
         if package_rel is None:
-            print(f"[skill-review] Skipping path outside public skill package: {change.path}")
+            print(f"[skill-review] Skipping path outside skill package: {change.path}")
             continue
 
         package_statuses.setdefault(package_rel, []).append(change.status)
@@ -258,7 +261,7 @@ def is_fully_removed_package(package_rel: PurePosixPath, statuses: Sequence[str]
     """Whether every changed file that resolved to ``package_rel`` was a deletion and the
     package directory itself no longer exists on disk.
 
-    This identifies a whole public skill package being intentionally deleted (all of its
+    This identifies a whole skill package being intentionally deleted (all of its
     files removed, not just SKILL.md), as distinct from a package left in a broken/partial
     state (e.g. SKILL.md deleted while other package files remain on disk) — the latter
     must still be reviewed and flagged.
@@ -268,18 +271,18 @@ def is_fully_removed_package(package_rel: PurePosixPath, statuses: Sequence[str]
     return not (repo_root / package_rel).is_dir()
 
 
-def is_public_skill_md(path: PurePosixPath) -> bool:
+def is_skill_package_md(path: PurePosixPath) -> bool:
     parts = path.parts
-    return len(parts) >= 4 and parts[0] == "skills" and parts[1] == "public" and parts[-1] == "SKILL.md" and not _is_eval_fixture_skill_md(path)
+    return len(parts) >= 4 and parts[0] == "resources" and parts[1] == "skills" and parts[-1] == "SKILL.md" and not _is_eval_fixture_skill_md(path)
 
 
-def is_public_skill_package_path(path: PurePosixPath) -> bool:
+def is_skill_package_path(path: PurePosixPath) -> bool:
     parts = path.parts
-    return len(parts) >= 3 and parts[0] == "skills" and parts[1] == "public"
+    return len(parts) >= 3 and parts[0] == "resources" and parts[1] == "skills"
 
 
-def find_public_skill_package(path: PurePosixPath, repo_root: Path) -> PurePosixPath | None:
-    if not is_public_skill_package_path(path):
+def find_skill_package(path: PurePosixPath, repo_root: Path) -> PurePosixPath | None:
+    if not is_skill_package_path(path):
         return None
 
     current = path.parent if path.name else path

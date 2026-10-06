@@ -20,6 +20,34 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-06: Bundled-tree harness-validator sweep retires with the skills/public demotion
+
+Ticket `doc-disclosure-followup` issue 17. `backend/tests/test_skills_bundled.py`
+swept `skills/public/**/SKILL.md` with the upstream harness validator
+(`deerflow.skills.validation`). Issue 17 names `resources/skills` the
+authoritative bundled tree and demotes `skills/public` to the upstream landing
+zone that enterprise no longer maintains, so the sweep's target tree is retired.
+The sweep does not transfer to the resources tree: the harness validator is an
+installer-path contract whose upstream key set rejects the enterprise governance
+keys the resources tree legitimately carries (`category`, `display_name`,
+`display_name_en`, `description_en`, `visibility`, `homepage`, `skill_id`,
+`install_method`, `install_source`, `enabled_at`, `name_zh` — 6 of 86 packages
+would fail), and the runtime never applies the harness validator to the bundled
+tree, only to user-installed packages. Replacement strength: the authoritative
+tree's frontmatter is fully swept by the app-side enterprise validator in
+`backend/tests/unit/skills/test_public_skill_catalog.py` (349 parametrized
+checks including frontmatter validity, required fields, offline readability,
+and dangerous-instruction scans); the harness validator keeps its synthetic
+unit coverage in `backend/tests/test_skills_validation.py`. The one test with
+no tree dependency — the registry's eval-fixture exclusion behavior — is
+retained in `test_skills_bundled.py`, rewritten against a synthetic skills
+root so no test reads `skills/public` anymore.
+
+| Old path | New path | Core assertions retained | Delete old path | Validation |
+| --- | --- | --- | --- | --- |
+| `backend/tests/test_skills_bundled.py::test_bundled_skill_frontmatter_is_valid[86 public-tree params]` | `backend/tests/unit/skills/test_public_skill_catalog.py` (authoritative resources tree, app-side validator) | Bundled-tree SKILL.md frontmatter validity, now against the authoritative tree with the matching validator | Yes (drop duplicate sweep; targets retired landing zone) | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/test_skills_bundled.py tests/unit/skills/test_public_skill_catalog.py tests/test_skills_validation.py -q` (all green; catalog 349 passed) |
+| `backend/tests/test_skills_bundled.py::test_runtime_registry_excludes_skill_reviewer_eval_fixtures` | Same path, rewritten synthetic (`test_runtime_registry_excludes_eval_fixture_skills`) | Nested `evals/fixtures` SKILL.md files never register as runtime skills | No | Same command as above |
+
 ## Batch 2026-10-05: Skill-script tests migrate into the backend unit tree
 
 Ticket `doc-disclosure-followup` issue 02. The root `tests/skills/` files (four

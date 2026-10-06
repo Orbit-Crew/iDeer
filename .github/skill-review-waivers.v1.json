@@ -2,7 +2,7 @@
   "schema_version": "deerflow.skill-review-waivers.v1",
   "waivers": [
     {
-      "package": "skills/public/skill-creator",
+      "package": "resources/skills/skill-creator",
       "source": "skillscan",
       "rule_id": "python-subprocess",
       "path": "scripts/improve_description.py",
@@ -16,7 +16,7 @@
       "expires_on": "2027-02-28"
     },
     {
-      "package": "skills/public/skill-creator",
+      "package": "resources/skills/skill-creator",
       "source": "skillscan",
       "rule_id": "python-subprocess",
       "path": "scripts/run_eval.py",
@@ -27,6 +27,17 @@
         "sha256:ea2521ba41c8fd16b2900758c890bb6c6d2b4b01da10b4a860facb8587ed0bde"
       ],
       "reason": "Required Claude CLI invocation uses a fixed executable, an argv list, captured output streams, and shell=False.",
+      "expires_on": "2027-02-28"
+    },
+    {
+      "package": "resources/skills/music-generation",
+      "source": "skillscan",
+      "rule_id": "secret-env-assignment",
+      "path": "scripts/generate.py",
+      "line": 27,
+      "evidence": "[redacted]",
+      "file_sha256": "sha256:e507b3bf42f3252849f5be18f07838c14e2be8c192e6f97c016c20e2b42f7287",
+      "reason": "Upstream script reads MINIMAX_API_KEY via os.getenv into a local named api_key; this is documented runtime configuration, not a hardcoded credential.",
       "expires_on": "2027-02-28"
     }
   ]
