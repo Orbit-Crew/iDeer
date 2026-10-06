@@ -4,8 +4,8 @@ kind: reference
 status: current
 owner: repository maintainers
 scope: resource-management requirement baseline: role-by-operation matrix, visibility semantics, and approval flow; API/DB sections are the 2026-07 design baseline annotated against resource governance V2
-last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+last-verified: 2026-10-05
+verified-against: worktree docs/doc-disclosure-followup @ d80af8a87
 ---
 # 资源管理体系需求文档
 
@@ -25,7 +25,7 @@ verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
 ## 设计原则
 
 1. **管理员的定位**：系统治理者，职责是管理用户对资源的浏览和使用权限（visibility）。管理员不能主动变更任何资源的 visibility，只能在 owner 提交申请后通过审批流程变更。资源内容（YAML/JSON/SKILL.md/SOUL.md）的创建、编辑、删除始终归创作者所有。
-2. **visibility 的含义**：控制的是**用户**能否浏览和使用某资源，而非 agent 能否调用 tool。agent 对 tool 的调用权限由 agent 配置文件单独控制。Tool 同样受 visibility 控制，初始值为 private，与 Skill 一致，需通过审批流程变更。
+2. **visibility 的含义**：控制的是**用户**能否浏览和使用某资源，而非 agent 能否调用 tool。agent 对 tool 的调用权限由 agent 配置文件单独控制。Tool 同样受 visibility 控制，初始值为 private，与 Skill 一致，放宽需通过审批流程变更，收紧由 owner 直接操作、立即生效。
 3. **只读用户（viewer）**：仅可浏览可见资源和使用资源，不可创建、编辑、删除、导入、导出、提交 visibility 变更申请。
 4. **管理员人数限制**：超级管理员不超过 2 人；每个部门的部门管理员不超过 3 人。
 5. **编辑权限**：所有对资源的修改（包括名称、描述、主体文件）均算编辑，仅 owner 可执行。编辑不包含 visibility 变更。
@@ -83,10 +83,10 @@ verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
 | visibility | 含义 | 谁可见 | 谁可编辑内容 | 谁可提升 | 谁可降低 |
 |------------|------|--------|------------|---------|---------|
 | **private** | 仅创建者 | 创建者 + super_admin | 仅创建者 | 需提交申请 | N/A（已是最低） |
-| **department** | 同部门 | 同部门所有人 | 仅创建者 | 需提交申请 | 需提交申请 |
-| **public** | 所有人 | 所有认证用户 | 仅创建者 | N/A（已是最高） | 需提交申请 |
+| **department** | 同部门 | 同部门所有人 | 仅创建者 | 需提交申请 | 立即生效（owner 直接操作） |
+| **public** | 所有人 | 所有认证用户 | 仅创建者 | N/A（已是最高） | 立即生效（owner 直接操作） |
 
-- visibility 变更**仅通过提交申请 + 审批**实现，任何人不可直接修改（包括 super_admin）。
+- visibility **放宽**仅通过提交申请 + 审批实现，任何人不可直接放宽（包括 super_admin）；**收紧**由 owner 直接操作、立即生效，并撤销该资源的待审批申请——与资源治理 V2 决策（2026-08-14）口径一致，代码路径为 `ResourceService.change_visibility`（放宽抛 `ResourceApprovalRequired`）与 `request_visibility`（申请仅接受放宽方向）。
 - "谁可编辑内容"始终为仅创建者，与 visibility 等级无关。
 - super_admin 对 private 资源有浏览权限，但无编辑权。
 - Tool、Skill、Workflow、Agent 四种资源类型共用同一套 visibility 规则。
@@ -110,7 +110,7 @@ rejected → pending（重新提交，生成新申请记录）
 
 | 申请场景 | 申请人 | 审批人 | 特殊规则 |
 |---------|--------|--------|---------|
-| visibility 变更（任意方向） | 资源 owner | department 级：dept_admin(同部门) / super_admin；public 级：super_admin only | dept_admin 不可自审自己的任何申请，无论是否为 owner |
+| visibility 变更（放宽） | 资源 owner | department 级：dept_admin(同部门) / super_admin；public 级：super_admin only | dept_admin 不可自审自己的任何申请，无论是否为 owner |
 | 驳回后重新提交 | 原申请人 | 同首次提交 | 生成新申请记录，保留历次审批历史 |
 
 - 所有角色提交申请均需审批，super_admin 不再跳过审批。

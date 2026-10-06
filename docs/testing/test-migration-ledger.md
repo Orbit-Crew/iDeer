@@ -192,6 +192,93 @@ ledgers, the specification, and the ticket's paired-baseline command. The graph
 result remains an index limitation, not a zero-impact claim. The full candidate
 `detect-changes --scope all` result and exact tracked diff count are recorded in
 the ticket execution record.
+## Batch 2026-10-06: Bundled-tree harness-validator sweep retires with the skills/public demotion
+
+Ticket `doc-disclosure-followup` issue 17. `backend/tests/test_skills_bundled.py`
+swept `skills/public/**/SKILL.md` with the upstream harness validator
+(`deerflow.skills.validation`). Issue 17 names `resources/skills` the
+authoritative bundled tree and demotes `skills/public` to the upstream landing
+zone that enterprise no longer maintains, so the sweep's target tree is retired.
+The sweep does not transfer to the resources tree: the harness validator is an
+installer-path contract whose upstream key set rejects the enterprise governance
+keys the resources tree legitimately carries (`category`, `display_name`,
+`display_name_en`, `description_en`, `visibility`, `homepage`, `skill_id`,
+`install_method`, `install_source`, `enabled_at`, `name_zh` — 6 of 86 packages
+would fail), and the runtime never applies the harness validator to the bundled
+tree, only to user-installed packages. Replacement strength: the authoritative
+tree's frontmatter is fully swept by the app-side enterprise validator in
+`backend/tests/unit/skills/test_public_skill_catalog.py` (349 parametrized
+checks including frontmatter validity, required fields, offline readability,
+and dangerous-instruction scans); the harness validator keeps its synthetic
+unit coverage in `backend/tests/test_skills_validation.py`. The one test with
+no tree dependency — the registry's eval-fixture exclusion behavior — is
+retained in `test_skills_bundled.py`, rewritten against a synthetic skills
+root so no test reads `skills/public` anymore.
+
+| Old path | New path | Core assertions retained | Delete old path | Validation |
+| --- | --- | --- | --- | --- |
+| `backend/tests/test_skills_bundled.py::test_bundled_skill_frontmatter_is_valid[86 public-tree params]` | `backend/tests/unit/skills/test_public_skill_catalog.py` (authoritative resources tree, app-side validator) | Bundled-tree SKILL.md frontmatter validity, now against the authoritative tree with the matching validator | Yes (drop duplicate sweep; targets retired landing zone) | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/test_skills_bundled.py tests/unit/skills/test_public_skill_catalog.py tests/test_skills_validation.py -q` (all green; catalog 349 passed) |
+| `backend/tests/test_skills_bundled.py::test_runtime_registry_excludes_skill_reviewer_eval_fixtures` | Same path, rewritten synthetic (`test_runtime_registry_excludes_eval_fixture_skills`) | Nested `evals/fixtures` SKILL.md files never register as runtime skills | No | Same command as above |
+
+## Batch 2026-10-05: Skill-script tests migrate into the backend unit tree
+
+Ticket `doc-disclosure-followup` issue 02. The root `tests/skills/` files (four
+skill-script suites plus the `skill_loader.py` helper) had no lane ownership:
+`scripts/test_inventory.py` deliberately scans only the lane-consumed roots
+(`backend/tests`, `frontend/tests`, `local-runtime/tests`), so nothing ever ran
+them — which is exactly how the podcast suite rotted for a month after the
+script it tested changed. Ownership is resolved by migrating the files into
+`backend/tests/unit/skills/` (which already owns bundled-skill asset tests such
+as `test_public_skill_catalog.py`) instead of widening the inventory scan:
+a scan would have listed the files while still leaving "no CI runs them" true,
+and honest scan ownership would have required lane-runner changes. After the
+move the inventory classifies them as `backend-standard` automatically (no
+special markers), so the hermetic backend PR lane now executes them.
+`skill_loader.py` gained one line of change: `REPO_ROOT` walks four parents
+instead of two to still reach the repository root. Test bodies are otherwise
+formatter-only churn from `backend/ruff.toml` (line-length 240); no assertion
+changed in this batch.
+
+| Old path | New path | Core assertions retained | Delete old path | Validation |
+| --- | --- | --- | --- | --- |
+| `tests/skills/test_image_generation.py` | `backend/tests/unit/skills/test_image_generation.py` | Unchanged (36 tests) | Yes | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/skills/test_image_generation.py tests/unit/skills/test_music_generation.py tests/unit/skills/test_podcast_generation.py tests/unit/skills/test_video_generation.py -q` (77 passed) |
+| `tests/skills/test_music_generation.py` | `backend/tests/unit/skills/test_music_generation.py` | Unchanged (9 tests) | Yes | Same command as above |
+| `tests/skills/test_podcast_generation.py` | `backend/tests/unit/skills/test_podcast_generation.py` | Unchanged from commit `b0486a782` (19 tests; that commit rewrote the assertions to the current Volcengine-only script — the MiniMax/retry coverage it dropped is recoverable from git history pending a diagnosis ticket) | Yes | Same command as above |
+| `tests/skills/test_video_generation.py` | `backend/tests/unit/skills/test_video_generation.py` | Unchanged (13 tests) | Yes | Same command as above |
+| `tests/skills/skill_loader.py` | `backend/tests/unit/skills/skill_loader.py` | Same `load()`/`FakeResp` contract; `REPO_ROOT` now `parents[4]` | Yes | Same command as above; `python3 scripts/test_inventory.py` lists all four files under lane `backend-standard` |
+
+Follow-up fix, same batch (`1c6497e3c`): the default SourceFileLoader bytecode
+cache made `load()` write `skills/public/<skill>/scripts/__pycache__/*.pyc`
+into the shipped packages, which the skill review
+(`backend/tests/test_skill_review_core.py`) fails as "not NUL-free UTF-8" and
+which pr-standard caught on `6282d2b5a`. `skill_loader.py` now suppresses
+bytecode writes around `exec_module`; regression test
+`backend/tests/unit/skills/test_skill_loader.py` (4 params, red first) pins
+that loading writes nothing into the packages.
+
+## Batch 2026-10-05: task_tool core-logic duplicate removed, root copy kept
+
+Ticket `doc-disclosure-followup` issue 02. Two same-basename task_tool files
+collected concurrently without shadowing: `backend/tests/__init__.py` makes the
+root copy import as `tests.test_task_tool_core_logic` while the unit copy
+imports as `test_task_tool_core_logic` (no `__init__.py` under
+`backend/tests/unit/`), so one pytest run collected 82 + 39 = 121 tests.
+`backend/tests/test_task_tool_core_logic.py` is the current generation (last
+touched 2026-09-15, imports the live config systems `SubagentRuntimeConfig`,
+`deerflow.sandbox.security`, `SubagentExecutionCapacity`, and the
+`status_contract` keys) and is the maintained lineage. The deleted unit copy
+was the older fork (last touched 2026-09-07); 27 of its 39 collected test
+names duplicate root names, and both copies passed against the same product
+code, so the root versions supersede them. The root copy stays in place with
+its pre-deletion collection count of 82 intact; three still-unique tests were
+ported into it (85 collected after the port).
+
+| Removed/kept path | Superseded or retained coverage | Replacement strength | Validation |
+| --- | --- | --- | --- |
+| `backend/tests/unit/tools/test_task_tool_core_logic.py` deleted (39 tests, 27 names duplicated in root) | Kept `backend/tests/test_task_tool_core_logic.py` (82 tests) unchanged: cancellation/cleanup/terminal-event/skill-allowlist/tool-groups/bash-gate/polling-timeout coverage of the same names, plus the root-only deferred-cleanup and loop-pinning family | Equal-or-stronger: both copies passed on the same candidate; the kept copy carries seven subsequent feature commits of evolved assertions (status-contract kwargs, tool receipts, loop-bound contracts) that the unit fork lacks | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/test_task_tool_core_logic.py -q` (85 passed) |
+| `test_report_subagent_usage_records_from_callback_manager`, `test_report_subagent_usage_does_not_raise_for_unknown_callback_shape`, `test_task_tool_completed_path_reports_usage_from_callback_manager` (unit-only) | Ported into `backend/tests/test_task_tool_core_logic.py` with a `FakeUsageRecorder` helper; the end-to-end variant drops the old `app_config=SimpleNamespace(token_usage=...)` wiring (the registry now resolves `custom_agents` from app_config; the behavior under test — recorder resolution through an `AsyncCallbackManager` — does not need app_config) | Equal: same assertions (records delivered, `usage_reported` flag, unknown-shape no-raise, completed-path delivery) | Same command as above |
+| `_find_usage_recorder` shape matrix: `test_find_usage_recorder_accepts_callback_runtime_shapes` (3 params), `test_find_usage_recorder_accepts_langchain_async_callback_manager`, `test_find_usage_recorder_ignores_unknown_callback_shapes` (4 params) — unit-only names | `backend/tests/unit/tools/test_task_tool_usage_recorder.py` already owns this seam (9 tests: plain list, async/sync manager, none/empty/unknown/unwrapped/non-dict-config shapes) and is retained | Equal: same `_find_usage_recorder` contract at a dedicated home | `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/tools/test_task_tool_usage_recorder.py -q` (9 passed) |
+| `test_poller_failure_propagates_and_defers_cleanup` (unit-only lightweight variant) | Root poller-failure family covers the behavior more deeply: `test_unexpected_poller_error_deferred_cleanup_survives_sync_invocation`, `test_unexpected_error_re_raised_promptly_via_short_grace`, and the broken-status-accessor deferred-cleaner test (re-raise of the original error, cooperative cancel request, deferred cleanup scheduling) | Stronger: the root tests exercise the real persistent-loop/threaded unwind instead of a stubbed isolated loop | Same command as the kept file above |
 
 ## Batch 2026-10-03: i18n key parity moves from runtime checks to the compiler
 
@@ -746,3 +833,16 @@ restored.
 | `backend/tests/test_user_deletion.py` | `backend/tests/integration/api/test_user_deletion.py` | Database commit precedes filesystem cleanup; cleanup failure remains auditable and retryable. | `cd backend && PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/integration/api/test_user_deletion.py -q` |
 | `backend/tests/test_reconcile_user_state.py` | `backend/tests/unit/scripts/test_reconcile_user_state.py` | Read-only inventory and guarded deletion for stale runtime-user state. | `cd backend && PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/unit/scripts/test_reconcile_user_state.py -q` |
 | `backend/tests/test_runtime_user_context.py` | `backend/tests/unit/runtime/test_runtime_user_context.py` | Pytest uses a temporary `IDEER_HOME`, distinct from production runtime state. | `cd backend && PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/unit/runtime/test_runtime_user_context.py -q` |
+
+## Batch 2026-10-06: Stale `detect_blocking_io_static` duplicate removal
+
+`60f0ef382` moved `backend/tests/test_detect_blocking_io_static.py` to
+`backend/tests/unit/scripts/`; `40c4ec32` (#4200) later re-created the
+top-level file with a superset of the tests, orphaning the moved copy. Its
+`from support...` import resolves only under the lane environment
+(`PYTHONPATH=.:tests`), so bare `pytest tests/unit/scripts` aborted with
+`ModuleNotFoundError: No module named 'support'`.
+
+| Removed path | Replacement path | Core assertions retained | Validation |
+| --- | --- | --- | --- |
+| `backend/tests/unit/scripts/test_detect_blocking_io_static.py` | `backend/tests/test_detect_blocking_io_static.py` | Static blocking-IO detector: direct async blocking calls, sync helpers reachable from async code and via self/cls attribute chains, Path/httpx/os detection, CLI JSON and summary output, parse-error reporting | `cd backend && PYTHONPATH=.:tests PYTHONIOENCODING=utf-8 PYTHONUTF8=1 .venv/bin/python -m pytest tests/test_detect_blocking_io_static.py -q` |

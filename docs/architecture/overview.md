@@ -420,7 +420,7 @@ DeerMem backend 的聚焦回归覆盖位于 `backend/tests/test_memory_updater.p
 **`config.yaml`** 关键部分：
 
 - `models[]`：LLM 配置，包含 `use` 类路径、`supports_thinking`、`supports_vision`、provider 专用字段
-- vLLM 推理模型应使用 `ideer.models.vllm_provider:VllmChatModel`；对于 Qwen 风格 parser，优先使用 `when_thinking_enabled.extra_body.chat_template_kwargs.enable_thinking`，iDeer 也会规范化旧版 `thinking` 别名
+- vLLM 推理模型应使用 `deerflow.models.vllm_provider:VllmChatModel`；对于 Qwen 风格 parser，优先使用 `when_thinking_enabled.extra_body.chat_template_kwargs.enable_thinking`，iDeer 也会规范化旧版 `thinking` 别名
 - `tools[]`：工具配置，包含 `use` 变量路径和 `group`
 - `tool_groups[]`：工具逻辑分组
 - `sandbox.use`：沙箱 provider 类路径

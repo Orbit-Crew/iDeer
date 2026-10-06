@@ -11,7 +11,7 @@ verified-against: worktree docs/agent-doc-disclosure @ be5e328e3
 # AgentPlatform 后续工作总方案
 
 > **文档性质**：三线工作统一编排 / 阶段映射 / 任务卡索引
-> **制定日期**：2026-09-08
+> source date: 2026-09-08
 > **上位文档**：《AgentPlatform 总体架构与模块边界基线》（Baseline v1.0，2026-09-06）
 > **下位文档**：三份专项实施方案（DeerFlow 收敛 / 知识库 / Local Runtime，均 2026-09-04）
 > **决策来源**：2026-09-08 设计评审会话（见 §2 决策记录）

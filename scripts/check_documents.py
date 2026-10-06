@@ -23,7 +23,10 @@ Rule IDs (stable):
   route-incomplete              task-route reachability and validation pointers
   supersession-invalid          replacement naming, back-references, cycles
   evidence-missing              current-state verification evidence
+  stale-package-path            old ideer package paths in current documents
+  blockquote-metadata-residue   legacy bold blockquote metadata beside frontmatter
   protected-fingerprint-mismatch  protected file content fingerprints
+  gitnexus-exemption-missing    AGENTS.md GitNexus block keeps the doc-only exemption line
 
 Optional policy key ``task_routes``: a list of
 ``{"route": path, "targets": [path, ...], "validation": path}`` entries.
@@ -69,7 +72,10 @@ RULE_BROKEN_ANCHOR = "broken-anchor"
 RULE_ROUTE_INCOMPLETE = "route-incomplete"
 RULE_SUPERSESSION_INVALID = "supersession-invalid"
 RULE_EVIDENCE_MISSING = "evidence-missing"
+RULE_STALE_PACKAGE_PATH = "stale-package-path"
+RULE_BLOCKQUOTE_METADATA_RESIDUE = "blockquote-metadata-residue"
 RULE_PROTECTED_FINGERPRINT = "protected-fingerprint-mismatch"
+RULE_GITNEXUS_EXEMPTION = "gitnexus-exemption-missing"
 
 FRONTMATTER_REQUIRED_KEYS = ("id", "kind", "status", "owner", "scope")
 VALID_STATUS = frozenset({"current", "draft", "superseded", "archived"})
@@ -422,6 +428,19 @@ def _parse_frontmatter(text: str) -> dict[str, object]:
     return fields
 
 
+def _frontmatter_line_count(text: str) -> int:
+    """Number of lines occupied by the frontmatter block; 0 when absent."""
+    if not text.startswith("---"):
+        return 0
+    lines = text.splitlines()
+    if len(lines) < 2 or lines[0].strip() != "---":
+        return 0
+    for index in range(1, len(lines)):
+        if lines[index].strip() == "---":
+            return index + 1
+    return 0
+
+
 def _document_texts(
     policy: dict, source: DocumentSource, tracked: set[PurePosixPath]
 ) -> dict[PurePosixPath, str]:
@@ -598,9 +617,12 @@ _EXTERNAL_SCHEME_RE = re.compile(
 )
 
 
-def _visible_lines(text: str) -> list[tuple[int, str]]:
-    """Return (line_number, line) outside fenced code blocks, inline code spans removed."""
-    lines: list[tuple[int, str]] = []
+def _iter_outside_fences(text: str) -> list[tuple[int, str]]:
+    """Return (line_number, line) pairs for lines outside fenced code blocks.
+
+    Lines are returned unmodified; inline code spans are still present.
+    """
+    entries: list[tuple[int, str]] = []
     fence = ""
     for number, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
@@ -612,8 +634,16 @@ def _visible_lines(text: str) -> list[tuple[int, str]]:
         if opening:
             fence = opening.group(1)
             continue
-        lines.append((number, re.sub(r"`[^`]*`", "", line)))
-    return lines
+        entries.append((number, line))
+    return entries
+
+
+def _visible_lines(text: str) -> list[tuple[int, str]]:
+    """Return (line_number, line) outside fenced code blocks, inline code spans removed."""
+    return [
+        (number, re.sub(r"`[^`]*`", "", line))
+        for number, line in _iter_outside_fences(text)
+    ]
 
 
 def _heading_anchors(text: str) -> set[str]:
@@ -997,6 +1027,174 @@ def check_evidence(policy: dict, texts: dict[PurePosixPath, str]) -> list[Findin
     return findings
 
 
+_STALE_PACKAGE_RE = re.compile(
+    # ``ideer.`` as a Python package/module prefix. The lookbehind keeps URL
+    # contexts out (``https://ideer.tech``, ``.../bytedance/ideer.git``): a
+    # domain or repository name is not a package path. The brand name "iDeer"
+    # in prose never matches (the pattern is lowercase and case-sensitive).
+    r"(?<![\w./])ideer\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*"
+    # Old harness directory prefix; the current home is harness/deerflow/.
+    r"|harness/ideer(?![\w-])"
+)
+
+
+def check_stale_package_paths(
+    policy: dict, texts: dict[PurePosixPath, str]
+) -> list[Finding]:
+    """Report old ``ideer`` package paths in documents whose status is current.
+
+    Historical and frozen documents (any other status, or no frontmatter) are
+    exempt. Fenced code blocks are skipped: they quote verbatim commands that
+    may deliberately document old-version tooling. Inline code is scanned: a
+    package path inside backticks is still the document's own claim about the
+    current system.
+    """
+    findings: list[Finding] = []
+    for row in policy["inventory"]["files"]:
+        path = PurePosixPath(str(row["path"]))
+        text = texts.get(path)
+        if text is None:
+            continue
+        if _parse_frontmatter(text).get("status") != "current":
+            continue
+        frontmatter_lines = _frontmatter_line_count(text)
+        for number, line in _iter_outside_fences(text):
+            if number <= frontmatter_lines:
+                continue
+            match = _STALE_PACKAGE_RE.search(line)
+            if match:
+                findings.append(
+                    Finding(
+                        RULE_STALE_PACKAGE_PATH,
+                        "error",
+                        path.as_posix(),
+                        str(number),
+                        f"current document references legacy package path {match.group(0)!r}",
+                    )
+                )
+    return findings
+
+
+# Legacy header format used before the frontmatter migration: a bold
+# Chinese-key status/date blockquote line. The sanctioned header that replaced
+# it uses lowercase keys ("> audience:", "> status:", "> canonical-path:") and
+# never matches. Documents without frontmatter are exempt: the blockquote is
+# then their only metadata carrier.
+_BLOCKQUOTE_RESIDUE_KEYS = ("状态", "当前状态", "日期", "制定日期", "创建日期", "生成日期")
+_BLOCKQUOTE_RESIDUE_RE = re.compile(
+    r"^[ \t]*>[ \t]*\*\*(" + "|".join(_BLOCKQUOTE_RESIDUE_KEYS) + r")\*\*[ \t]*[:：]"
+)
+_BLOCKQUOTE_RESIDUE_WINDOW = 15  # body lines considered "start of the body"
+
+
+def check_blockquote_metadata_residue(
+    policy: dict, texts: dict[PurePosixPath, str]
+) -> list[Finding]:
+    """Report legacy bold blockquote metadata lines at the start of the body.
+
+    When a document carries YAML frontmatter, the frontmatter is the
+    authoritative metadata carrier and the bold blockquote equivalent is
+    migration residue.
+    """
+    findings: list[Finding] = []
+    for row in policy["inventory"]["files"]:
+        path = PurePosixPath(str(row["path"]))
+        text = texts.get(path)
+        if text is None:
+            continue
+        frontmatter_lines = _frontmatter_line_count(text)
+        if frontmatter_lines == 0:
+            continue
+        lines = text.splitlines()
+        window_end = min(
+            frontmatter_lines + 1 + _BLOCKQUOTE_RESIDUE_WINDOW, len(lines) + 1
+        )
+        for number in range(frontmatter_lines + 1, window_end):
+            match = _BLOCKQUOTE_RESIDUE_RE.match(lines[number - 1])
+            if match:
+                findings.append(
+                    Finding(
+                        RULE_BLOCKQUOTE_METADATA_RESIDUE,
+                        "error",
+                        path.as_posix(),
+                        str(number),
+                        f"legacy blockquote metadata {match.group(1)!r} at body start; "
+                        "frontmatter is already authoritative",
+                    )
+                )
+    return findings
+
+
+# The doc-only detect-changes exemption is a hand-added line inside the
+# tool-managed GitNexus block of AGENTS.md (authoritative semantics:
+# docs/governance/document-governance.md). GitNexus re-indexing regenerates
+# the block between the markers and can silently drop the line, so presence
+# is asserted mechanically. Only the bold lead phrase is matched: the
+# explanatory wording after it may legitimately evolve. A candidate without
+# the managed block reports nothing — removing the block wholesale is a
+# deliberate governance decision, not the silent-drop failure mode.
+_GITNEXUS_START_MARKER = "<!-- gitnexus:start -->"
+_GITNEXUS_END_MARKER = "<!-- gitnexus:end -->"
+_GITNEXUS_EXEMPTION_LEAD = "**Doc-only commits are exempt from re-indexing.**"
+_AGENTS_GUIDANCE_PATH = PurePosixPath("AGENTS.md")
+
+
+def check_gitnexus_exemption(
+    policy: dict, texts: dict[PurePosixPath, str]
+) -> list[Finding]:
+    """Report a missing doc-only exemption line in the AGENTS.md GitNexus block.
+
+    The line is hand-added inside the tool-managed block (``gitnexus:start``
+    to ``gitnexus:end``); re-indexing regenerates that block and can silently
+    drop the line. Only the bold lead phrase is matched because the rest of
+    the sentence may legitimately evolve. A candidate without the managed
+    block reports nothing.
+    """
+    findings: list[Finding] = []
+    for row in policy["inventory"]["files"]:
+        path = PurePosixPath(str(row["path"]))
+        if path != _AGENTS_GUIDANCE_PATH:
+            continue
+        text = texts.get(path)
+        if text is None:
+            continue
+        lines = text.splitlines()
+        start = next(
+            (
+                index
+                for index, line in enumerate(lines)
+                if _GITNEXUS_START_MARKER in line
+            ),
+            None,
+        )
+        if start is None:
+            continue
+        end = next(
+            (
+                index
+                for index in range(start + 1, len(lines))
+                if _GITNEXUS_END_MARKER in lines[index]
+            ),
+            len(lines),
+        )
+        if any(
+            _GITNEXUS_EXEMPTION_LEAD in lines[index]
+            for index in range(start + 1, end)
+        ):
+            continue
+        findings.append(
+            Finding(
+                RULE_GITNEXUS_EXEMPTION,
+                "error",
+                path.as_posix(),
+                str(start + 1),
+                "GitNexus block is missing the doc-only detect-changes exemption "
+                "line; restore it after regenerating the managed block",
+            )
+        )
+    return findings
+
+
 def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings: list[Finding] = []
     findings.extend(check_inventory_coverage(policy, source))
@@ -1010,6 +1208,9 @@ def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings.extend(check_task_routes(policy, tracked))
     findings.extend(check_supersession(policy, texts, tracked))
     findings.extend(check_evidence(policy, texts))
+    findings.extend(check_stale_package_paths(policy, texts))
+    findings.extend(check_blockquote_metadata_residue(policy, texts))
+    findings.extend(check_gitnexus_exemption(policy, texts))
     return findings
 
 

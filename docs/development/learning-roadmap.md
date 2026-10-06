@@ -169,9 +169,9 @@ harness 包位于 `backend/packages/harness/deerflow/`（Python 包名是 `deerf
 
 ### 5.2 探索技能系统
 
-- 浏览 `skills/public/` 下的内置技能（当前 15 个），每个都包含一个 `SKILL.md`
+- 浏览 `resources/skills/` 下的内置技能（当前 86 个），每个都包含一个 `SKILL.md`（`skills/public/` 只是上游技能的原始落地区，不是权威树）
 - 选择一个简单的技能（如 `data-analysis`），完整阅读，理解技能的 Markdown 格式规范
-- 尝试编写一个自定义技能：公开技能放在 `skills/public/` 下；用户自定义技能默认按用户隔离存放（`skills/users/<user_id>/skills/custom/`，全局 `skills/custom/` 仅作旧版回退），详见 `backend/packages/harness/deerflow/skills/storage/`
+- 尝试编写一个自定义技能：随仓库分发的技能维护在 `resources/skills/` 下；用户自定义技能默认按用户隔离存放（`skills/users/<user_id>/skills/custom/`，全局 `skills/custom/` 仅作旧版回退），详见 `backend/packages/harness/deerflow/skills/storage/`
 
 ### 5.3 动手实验
 
@@ -217,7 +217,7 @@ harness 包位于 `backend/packages/harness/deerflow/`（Python 包名是 `deerf
 | 文件路径 | 一句话说明 |
 |---------|-----------|
 | `config.example.yaml` | 完整配置模板 |
-| `skills/public/*/SKILL.md` | 内置技能定义 |
+| `resources/skills/*/SKILL.md` | 内置技能定义 |
 | `backend/packages/harness/deerflow/` | Agent 框架核心库 |
 | `backend/app/gateway/` | FastAPI 网关代码 |
 | `frontend/src/core/` | 前端业务逻辑 |

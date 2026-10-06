@@ -14,6 +14,7 @@ from pathlib import Path
 
 DEFAULT_EXCLUDES = {
     ".git",
+    "dev-log",
     "dist",
     "backend/.venv",
     "backend/.ideer",
@@ -31,9 +32,37 @@ DEFAULT_EXCLUDES = {
     "logs",
 }
 
+# Directory names that are never part of a bundle: machine-local dependency
+# trees and caches. Walking stops at them at any depth so packaging a dirty
+# dev worktree (gigantic untracked .venv/node_modules) costs the same as a
+# clean checkout. Nothing in the git index lives under these names.
+PRUNE_DIR_NAMES = {".git", ".venv", "__pycache__", "node_modules"}
+
 
 def _excluded(path: str) -> bool:
     return any(path == item or path.startswith(item + "/") for item in DEFAULT_EXCLUDES)
+
+
+def _walk_source_files(root: Path, start: Path):
+    """Yield candidate file paths under ``start``, skipping excluded trees.
+
+    Unlike ``rglob`` + filter, traversal does not descend into excluded
+    directories, so untracked heavy dirs never cost a walk (let alone a
+    digest) on a build machine.
+    """
+    stack = [start]
+    while stack:
+        for entry in sorted(stack.pop().iterdir()):
+            if entry.is_symlink():
+                if entry.is_dir():
+                    continue  # symlinked dirs are neither recorded nor followed
+            elif entry.is_dir():
+                rel = entry.relative_to(root).as_posix()
+                if _excluded(rel) or entry.name in PRUNE_DIR_NAMES:
+                    continue
+                stack.append(entry)
+                continue
+            yield entry
 
 
 def _digest(path: Path) -> str:
@@ -53,13 +82,9 @@ def snapshot(
     excluded_skills: set[str] | None = None,
 ) -> dict[str, str]:
     files: dict[str, str] = {}
-    for path in sorted(root.rglob("*")):
+    for path in _walk_source_files(root, root):
         rel = path.relative_to(root).as_posix()
-        if (
-            path.is_dir()
-            or _excluded(rel)
-            or rel.endswith((".pyc", ".log", ".db-shm", ".db-wal"))
-        ):
+        if _excluded(rel) or rel.endswith((".pyc", ".log", ".db-shm", ".db-wal")):
             continue
         if includes and not any(
             rel == item or rel.startswith(item.rstrip("/") + "/") for item in includes
@@ -205,7 +230,7 @@ def fingerprint(root: Path, prefixes: list[str]) -> str:
         if path.is_file():
             candidates = [path]
         elif path.is_dir():
-            candidates = [p for p in path.rglob("*") if p.is_file()]
+            candidates = list(_walk_source_files(root, path))
         else:
             candidates = []
         for candidate in candidates:

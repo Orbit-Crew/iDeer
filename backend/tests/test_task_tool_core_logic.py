@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from langchain_core.callbacks.manager import AsyncCallbackManager
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command
 
@@ -196,6 +197,14 @@ def _run_task_tool(**kwargs) -> str | Command:
     if coroutine is not None:
         return asyncio.run(coroutine(**kwargs))
     return task_tool_module.task_tool.func(**kwargs)
+
+
+class FakeUsageRecorder:
+    def __init__(self):
+        self.records = []
+
+    def record_external_llm_usage_records(self, records):
+        self.records.extend(records)
 
 
 def _task_tool_message(result: str | Command) -> ToolMessage:
@@ -939,6 +948,74 @@ def test_task_tool_emits_cumulative_usage_on_running_event(monkeypatch):
         "total_tokens": 120,
     }
     assert running["model_name"] == "ark-model"
+
+
+# Ported from the retired backend/tests/unit/tools/test_task_tool_core_logic.py:
+# LangChain wraps callbacks in an AsyncCallbackManager on async tool runs, so the
+# recorder must be resolvable (and safe) through manager-shaped runtime configs.
+def test_report_subagent_usage_records_from_callback_manager():
+    recorder = FakeUsageRecorder()
+    runtime = _make_runtime()
+    runtime.config["callbacks"] = AsyncCallbackManager([recorder])
+    result = _make_result(
+        FakeSubagentStatus.COMPLETED,
+        token_usage_records=[{"input_tokens": 10, "output_tokens": 4, "total_tokens": 14}],
+    )
+
+    task_tool_module._report_subagent_usage(runtime, result)
+
+    assert recorder.records == [{"input_tokens": 10, "output_tokens": 4, "total_tokens": 14}]
+    assert result.usage_reported is True
+
+
+def test_report_subagent_usage_does_not_raise_for_unknown_callback_shape():
+    runtime = _make_runtime()
+    runtime.config["callbacks"] = object()
+    result = _make_result(
+        FakeSubagentStatus.COMPLETED,
+        token_usage_records=[{"input_tokens": 10, "output_tokens": 4, "total_tokens": 14}],
+    )
+
+    task_tool_module._report_subagent_usage(runtime, result)
+
+    assert result.usage_reported is False
+
+
+def test_task_tool_completed_path_reports_usage_from_callback_manager(monkeypatch):
+    config = _make_subagent_config()
+    recorder = FakeUsageRecorder()
+    runtime = _make_runtime()
+    runtime.config["callbacks"] = AsyncCallbackManager([recorder])
+    events = []
+    cleanup_calls = []
+    records = [{"input_tokens": 10, "output_tokens": 4, "total_tokens": 14}]
+    result = _make_result(FakeSubagentStatus.COMPLETED, result="done", token_usage_records=records)
+
+    monkeypatch.setattr(task_tool_module, "SubagentStatus", FakeSubagentStatus)
+    monkeypatch.setattr(
+        task_tool_module,
+        "SubagentExecutor",
+        type("DummyExecutor", (), {"__init__": lambda self, **kwargs: None, "execute_async": lambda self, prompt, task_id=None: task_id}),
+    )
+    monkeypatch.setattr(task_tool_module, "get_subagent_config", lambda _: config)
+    monkeypatch.setattr(task_tool_module, "get_background_task_result", lambda _: result)
+    monkeypatch.setattr(task_tool_module, "get_stream_writer", lambda: events.append)
+    monkeypatch.setattr(task_tool_module.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr(task_tool_module, "cleanup_background_task", lambda task_id: cleanup_calls.append(task_id))
+    monkeypatch.setattr("deerflow.tools.get_available_tools", lambda **kwargs: [])
+
+    task_result = _run_task_tool(
+        runtime=runtime,
+        description="test",
+        prompt="do work",
+        subagent_type="general-purpose",
+        tool_call_id="tc-manager-usage",
+    )
+
+    assert _task_tool_message(task_result).content == "Task Succeeded. Result: done"
+    assert recorder.records == records
+    assert result.usage_reported is True
+    assert cleanup_calls == ["tc-manager-usage"]
 
 
 @pytest.mark.parametrize("context_mode", [None, "isolated", "snapshot"])

@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "2.1.x-dev"]
     paths:
-      - "skills/public/**"
+      - "resources/skills/**"
       - "backend/packages/harness/deerflow/skills/review/**"
       - "contracts/skill_review/**"
       - "scripts/review_changed_public_skills.py"
@@ -16,7 +16,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
-      - "skills/public/**"
+      - "resources/skills/**"
       - "backend/packages/harness/deerflow/skills/review/**"
       - "contracts/skill_review/**"
       - "scripts/review_changed_public_skills.py"
@@ -60,7 +60,7 @@ jobs:
         working-directory: backend
         run: uv sync --group dev
 
-      - name: Review changed public skills (pull request)
+      - name: Review changed skill packages (pull request)
         if: github.event_name == 'pull_request'
         working-directory: backend
         run: |
@@ -68,7 +68,7 @@ jobs:
             --base-ref "${{ github.event.pull_request.base.sha }}" \
             --head-ref "${{ github.event.pull_request.head.sha }}"
 
-      - name: Review changed public skills (push)
+      - name: Review changed skill packages (push)
         if: github.event_name == 'push'
         working-directory: backend
         run: |

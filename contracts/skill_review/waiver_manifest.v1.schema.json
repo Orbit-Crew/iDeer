@@ -13,7 +13,7 @@
         "type": "object",
         "required": ["package", "source", "rule_id", "path", "line", "evidence", "file_sha256", "reason", "expires_on"],
         "properties": {
-          "package": { "type": "string", "pattern": "^skills/public/", "minLength": 15 },
+          "package": { "type": "string", "pattern": "^resources/skills/", "minLength": 17 },
           "source": { "type": "string", "minLength": 1 },
           "rule_id": { "type": "string", "minLength": 1 },
           "path": { "type": "string", "minLength": 1 },

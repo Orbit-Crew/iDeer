@@ -11,7 +11,7 @@ archived-reason: 时点分析证据——代码行号、字段清单与缺口状
 
 > status: archived（2026-06-12 时点分析，行号与缺口状态按当时候选保留，修复情况 unverified）；current testing authority: `docs/testing/coverage-matrix.md`
 
-> **日期**: 2026-06-12
+> source date: 2026-06-12
 > **触发原因**: Workflow 管理页面出现两个未被 validation-orchestrator 捕获的问题
 > **分析范围**: 全项目一致性扫描，覆盖 ORM/DB、前后端类型、RBAC、配置、路由、错误处理
 

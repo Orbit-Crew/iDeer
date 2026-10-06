@@ -1,4 +1,5 @@
 import importlib.util
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -10,7 +11,15 @@ def _load_quick_validate():
     spec = importlib.util.spec_from_file_location("skill_creator_quick_validate", QUICK_VALIDATE_PATH)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # SourceFileLoader would write __pycache__/*.pyc next to the source, i.e.
+    # into the shipped skill package (see skill_loader.py); suppress bytecode
+    # writing for the duration of the exec.
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
     return module
 
 

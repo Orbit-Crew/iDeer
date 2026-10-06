@@ -1,4 +1,4 @@
-"""Trusted, exact-match waivers for the public-skill CI review gate."""
+"""Trusted, exact-match waivers for the governed-skill CI review gate."""
 
 from __future__ import annotations
 
@@ -100,8 +100,8 @@ def parse_manifest(payload: bytes | str, *, source: str) -> WaiverManifest:
             raise WaiverManifestError(f"{entry_source}: unknown field(s): {', '.join(sorted(unknown))}")
 
         package = _canonical_relative_path(raw["package"], field=f"{entry_source}.package")
-        if not package.startswith("skills/public/"):
-            raise WaiverManifestError(f"{entry_source}.package: must be below skills/public/")
+        if not package.startswith("resources/skills/"):
+            raise WaiverManifestError(f"{entry_source}.package: must be below resources/skills/")
         path = _canonical_relative_path(raw["path"], field=f"{entry_source}.path")
         source_name = _nonempty_string(raw["source"], field=f"{entry_source}.source")
         rule_id = _nonempty_string(raw["rule_id"], field=f"{entry_source}.rule_id")
@@ -173,7 +173,7 @@ def file_sha256(repo_root: Path, waiver: SkillReviewWaiver) -> str | None:
         return None
     package_root = package_candidate.resolve()
     try:
-        package_root.relative_to(resolved_repo_root / "skills" / "public")
+        package_root.relative_to(resolved_repo_root / "resources" / "skills")
     except ValueError:
         return None
     candidate = package_root / waiver.path

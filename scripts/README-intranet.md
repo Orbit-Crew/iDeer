@@ -27,8 +27,8 @@ sandbox (file writes, bash execution) works offline. Override the source image
 with `--sandbox-image <image>` or skip it entirely with `--no-sandbox` (not
 recommended -- sandboxed tools will be unavailable).
 
-`resources/skills/` is only partially tracked in git, so the bundle contains
-whatever custom skills exist on the build machine. For official releases pass
+`resources/skills/` is fully tracked in git, so the bundle contains the tracked
+skill set of the candidate being packaged. For official releases pass
 `--skills-manifest <csv>` (expected custom skill names); packaging fails
 immediately if any listed skill is missing, and `MANIFEST.txt` records the
 actual `Custom Skills` list so the delivered bundle can be audited against it.

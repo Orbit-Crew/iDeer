@@ -23,6 +23,10 @@ jobs:
 
   document-gate:
     runs-on: ubuntu-latest
+    env:
+      # Conventional uv cache location (AGENTS.md restricted-environment path);
+      # setup-uv respects a pre-set UV_CACHE_DIR and still caches it.
+      UV_CACHE_DIR: /tmp/deer-flow-uv-cache
     steps:
       - uses: actions/checkout@v6
 
@@ -35,6 +39,27 @@ jobs:
       # The checker never repairs files; a non-zero exit fails the job.
       - name: Validate document governance contracts
         run: python3 scripts/check_documents.py --repo-root .
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.1"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          uv sync --group dev
+
+      # Seconds-level offline contract tests for the intranet deploy bundle:
+      # deploy/package/check scripts plus the bundled compose file and runbook
+      # (docker/curl are faked via PATH, so the suite never touches the
+      # network). Deliberately scoped to this one file, not the whole
+      # unit/scripts tree, which runs for minutes; the rest of that tree stays
+      # covered by the backend test lanes. This suite once stayed red on
+      # develop for months because no CI job executed it.
+      - name: Run document contract tests
+        working-directory: backend
+        run: uv run pytest tests/unit/scripts/test_intranet_deploy_scripts.py -q
 
   lint:
     runs-on: ubuntu-latest

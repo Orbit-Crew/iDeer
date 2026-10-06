@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _write_target(repo_root: Path, content: bytes = b"safe subprocess invocation\n") -> tuple[Path, str]:
-    target = repo_root / "skills/public/demo/scripts/run.py"
+    target = repo_root / "resources/skills/demo/scripts/run.py"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(content)
     return target, f"sha256:{hashlib.sha256(content).hexdigest()}"
@@ -42,7 +42,7 @@ def _waiver(
     preapproved_file_sha256s: tuple[str, ...] = (),
 ) -> SkillReviewWaiver:
     return SkillReviewWaiver(
-        package="skills/public/demo",
+        package="resources/skills/demo",
         source="skillscan",
         rule_id="python-subprocess",
         path="scripts/run.py",
@@ -75,7 +75,7 @@ def _payload(
     preapproved_file_sha256s: object | None = None,
 ) -> bytes:
     entry = {
-        "package": "skills/public/demo",
+        "package": "resources/skills/demo",
         "source": "skillscan",
         "rule_id": "python-subprocess",
         "path": path,
@@ -98,19 +98,18 @@ def test_committed_manifest_matches_schema_and_strict_parser() -> None:
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
     parsed = parse_manifest(manifest_path.read_bytes(), source=str(manifest_path))
 
-    assert len(parsed.waivers) == 2
+    assert len(parsed.waivers) == 5
     assert parsed.waivers[0].preapproved_file_sha256s == ("sha256:2877bde08bf3f437b9dae3d57585a0840b9b1024736d2e5c6c657b71899269d0",)
     assert parsed.waivers[1].preapproved_file_sha256s == ("sha256:ea2521ba41c8fd16b2900758c890bb6c6d2b4b01da10b4a860facb8587ed0bde",)
 
 
-def test_skill_creator_waivers_match_current_error_findings() -> None:
-    package = REPO_ROOT / "skills/public/skill-creator"
+def test_committed_waivers_match_current_error_findings() -> None:
     manifest = parse_manifest((REPO_ROOT / ".github/skill-review-waivers.v1.json").read_bytes(), source="committed manifest")
-    facts = analyze_skill_package(LocalDirectoryReader(package).read(), profile="deerflow")
+    facts_by_package = {package_rel: analyze_skill_package(LocalDirectoryReader(REPO_ROOT / package_rel).read(), profile="deerflow") for package_rel in sorted({waiver.package for waiver in manifest.waivers})}
 
     validation_errors = validate_manifest_against_facts(
         manifest,
-        facts_by_package={"skills/public/skill-creator": facts},
+        facts_by_package=facts_by_package,
         repo_root=REPO_ROOT,
         today=date(2026, 8, 31),
     )
@@ -169,11 +168,11 @@ def test_matching_waiver_requires_exact_finding_and_current_file_hash(tmp_path: 
     target, digest = _write_target(tmp_path)
     manifest = WaiverManifest((_waiver(digest=digest),))
 
-    assert matching_waiver(_finding(), package="skills/public/demo", manifest=manifest, repo_root=tmp_path, today=date(2026, 8, 31)) is manifest.waivers[0]
-    assert matching_waiver(_finding(line=13), package="skills/public/demo", manifest=manifest, repo_root=tmp_path, today=date(2026, 8, 31)) is None
+    assert matching_waiver(_finding(), package="resources/skills/demo", manifest=manifest, repo_root=tmp_path, today=date(2026, 8, 31)) is manifest.waivers[0]
+    assert matching_waiver(_finding(line=13), package="resources/skills/demo", manifest=manifest, repo_root=tmp_path, today=date(2026, 8, 31)) is None
 
     target.write_bytes(b"changed\n")
-    assert matching_waiver(_finding(), package="skills/public/demo", manifest=manifest, repo_root=tmp_path, today=date(2026, 8, 31)) is None
+    assert matching_waiver(_finding(), package="resources/skills/demo", manifest=manifest, repo_root=tmp_path, today=date(2026, 8, 31)) is None
 
 
 def test_preapproved_file_hash_authorizes_a_later_file_revision(tmp_path: Path) -> None:
@@ -220,14 +219,14 @@ def test_preapproved_file_hash_authorizes_a_later_file_revision(tmp_path: Path) 
 def test_matching_waiver_rejects_symlinked_package_outside_repository(tmp_path: Path) -> None:
     external_root = tmp_path.parent / f"{tmp_path.name}-external"
     external_target, digest = _write_target(external_root)
-    public_root = tmp_path / "skills/public"
+    public_root = tmp_path / "resources/skills"
     public_root.mkdir(parents=True)
     symlink_or_skip(public_root / "demo", external_target.parents[1], target_is_directory=True)
 
     assert (
         matching_waiver(
             _finding(),
-            package="skills/public/demo",
+            package="resources/skills/demo",
             manifest=WaiverManifest((_waiver(digest=digest),)),
             repo_root=tmp_path,
             today=date(2026, 8, 31),
@@ -308,7 +307,7 @@ def test_workflow_triggers_on_waiver_implementation_and_manifest() -> None:
 
 
 def test_run_review_keeps_waived_error_visible_and_passes(tmp_path: Path, monkeypatch, capsys) -> None:
-    package = tmp_path / "skills/public/demo"
+    package = tmp_path / "resources/skills/demo"
     _, digest = _write_target(tmp_path)
     facts = {
         "summary": {"blockers": 0, "errors": 1, "warnings": 0, "infos": 0},
@@ -323,11 +322,11 @@ def test_run_review_keeps_waived_error_visible_and_passes(tmp_path: Path, monkey
     assert exit_code == 0
     assert "- error python-subprocess" in output
     assert "[WAIVED until 2027-02-28:" in output
-    assert "Passed: skills/public/demo (1 waived finding(s))" in output
+    assert "Passed: resources/skills/demo (1 waived finding(s))" in output
 
 
 def test_run_review_still_fails_for_unwaived_error(tmp_path: Path, monkeypatch) -> None:
-    package = tmp_path / "skills/public/demo"
+    package = tmp_path / "resources/skills/demo"
     _write_target(tmp_path)
     facts = {
         "summary": {"blockers": 0, "errors": 1, "warnings": 0, "infos": 0},
