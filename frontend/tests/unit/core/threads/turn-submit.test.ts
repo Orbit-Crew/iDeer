@@ -366,6 +366,50 @@ describe("turn-submit draft policy", () => {
     expect(gate.isDraftHeld(DRAFT_KEY)).toBe(false);
   });
 
+  it("drops the tracked pending draft on completion so a later flush cannot resurrect it", async () => {
+    const gate = createTurnSubmitGate();
+    const { controller } = makeController({
+      gate,
+      send: makeStreamSendForGate(gate),
+    });
+    const draftPorts = makeRecordingDraftPorts();
+    await controller.submit(makeRequest({ draft: draftPorts }));
+    // In flight: the tracked draft holds the submitted text for the typing
+    // machine (a mid-stream pagehide flush must persist it).
+    expect(draftPorts.trackedState?.draft).toEqual(PENDING_DRAFT);
+    gate.completeTurn();
+    expect(readDraft(DRAFT_KEY)).toBeNull();
+    // The gate releases the hold before the terminal callback runs, so the
+    // policy must drop the tracked draft on its own no-newer-draft
+    // observation: otherwise the composer's next flush (thread switch,
+    // pagehide) re-persists the submitted text and the conversation restores
+    // it as a draft (e2e: keeps text and selected skill isolated while
+    // switching conversations).
+    expect(draftPorts.trackedState).toBeNull();
+  });
+
+  it("keeps the tracked draft on completion when a newer draft was typed during the send", async () => {
+    const gate = createTurnSubmitGate();
+    const { controller } = makeController({
+      gate,
+      send: makeStreamSendForGate(gate),
+    });
+    const draftPorts = makeRecordingDraftPorts();
+    await controller.submit(makeRequest({ draft: draftPorts }));
+    draftPorts.simulateType({ text: "newer draft", skillName: null });
+    gate.completeTurn();
+    expect(readDraft(DRAFT_KEY)).toEqual({
+      text: "newer draft",
+      skillName: null,
+    });
+    // The newer draft owns the tracked slot: the completion must not clobber
+    // it with a forget.
+    expect(draftPorts.trackedState?.draft).toEqual({
+      text: "newer draft",
+      skillName: null,
+    });
+  });
+
   it("does not clear the stored draft on completion when a newer draft was typed during the send", async () => {
     const { gate, controller } = makeController();
     const draftPorts = makeRecordingDraftPorts();
