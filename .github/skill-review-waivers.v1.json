@@ -39,6 +39,30 @@
       "file_sha256": "sha256:e507b3bf42f3252849f5be18f07838c14e2be8c192e6f97c016c20e2b42f7287",
       "reason": "Upstream script reads MINIMAX_API_KEY via os.getenv into a local named api_key; this is documented runtime configuration, not a hardcoded credential.",
       "expires_on": "2027-02-28"
+    },
+    {
+      "package": "resources/skills/data-analysis",
+      "source": "skillscan",
+      "rule_id": "python-dynamic-import",
+      "path": "scripts/analyze.py",
+      "line": 23,
+      "evidence": "__import__",
+      "file_sha256": "sha256:a1d4c7ed23eebb6ed856fe25dff24861333e728c6d3cfee9787dbd51ad68b475",
+      "preapproved_file_sha256s": [],
+      "reason": "Deliberate offline adaptation (doc-disclosure ticket 16): the _require() helper probes duckdb/openpyxl via __import__ with fixed internal module names and fails fast with offline install guidance instead of pip-installing over the network.",
+      "expires_on": "2027-04-06"
+    },
+    {
+      "package": "resources/skills/skill-creator",
+      "source": "skillscan",
+      "rule_id": "python-subprocess",
+      "path": "eval-viewer/generate_review.py",
+      "line": 291,
+      "evidence": "subprocess.run",
+      "file_sha256": "sha256:71eef1a5e8b7ade005c97968ea7bb81a6018a8c013a6e812dc68ffa2047d28dd",
+      "preapproved_file_sha256s": [],
+      "reason": "Required lsof port cleanup for the local eval-viewer HTTP server uses a fixed executable, an argv list, and shell=False, matching the already-waived improve_description/run_eval invocations.",
+      "expires_on": "2027-04-06"
     }
   ]
 }

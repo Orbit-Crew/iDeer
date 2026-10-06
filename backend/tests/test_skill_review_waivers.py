@@ -98,7 +98,7 @@ def test_committed_manifest_matches_schema_and_strict_parser() -> None:
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
     parsed = parse_manifest(manifest_path.read_bytes(), source=str(manifest_path))
 
-    assert len(parsed.waivers) == 3
+    assert len(parsed.waivers) == 5
     assert parsed.waivers[0].preapproved_file_sha256s == ("sha256:2877bde08bf3f437b9dae3d57585a0840b9b1024736d2e5c6c657b71899269d0",)
     assert parsed.waivers[1].preapproved_file_sha256s == ("sha256:ea2521ba41c8fd16b2900758c890bb6c6d2b4b01da10b4a860facb8587ed0bde",)
 
