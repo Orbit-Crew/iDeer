@@ -1,6 +1,6 @@
 # 首批测试体系改进（Mock E2E 恢复批）：最终候选验证记录（2026-10-06）
 
-**状态：incomplete（扩展验收未全部通过）。** Mock E2E 恢复目标本身已达成：55 项原失败在生产模式、单 worker、零重试、repeat-each=5 下 275/275 全部通过，Mock 全量 413/413 通过，pnpm check 通过。但正式 pr-standard lane 失败：frontend-standard 子 lane 中 3 个页面单测文件共 93 项失败，全部可溯源至 03-D 产品改动与未同步更新的页面单测之间的冲突。按规格"不完整不得宣告完成"，本批整体判定为 incomplete。原始 03（顺序依赖根因修复）仍然合法地保持 blocked：不存在稳定的顺序依赖复现（T2 结论为未完成），本记录不推翻该状态。
+**状态：complete（就本批授权范围；以文末"develop 同步与最终完成判定"章节为准）。** 本记录主体为同步前候选 `d29911db4` 的验证：Mock E2E 恢复目标达成（55 项原失败 275/275 五连通过、Mock 全量 413/413、pnpm check 通过），但 pr-standard 因 93 项页面单测夹具缺口失败而判 incomplete。经 develop 同步（merge `c33b4107c`）+ 08 移植（`7d1ef3d37`）+ 08b 回归修复（`cf4aa23cd`）后，最终候选上 pr-standard 与 Mock 全量各重跑一次全绿，整体判定升级为 complete。原始 03（顺序依赖根因修复）保持 blocked：不存在稳定的顺序依赖复现（T2 结论为未完成），本记录不推翻该状态。
 
 配套复盘见 [首批复盘 2026-10-06](first-batch-retrospective-2026-10-06.md)；上一轮历史记录（不覆盖、不替代本记录）见 [最终验证 2026-10-03](first-batch-final-validation-2026-10-03.md)。
 
@@ -108,3 +108,24 @@ frontend-standard 的 93 项失败集中在 3 个页面单测文件，逐文件�
 | `pr-standard` 父 lane 通过 | **未通过**（frontend-standard 子 lane status 1，93 项页面单测失败；backend-standard/Rstest/smoke/local-runtime 均 status 0） |
 
 整体判定：**incomplete**。恢复批的核心目标（55 项分类与修复、Mock 全量干净）已达成并有本候选上的完整证据；但 pr-standard 失败使整批不能宣告完成。剩余工作明确且有限：对齐 3 个页面单测文件（QueryClientProvider 包装与 `projects.projectUnavailable` 翻译 mock），随后在同一候选（或仅含该测试侧最小改动的候选）上重跑 frontend-standard 子 lane 与父 pr-standard。03 保持 blocked（无顺序依赖复现，T2 未完成）；#39/#47 保持"未复现、无因果断言、断言完整"的处置。
+
+## develop 同步与最终完成判定(2026-10-06 追加)
+
+上表在同步前候选 `d29911db4` 上做出,判定 incomplete 的唯一红项(pr-standard 93 项页面单测失败)涉及的重写目标文件均已被 develop 的聊天路由重构整体替换。按编排决策,完成判定移至 develop 同步后的最终候选:
+
+- `c33b4107c` merge: 同步 develop(架构深化,聊天路由迁入 `use-thread-page`/`turn-submit` 结构);两个 workspace 聊天页取 develop 结构,文档台账并集,lane runner 两侧改动均保留。
+- `7d1ef3d37` 08 移植票: 三项行为修复(03-B1 自动回退分流、03-D1 项目作用域预创建+陈旧提交守卫、03-D2 归档状态挂载)移植进新结构,双轴复审 PASS-WITH-NOTES(与移植前版本行级等价);三个页面单测文件以增量 fixture/Provider 修复红→绿(131/131),#15/#16/#18、#35/#36、#44/#45 五连验收通过,`pnpm check` exit 0。
+- `cf4aa23cd` 08b 修复票: develop 侧真实产品回归——`turn-submit.ts` 的 `completeTurn()` 在组合生命周期回调前清空 gate hold 状态,使 `policy.completed()` 的 `isDraftHeld` 观察恒为假,已提交草稿在会话切换时复活;修复改按"无更新草稿"判定并遗忘(`failed()` 路径不动)。单元红→绿 35/35,草稿隔离用例五连 5/5,chat.spec.ts 正式 39/39,`pnpm check` exit 0,08 的 131 项单测复跑通过。双轴复审 PASS-WITH-NOTES(根因链独立复核成立)。上游注意:`failed()` 的同形分支同样为死代码;frontend-mock-e2e 不在 pr-standard 内,该回归对 develop 自有通道不可见。
+
+### 最终候选(c33b4107c + 7d1ef3d37 + cf4aa23cd,HEAD cf4aa23cd)的两条正式 lane
+
+| Lane | 结果 |
+| --- | --- |
+| `CI=1 UV_CACHE_DIR=/tmp/deer-flow-uv-cache bash scripts/run-test-lane.sh pr-standard` | exit 0;子 lane 全 status=0:local-runtime 10s、backend-standard 1175s(29,240 passed / 236 skipped 量级同前)、frontend-standard 451s(此前 93 项失败的三个文件全绿)、frontend-smoke 97s(34 passed);父 `TEST_LANE_DURATION lane=pr-standard seconds=1736 status=0`。日志 `dev-log/08-final-pr-standard.log` |
+| `CI=1 bash scripts/run-test-lane.sh frontend-mock-e2e` | exit 0;413 passed / 0 failed / 0 flaky / 0 skipped(9.4 分钟);`TEST_LANE_DURATION lane=frontend-mock-e2e seconds=592 status=0`;无重试痕迹。日志 `dev-log/08-final-mock-e2e.log` |
+
+GitNexus 门禁:08 提交前 staged 6 files / 27 symbols / 12 processes / risk high(与 recovery-D 记录同源的聊天路由流程,以完整 lane 补偿);08b staged 2 files / 3 symbols / 0 processes / risk low。
+
+### 修订后的整体判定
+
+按同一验收门重判:清单、pnpm check、55×5 复现验收、Mock 全量无回归、pr-standard 父 lane **全部通过**(后两项在最终候选上重新取得)。整体判定升级为 **complete(就本批授权范围而言)**。03 保持 blocked;#39/#47 保持"未复现、无因果断言"处置;Real E2E、core-full 与专项通道仍按规格未执行,不随本判定改变。
