@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-recovery-b
+kind: evidence
+status: archived
+owner: test maintainers
+scope: repair record for mock e2e recovery ticket 03-B (cases #27-37) — preferences and model synchronization cases with per-case classification, guarded production builds, and five-run durations
+archived-reason: candidate-scoped repair record from the recovery batch (ticket start a77e69c2b); the batch merged into develop at e33a103f1 — group results are the batch candidates' results, not current verification
+---
+
 # Mock E2E recovery B: preferences and model synchronization
 
 Ticket 03-B classifies and repairs cases #27–37 from the inherited production Mock E2E failure set. The ticket-start commit was `a77e69c2b4c22dcbf6be614621a011fc56dbb2f6`. Investigation began on production build `828sMqM_WSDUWYDUdQGJ7`; the final guarded candidate was built as `xDnnAzj6RGOhiJE9JlaND` from candidate diff SHA-256 `8e6e28525fd07066822c6cc42a57b608b14425769ac91554a8f4b0582ac61b2f`. This fingerprint covers the eight then-current tracked source/test files; the versioned evidence documents were added after the final build and do not change the tested source candidate.

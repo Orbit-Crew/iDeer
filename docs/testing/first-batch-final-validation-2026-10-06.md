@@ -1,3 +1,12 @@
+---
+id: docs-testing-first-batch-final-validation-2026-10-06
+kind: evidence
+status: archived
+owner: test maintainers
+scope: final candidate validation record of the mock e2e recovery batch at frozen candidate d29911db4 (2026-10-06) — 55 repaired failures 275/275 across five repeats, mock full-lane 413/413, pr-standard green after the develop sync, and the complete batch verdict with the original ticket 03 still blocked
+archived-reason: candidate-scoped acceptance record; the batch merged into develop at e33a103f1 and develop continued past the verified candidate — its lane numbers are the batch's results, not current verification
+---
+
 # 首批测试体系改进（Mock E2E 恢复批）：最终候选验证记录（2026-10-06）
 
 **状态：complete（就本批授权范围；以文末"develop 同步与最终完成判定"章节为准）。** 本记录主体为同步前候选 `d29911db4` 的验证：Mock E2E 恢复目标达成（55 项原失败 275/275 五连通过、Mock 全量 413/413、pnpm check 通过），但 pr-standard 因 93 项页面单测夹具缺口失败而判 incomplete。经 develop 同步（merge `c33b4107c`）+ 08 移植（`7d1ef3d37`）+ 08b 回归修复（`cf4aa23cd`）后，最终候选上 pr-standard 与 Mock 全量各重跑一次全绿，整体判定升级为 complete。原始 03（顺序依赖根因修复）保持 blocked：不存在稳定的顺序依赖复现（T2 结论为未完成），本记录不推翻该状态。

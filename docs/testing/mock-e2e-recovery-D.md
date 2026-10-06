@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-recovery-d
+kind: evidence
+status: archived
+owner: test maintainers
+scope: repair record for mock e2e recovery ticket 03-D (cases #15-19, #39, #42-49) — fourteen cases passing five production repeats after the formatted candidate, with #39/#47 non-reproduction recorded without causal claims
+archived-reason: candidate-scoped repair record from the recovery batch (base 3ad6359af); the batch merged into develop at e33a103f1 — group results are the batch candidates' results, not current verification
+---
+
 # Mock E2E recovery — ticket 03-D
 
 ## Result

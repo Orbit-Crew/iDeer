@@ -1,3 +1,12 @@
+---
+id: docs-testing-first-batch-retrospective-2026-10-03
+kind: evidence
+status: archived
+owner: test maintainers
+scope: first test-system batch session retrospective (2026-10-03) — severity-ranked environment and workflow proposals on comparable diagnosis evidence, GitNexus worktree and deletion coverage, guidance-file side effects, ticket baselines, and durable handoff artifacts
+archived-reason: retrospective of the pre-recovery batch session; the recovery batch continued the work and its retrospective is first-batch-retrospective-2026-10-06.md — recommendations here are historical input to that batch, not a current plan
+---
+
 # 首批测试改进主会话复盘
 
 本次按既定票据执行，01、04、05、06 已完成；02 incomplete、03 blocked、07 incomplete。PR 标准验证通过，Mock 全量 358 passed、55 failed。这里按严重程度提出环境与工作流改进建议，不将尚未确认的产品原因写成事实。

@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-order-dependency-diagnosis
+kind: evidence
+status: archived
+owner: test maintainers
+scope: T2 order-dependency diagnosis for the mock e2e lane (first batch ticket 03) — single, predecessor, and reduced-prefix probes over the registered historical candidates found no stable order-only failure; T2 incomplete and T3 blocked
+archived-reason: candidate-scoped diagnosis record from worktree test-system-first-batch; the recovery batch closed its follow-up with per-case classification and no order-dependency claim survives — see mock-e2e-recovery-diagnosis.md
+---
+
 # Mock E2E order-dependency diagnosis (T2)
 
 ## Outcome

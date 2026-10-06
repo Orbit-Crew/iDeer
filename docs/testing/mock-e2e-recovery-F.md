@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-recovery-f
+kind: evidence
+status: archived
+owner: test maintainers
+scope: repair record for mock e2e recovery ticket 03-F (cases #1 and #38) — a mobile sidebar synchronization failure and a removed static suggestion row, both classified with no product source change needed
+archived-reason: candidate-scoped repair record from the recovery batch (ticket start a50dd8de0); the batch merged into develop at e33a103f1 — group results are the batch candidates' results, not current verification
+---
+
 # Mock E2E recovery: mobile and sidebar cases
 
 Ticket 03-F investigated cases #1 and #38 from the production-mode mock E2E

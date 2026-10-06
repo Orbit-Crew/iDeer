@@ -1,3 +1,12 @@
+---
+id: docs-testing-first-batch-final-validation-2026-10-03
+kind: evidence
+status: archived
+owner: test maintainers
+scope: final candidate validation record of the first test-system batch at frozen candidate a4d564ae5 (2026-10-03) — pr-standard lane pass, mock full-lane 358 passed / 55 failed, and the incomplete verdict with T3 blocked and no stable reproduction
+archived-reason: candidate-scoped validation record for the pre-recovery batch; the mock e2e recovery batch superseded its open items and the completed batch merged into develop at e33a103f1 — final acceptance moved to first-batch-final-validation-2026-10-06.md and these lane numbers are the batch candidates' results, not current verification
+---
+
 # 首批测试体系改进：最终候选验证记录
 
 **状态：incomplete。** T7 的收集、PR 标准 lane 与 Mock 全量均已执行并记录；首批不能宣告完成，因为 T3 仍 blocked。Mock lane 中目标删除重试用例再次失败，而原诊断没有稳定复现及因果证据。本记录将这个结果与其余 Mock 失败分开，不推断根因。

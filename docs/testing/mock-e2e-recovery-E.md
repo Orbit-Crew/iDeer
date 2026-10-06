@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-recovery-e
+kind: evidence
+status: archived
+owner: test maintainers
+scope: repair record for mock e2e recovery ticket 03-E (cases #7-9 and #52) — artifacts route contract findings, the artifact conflict-indicator sub-ticket evidence restated inline, and browser acceptance of the table-preview and visualization specs
+archived-reason: candidate-scoped repair record from the recovery batch (ticket start 943ec105d); the batch merged into develop at e33a103f1 — group results are the batch candidates' results, not current verification
+---
+
 # Mock E2E recovery E: artifacts
 
 **Ticket:** 03-E, cases #7–9 and #52

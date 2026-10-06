@@ -1,3 +1,12 @@
+---
+id: docs-testing-test-lane-result-consistency
+kind: evidence
+status: archived
+owner: test maintainers
+scope: T1 change and red-green evidence record for the test lane runner — the stagehand lane records unexecuted when credentials are missing, evidence completion precedes the final summary, atomic evidence writes, and evidence-failure exit-code rules
+archived-reason: candidate-scoped T1 record for the runner change shipped with the first batch (merged into develop at e33a103f1); runner behavior is now governed by docs/testing/test-lane-runbook.md
+---
+
 # Test lane result consistency
 
 This record covers ticket T1 from [the first test system batch](../specs/2026-10-02-test-system-first-batch-spec.md). The candidate started at `a1bb73afee6a0e3b1683deb1b326276fe3dda37f`.

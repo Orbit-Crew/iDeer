@@ -1,3 +1,12 @@
+---
+id: docs-testing-first-batch-retrospective-2026-10-06
+kind: evidence
+status: archived
+owner: test maintainers
+scope: mock e2e recovery batch retrospective (2026-10-06) — the 358/55 to 413/413 recovery, the pivot from the order-dependency hypothesis to per-case classification, the pr-standard page unit-test gap and its 08/08b resolution, and next-batch recommendations
+archived-reason: retrospective of the recovery batch merged into develop at e33a103f1; its recommendations await adoption and its lane numbers are the batch's results, not current verification
+---
+
 # 首批测试体系改进（Mock E2E 恢复批）复盘（2026-10-06）
 
 本复盘覆盖 2026-10-03 首批收尾之后的恢复批：诊断扩展（02）、六个修复组（03-F0/A/B/C/D/E/F）与扩展最终验收（07）。恢复批把 Mock 全量从 358 passed / 55 failed 推进到 413/413，但正式 pr-standard 暴露了 93 项页面单测回归，整批判定保持 incomplete。验收数据见 [最终验证 2026-10-06](first-batch-final-validation-2026-10-06.md)；首批历史复盘见 [复盘 2026-10-03](first-batch-retrospective-2026-10-03.md)。

@@ -1,4 +1,10 @@
 ---
+id: docs-specs-2026-10-03-mock-e2e-recovery-spec
+kind: plan
+status: archived
+owner: test maintainers
+scope: mock e2e recovery extension spec for the first test-system batch — repair all 55 inherited mock e2e failures from baseline af4254571 on fix/test-system-first-batch with per-assertion equivalence records, no skips or lane weakening, and no core-full or real-credential runs; the original ticket 03 order-dependency root-cause repair stays blocked absent a stable reproduction
+archived-reason: executed — recovery groups 03-F0/A-F and the develop-sync port tickets completed on fix/test-system-first-batch and the batch merged into develop at e33a103f1 (2026-10-06); final acceptance is first-batch-final-validation-2026-10-06.md and the per-group repair records are mock-e2e-recovery-diagnosis.md and mock-e2e-recovery-A.md through mock-e2e-recovery-F.md; ticket 03 remains blocked
 triage: ready-for-agent
 ---
 

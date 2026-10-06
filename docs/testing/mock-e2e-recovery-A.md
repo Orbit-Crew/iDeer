@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-recovery-a
+kind: evidence
+status: archived
+owner: test maintainers
+scope: repair record for mock e2e recovery ticket 03-A (cases #10-14, #20-26, #40-41) — resource gallery product fix and capability-center, integrations, and skill-export spec repairs; all 14 cases pass five production-mode repeats
+archived-reason: candidate-scoped repair record from the recovery batch (candidate based on c166617ba); the batch merged into develop at e33a103f1 — group results are the batch candidates' results, not current verification
+---
+
 # Mock E2E recovery — ticket 03-A
 
 ## Result

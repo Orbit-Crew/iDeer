@@ -23,6 +23,14 @@
         "head_sha256": "bf70be60a0db37216271dd5427a0b9e47cd305e3e47abc6780e9acb093dc910a",
         "head_lines": 174,
         "reason": "the governing spec was extended by commit f0440eef (docs(spec): define progressive disclosure governance) after the baseline inventory was captured; inventory rows keep the baseline state and this delta records the sole deviation"
+      },
+      {
+        "path": "docs/upgrades/deerflow-v2.1.0/CONFLICT_LEDGER.md",
+        "baseline_sha256": "8111012e174e231f8be3d819616243837de0ab860bdb483ded4565f224d2ab52",
+        "baseline_lines": 123,
+        "head_sha256": "57d4e9db055e3349e7f14a151c3080a710030751c7ee130a57f34d30b269586f",
+        "head_lines": 127,
+        "reason": "the protected upgrade ledger was legitimately extended by test-system batch commit a4d564ae5 (test(frontend): remove duplicate message merge cases), appending the section 7 post-merge test-deduplication addendum for ticket T6; fingerprint re-registered at merge 5d10796ab"
       }
     ],
     "delta_rule": "verify hashes at the baseline commit, or recompute at a new candidate and record the delta here before relying on the inventory; never overwrite rows silently"
@@ -2946,7 +2954,7 @@
       },
       {
         "path": "docs/upgrades/deerflow-v2.1.0/CONFLICT_LEDGER.md",
-        "sha256": "8111012e174e231f8be3d819616243837de0ab860bdb483ded4565f224d2ab52"
+        "sha256": "57d4e9db055e3349e7f14a151c3080a710030751c7ee130a57f34d30b269586f"
       },
       {
         "path": "docs/upgrades/deerflow-v2.1.0/DoD_CHECKLIST.md",
@@ -3284,8 +3292,8 @@
     }
   ],
   "supplements": {
-    "count": 11,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 4 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed)",
+    "count": 25,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 18 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed) — the 4 governance-rollout pages and the 14 first test-system batch records (batch merged at e33a103f1, registered at merge 5d10796ab)",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3396,6 +3404,146 @@
         "protected": false,
         "role": "skill-tree governance: authority relationship, upstream skill upgrade flow with lock-SHA diff command, overlap curation verdicts, and skill review waiver principles (created 2026-10-06 with curation ticket 18)",
         "referenced_by": "docs/README.md current-authority table, skills/public/README.md (see root AGENTS.md authority declaration)"
+      },
+      {
+        "path": "docs/specs/2026-10-03-mock-e2e-recovery-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "97537de0acc119e6672a83e8c45994654f068230e4eda90ab02464774e466cb8",
+        "lines": 42,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "mock e2e recovery extension spec of the first test-system batch",
+        "referenced_by": "no inbound markdown links; scope companion of docs/testing/mock-e2e-recovery-diagnosis.md and the recovery records registered in this batch"
+      },
+      {
+        "path": "docs/testing/test-lane-result-consistency.md",
+        "registration": "post-baseline-addition",
+        "sha256": "6f8ce1f076a46347778af5d351233859ba4e149ec271b6efb00446f5925f93a9",
+        "lines": 44,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "T1 runner result-consistency change and red-green evidence record",
+        "referenced_by": "docs/testing/mock-e2e-order-dependency-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/mock-e2e-order-dependency-diagnosis.md",
+        "registration": "post-baseline-addition",
+        "sha256": "f94230a2b714ae655ed642401bd1db5c3d20325021b7dce460d6816f4477b420",
+        "lines": 65,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "T2 order-dependency diagnosis record (incomplete, T3 blocked)",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/mock-e2e-recovery-diagnosis.md",
+        "registration": "post-baseline-addition",
+        "sha256": "10a2f047d2890dd3a585f2d6e82a7a08a63b443f60ac0b88b018ca8b93b65d7e",
+        "lines": 114,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "expanded T2 evidence and per-failure classification hub for the mock e2e recovery",
+        "referenced_by": "docs/testing/mock-e2e-recovery-E.md (deliverable list); hub record of the recovery evidence set registered in this batch"
+      },
+      {
+        "path": "docs/testing/mock-e2e-recovery-A.md",
+        "registration": "post-baseline-addition",
+        "sha256": "109e5bd866e3c36bfb48f85e58791fb0a99f7d030ef649caea3ea4d9fc12e883",
+        "lines": 118,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "repair record for mock e2e recovery ticket 03-A",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/mock-e2e-recovery-B.md",
+        "registration": "post-baseline-addition",
+        "sha256": "49596a2291f27a58ab9c677bbee5befd30594e49ca4e43b89312a9e0bab3262a",
+        "lines": 89,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "repair record for mock e2e recovery ticket 03-B",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/mock-e2e-recovery-C.md",
+        "registration": "post-baseline-addition",
+        "sha256": "ea11cd67c970517895dbef750601430f8dc57233a5a9b674fb1e6f349349620f",
+        "lines": 84,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "repair record for mock e2e recovery ticket 03-C",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/mock-e2e-recovery-D.md",
+        "registration": "post-baseline-addition",
+        "sha256": "d8d71610fd933f60dcad2edf6731957d75a968e646771969a1e6493e58d406a5",
+        "lines": 75,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "repair record for mock e2e recovery ticket 03-D",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/mock-e2e-recovery-E.md",
+        "registration": "post-baseline-addition",
+        "sha256": "f9598c4766e639ec625839a74c6c6550cead1e4c13158c0a22d62cbfb5bac0ef",
+        "lines": 67,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "repair record for mock e2e recovery ticket 03-E",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/mock-e2e-recovery-F.md",
+        "registration": "post-baseline-addition",
+        "sha256": "77c18e31bdfc9de12e30c403915061029831ec6edf7e0c743490df569b81c0a3",
+        "lines": 133,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "repair record for mock e2e recovery ticket 03-F",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md"
+      },
+      {
+        "path": "docs/testing/first-batch-final-validation-2026-10-03.md",
+        "registration": "post-baseline-addition",
+        "sha256": "d2f6110f176b7d4012190e34fefad1ffdfc3ef0fcb8adb9fd07598392607cf07",
+        "lines": 131,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "first batch final candidate validation record (incomplete verdict)",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md, docs/testing/first-batch-final-validation-2026-10-06.md, docs/testing/first-batch-retrospective-2026-10-06.md"
+      },
+      {
+        "path": "docs/testing/first-batch-retrospective-2026-10-03.md",
+        "registration": "post-baseline-addition",
+        "sha256": "26d3f7e51db2362a87303a713d538dae6b162ded210bac5ac0147e7208013e4a",
+        "lines": 40,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "first batch session retrospective",
+        "referenced_by": "docs/testing/first-batch-final-validation-2026-10-03.md, docs/testing/first-batch-retrospective-2026-10-06.md"
+      },
+      {
+        "path": "docs/testing/first-batch-final-validation-2026-10-06.md",
+        "registration": "post-baseline-addition",
+        "sha256": "faed6eaaba25639f9b9ed79c718f443f042730013ab4a81bc80fd9db65176cf0",
+        "lines": 140,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "mock e2e recovery batch final candidate validation record (complete verdict)",
+        "referenced_by": "docs/testing/mock-e2e-recovery-diagnosis.md, docs/testing/first-batch-retrospective-2026-10-06.md"
+      },
+      {
+        "path": "docs/testing/first-batch-retrospective-2026-10-06.md",
+        "registration": "post-baseline-addition",
+        "sha256": "841ae9df4485b69baf72636dfe3a169326fddad11d97c39f9a2f75b2f062c75f",
+        "lines": 63,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "mock e2e recovery batch retrospective",
+        "referenced_by": "docs/testing/first-batch-final-validation-2026-10-06.md"
       }
     ]
   },

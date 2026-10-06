@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-recovery-c
+kind: evidence
+status: archived
+owner: test maintainers
+scope: repair record for mock e2e recovery ticket 03-C (cases #2-6, #50-51, #53-55) — agent and workflow route cases with the UUID validity follow-up and five-repeat passes on the final candidate fingerprint
+archived-reason: candidate-scoped repair record from the recovery batch (ticket start e228294fa); the batch merged into develop at e33a103f1 — group results are the batch candidates' results, not current verification
+---
+
 # Mock E2E recovery C: agent and workflow routes
 
 Ticket 03-C owns cases #2–6, #50–51, and #53–55. Ticket-start candidate: `e228294faa4155c4d3ca0872653df46ceccb9d11`. The production baseline used build `xDnnAzj6RGOhiJE9JlaND`; test output and metadata are in `dev-log/03-C-related-specs-baseline.{log,meta}`. No source or test was modified during that run.

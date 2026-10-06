@@ -1,3 +1,12 @@
+---
+id: docs-testing-mock-e2e-recovery-diagnosis
+kind: evidence
+status: archived
+owner: test maintainers
+scope: expanded T2 evidence for the mock e2e recovery — the inherited production baseline (413 tests, 358 passed / 55 failed at a4d564ae5) and the per-failure classification table feeding repair groups 03-A through 03-F; the original order-dependency hypothesis remains unconfirmed
+archived-reason: candidate-scoped diagnosis record for the recovery batch (frozen candidate d29911db4); repair evidence lives in the per-group recovery records and final acceptance in first-batch-final-validation-2026-10-06.md
+---
+
 # Mock E2E recovery diagnosis (expanded T2 evidence)
 
 ## Status and evidence boundary
