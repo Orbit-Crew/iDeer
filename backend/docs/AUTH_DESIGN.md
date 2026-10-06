@@ -1,3 +1,13 @@
+---
+id: backend-docs-auth-design
+kind: reference
+status: current
+owner: repository maintainers
+scope: built-in authentication and per-user isolation design: sessions, CSRF, identity context, and upgrade migration
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # 用户认证与隔离设计
 
 本文档描述 iDeer 当前内置认证模块的设计，而不是历史 RFC。它覆盖浏览器登录、API 认证、CSRF、用户隔离、首次初始化、密码重置、内部调用和升级迁移。
@@ -66,7 +76,7 @@ graph TB
 
 - `request.state.user`
 - `request.state.auth`
-- `ideer.runtime.user_context` 的 `ContextVar`
+- `deerflow.runtime.user_context` 的 `ContextVar`
 
 `ContextVar` 是这里的核心边界。上层 Gateway 负责写入身份，下层 persistence / file path 只读取结构化的当前用户，不反向依赖 `app.gateway.auth` 具体类型。
 
@@ -317,12 +327,12 @@ PYTHONPATH=. python scripts/migrate_user_isolation.py --user-id <target-user-id>
 | `app/gateway/auth/reset_admin.py` | 密码 reset CLI |
 | `app/gateway/auth/credential_file.py` | 0600 凭据文件写入 |
 | `app/gateway/authz.py` | 路由权限与 owner check |
-| `ideer/runtime/user_context.py` | 当前用户 ContextVar 与 `AUTO` sentinel |
-| `ideer/persistence/thread_meta/` | thread metadata owner filter |
-| `ideer/config/paths.py` | per-user filesystem layout |
-| `ideer/agents/middlewares/thread_data_middleware.py` | run 时解析用户线程目录 |
-| `ideer/agents/memory/storage.py` | per-user memory storage |
-| `ideer/config/agents_config.py` | per-user custom agents |
+| `deerflow/runtime/user_context.py` | 当前用户 ContextVar 与 `AUTO` sentinel |
+| `deerflow/persistence/thread_meta/` | thread metadata owner filter |
+| `deerflow/config/paths.py` | per-user filesystem layout |
+| `deerflow/agents/middlewares/thread_data_middleware.py` | run 时解析用户线程目录 |
+| `deerflow/agents/memory/manager.py` | per-user memory storage |
+| `deerflow/config/agents_config.py` | per-user custom agents |
 | `app/channels/manager.py` | IM channel 内部认证调用 |
 | `scripts/migrate_user_isolation.py` | legacy 数据迁移到 per-user layout |
 | `.deer-flow/data/deerflow.db` | 统一 SQLite 数据库，包含 users / threads_meta / runs / feedback 等表 |

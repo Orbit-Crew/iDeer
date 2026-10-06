@@ -1,8 +1,20 @@
+---
+id: architecture-local-runtime-plan
+kind: plan
+status: current
+owner: repository maintainers
+scope: Local Runtime（桌面执行代理）奠基实施方案——Device / ExecutionTarget / Local Capability 概念、WSS 通信与配对、双重授权与 Consent 分级、本地文件/脚本/MCP/Secrets/Knowledge 能力设计与 Phase 0~11 实施序列；Phase 0~8（总方案 M7~M9）已交付，已交付部分的现行契约以 docs/local-runtime/ 为权威，Phase 9~11 对应总方案 M10~M12 任务卡
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 6a0204d89
+---
+
 # AgentPlatform Local Runtime / 桌面执行代理建设实施方案（Coding Agent 版）
 
 > 制定日期：2026-09-04  
 > 前置条件：已完成 **DeerFlow `main` → AgentPlatform `develop` 收敛**，`deerflow.*` 已成为唯一 Runtime 真源；AgentPlatform 独有能力位于 Control Plane / Workflow / Extension / Business Package 层。  
 > 目标：在不改变 AgentPlatform B/S 主架构的前提下，引入运行在用户终端 PC 上的 **AgentPlatform Local Runtime**，使服务端 Agent 能够安全、受控、可审计地执行本地脚本、访问本地文件、调用本机 MCP、使用本地工具和本地知识库。
+
+> **状态（2026-10-04 复核）**：本方案是 Local Runtime 线的奠基实施方案，作为[后续工作总方案](AgentPlatform_后续工作总方案_2026-09-08.md)的下位文档保持 current——Phase 0~8（总方案 M7~M9：设备控制面、安全 WSS broker、本地文件/Python、DeerFlow Tool 集成、本地 MCP/Secrets/Tray）已交付合入 develop；Phase 9~11（Workflow USER_DEVICE、Local Knowledge、Offline Distribution，对应总方案 M10~M12 任务卡）尚未实施，开工时按总方案 §7 任务卡切片读取本方案。已交付部分的现行契约以[本地运行时架构](../docs/local-runtime/ARCHITECTURE.md)、[本地安全模型](../docs/local-runtime/SECURITY_MODEL.md)、[实现清单](../docs/local-runtime/IMPLEMENTATION_INVENTORY.md)与[补丁账本](../docs/local-runtime/PATCH_LEDGER.md)为准，候选状态见[项目状态页](../docs/project-state.md)。实际落位与 §20/§21 的目录建议不同（服务端为 `backend/app/device_control/`，扩展侧为 `backend/packages/agentplatform-extension/agentplatform_extension/local_runtime/`，客户端为顶层 `local-runtime/` 的 `core/` 扁平模块），以实现清单为准；ExecutionTarget 一等维度与本地否决权语义由 [2026-09-08 决策](../docs/decisions/2026-09-08-execution-target-first-class-dimension.md)与[本地否决权决策](../docs/decisions/2026-09-08-local-authorization-veto.md)固定。
 
 ---
 

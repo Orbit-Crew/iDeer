@@ -1,6 +1,15 @@
+---
+id: backend-docs-rfc-grep-glob-tools
+kind: plan
+status: archived
+owner: repository maintainers
+scope: archived design RFC (proposed 2026-07) for adding the glob and grep read-only search tools; applicable to the ideer.* pre-rename candidate line
+archived-reason: delivered as proposed — glob_tool/grep_tool live in deerflow.sandbox.tools, belong to the file:read group with the proposed 200/100 max_results defaults in config.example.yaml; module names renamed ideer.* → deerflow.* at delivery; preserved as the design record
+---
+
 # [RFC] 在 iDeer 中增加 `grep` 与 `glob` 文件搜索工具
 
-> status: proposed; last-reviewed: 2026-07-15
+> 历史记录（2026-10-04 归档）：原文于 2026-07-15 提出（`status: proposed; last-reviewed: 2026-07-15`），按提出时的 `ideer.*` 模块名撰写，正文保持原样。该方案已按设计交付：`glob_tool` / `grep_tool` 位于 `packages/harness/deerflow/sandbox/tools.py`，在 `config.example.yaml` 中归属 `file:read` 组（默认 `max_results` 200/100，与建议一致）。
 
 ## Summary
 

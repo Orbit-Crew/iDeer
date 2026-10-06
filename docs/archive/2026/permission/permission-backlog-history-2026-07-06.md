@@ -1,6 +1,17 @@
+---
+id: docs-archive-2026-permission-permission-backlog-history-2026-07-06
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-07-06 implementation backlog snapshot for the v1.3 permission-model design candidate: 13 work items (MCP config auth and role tightening, audit_logs table/model/API, resource_metadata index fix, Tool and Workflow metadata backfill, deprecated-table drop, Tool API data-source rework, audit logging, withdraw optimistic lock, audit-log frontend page) with per-item code state, solution sketches, phase plan, and an implementation status check dated 2026-07-06
+archived-reason: point-in-time backlog tracking for the v1.3 candidate; its open items have since landed in the current candidate (audit_logs table and API, resource_metadata index fix, deprecated-table drop migration, admin-gated MCP config endpoints all exist now). Current unfinished-work authority is docs/backlog.md (PERM-01/PERM-02); design authority is docs/permission-model-redesign.md. Body code references, line numbers, and the 2026-07-06 status table are preserved as recorded
+---
+
 # 权限模型重构 — 待实现代码功能清单
 
 > 本文档记录经 v1.3 文档修订后，尚未实现的代码功能。各条目来源于《权限模型重构_对抗式审查报告》中识别的问题，经决策后写入设计文档，待落地执行。
+
+> status: archived（2026-07-06 时点记录，正文按当时候选保留）；现行待办以 `docs/backlog.md`（PERM 条目）为准，设计以 `docs/permission-model-redesign.md` 为准。
 
 > 生成日期：2026-07-06 | 关联版本：主文档 v1.3、API规范 v1.3、数据库设计 v1.3、迁移方案 v1.3
 
@@ -8,19 +19,19 @@
 
 ## 目录
 
-1. [MCP_GET_AUTH — GET /api/mcp/config 增加认证](#1-mcp_get_auth)
-2. [MCP_PUT_TIGHTEN — PUT /api/mcp/config 权限收紧](#2-mcp_put_tighten)
-3. [AUDIT_TABLE — audit_logs 建表与模型](#3-audit_table)
-4. [INDEX_FIX — resource_metadata 索引修正](#4-index_fix)
-5. [TOOL_BACKFILL — 存量 Tool 数据回填脚本](#5-tool_backfill)
-6. [WORKFLOW_BACKFILL — 存量 Workflow 数据回填脚本](#6-workflow_backfill)
-7. [DEPRECATE_TABLES — 废弃表 DROP 迁移](#7-deprecate_tables)
-8. [TOOL_API — 修复 Tool API 数据源 + 收紧 MCP 写通道](#8-tool_api)
-9. [AUDIT_LOGGING — 审计日志埋点](#9-audit_logging)
-10. [AUDIT_API — 审计日志 API](#10-audit_api)
-11. [WORKFLOW_RUN_VISIBILITY — Workflow 运行历史 visibility 校验](#11-workflow_run_visibility)
-12. [WITHDRAW_LOCK — 撤回申请乐观锁](#12-withdraw_lock)
-13. [AUDIT_PAGE — 审计日志前端页面](#13-audit_page)
+1. [MCP_GET_AUTH — GET /api/mcp/config 增加认证](#1-mcpgetauth--get-apimcpconfig-增加认证)
+2. [MCP_PUT_TIGHTEN — PUT /api/mcp/config 权限收紧](#2-mcpputtighten--put-apimcpconfig-权限收紧已合并到-8)
+3. [AUDIT_TABLE — audit_logs 建表与模型](#3-audittable--auditlogs-建表与模型)
+4. [INDEX_FIX — resource_metadata 索引修正](#4-indexfix--resourcemetadata-索引修正)
+5. [TOOL_BACKFILL — 存量 Tool 数据回填脚本](#5-toolbackfill--存量-tool-数据回填脚本)
+6. [WORKFLOW_BACKFILL — 存量 Workflow 数据回填脚本](#6-workflowbackfill--存量-workflow-数据回填脚本)
+7. [DEPRECATE_TABLES — 废弃表 DROP 迁移](#7-deprecatetables--废弃表-drop-迁移)
+8. [TOOL_API — 修复 Tool API 数据源 + 收紧 MCP 写通道](#8-toolapi--修复-tool-api-数据源--收紧-mcp-写通道)
+9. [AUDIT_LOGGING — 审计日志埋点](#9-auditlogging--审计日志埋点)
+10. [AUDIT_API — 审计日志 API](#10-auditapi--审计日志-api)
+11. [WORKFLOW_RUN_VISIBILITY — Workflow 运行历史 visibility 校验](#11-workflowrunvisibility--workflow-运行历史-visibility-校验)
+12. [WITHDRAW_LOCK — 撤回申请乐观锁](#12-withdrawlock--撤回申请乐观锁)
+13. [AUDIT_PAGE — 审计日志前端页面](#13-auditpage--审计日志前端页面)
 
 ---
 
@@ -72,7 +83,7 @@ async def get_mcp_configuration(
 
 ## 2. MCP_PUT_TIGHTEN — PUT /api/mcp/config 权限收紧（已合并到 #8）
 
-> **本条目已合并到 Phase 5 的 [#8 TOOL_API](#8-tool_api)。** 同一个变更（装饰器从 `USER+` 改为 `SUPER_ADMIN`）将在 #8 中一并执行，不在 Phase 1 单独执行。
+> **本条目已合并到 Phase 5 的 [#8 TOOL_API](#8-toolapi--修复-tool-api-数据源--收紧-mcp-写通道)。** 同一个变更（装饰器从 `USER+` 改为 `SUPER_ADMIN`）将在 #8 中一并执行，不在 Phase 1 单独执行。
 
 ---
 

@@ -1,3 +1,13 @@
+---
+id: docs-agents-triage-labels
+kind: reference
+status: current
+owner: repository maintainers
+scope: canonical triage vocabulary mapped to label strings for the local issue tracker and local spec/ticket frontmatter
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+---
+
 # Triage Labels
 
 The skills speak in terms of five canonical triage roles. This file maps those roles to the actual label strings used in this repo's issue tracker.

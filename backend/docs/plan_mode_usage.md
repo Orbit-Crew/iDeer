@@ -1,3 +1,13 @@
+---
+id: backend-docs-plan-mode-usage
+kind: reference
+status: current
+owner: repository maintainers
+scope: plan mode with the TodoList middleware: is_plan_mode runtime switch, write_todos tool behavior, middleware assembly path, and custom prompts
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3811ef515
+---
+
 # Plan Mode with TodoList Middleware
 
 This document describes how to enable and use the Plan Mode feature with TodoList middleware in iDeer 2.0.
@@ -9,7 +19,7 @@ Plan Mode adds a TodoList middleware to the agent, which provides a `write_todos
 - Track progress as work progresses
 - Provide visibility to users about what's being done
 
-The TodoList middleware is built on LangChain's `TodoListMiddleware`.
+The local middleware class is `TodoMiddleware` (`packages/harness/deerflow/agents/middlewares/todo_middleware.py`), built on LangChain's `TodoListMiddleware`.
 
 ## Configuration
 
@@ -19,7 +29,7 @@ Plan mode is controlled via **runtime configuration** through the `is_plan_mode`
 
 ```python
 from langchain_core.runnables import RunnableConfig
-from ideer.agents.lead_agent.agent import make_lead_agent
+from deerflow.agents.lead_agent.agent import make_lead_agent
 
 # Enable plan mode via runtime configuration
 config = RunnableConfig(
@@ -63,7 +73,7 @@ The agent will skip using the todo list for:
 ### Task States
 
 - **pending**: Task not yet started
-- **in_progress**: Currently working on (can have multiple parallel tasks)
+- **in_progress**: Currently working on (normally exactly one; parallel tasks may temporarily have several)
 - **completed**: Task finished successfully
 
 ## Usage Examples
@@ -72,7 +82,7 @@ The agent will skip using the todo list for:
 
 ```python
 from langchain_core.runnables import RunnableConfig
-from ideer.agents.lead_agent.agent import make_lead_agent
+from deerflow.agents.lead_agent.agent import make_lead_agent
 
 # Create agent with plan mode ENABLED
 config_with_plan_mode = RunnableConfig(
@@ -101,7 +111,7 @@ You can enable/disable plan mode dynamically for different conversations or task
 
 ```python
 from langchain_core.runnables import RunnableConfig
-from ideer.agents.lead_agent.agent import make_lead_agent
+from deerflow.agents.lead_agent.agent import make_lead_agent
 
 def create_agent_for_task(task_complexity: str):
     """Create agent with plan mode based on task complexity."""
@@ -126,10 +136,10 @@ complex_agent = create_agent_for_task("high")
 
 ## How It Works
 
-1. When `make_lead_agent(config)` is called, it extracts `is_plan_mode` from `config.configurable`
-2. The config is passed to `_build_middlewares(config)`
-3. `_build_middlewares()` reads `is_plan_mode` and calls `_create_todo_list_middleware(is_plan_mode)`
-4. If `is_plan_mode=True`, a `TodoListMiddleware` instance is created and added to the middleware chain
+1. When `make_lead_agent(config)` is called, it routes through `assemble_lead_agent(config)`, which extracts `is_plan_mode` from `config.configurable`
+2. The config is passed to `build_middlewares(config, ...)`
+3. `build_middlewares()` reads `is_plan_mode` and calls `_create_todo_list_middleware(is_plan_mode)`
+4. If `is_plan_mode=True`, a `TodoMiddleware` instance is created and added to the middleware chain
 5. The middleware automatically adds a `write_todos` tool to the agent's toolset
 6. The agent can use this tool to manage tasks during execution
 7. The middleware handles the todo list state and provides it to the agent
@@ -141,22 +151,24 @@ make_lead_agent(config)
   │
   ├─> Extracts: is_plan_mode = config.configurable.get("is_plan_mode", False)
   │
-  └─> _build_middlewares(config)
+  └─> assemble_lead_agent(config) → build_middlewares(config, ...)
         │
         ├─> ThreadDataMiddleware
         ├─> SandboxMiddleware
         ├─> SummarizationMiddleware (if enabled via global config)
-        ├─> TodoListMiddleware (if is_plan_mode=True) ← NEW
+        ├─> TodoMiddleware (if is_plan_mode=True) ← plan mode
         ├─> TitleMiddleware
-        └─> ClarificationMiddleware
+        └─> ClarificationMiddleware (always last)
 ```
+
+(Simplified sketch: the full lead-agent chain contains additional conditional middlewares — see [middleware-execution-flow.md](middleware-execution-flow.md).)
 
 ## Implementation Details
 
 ### Agent Module
-- **Location**: `packages/harness/ideer/agents/lead_agent/agent.py`
-- **Function**: `_create_todo_list_middleware(is_plan_mode: bool)` - Creates TodoListMiddleware if plan mode is enabled
-- **Function**: `_build_middlewares(config: RunnableConfig)` - Builds middleware chain based on runtime config
+- **Location**: `packages/harness/deerflow/agents/lead_agent/agent.py`
+- **Function**: `_create_todo_list_middleware(is_plan_mode: bool)` - Creates TodoMiddleware if plan mode is enabled
+- **Function**: `build_middlewares(config: RunnableConfig, ...)` - Builds middleware chain based on runtime config
 - **Function**: `make_lead_agent(config: RunnableConfig)` - Creates agent with appropriate middlewares
 
 ### Runtime Configuration
@@ -194,7 +206,7 @@ iDeer uses custom `system_prompt` and `tool_description` for the TodoListMiddlew
 - Comprehensive best practices section
 - Task completion requirements to prevent premature marking
 
-The custom prompts are defined in `_create_todo_list_middleware()` in `/Users/hetao/workspace/ideer/backend/packages/harness/ideer/agents/lead_agent/agent.py:57`.
+The custom prompts are defined in `_create_todo_list_middleware()` in `packages/harness/deerflow/agents/lead_agent/agent.py`.
 
 ## Notes
 

@@ -1,5 +1,12 @@
 ---
-status: accepted
+id: adr-0004-fault-zeroing-hybrid-intake-and-shared-execution
+kind: decision
+status: current
+owner: repository maintainers
+scope: every new fault-zeroing Run uses hybrid evidence intake and the one shared Workflow-backed execution kernel across the Skill, Expert, and Workflow entries
+supersedes: docs/adr/0003-fault-zeroing-evidence-modes.md
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 02af2a4e8
 ---
 
 # Fault-zeroing uses hybrid intake and one shared execution kernel

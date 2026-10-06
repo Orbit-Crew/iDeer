@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-06-19-guardrail-request-attribution
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-19 plan passing authenticated user context (user_id/user_role/oauth_provider/oauth_id) and run attribution (thread_id/run_id/tool_call_id) from gateway runtime.context into GuardrailRequest, with custom-provider docs
+archived-reason: all steps checked off and landed — GuardrailRequest carries the optional fields (backend/packages/harness/deerflow/guardrails/provider.py), GuardrailMiddleware fills them from ToolCallRequest.runtime.context, and gateway services inject user_role/oauth_provider/oauth_id from request.state.user (backend/app/gateway/services.py); the recorded 15 passed result is that run's evidence, not current validation
+---
+
 # GuardrailRequest 运行时用户上下文与归因字段补充 — 实现计划
 
 **Goal:** 将服务端认证后的用户上下文和运行时归因信息传递给 `GuardrailProvider`：`user_id`、`user_role`、`oauth_provider`、`oauth_id`、`thread_id`、`run_id`、`tool_call_id`。

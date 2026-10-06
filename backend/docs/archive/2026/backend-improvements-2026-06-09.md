@@ -1,3 +1,12 @@
+---
+id: backend-docs-archive-2026-backend-improvements
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: offline_feature branch review against main as of 2026-06-09: P2/P3 findings, the P0/P1 fix record, and the statistics table of that snapshot
+archived-reason: point-in-time branch-review snapshot; file paths inside reflect the 2026-06-09 layout and the live backlog authority is backend/docs/engineering-backlog.md
+---
+
 # 后端改进项清单
 
 > status: archived; current backlog: `backend/docs/engineering-backlog.md`

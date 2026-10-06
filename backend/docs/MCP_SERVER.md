@@ -1,3 +1,13 @@
+---
+id: backend-docs-mcp-server
+kind: reference
+status: current
+owner: repository maintainers
+scope: extensions_config.json MCP server setup, OAuth, parallel-search opt-in, and tool interceptors
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # MCP (Model Context Protocol) Configuration
 
 iDeer supports configurable MCP servers and skills to extend its capabilities, which are loaded from a dedicated `extensions_config.json` file in the project root directory.

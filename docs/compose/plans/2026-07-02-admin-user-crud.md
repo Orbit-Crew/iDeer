@@ -1,4 +1,15 @@
+---
+id: docs-compose-plans-2026-07-02-admin-user-crud
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-02 compose implementation plan for admin user CRUD: create/update endpoints in backend/app/gateway/routers/admin.py with department_admin scoping, matching admin API client functions in frontend/src/core/admin/api.ts, and create/edit user dialogs on the workspace admin users page
+archived-reason: plan fully implemented — POST /users, PUT /users/{user_id}, and DELETE /users/{user_id} live in backend/app/gateway/routers/admin.py, createUser/updateUser in frontend/src/core/admin/api.ts, and the create/edit dialogs (handleCreate/handleSaveEdit, data-testid user-edit-button) in frontend/src/app/workspace/admin/users/page.tsx; current code has evolved past the planned snippets (unified create_auth_user_with_rbac, 409 on duplicate email/username, 404 for missing department), so the line-number anchors and step commands describe the 2026-07-02 pre-implementation state and are kept as history
+---
+
 # Admin User CRUD Implementation Plan
+
+> status: archived（2026-07-02 compose 实施计划；2026-10-05 对照当前候选抽查，计划所列后端端点、API 客户端函数与前端创建/编辑对话框均已在代码中实现，实现细节已有演进，正文按历史记录保留）；current implementation: `backend/app/gateway/routers/admin.py`、`frontend/src/core/admin/api.ts`、`frontend/src/app/workspace/admin/users/page.tsx`
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use compose:subagent (recommended) or compose:execute to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

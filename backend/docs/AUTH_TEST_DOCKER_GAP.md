@@ -1,3 +1,12 @@
+---
+id: backend-docs-auth-test-docker-gap
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-04 2.0-rc release-validation pass (PR #2008): un-executed TC-DOCKER cases, their non-Docker equivalents, and the ship decision for that candidate
+archived-reason: point-in-time validation record; scope fixed to the 2026-04 2.0-rc candidate (PR #2008)
+---
+
 # Docker Test Gap (Section 七 7.4)
 
 This file documents the only **un-executed** test cases from

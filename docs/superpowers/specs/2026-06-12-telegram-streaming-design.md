@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-06-12-telegram-streaming-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-12 design for Telegram channel streaming — a supports_streaming capability flip, a _stream_messages edit-in-place flow with per-chat throttling (1s private / 3s groups), 4096-character segmentation, placeholder-message reuse, and RetryAfter/BadRequest error policy
+archived-reason: implemented — telegram is True in CHANNEL_CAPABILITIES (backend/app/channels/manager.py) and the _stream_messages edit-in-place flow exists in backend/app/channels/telegram.py; the channel capability table has since grown (buzz, dingtalk, discord, github, slack entries), so the design's telegram/feishu framing is the 2026-06-12 state
+---
+
 # Telegram 流式输出设计
 
 日期：2026-06-12

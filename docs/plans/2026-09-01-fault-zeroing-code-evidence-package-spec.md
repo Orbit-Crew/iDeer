@@ -1,6 +1,15 @@
+---
+id: docs-plans-2026-09-01-fault-zeroing-code-evidence-package-spec
+kind: plan
+status: archived
+owner: repository maintainers
+scope: thread-bound read-only Code Evidence Package for fault zeroing — ZIP intake with archive-security limits, document/code/hybrid Evidence Modes, one shared fault-tree flow, clang-tidy/cppcheck static analysis and the confirmed/high_risk_candidate/pending_verification confidence rules
+archived-reason: implemented — backend/app/agentplatform/tools/code_evidence_access.py, analyze_code_evidence_tool.py and backend/packages/harness/deerflow/uploads/code_analysis.py (clang-tidy/cppcheck) exist; ADRs 0002 and 0003 record the static-analysis and Evidence Mode decisions
+---
+
 # 故障归零代码证据包与 C 静态排故规格
 
-> 状态：已确认的本地规格；不发布远端 Issue。
+> 状态：archived（已实施）。2026-10-04 核对：代码证据包访问与静态分析位于 `backend/app/agentplatform/tools/code_evidence_access.py`、`analyze_code_evidence_tool.py` 与 `backend/packages/harness/deerflow/uploads/code_analysis.py`（clang-tidy/cppcheck，scanner_status 记录，后续工具链规格又加固）；ADR 0002/0003 为规范性决策。后续增强见 [2026-09-30-fault-zeroing-toolchain-spec.md](2026-09-30-fault-zeroing-toolchain-spec.md)。
 
 ## Problem Statement
 

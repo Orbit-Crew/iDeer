@@ -48,8 +48,8 @@ from app.agentplatform.fault_zeroing.kernel import (
     FaultZeroingKernel,
     RunNotFoundError,
 )
+from app.agentplatform.resources.actors import role_permissions
 from app.agentplatform.resources.service import (
-    ResourceAction,
     ResourceActor,
     ResourceError,
     ResourceNotFound,
@@ -141,24 +141,17 @@ def _closure_entry(runtime: Runtime) -> str | None:
 
 
 def _resource_actor(runtime: Runtime) -> ResourceActor:
-    """Actor for the RBAC chain, mirroring the gateway's ``_resource_actor``."""
+    """Actor for the RBAC chain; permissions come from the shared role ladder."""
 
     context = getattr(runtime, "context", None) or {}
     role = str(context.get("user_role") or "viewer")
-    permissions = {ResourceAction.READ}
-    if role in {"user", "department_admin", "super_admin"}:
-        permissions.update({ResourceAction.USE, ResourceAction.WRITE})
-    if role in {"department_admin", "super_admin"}:
-        permissions.add(ResourceAction.APPROVE)
-    if role == "super_admin":
-        permissions.update(ResourceAction)
     authz = context.get("authz_attributes")
     department_id = str(authz.get("department_id")) if isinstance(authz, dict) and authz.get("department_id") is not None else None
     return ResourceActor(
         user_id=resolve_runtime_user_id(runtime),
         department_id=department_id,
         role=role,
-        permissions=frozenset(permissions),
+        permissions=role_permissions(role),
         tool_groups=None,
     )
 

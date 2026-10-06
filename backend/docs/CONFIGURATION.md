@@ -1,3 +1,13 @@
+---
+id: backend-docs-configuration
+kind: reference
+status: current
+owner: repository maintainers
+scope: config.yaml reference: models, tools, sandbox, scheduler, skills, environment variables, and resolution order
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Configuration Guide
 
 This guide explains how to configure iDeer for your environment.
@@ -108,8 +118,8 @@ models:
 - OpenAI (`langchain_openai:ChatOpenAI`)
 - Anthropic (`langchain_anthropic:ChatAnthropic`)
 - DeepSeek (`langchain_deepseek:ChatDeepSeek`)
-- Claude Code OAuth (`ideer.models.claude_provider:ClaudeChatModel`)
-- Codex CLI (`ideer.models.openai_codex_provider:CodexChatModel`)
+- Claude Code OAuth (`deerflow.models.claude_provider:ClaudeChatModel`)
+- Codex CLI (`deerflow.models.openai_codex_provider:CodexChatModel`)
 - Any LangChain-compatible provider
 
 CLI-backed provider examples:
@@ -118,14 +128,14 @@ CLI-backed provider examples:
 models:
   - name: gpt-5.4
     display_name: GPT-5.4 (Codex CLI)
-    use: ideer.models.openai_codex_provider:CodexChatModel
+    use: deerflow.models.openai_codex_provider:CodexChatModel
     model: gpt-5.4
     supports_thinking: true
     supports_reasoning_effort: true
 
   - name: claude-sonnet-4.6
     display_name: Claude Sonnet 4.6 (Claude Code OAuth)
-    use: ideer.models.claude_provider:ClaudeChatModel
+    use: deerflow.models.claude_provider:ClaudeChatModel
     model: claude-sonnet-4-6
     max_tokens: 4096
     supports_thinking: true
@@ -218,13 +228,13 @@ HTTP 400 INVALID_ARGUMENT: function call `<tool>` in the N. content block is
 missing a `thought_signature`.
 ```
 
-Standard `langchain_openai:ChatOpenAI` silently drops `thought_signature` when serialising messages.  Use `ideer.models.patched_openai:PatchedChatOpenAI` instead — it re-injects the tool-call signatures (sourced from `AIMessage.additional_kwargs["tool_calls"]`) into every outgoing payload:
+Standard `langchain_openai:ChatOpenAI` silently drops `thought_signature` when serialising messages.  Use `deerflow.models.patched_openai:PatchedChatOpenAI` instead — it re-injects the tool-call signatures (sourced from `AIMessage.additional_kwargs["tool_calls"]`) into every outgoing payload:
 
 ```yaml
 models:
   - name: gemini-2.5-pro-thinking
     display_name: Gemini 2.5 Pro (Thinking)
-    use: ideer.models.patched_openai:PatchedChatOpenAI
+    use: deerflow.models.patched_openai:PatchedChatOpenAI
     model: google/gemini-2.5-pro-preview   # model name as expected by your gateway
     api_key: $GEMINI_API_KEY
     base_url: https://<your-openai-compat-gateway>/v1
@@ -475,7 +485,7 @@ Configure specific tools available to the agent:
 tools:
   - name: web_search
     group: web
-    use: ideer.community.tavily.tools:web_search_tool
+    use: deerflow.community.tavily.tools:web_search_tool
     max_results: 5
     # api_key: $TAVILY_API_KEY  # Optional
 ```
@@ -581,14 +591,14 @@ iDeer supports multiple sandbox execution modes. Configure your preferred mode i
 **Local Execution** (runs sandbox code directly on the host machine):
 ```yaml
 sandbox:
-   use: ideer.sandbox.local:LocalSandboxProvider # Local execution
+   use: deerflow.sandbox.local:LocalSandboxProvider # Local execution
    allow_host_bash: false # default; host bash is disabled unless explicitly re-enabled
 ```
 
 **Docker Execution** (runs sandbox code in isolated Docker containers):
 ```yaml
 sandbox:
-   use: ideer.community.aio_sandbox:AioSandboxProvider # Docker-based sandbox
+   use: deerflow.community.aio_sandbox:AioSandboxProvider # Docker-based sandbox
 ```
 
 **Docker Execution with Kubernetes** (runs sandbox code in Kubernetes pods via provisioner service):
@@ -597,7 +607,7 @@ This mode runs each sandbox in an isolated Kubernetes Pod on your **host machine
 
 ```yaml
 sandbox:
-   use: ideer.community.aio_sandbox:AioSandboxProvider
+   use: deerflow.community.aio_sandbox:AioSandboxProvider
    provisioner_url: http://provisioner:8002
 ```
 
@@ -610,7 +620,7 @@ Choose between local execution or Docker-based isolation:
 **Option 1: Local Sandbox** (default, simpler setup):
 ```yaml
 sandbox:
-  use: ideer.sandbox.local:LocalSandboxProvider
+  use: deerflow.sandbox.local:LocalSandboxProvider
   allow_host_bash: false
 ```
 
@@ -619,7 +629,7 @@ sandbox:
 **Option 2: Docker Sandbox** (isolated, more secure):
 ```yaml
 sandbox:
-  use: ideer.community.aio_sandbox:AioSandboxProvider
+  use: deerflow.community.aio_sandbox:AioSandboxProvider
   port: 8080
   auto_start: true
   container_prefix: ideer-sandbox
@@ -834,7 +844,7 @@ Configure the skills directory for specialized workflows:
 
 ```yaml
 skills:
-  # Host path (optional, default: ../skills)
+  # Host path (optional, default: `skills/` under the project root)
   path: /custom/path/to/skills
 
   # Container mount path (default: /mnt/skills)
@@ -842,7 +852,7 @@ skills:
 ```
 
 **How Skills Work**:
-- Skills are stored in `ideer/skills/{public,custom}/`
+- Skills live in the configured skills directory (`skills.path`, `DEER_FLOW_SKILLS_PATH`, or the project-root `skills/` default), with committed public skills under `public/` and per-user custom skills under the user's `skills/custom/` directory
 - Each skill has a `SKILL.md` file with metadata
 - Skills are automatically discovered and loaded
 - Available in both local and Docker sandbox via path mapping
@@ -894,29 +904,29 @@ models:
 - `GROUNDROUTE_API_KEY` - GroundRoute meta-search API key for `web_search` and `web_fetch` (routes across Serper, Brave, Exa, Tavily, Firecrawl, Perplexity with gain-share pricing)
 - `SOFYA_API_KEY` - [Sofya](https://sofya.co) key for `web_search` and `web_fetch`
 - `BROWSERLESS_TOKEN` - Browserless Cloud token for `web_capture` (optional for self-hosted Browserless)
-- `IDEER_PROJECT_ROOT` - Project root for relative runtime paths
-- `IDEER_CONFIG_PATH` - Custom config file path
-- `IDEER_EXTENSIONS_CONFIG_PATH` - Custom extensions config file path
-- `IDEER_HOME` - Runtime state directory (defaults to `.deer-flow` under the project root)
-- `IDEER_SKILLS_PATH` - Skills directory when `skills.path` is omitted
+- `DEER_FLOW_PROJECT_ROOT` - Project root for relative runtime paths
+- `DEER_FLOW_CONFIG_PATH` - Custom config file path
+- `DEER_FLOW_EXTENSIONS_CONFIG_PATH` - Custom extensions config file path
+- `DEER_FLOW_HOME` - Runtime state directory (defaults to `.deer-flow` under the project root)
+- `DEER_FLOW_SKILLS_PATH` - Skills directory when `skills.path` is omitted
 - `GATEWAY_ENABLE_DOCS` - Set to `false` to disable Swagger UI (`/docs`), ReDoc (`/redoc`), and OpenAPI schema (`/openapi.json`) endpoints (default: `true`)
 
 ## Configuration Location
 
-The configuration file should be placed in the **project root directory** (`ideer/config.yaml`). Set `IDEER_PROJECT_ROOT` when the process may start from another working directory, or set `IDEER_CONFIG_PATH` to point at a specific file.
+The configuration file should be placed in the **project root directory** (`config.yaml` next to `config.example.yaml`). Set `DEER_FLOW_PROJECT_ROOT` when the process may start from another working directory, or set `DEER_FLOW_CONFIG_PATH` to point at a specific file.
 
 ## Configuration Priority
 
 iDeer searches for configuration in this order:
 
 1. Path specified in code via `config_path` argument
-2. Path from `IDEER_CONFIG_PATH` environment variable
-3. `config.yaml` under `IDEER_PROJECT_ROOT`, or under the current working directory when `IDEER_PROJECT_ROOT` is unset
+2. Path from `DEER_FLOW_CONFIG_PATH` environment variable
+3. `config.yaml` under `DEER_FLOW_PROJECT_ROOT`, or under the current working directory when `DEER_FLOW_PROJECT_ROOT` is unset
 4. Legacy backend/repository-root locations for monorepo compatibility
 
 ## Best Practices
 
-1. **Place `config.yaml` in project root** - Set `IDEER_PROJECT_ROOT` if the runtime starts elsewhere
+1. **Place `config.yaml` in project root** - Set `DEER_FLOW_PROJECT_ROOT` if the runtime starts elsewhere
 2. **Never commit `config.yaml`** - It's already in `.gitignore`
 3. **Use environment variables for secrets** - Don't hardcode API keys
 4. **Keep `config.example.yaml` updated** - Document all new options
@@ -926,18 +936,18 @@ iDeer searches for configuration in this order:
 ## Troubleshooting
 
 ### "Config file not found"
-- Ensure `config.yaml` exists in the **project root** directory (`ideer/config.yaml`)
-- If the runtime starts outside the project root, set `IDEER_PROJECT_ROOT`
-- Alternatively, set `IDEER_CONFIG_PATH` environment variable to custom location
+- Ensure `config.yaml` exists in the **project root** directory
+- If the runtime starts outside the project root, set `DEER_FLOW_PROJECT_ROOT`
+- Alternatively, set `DEER_FLOW_CONFIG_PATH` environment variable to custom location
 
 ### "Invalid API key"
 - Verify environment variables are set correctly
 - Check that `$` prefix is used for env var references
 
 ### "Skills not loading"
-- Check that `ideer/skills/` directory exists
+- Check that the configured skills directory exists (default `skills/` under the project root)
 - Verify skills have valid `SKILL.md` files
-- Check `skills.path` or `IDEER_SKILLS_PATH` if using a custom path
+- Check `skills.path` or `DEER_FLOW_SKILLS_PATH` if using a custom path
 
 ### "Docker sandbox fails to start"
 - Ensure Docker is running

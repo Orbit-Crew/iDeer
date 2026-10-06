@@ -21,32 +21,6 @@ export type TaskInputInsertion =
   | { kind: "insert"; text: string }
   | { kind: "conflict"; current: string; incoming: string };
 
-export function parseTaskSkillPrefix(
-  text: string,
-): { skillName: string; rest: string } | null {
-  const match = /^\/([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)(?:\s+(.*))?$/.exec(text);
-  if (!match) return null;
-  return { skillName: match[1]!, rest: match[2] ?? "" };
-}
-
-export function prepareTaskSubmission<T extends TaskInputMessage>(
-  message: T,
-  context: TaskSubmission["context"],
-): Omit<TaskSubmission, "message"> & {
-  message: Omit<T, "text"> & { text: string };
-} {
-  const parsed = parseTaskSkillPrefix(message.text);
-  const skillName = parsed?.skillName ?? null;
-  return {
-    message: {
-      ...message,
-      text: parsed ? parsed.rest : message.text,
-    },
-    context: skillName ? { ...context, skill_name: skillName } : context,
-    skillName,
-  };
-}
-
 export function hasTaskInput(message: TaskInputMessage): boolean {
   return message.text.trim().length > 0 || message.files.length > 0;
 }

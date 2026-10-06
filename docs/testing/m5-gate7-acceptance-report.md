@@ -1,13 +1,26 @@
+---
+id: docs-testing-m5-gate7-acceptance-report
+kind: evidence
+status: archived
+owner: knowledge maintainers
+scope: Gate 7 retrieval-evidence acceptance record for candidate 5694971bc06648e8de958c6d5f4c8d7b5c1989bb (2026-09-23) — the 16-scenario real matrix closeout, per-candidate result ledger, acceptance commands, and the required manual matrix definition
+archived-reason: candidate-scoped acceptance record; the final 16/16 Gate 7 pass moved to candidate 4f256b6ab and is recorded in current-branches-closeout-report.md, and the v2.1.0 upstream rejoin (20261001_rejoin_upstream_line, 2026-10-01) evolved beyond it — its rows are that candidate's results, not current verification
+---
+
 # M5 Gate 7 retrieval evidence acceptance
 
+> status: archived（候选 `5694971b` 的 Gate 7 验收证据）。最终 16/16 Gate 7 通过记录属于候选 `4f256b6ab`：见 [current-branches-closeout-report.md](current-branches-closeout-report.md)；2026-10-01 上游 v2.1.0 合流后候选继续演进。本文各行结果为该候选时期记录，不代表当前验证状态。正文按历史记录保留。
+>
 > status: passed for the 2026-09-23 candidate matrix; see the current-candidate
 > closeout below. Older dated ledger entries retain their original status.
 >
 > candidate: `5694971bc06648e8de958c6d5f4c8d7b5c1989bb`
 > date: 2026-09-23 (Asia/Shanghai)
 
-This is the formal acceptance record for
-[Gate 7](../../.scratch/m5-retrieval-evidence/issues/05-gate7-acceptance.md).
+This is the formal acceptance record for the Gate 7 acceptance ticket
+(`.scratch/m5-retrieval-evidence/issues/05-gate7-acceptance.md`, an untracked
+working-file record outside the candidate; the durable evidence artifacts are
+under [`evidence/5694971b/gate7/`](evidence/5694971b/gate7/)).
 Mock tests establish product contracts; they do not substitute for the real
 provider, model, or browser checks.
 

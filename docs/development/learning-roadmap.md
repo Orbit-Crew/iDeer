@@ -1,3 +1,13 @@
+---
+id: docs-development-learning-roadmap
+kind: reference
+status: current
+owner: engineering maintainers
+scope: beginner-oriented five-stage engineering learning path: top-level docs, environment setup, core concepts, key source files, and configuration/skill experiments; referenced paths verified against the current candidate
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 27ee5f93d
+---
+
 # iDeer 工程学习路线图
 
 > 本路线图面向**代码基础较弱的初学者**，从零开始系统学习 iDeer 全栈 AI Agent 平台的工程细节。按 5 个阶段递进，每个阶段有明确目标和产出。
@@ -47,7 +57,7 @@ make docker-start    # Docker 一键启动所有服务
 3. **验证**：
    - 打开浏览器访问 `http://localhost:2026` 看前端界面
    - 观察后端日志输出，理解服务启动过程
-   - 尝试在 `config.example.yaml` 中配置一个 LLM provider（如 OpenAI 或 Ollama 本地模型）
+   - 复制 `config.example.yaml` 为 `config.yaml`，配置一个 LLM provider（如 OpenAI 或 Ollama 本地模型）；`make dev` 要求项目根目录存在有效的 `config.yaml`
 
 ### 可选：本地开发模式（不依赖 Docker）
 
@@ -89,7 +99,7 @@ make dev        # 本地热重载开发模式
 
 | 文档 | 内容 | 建议 |
 |------|------|------|
-| `backend/CLAUDE.md` | **最全面的后端架构参考**（643 行），涵盖所有子系统 | 分 2-3 次读完，每次读一个子系统 |
+| `backend/docs/development-reference.md` | **最全面的后端架构与运行时参考**，涵盖配置、网关、沙箱、子代理、工具、记忆、追踪各子系统 | 分 2-3 次读完，每次读一个子系统 |
 | `backend/docs/STREAMING.md` | SSE 流式输出机制 | 理解 Agent 如何实时推送中间步骤 |
 | `backend/docs/CONFIGURATION.md` | 配置系统详解（模型、工具、沙箱、记忆） | 配合 `config.example.yaml` 对照看 |
 | `backend/docs/MEMORY_SETTINGS_REVIEW.md` | 记忆系统设置 | 理解记忆如何持久化 |
@@ -100,7 +110,7 @@ make dev        # 本地热重载开发模式
 ### 需要理解的关键概念
 
 - **Lead Agent vs Sub-Agent**：主 Agent 和子 Agent 的分工
-- **Middleware 链**：一个请求经过的 18 个中间件各自做什么
+- **Middleware 链**：一个请求经过的中间件链各自做什么（组装逻辑在 `backend/packages/harness/deerflow/agents/lead_agent/agent.py`，各中间件按配置条件启用，数量随配置变化）
 - **Sandbox 模式**：Local vs Docker vs Kubernetes 三种隔离级别
 - **Tool 系统**：内置工具、社区工具、MCP 工具三层架构
 - **Skill 系统**：Markdown 格式的技能文件如何被加载和注入
@@ -118,25 +128,27 @@ make dev        # 本地热重载开发模式
 
 ### 建议阅读顺序
 
+harness 包位于 `backend/packages/harness/deerflow/`（Python 包名是 `deerflow`，不是 `ideer`）：
+
 | 文件路径 | 为什么读它 | 难度 |
 |---------|-----------|------|
-| `backend/packages/harness/ideer/client.py` | `iDeerClient` 把整个 Agent 系统封装成一个 Python 类，是**最易理解的入口** | ⭐ |
-| `backend/packages/harness/ideer/agents/lead_agent/agent.py` | Agent 系统的**心脏** — Lead Agent 如何组装中间件、模型、工具 | ⭐⭐⭐ |
+| `backend/packages/harness/deerflow/client.py` | `iDeerClient` 把整个 Agent 系统封装成一个 Python 类，是**最易理解的入口** | ⭐ |
+| `backend/packages/harness/deerflow/agents/lead_agent/agent.py` | Agent 系统的**心脏** — Lead Agent 如何组装中间件、模型、工具 | ⭐⭐⭐ |
 | `backend/app/gateway/app.py` | FastAPI 应用的入口，看**路由注册总表**，理解 HTTP 请求如何进入 Agent | ⭐⭐ |
-| `backend/packages/harness/ideer/agents/thread_state.py` | 理解 Agent 的**状态数据结构**（ThreadState），这是贯穿整个系统的核心类型 | ⭐⭐ |
-| `backend/packages/harness/ideer/models/factory.py` | Model Factory — 如何创建不同 Provider 的 LLM 实例 | ⭐⭐ |
-| `backend/packages/harness/ideer/tools/__init__.py` | 工具装配点 — 所有可用工具如何汇聚 | ⭐⭐ |
-| `backend/packages/harness/ideer/sandbox/` 目录 | 沙箱接口定义 + 两种实现的对比 | ⭐⭐ |
-| `backend/packages/harness/ideer/mcp/manager.py` | MCP 多服务器管理 | ⭐⭐⭐ |
-| `backend/packages/harness/ideer/skills/loader.py` | 技能发现和加载逻辑 | ⭐⭐ |
-| `backend/packages/harness/ideer/config/app_config.py` | 配置系统核心 | ⭐⭐ |
+| `backend/packages/harness/deerflow/agents/thread_state.py` | 理解 Agent 的**状态数据结构**（ThreadState），这是贯穿整个系统的核心类型 | ⭐⭐ |
+| `backend/packages/harness/deerflow/models/factory.py` | Model Factory — 如何创建不同 Provider 的 LLM 实例 | ⭐⭐ |
+| `backend/packages/harness/deerflow/tools/__init__.py` | 工具装配点 — 所有可用工具如何汇聚 | ⭐⭐ |
+| `backend/packages/harness/deerflow/sandbox/` 目录 | 沙箱接口定义与 provider 抽象；容器实现见 `community/` 下的 `aio_sandbox`、`e2b_sandbox` 等提供方 | ⭐⭐ |
+| `backend/packages/harness/deerflow/mcp/client.py` | MCP 多服务器管理 — 构建 `MultiServerMCPClient` 连接（工具加载在 `mcp/tools.py`） | ⭐⭐⭐ |
+| `backend/packages/harness/deerflow/skills/catalog.py` | 技能发现和目录逻辑（SKILL.md 解析在 `skills/parser.py`） | ⭐⭐ |
+| `backend/packages/harness/deerflow/config/app_config.py` | 配置系统核心 | ⭐⭐ |
 
 ### 读源码技巧
 
 1. **先读测试文件** — 测试文件展示了一个功能「应该怎么用」，比直接看实现更容易理解
    - 例如：读 `backend/tests/test_client.py` 前先读 `client.py`
 2. **关注 Interface / Protocol 类** — 项目中大量使用 `Protocol` 和抽象基类，理解接口设计比具体实现更重要
-3. **用 grep 追踪调用链** — 比如想了解「工具怎么被调用」就搜索 `call_tool` 或 `execute_tool`
+3. **用 grep 追踪调用链** — 比如想了解「工具怎么被调用」就搜索 `call_tool`
 4. **善用 IDE** — 跳转定义、查看引用
 
 ### 阶段产出
@@ -151,14 +163,15 @@ make dev        # 本地热重载开发模式
 
 ### 5.1 读完整配置
 
-- 通读 `config.example.yaml`（1161 行完整配置参考）
-- 理解每个配置大段的含义：`models`、`tools`、`sandbox`、`memory`、`subagents`、`mcp_servers`
+- 通读 `config.example.yaml`（完整配置参考，复制为 `config.yaml` 后生效）
+- 理解每个配置大段的含义：`models`、`tools`、`sandbox`、`memory`、`subagent_runtime`、`skills` 等
+- 注意：MCP 服务器配置不在 `config.example.yaml` 里，而在 `backend/extensions_config.json`（运行时生成；参见 `docs/deployment/` 下的 MCP 工具运维排故手册）
 
 ### 5.2 探索技能系统
 
-- 浏览 `skills/public/` 下的 21 个内置技能，每个都包含一个 `SKILL.md`
+- 浏览 `skills/public/` 下的内置技能（当前 15 个），每个都包含一个 `SKILL.md`
 - 选择一个简单的技能（如 `data-analysis`），完整阅读，理解技能的 Markdown 格式规范
-- 尝试编写一个自定义技能放在 `skills/custom/` 下
+- 尝试编写一个自定义技能：公开技能放在 `skills/public/` 下；用户自定义技能默认按用户隔离存放（`skills/users/<user_id>/skills/custom/`，全局 `skills/custom/` 仅作旧版回退），详见 `backend/packages/harness/deerflow/skills/storage/`
 
 ### 5.3 动手实验
 
@@ -205,7 +218,7 @@ make dev        # 本地热重载开发模式
 |---------|-----------|
 | `config.example.yaml` | 完整配置模板 |
 | `skills/public/*/SKILL.md` | 内置技能定义 |
-| `backend/packages/harness/ideer/` | iDeer 核心库 |
+| `backend/packages/harness/deerflow/` | Agent 框架核心库 |
 | `backend/app/gateway/` | FastAPI 网关代码 |
 | `frontend/src/core/` | 前端业务逻辑 |
 | `frontend/src/components/` | 前端 UI 组件 |

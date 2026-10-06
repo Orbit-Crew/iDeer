@@ -578,6 +578,7 @@ export const zhCN: Translations = {
     source: "来源定义",
     notSpecified: "未指定",
     exportFailed: "专家导出失败，请重试。",
+    skilledAt: (skills) => `擅长：${skills.join("、")}`,
   },
   // Breadcrumb
   breadcrumb: {
@@ -650,6 +651,18 @@ export const zhCN: Translations = {
     noMatchingChats: "已加载的会话中没有匹配结果",
     loadChatsFailed: "加载会话失败",
     retryLoadChats: "重试",
+  },
+  // Task workbench (chat page welcome module)
+  workbench: {
+    recentTasks: "最近任务",
+    reviewQuestion: "工作复盘？",
+    reviewAnswer: "iDeer带你回到过去",
+    defaultTaskType: "对话任务",
+    defaultStatus: "进行中",
+    exploreQuestion: "方向不明？",
+    exploreAnswer: "iDeer帮你找对帮手",
+    focusQuestion: "目标明确？",
+    focusAnswer: "iDeer帮你落地实现",
   },
   // Sidecar
   sidecar: {

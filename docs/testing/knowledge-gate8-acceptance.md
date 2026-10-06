@@ -1,7 +1,18 @@
+---
+id: docs-testing-knowledge-gate8-acceptance
+kind: reference
+status: current
+owner: knowledge maintainers
+scope: standing Gate 8 acceptance runbook — preconditions, exact commands, required artifact scenarios, verdict and cleanup rules; each run records its own candidate commit and environment
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
+---
+
 # Knowledge Gate 8 acceptance record
 
-This runbook is the evidence boundary for the M6 final integration candidate.
-It does not manufacture a pass from unit tests or from an older branch.
+This runbook is the evidence boundary for a Gate 8 acceptance run; each run
+records its own candidate commit and branch. It does not manufacture a pass
+from unit tests or from an older branch.
 
 ## Preconditions
 

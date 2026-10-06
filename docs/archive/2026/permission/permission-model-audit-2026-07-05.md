@@ -1,3 +1,12 @@
+---
+id: docs-archive-2026-permission-permission-model-audit-2026-07-05
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-07-05 permission-model refactor audit and code verification report against the v1.2 design candidate: requirement-completion scores by layer, deviation and unimplemented lists, verification pass rates over 129 extracted requirements, and the fixed-issue/leftover-problem lists of that period
+archived-reason: point-in-time audit evidence (audit and verification dated 2026-07-05; header last-verified 2026-07-15); completion percentages and leftover-issue lists describe that candidate and are preserved as recorded. Design authority is docs/permission-model-redesign.md; current unfinished-work authority is docs/backlog.md (PERM items); registry entry is docs/archive/2026/README.md
+---
+
 # 权限模型重构 — 审计与验证报告
 
 > audience: security reviewers, maintainers<br>

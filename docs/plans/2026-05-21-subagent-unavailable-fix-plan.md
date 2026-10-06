@@ -1,4 +1,15 @@
+---
+id: docs-plans-2026-05-21-subagent-unavailable-fix-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: fix plan for subagent-run crashes caused by runtime callbacks arriving as AsyncCallbackManager, hardening task_tool usage reporting to degrade silently instead of interrupting runs
+archived-reason: plan implemented — backend/packages/harness/deerflow/tools/builtins/task_tool.py unwraps BaseCallbackManager (AsyncCallbackManager) in _find_usage_recorder and treats _report_subagent_usage as best-effort; coverage in backend/tests/test_task_tool_core_logic.py
+---
+
 # 归零智能体子智能体不可用修复计划
+
+> status: archived（计划已实施）。2026-10-04 核对：修复位于 `backend/packages/harness/deerflow/tools/builtins/task_tool.py`——`_find_usage_recorder` 对 `BaseCallbackManager`（异步路径即 `AsyncCallbackManager`）取 `.handlers` 后再遍历，非列表形态按"无 recorder"处理，`_report_subagent_usage` 为尽力而为、不中断主流程；覆盖见 `backend/tests/test_task_tool_core_logic.py`。文中 `ideer/tools/builtins/task_tool.py` 为撰写时旧包名（现 `deerflow/`），归一化逻辑内联在 `_find_usage_recorder` 而非独立 `_iter_runtime_callbacks` 函数；本计划保留为历史设计记录。
 
 **目标：** 修复归零智能体在启用子智能体时的运行中断问题，保证子智能体可正常完成任务、主流程可稳定返回结果，并保留用量统计能力。
 

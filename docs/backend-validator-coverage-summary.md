@@ -1,4 +1,14 @@
+---
+id: docs-backend-validator-coverage-summary
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 backend-validator coverage-completion summary claiming full route coverage for its candidate
+archived-reason: point-in-time campaign record; its listed flat test paths were reorganized into backend/tests/integration/api/ and the validator skill is absent from this candidate; claims are not current verification evidence
+---
 # Backend-Validator 测试覆盖完善总结报告
+
+> status: archived（2026-06-10 时点战役总结，scope：当时候选）。2026-10-04 核对：文中列出的扁平路径（`backend/tests/test_*_router*.py`）已不存在——对应测试经测试重组织后位于 `backend/tests/integration/api/` 等分层目录（记录见 [test-migration-ledger.md](testing/test-migration-ledger.md)）；`.claude/skills/backend-validator/SKILL.md` 也不在当前候选中（backend-validator 为历史提案，见根 `AGENTS.md`）。「100% 覆盖」为该时点声明，不构成当前验证证据；当前覆盖权威是 [coverage-matrix.md](testing/coverage-matrix.md)。正文按历史记录保留。
 
 **完成日期**: 2026-06-10
 **目标**: 确保 backend-validator 的测试验证流程能完整覆盖所有后端功能

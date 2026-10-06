@@ -1,9 +1,18 @@
+---
+id: docs-plans-2026-08-28-scenario-binding-agent-skill-prd
+kind: plan
+status: archived
+owner: engineering maintainers
+scope: grilled PRD for binding the new-conversation scenario entries (Tab → Pill → Chip) to real Agent/Skill resources, topping up missing bundled agents, and unifying preinstalled visibility
+archived-reason: delivered through a reshaped design — the scenario cascade ships as static frontend config (frontend/src/core/scenarios/, frontend/src/components/workspace/scenario/) per the #2 static-config decision; the PRD sections proposing database-bound configuration, admin CRUD, 30s cache, skill_names[] arrays and the 22+2+1 inventory were superseded as recorded in docs/plans/2026-08-29-scenario-binding-deep-module-gap-spec.md
+---
+
 # 新对话页场景/任务入口绑定 Agent/Skill 暨预装资源批量补齐 PRD
 
 > audience: developers, architects, testers, operators<br>
-> status: draft — grilled consensus 2026-08-28 (rev.2 2026-08-28 补充：Agent 名称对齐/任务标签/运行时保障)<br>
+> status: archived — grilled consensus 2026-08-28 (rev.2 2026-08-28 补充：Agent 名称对齐/任务标签/运行时保障)；2026-10-04 核对：场景级联入口已以静态前端配置交付（`frontend/src/core/scenarios/`、`frontend/src/components/workspace/scenario/`），本文提出的数据库绑定配置、管理后台、30 秒缓存、`skill_names[]` 数组与 22+2+1 预装清单等段落被后续工单决策取代（见 [2026-08-29 gap spec](2026-08-29-scenario-binding-deep-module-gap-spec.md) Further Notes 与 bundled-resources.json 现行清单）<br>
 > owner: engineering maintainers<br>
-> last-verified: 2026-08-28<br>
+> last-verified: 2026-08-28（历史）<br>
 > canonical-path: `docs/plans/2026-08-28-scenario-binding-agent-skill-prd.md`
 
 ---

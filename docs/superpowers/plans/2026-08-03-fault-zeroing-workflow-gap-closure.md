@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-08-03-fault-zeroing-workflow-gap-closure
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-08-03 plan closing fault-zeroing workflow gaps — optional Agent Action file_access read/write roots with a file-access middleware, minimal per-node permissions in the fault-zeroing workflow, real-worker path extraction, and three-case acceptance with one independent full test phase
+archived-reason: implemented — FileAccessSpec with unsafe-root guards exists in backend/app/agentplatform/workflows/v2/schema.py, file_access blocks are configured on fault-zeroing nodes in resources/workflows/fault-zeroing.yaml, and backend/app/gateway/routers/resources.py enforces the write roots; that round's case-acceptance outcome is recorded in 2026-08-06-fault-zeroing-workflow-test-plan.md
+---
+
 # 归零工作流缺口收口计划（简化测试版）
 
 ## 目标

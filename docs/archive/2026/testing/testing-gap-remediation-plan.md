@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-testing-gap-remediation-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-11 测试缺口完善方案（基于 validation skill 覆盖度分析）：视觉回归、Sandbox E2E、无障碍（axe-core）、文件上传/记忆 E2E、CI 状态集成五个方案，及下一阶段 WebSocket/压测计划
+archived-reason: 部分方案已落地——frontend/tests/e2e/visual/（视觉回归 spec 与模板）与 frontend/tests/e2e/a11y/accessibility.spec.ts 现存；方案 2/4 提出的 frontend/tests/e2e/qa/ 目录在当前候选中不存在，是否易位实施未核对（unverified）。方案依托的 validator/qa-tester/orchestrator skill 已归档（根 AGENTS.md：历史方案）。现行测试权威：docs/testing/coverage-matrix.md。正文按历史记录保留
+---
+
 # 测试缺口完善方案
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-11 时点方案，正文按当时候选保留；视觉/a11y 方案已落地，qa/ 目录方案未按原路径实施）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 基于 validation skill 覆盖度分析，针对识别出的缺口制定的完善方案。
 > 创建日期: 2026-06-11

@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-06-13-deerflow-tui
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-13 product and engineering spec (revised 2026-06-24 after RFC #3540) for an embedded deerflow TUI — TUI-first console surface, slash commands and overlays, headless commands, and the central decision to reuse the ThreadMetaStore persistence layer so terminal sessions appear in the Web UI without the Gateway
+archived-reason: implemented — the backend/packages/harness/deerflow/tui/ package (app, session, cli, persistence, widgets) exists, the deerflow console script maps to deerflow.tui.cli:main with the --tui flag (backend/packages/harness/pyproject.toml), and tui/persistence.py writes thread_meta through deerflow.persistence.thread_meta as the spec's runtime-ownership decision requires, so this text is the pre-implementation design state
+---
+
 # DeerFlow TUI - Product and Engineering Spec
 
 **Date**: 2026-06-13

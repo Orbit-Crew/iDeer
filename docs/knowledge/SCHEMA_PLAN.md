@@ -1,10 +1,18 @@
+---
+id: docs-knowledge-schema-plan
+kind: plan
+status: archived
+owner: engineering maintainers
+scope: M2 Ticket 01 field-level schema draft for the knowledge domain (knowledge_bases table, resource_dependencies columns, M3 documents / M4 revisions / M5 retrieval-receipt tables) targeting tickets 02/03
+archived-reason: plan implemented — knowledge_bases/knowledge_documents/knowledge_base_revisions landed in backend/app/agentplatform/knowledge/models.py (not the planned knowledge_models.py), all four resource_dependencies columns landed as drafted, and M4/M5 added initialization/publish-lease fields plus eval/retrieval-test tables beyond this draft
+---
+
 # Schema Plan — 知识域建表草案（M2 Ticket 01 产出）
 
 > audience: developers<br>
-> status: draft（字段草案供 02/03 号票执行时定稿）<br>
-> owner: engineering maintainers<br>
-> last-verified: 2026-09-11<br>
 > canonical-path: `docs/knowledge/SCHEMA_PLAN.md`
+
+> status: archived（建表草案已实施）。2026-10-04 核对：`knowledge_bases`/`knowledge_documents`/`knowledge_base_revisions` 已落地于 `backend/app/agentplatform/knowledge/models.py`（并非 §1 草案所写的 `knowledge_models.py`）；§3 四列（dependency_mode/revision_id/required/purpose）按草案落地（`resource_models.py:134-137`）；M4/M5 在草案之外新增 initialization/publish-lease 字段与 eval/retrieval-test 系列表。正文草案按历史设计记录保留；现行 schema 以 `knowledge/models.py` 与迁移链为准（单 head，2026-10-04 核对为 `20261001_rejoin_upstream_line`）。
 
 本文把知识方案 §6 的语义模型翻译为本仓库现有 ORM / Alembic 风格的字段草案。语义模型不要求逐字照搬（知识方案 §6 原则）；符号与风格以 `backend/app/agentplatform/resource_models.py` 为准。现状勘察见 `IMPLEMENTATION_INVENTORY.md` §9。
 

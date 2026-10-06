@@ -6,7 +6,24 @@ Edit `AGENTS.md` as the sole source in each rule directory. Run `python3 scripts
 
 ## Implementation discipline
 
-Keep each change limited to the requested behavior and follow nearby conventions. Before editing, state assumptions and identify any choice that changes the result; ask only when the available evidence cannot resolve it. Prefer the smallest implementation that meets the acceptance criteria. Define completion in observable checks, then run those checks and report their actual status.
+Keep each change limited to the requested behavior and follow nearby conventions. Before editing, state the approach and its assumptions, identify any choice that changes the result, and present such choices with a recommendation; reserve blocking questions for what the evidence cannot resolve. When you notice an adjacent defect, a cheaper design, or an existing utility that already fits, surface it as a suggestion instead of silently expanding or shrinking scope. Prefer the smallest implementation that meets the acceptance criteria. Define completion in observable checks, then run those checks and report their actual status. Long-span work — a single task whose reading and implementation would not fit one context window, or a batch of tickets with blocking edges — goes through the `orchestrate-worktrees` skill (one self-contained subagent per ticket in a dedicated git worktree) instead of working inline.
+
+## Skill routing
+
+When a situation matches a routed skill, invoke it instead of improvising the process; small, well-specified changes go straight to the TDD slice discipline above. Skills change how work is prepared and reviewed, never what validation the test-lane contract requires; if a routed skill is not installed, follow the stated principle anyway.
+
+| Situation | Route |
+| --- | --- |
+| New feature with open design questions | `grill-with-docs` |
+| Hard bug resisting a first glance | `diagnosing-bugs` |
+| Multi-session feature build | `to-spec` → `to-tickets` → `orchestrate-worktrees` |
+| Incoming bugs and requests pile up | `triage` |
+| Reviewing a diff, branch, or PR | `code-review` |
+| Completed build, especially a bumpy one | propose `retro` |
+| Fuzzy or overloaded domain term | `domain-modeling` |
+| Huge, foggy effort | `wayfinder` |
+
+The full map (including codebase-design, prototype, and research), phase boundaries, and precedence rules live in [docs/agents/skill-routing.md](docs/agents/skill-routing.md).
 
 ## Project Structure & Module Organization
 
@@ -47,18 +64,9 @@ Keep enterprise behavior at the extension boundary. Prefer, in order, Extension,
 
 For each harness patch, record its reason, alternatives, impact, validation, owner, and removal condition in the applicable patch ledger. Resolve upstream conflicts by behavior and contract; review each conflicted change instead of accepting one side globally. Track upstream synchronization, product integration, and compatibility validation as separate states. Contract and patch registration checks prove that changes are recorded, not that behavior is compatible; compatibility evidence comes from the relevant tests and review.
 
-### Task documentation map
+### Task documentation routing
 
-Use the document for the task at hand:
-
-| Task | Read first | Validation or record |
-| --- | --- | --- |
-| Architecture or boundaries | [architecture index](docs/architecture/README.md), [architecture overview](docs/architecture/overview.md) | Relevant contract or integration checks |
-| Domain terms or design decisions | [domain guide](docs/agents/domain.md), [glossary](docs/plans/2026-08-26-term-glossary.md), [ADR index](docs/decisions/README.md) | Add or update a decision only when behavior or an interface changes |
-| Tests or coverage | [testing index](docs/testing/README.md), [coverage matrix](docs/testing/coverage-matrix.md), [lane runbook](docs/testing/test-lane-runbook.md) | [test inventory](scripts/test_inventory.py), [migration ledger](docs/testing/test-migration-ledger.md) |
-| Upstream harness work | [upstream lock](docs/upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md), [patch ledger](UPSTREAM_PATCH_LEDGER.md) | Relevant compatibility checks |
-| Local runtime patches | [runtime patch ledger](docs/local-runtime/PATCH_LEDGER.md) | Listed patch-specific validation |
-| Issue triage | [issue tracker](docs/agents/issue-tracker.md), [triage labels](docs/agents/triage-labels.md) | Keep the issue state and labels current |
+Once the task domain is known, read the matching route in [docs/agents/task-routing.md](docs/agents/task-routing.md): for each of the nine common task domains it names the current contract, code entry point, conditional decisions, and the first validation hop, and states the stopping point where document reading ends and source verification begins. Engineering terminology is defined in [CONTEXT.md](CONTEXT.md); the [UI term table](docs/plans/2026-08-26-term-glossary.md) covers display-language copy only.
 
 `docs/README.md` is the engineering documentation index. `docs/adr/` holds ADR records; `docs/decisions/` holds dated decisions, and both are indexed from the decisions README. Current documents govern active work. Drafts are proposals, superseded documents point to their replacement, and archived records provide history only. A historical test result never satisfies validation for the current candidate. Update documentation when behavior, interfaces, configuration, architecture, or workflow changes.
 
@@ -68,13 +76,13 @@ For each implementation slice, identify the public seam, add one focused regress
 
 For auth, RBAC, persistence, memory, admin, Agent, Skill, or Workflow changes, run the matching standard lane and `pr-standard`. GitHub Actions selects Real E2E for protected high-risk paths; report that selection when handing off a pull request. Do not run a repository-wide lane for each TDD slice.
 
-For a focused test or lane that hangs or times out, report it as incomplete with the exact command, elapsed time, and last observed test. Distinguish focused, standard-lane, PR-lane, and delivery-lane results. For `pr-standard` and `core-full`, report each sub-lane's final summary and the parent lane's `TEST_LANE_DURATION` status. A historical result does not replace a run on the current candidate.
+For a focused test or lane that hangs or times out, report it as incomplete with the exact command, elapsed time, and last observed test. Distinguish focused, standard-lane, PR-lane, and delivery-lane results. For `pr-standard` and `core-full`, report each sub-lane's final summary and the parent lane's `TEST_LANE_DURATION` status.
 
 ## Enterprise interfaces and validation assets
 
 KnowledgeBase list and create operations use `/api/resources` with Resource Governance visibility filtering. Responses expose canonical identity and visibility; provider infrastructure bindings stay server-side. Preserve these boundaries when editing Knowledge Center behavior.
 
-Qodo Cover configurations are local validation assets. Stagehand tests live in `frontend/tests/e2e/stagehand/` and require their explicit specialty lane. The archived `frontend-validator`, `backend-validator`, `qa-tester`, and `validation-orchestrator` designs are historical proposals, not callable skills in this worktree. Read the nearest guidance and the current architecture index for active module paths.
+Qodo Cover configurations are local validation assets. Stagehand tests live in `frontend/tests/e2e/stagehand/` and require their explicit specialty lane. The archived `frontend-validator`, `backend-validator`, `qa-tester`, and `validation-orchestrator` designs are historical proposals, not callable skills in this worktree.
 
 ## Commit & Pull Request Guidelines
 
@@ -82,29 +90,19 @@ Git history primarily uses Conventional Commit prefixes such as `fix(runs): ...`
 
 ## Security & Configuration Tips
 
-Do not commit local secrets. Start from `config.example.yaml`, `.env.example`, or `extensions_config.example.json`, then keep local values in untracked config files. Use `make doctor` to validate configuration and system requirements before reporting environment issues. For production-mode local startup, `scripts/start-local.sh` validates required commands, `config.yaml`, and configured model-key environment variable names before invoking `make start`; `START_TARGET` and `REQUIRED_ENV_VARS` accept only simple targets and identifiers.
+Do not commit local secrets; keep local values in untracked config files and run `make doctor` before reporting environment issues. Details: [local ops notes](docs/agents/local-ops-notes.md#security--configuration).
 
 ## Deployment Notes
 
-Nginx is the single public entry: it proxies `/api/*` to the Gateway (rewriting `/api/langgraph/*` onto the Gateway's native routes) and serves the frontend, compressing HTML and configured textual assets while deliberately leaving SSE, fonts, images, audio, and video uncompressed at the proxy layer. The main compose file publishes that entry as `"${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"` — **loopback by default**; a bare `"${PORT}:2026"` binds `0.0.0.0`, which does not. Nginx listening `default_server` on IPv4+IPv6 and the Gateway binding `0.0.0.0:8001` are container-internal on purpose: the published nginx port is the entire external surface, so any new published port needs an explicit bind address.
+Nginx on loopback is the single public entry; any new published port needs an explicit bind address. Details: [local ops notes](docs/agents/local-ops-notes.md#deployment).
 
 ## Session / Working Files (dev-log)
 
-Developer session artifacts (`task_plan.md`, `progress.md`, `findings.md`, and any scratch notes produced during a working session) must live in `dev-log/`, not the repo root. `dev-log/`, coverage outputs, qodo cover config, `pr-build/`, `.opencode/`, `.agents/`, and `.mimocode/` are git-ignored and guarded by a pre-commit hook — never `git add -f` them, and delete them when the session ends.
+Session artifacts belong in git-ignored `dev-log/`, never the repo root; never `git add -f` them. Details: [local ops notes](docs/agents/local-ops-notes.md#session--working-files-dev-log).
 
 ## Test Accounts (密码 = 邮箱名)
 
-数据库位置: `backend/.ideer/data/ideer.db`（运行时生成，未初始化的 worktree 不包含该文件）。
-
-| 角色 | 邮箱 | 密码 |
-|------|------|------|
-| 超级管理员 | `super_admin@test.com` | `super_admin@test.com` |
-| 部门管理员 | `department_admin@test.com` | `department_admin@test.com` |
-| 普通用户 | `user@test.com` | `user@test.com` |
-| 只读用户 | `viewer@test.com` | `viewer@test.com` |
-| 管理员 | `admin@test.com` | `admin@test.com` |
-
-**注意:** 这些账号仅适用于已初始化或已 seed 的本地数据库；进行角色测试前请确认实际角色值。若 `department_admin@test.com` 仍为 `user`，需先通过 admin 页面修改为 `department_admin`。
+Role verification needs a seeded local DB; passwords equal emails. Table: [test accounts](docs/agents/test-accounts.md).
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

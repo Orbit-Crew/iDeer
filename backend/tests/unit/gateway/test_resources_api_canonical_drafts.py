@@ -70,7 +70,7 @@ async def test_workflow_draft_resolves_agent_alias_and_persists_uuid_reference(
         agent_id = agent.id
         workflow_id = workflow.id
 
-    monkeypatch.setattr(resources, "get_session_factory", lambda: factory)
+    monkeypatch.setattr(resources, "_factory", lambda: factory)
     monkeypatch.setattr(resources, "get_paths", lambda: SimpleNamespace(base_dir=tmp_path))
 
     result = await resources.save_workflow_draft(
@@ -140,7 +140,7 @@ async def test_workflow_draft_dedupes_agent_reuse_across_nodes(
         agent_id = agent.id
         workflow_id = workflow.id
 
-    monkeypatch.setattr(resources, "get_session_factory", lambda: factory)
+    monkeypatch.setattr(resources, "_factory", lambda: factory)
     monkeypatch.setattr(resources, "get_paths", lambda: SimpleNamespace(base_dir=tmp_path))
 
     result = await resources.save_workflow_draft(
@@ -207,7 +207,7 @@ async def test_canonical_agent_zip_import_creates_private_uuid_version(
         )
         bundle.writestr("SOUL.md", "Review carefully.\n")
     archive.seek(0)
-    monkeypatch.setattr(resources, "get_session_factory", lambda: factory)
+    monkeypatch.setattr(resources, "_factory", lambda: factory)
     monkeypatch.setattr(
         resources,
         "get_paths",
@@ -273,7 +273,7 @@ async def test_agent_draft_rewrites_skill_alias_to_uuid_content_and_dependency(
         knowledge_base_id = knowledge_base.id
         agent_id = agent.id
 
-    monkeypatch.setattr(resources, "get_session_factory", lambda: factory)
+    monkeypatch.setattr(resources, "_factory", lambda: factory)
     monkeypatch.setattr(resources, "get_paths", lambda: SimpleNamespace(base_dir=tmp_path))
 
     result = await resources.save_agent_draft(
@@ -347,7 +347,7 @@ async def test_bundled_workflow_draft_save_succeeds_with_deduped_agent_reuse(
         agent_id = agent.id
         workflow_id = workflow.id
 
-    monkeypatch.setattr(resources, "get_session_factory", lambda: factory)
+    monkeypatch.setattr(resources, "_factory", lambda: factory)
     monkeypatch.setattr(resources, "get_paths", lambda: SimpleNamespace(base_dir=tmp_path))
 
     result = await resources.save_workflow_draft(

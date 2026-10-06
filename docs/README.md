@@ -1,12 +1,21 @@
+---
+id: docs-readme
+kind: index
+status: current
+owner: repository maintainers
+scope: entry index of engineering documentation: reader routes, current-authority table, and archive pointers
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # 工程文档入口
 
 > audience: developers, operators, testers, maintainers<br>
 > status: current<br>
 > owner: repository maintainers<br>
-> last-verified: 2026-10-01<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/README.md`
 
-这里是开发、运维、测试和内部治理文档的入口。面向最终用户和公开开发者的产品说明，请从[公开文档站](/zh/docs)或[英文文档站](/en/docs)开始；`skills/**` 及其专用资料不属于本入口的治理范围。
+这里是开发、运维、测试和内部治理文档的入口。面向最终用户和公开开发者的产品说明，请从公开文档站（部署后路由 `/zh/docs` 与 `/en/docs`；仓库内内容源见[中文文档内容](/frontend/src/content/zh/)与[英文文档内容](/frontend/src/content/en/)）开始；`skills/**` 及其专用资料不属于本入口的治理范围。
 
 ## 按读者进入
 
@@ -23,13 +32,16 @@
 
 | 主题 | 当前权威来源 |
 | --- | --- |
-| 用户使用与公开开发 | [前端公开文档站](/zh/docs) |
+| 按任务域进入文档 | [任务路由](agents/task-routing.md)：九个常见任务域的当前契约、代码入口、条件决策与验证入口 |
+| 用户使用与公开开发 | 公开文档站（部署路由 `/zh/docs`；内容源 [frontend/src/content/zh/](/frontend/src/content/zh/)） |
 | 测试覆盖与迁移 | [coverage-matrix.md](testing/coverage-matrix.md)、[test-migration-ledger.md](testing/test-migration-ledger.md) |
 | 权限模型与矩阵 | [permission-model-redesign.md](permission-model-redesign.md)、[permission-matrix.md](permission-matrix.md) |
 | 离线产品线治理 | [offline-product-line-governance-plan.md](offline-product-line-governance-plan.md) |
 | 离线部署作业 | [禁公网内网离线部署作业指导书](deployment/禁公网内网离线部署作业指导书.md) |
 | 架构基线 | [架构索引](architecture/README.md)、[项目架构概览](architecture/overview.md)、[后端架构](../backend/docs/README.md) |
-| 领域词汇 | [领域建模指南](agents/domain.md)、[术语表](plans/2026-08-26-term-glossary.md) |
+| 领域词汇 | [工程术语权威 CONTEXT.md](../CONTEXT.md)、[领域建模指南](agents/domain.md)；[UI 术语对照表](plans/2026-08-26-term-glossary.md) 仅覆盖界面显示语言 |
+| Agent 工作流 | [技能路由](agents/skill-routing.md)、[本地规格与工单](agents/issue-tracker.md) |
+| 待实现规格 | [specs/](specs/) 目录（`to-spec` 输出，`ready-for-agent` 状态） |
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
 | 上游兼容基线与补丁 | [上游锁定记录](upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)、[根上游补丁账本](../UPSTREAM_PATCH_LEDGER.md)、[本地运行时补丁账本](local-runtime/PATCH_LEDGER.md) |
 | 当前工程待办 | [backlog.md](backlog.md) |

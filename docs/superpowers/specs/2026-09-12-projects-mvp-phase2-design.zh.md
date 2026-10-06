@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-09-12-projects-mvp-phase2-design-zh
+kind: plan
+status: archived
+owner: repository maintainers
+scope: Chinese rendering of docs/superpowers/specs/2026-09-12-projects-mvp-phase2-design.md — the 2026-09-12 authoritative Phase 2 design for the Projects MVP (request-scoped instructions injection, the project_documents shelf, bounded document tools, promotion both ways, and the trash/restore/purge tier across five slices)
+archived-reason: implemented in this candidate, sharing the English spec's fate — the project_documents/project_thread_files/trash routers, ProjectDocumentRow with migration 0024_project_documents, the DynamicContextMiddleware wrap_model_call hooks, and the workspace trash route all exist, and the migration chain has since advanced; the header's predecessor spec and RFC v2 pointers are not present in this candidate's tracked history, so the text is the 2026-09-12 design state pinned to main@0464502a
+---
+
 # DeerFlow 项目 MVP —— Phase 2 设计（项目说明、文档、提升、回收站）
 
 **日期**: 2026-09-12

@@ -1,4 +1,14 @@
+---
+id: docs-archive-2026-optimization-03-documentation
+kind: plan
+status: archived
+owner: repository maintainers
+scope: offline_feature-era documentation plan (finalized approx. 2026-06-10): Swagger/OpenAPI exposure, a user manual, and intranet deployment and troubleshooting docs proposed for that candidate
+archived-reason: proposal doc; the docs/ tree has since been reorganized around docs/README.md and docs/deployment/, and the current deployment authority is the intranet offline deployment work instruction
+---
 # 文档建设方案
+
+> status: archived（offline_feature 时期文档建设方案，约 2026-06-10 定稿）。2026-10-04 抽查：文中 `scripts/start-local.sh`、`make start`、gateway `/health` 路由与根目录 `config.intranet.yaml` 在当前候选仍存在；其余具体值（内网镜像地址、`docs/user-manual/` 等落地路径）未逐一核对（unverified）。当前部署权威：[禁公网内网离线部署作业指导书](../../../deployment/禁公网内网离线部署作业指导书.md)。正文按历史记录保留。
 
 ## 概述
 

@@ -1,4 +1,15 @@
+---
+id: docs-plans-2026-04-01-langfuse-tracing
+kind: plan
+status: archived
+owner: repository maintainers
+scope: four-task TDD plan that added optional Langfuse observability alongside LangSmith via a multi-provider tracing config and callback factory on the harness model factory
+archived-reason: plan implemented — multi-provider tracing lives in backend/packages/harness/deerflow/config/tracing_config.py, backend/packages/harness/deerflow/tracing/ (build_tracing_callbacks) and backend/packages/harness/deerflow/models/factory.py (attach_tracing), with langfuse>=3.4.1 in backend/packages/harness/pyproject.toml; tests are backend/tests/test_tracing_config.py, test_tracing_factory.py and test_model_factory.py
+---
+
 # Langfuse Tracing Implementation Plan
+
+> status: archived（计划已实施）。2026-10-04 核对：实现位于 `backend/packages/harness/deerflow/`（`config/tracing_config.py`、`tracing/` 的 `build_tracing_callbacks`、`models/factory.py` 的 `attach_tracing`），`langfuse>=3.4.1` 已在 `backend/packages/harness/pyproject.toml`，对应测试 `backend/tests/test_tracing_config.py`、`test_tracing_factory.py`、`test_model_factory.py` 均存在。文中 `packages/harness/ideer/...` 路径为撰写时的旧包名，现行为 `packages/harness/deerflow/...`；本计划保留为历史设计记录，现行行为以代码为准。
 
 **Goal:** Add optional Langfuse observability support to iDeer while preserving existing LangSmith tracing and allowing both providers to be enabled at the same time.
 

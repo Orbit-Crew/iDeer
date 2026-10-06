@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-07-02-read-before-write-gate
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-02 plan for the ReadBeforeWriteMiddleware gate on write_file/str_replace (issue #3857) — sha256 read marks on ToolMessages, gate check against the newest mark per path, config wiring default-on, and tool docstring/AGENTS updates
+archived-reason: implemented — backend/packages/harness/deerflow/agents/middlewares/read_before_write_middleware.py with the deerflow_read_mark key, backend/tests/test_read_before_write_middleware.py plus test_read_before_write_cancellation.py, the read_before_write block in config.example.yaml (config_version landed as 16→17 as the plan records), and the read_before_write_config module; the middleware has since gained elide_blocked_payloads and sandbox-authorization ownership recorded in agents/middlewares/AGENTS.md, so this text is the 2026-07-02 design state
+---
+
 # Read-Before-Write Gate (ReadBeforeWriteMiddleware) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

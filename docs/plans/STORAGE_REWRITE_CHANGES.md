@@ -1,4 +1,15 @@
+---
+id: docs-plans-storage-rewrite-changes
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: implementation guide for the PR #4279 DeerMem storage rewrite — final on-disk layout, main files, read/update/migration trajectories, clear semantics, cache and failure behavior as of that PR
+archived-reason: point-in-time record of PR #4279 — the described code now lives at backend/packages/harness/deerflow/agents/memory/backends/deermem/ (deer_mem.py, deermem/core/) with backend/app/gateway/routers/memory.py and backend/scripts/migrate_memory_markdown.py; spot-checked 2026-10-04, current behavior is authoritative over this guide
+---
+
 # DeerMem Storage Rewrite: Implementation Guide
+
+> status: archived（PR #4279 实施记录）。2026-10-04 抽核：所述代码现位于 `backend/packages/harness/deerflow/agents/memory/backends/deermem/`（`deer_mem.py`、`deermem/core/` 的 `paths.py`/`storage.py`/`updater.py`），配套 `backend/app/gateway/routers/memory.py`、`backend/scripts/migrate_memory_markdown.py` 与 `backend/tests/test_memory_storage_markdown.py` 等测试均在候选；文中相对路径以该包目录为基准，现行行为以代码为准。
 
 > This document explains the final PR behavior for readers who are new to the codebase. It complements `STORAGE_REWRITE_PLAN.md`: the plan explains the intended contract; this file explains where the code changed and how a request travels through it.
 

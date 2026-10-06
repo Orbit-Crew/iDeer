@@ -1,3 +1,13 @@
+---
+id: backend-docs-im-channel-connections
+kind: reference
+status: current
+owner: repository maintainers
+scope: user-owned IM channel bindings: connect-code flow, ownership transfer, file pipeline, and provider configuration
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # IM Channel Connections
 
 DeerFlow supports user-owned IM channel bindings for Telegram, Slack, Discord, Feishu/Lark, DingTalk, WeChat, WeCom, and Buzz. The feature reuses the existing `channels.*` runtime configuration, so it works in local and private deployments with the same outbound transports already supported by DeerFlow.
@@ -183,6 +193,14 @@ graph TB
 
 For the special GitHub case (`fire_and_forget=True` channel policy), the manager calls `runs.create()` and returns once the run is `pending` — no outbound reply, because GitHub agents post via the `gh` CLI from inside their sandbox. See [GITHUB_AGENTS.md](GITHUB_AGENTS.md) for the full GitHub flow.
 
+### Streaming publish allowlist
+
+What the manager publishes from a `messages-tuple` stream is an **allowlist, not a denylist** (`manager._accumulate_stream_text`): only assistant message types — LangChain serializes `AIMessage.type` as `"ai"`, `AIMessageChunk.type` as `"AIMessageChunk"`, plus the OpenAI-style `"assistant"` spelling for foreign runtimes — become displayable text. Matching is by prefix (`ai` / `assistant`), never substring, because ordinary words contain `"ai"` (`chain`, `domain`). A bare `str` payload is never accepted: it carries no type information, so it cannot be attributed to the assistant, and nothing in DeerFlow produces one (`runtime/serialization.py::serialize_messages_tuple` always emits `[message_dict, metadata]`). `_stream_payload_type` resolves the message type for both the `model_dump()` shape DeerFlow's own gateway emits and LangChain's `to_json()` constructor shape (whose top-level `type` is the literal `"constructor"`, with the class name at the tail of the `id` path).
+
+The earlier rule rejected only payloads whose `type` contained `"tool"` and therefore published everything else, which leaked DeerFlow's hidden model context to every streaming IM channel: `DynamicContextMiddleware` injects recalled memory as a hidden `HumanMessage` (`type == "human"`) and rewrites the user's own turn into a new `HumanMessage`, `DurableContextMiddleware` injects a hidden `<durable_context_data>` `HumanMessage`, and LangGraph fans those state writes out on the `messages-tuple` stream. The leak was proved live on a Buzz relay, which published a `<memory>` fact block and, in another run, a verbatim echo of the user's own message as the assistant's reply. Defense in depth: `buzz.py::send()` additionally refuses text carrying hidden-context markers (see the Buzz connector contract below).
+
+A swallowed streaming failure publishes its final outbound before releasing the inbound dedupe key, so a provider redelivery can retry without overtaking the terminal reply.
+
 ## Owner-scoped File Storage
 
 `ChannelManager` resolves the storage owner **once** at the top of `_handle_chat` via `_channel_storage_user_id(msg)` and threads that value through the entire file pipeline. The same identity is used as the run `user_id` in `run_context` and as the bucket for memory, uploads, and outputs — so the bucket the agent reads/writes is always the bucket where channel files were staged.
@@ -270,6 +288,22 @@ sequenceDiagram
     end
     Agent->>FS: read_file / view_image (sandbox)
 ```
+
+Provider `receive_file` implementations (Feishu/DingTalk `_receive_single_file`) normalize provider filenames, claim a collision-free basename, and write it through `write_upload_file_no_symlink` under the same channel lock; the returned basename drives both the agent-visible virtual path and non-local sandbox sync. Non-mounted Feishu/DingTalk sandbox syncs (`sandbox_files.py`) acquire unique non-releasing execution holders, drain blocking `update_file` workers across repeated cancellation, and release only after the last sandbox operation, so a parallel run cannot close the shared client mid-upload.
+
+### Inbound media gating (WeChat/WeCom)
+
+WeChat iLink inbound image/file downloads stream with an in-flight cap derived from `channels.wechat.max_inbound_image_bytes` / `max_inbound_file_bytes` (20 MB / 50 MB defaults) that aborts before the full read, and the payload-supplied `media.full_url` must pass a scheme + dot-boundary host-suffix allowlist (`channels.wechat.allowed_media_hosts`, defaulting to the `qq.com` family plus the configured `cdn_base_url` host) before anything is fetched. The limits are PLAINTEXT limits while the stream measures CIPHERTEXT, so the in-flight cap is the PKCS#7-padded size of exactly-limit plaintext (`WechatChannel._stream_cap_for`); the exact post-decryption check stays as the authority. There is deliberately **no URL re-fetch fallback**: `_read_wechat_inbound_file` (manager) only reads the locally staged `path` — the channel always stages one before publishing — so nothing fetches a WeChat URL outside the channel-side gate.
+
+WeCom media URLs (frame-supplied `url`, no per-channel size config) get the same style of host gate — `qq.com` suffixes plus the COS shape `ww-aibot-img-<APPID>.cos.<region>.myqcloud.com` WeCom serves signed links from, where the numeric suffix must be one of the verified WeCom-owned Tencent Cloud APPIDs (`_WECOM_MEDIA_COS_APPIDS`, currently only the `1258476243` observed in Tencent's published callback examples) because bucket names are user-chosen and any Tencent Cloud account can register a lookalike `ww-aibot-img-*` bucket; other accounts go through operator suffixes from `channels.wecom.allowed_media_hosts` resolved from the live channel at read time — and the manager-level `MAX_INBOUND_URL_FILE_BYTES` (50 MB) streaming cap.
+
+Both URL downloads and `_download_cdn_bytes` request `Accept-Encoding: identity`, refuse a response with any residual `Content-Encoding` before reading, and iterate `aiter_raw()`: httpx's transparent decoding would allocate the full decompressed body before the byte cap sees a chunk.
+
+### No media URLs in logs
+
+No URL-based inbound-media log line may contain any part of the URL (signed links carry credentials in path and query): failure labels use the attachment filename or host only (`manager._inbound_file_label`), and reader failures log a sanitized exception summary — class name plus HTTP status (`manager._reader_error_summary`, `wechat._media_download_error_summary`), never the URL-bearing message or traceback.
+
+The rule extends to the HTTP client libraries' own records. httpx emits `HTTP Request: GET <full URL>` at INFO via the bare `httpx` logger. urllib3 — enumerated against the installed source; every remaining emitter logs host:port only (connection establishment/reset) or one absolute URL (the header-parse warning) that the generic pattern rewrites — renders a request target in five shapes, each needing a dedicated redaction pattern because the generic absolute-URL pass cannot see a target with no scheme: `Redirecting <target> -> <target>` at INFO via `urllib3.poolmanager` and DEBUG via `urllib3.connectionpool` (either slot may be an origin-form relative Location, which pool/connection callers pass or the Location header carries; the shape keeps the `^Redirecting ` prefix anchor because `-> /path` arrows also appear in non-URL logs — sandbox mount mappings — and must pass through untouched, while both slots consume through end-of-line: the raw Location header may carry interior spaces, and the recursive urlopen frame can pass it on as the next request target), the per-request `scheme://host:port "METHOD /path?query HTTP/x.x"` DEBUG line, `Retry: <target>` DEBUG and `Retrying (…) after connection broken by '<error>': <target>` **WARNING** — above the INFO root, so reachable at the default log level — via `urllib3.connectionpool`, and `Incremented Retry for (url='<target>')` DEBUG via `urllib3.util.retry` (origin-form on the request path, absolute on the redirect path). The generic pass's `rest` treats a quote as a closing mark only at a boundary — followed by whitespace, a closing parenthesis, or end of string — so urllib3's `Incremented Retry for (url='…')` keeps its `')` scaffolding while a quote embedded in a URL stays consumed and redacted. Logger filters only see records emitted through that exact logger — child loggers neither inherit them nor trigger them on propagation — so `UrlRedactionFilter` is attached to the `httpx` logger AND to every root handler by `configure_logging` (handler-level filters see propagated records), which also keeps Telegram's token-bearing Bot API paths (`api.telegram.org/bot<token>/...`, emitted by python-telegram-bot's httpx client) out of the logs.
 
 ## Cross-references
 
@@ -452,6 +486,21 @@ Codes use 128 bits of randomness, expire after 10 minutes, and are single-use.
 
 For providers with an `allowed_users` allowlist (Telegram, Slack, DingTalk, WeChat, …), a valid `/connect <code>` (or Telegram `/start <code>`) is consumed **before** the allowlist is checked. This is intentional: a user who is not yet on the allowlist — and whose platform identity the bot has therefore never seen — can still complete their first browser-initiated bind. After binding, `allowed_users` continues to gate ordinary (non-bind) messages as before.
 
+### Buzz connector engineering contract
+
+Engineering-level invariants behind the operator-facing models above, for changes to `app/channels/buzz.py` / `buzz_nostr.py` / `buzz_seen_events.py`:
+
+- **Subscription shapes.** Exactly one REQ per channel: `buzz-discovery` `{"kinds":[39000]}` (historical, no `#p` — adding it returns zero; supplies channel name/type, which the DM mention-exemption reads), one `buzz-membership` `{"kinds":[44100,44101],"#p":["<us>"],"since":<connect time − MEMBERSHIP_LOOKBACK_SECONDS>}` (relay-signed member-added/member-removed notifications whose `p` tag names the affected member and `h` tag the channel), and one `buzz-chat-<uuid>` `{"kinds":[9],"#h":["<uuid>"]}` per discovered channel, opened as each kind-39000 arrives; the discovery `EOSE` is the completeness barrier that retries failed chat subscriptions and warns when discovery found nothing. Subscription ids are deterministic per channel so one can be replaced or closed without disturbing the others on the socket; `_chat_subscriptions` is per-socket state cleared on session end, on re-auth (a pre-auth REQ may have been rejected), and by `stop()`.
+- **Membership is LIVE-scoped.** The relay *stores* 44100/44101 and serves history newest-first (default limit 2000). An unscoped filter replayed the whole membership history on every connect — every stored add read as live, re-running discovery once each (M+1 discovery passes × N stored kind-39000 events per connect, observed live as two `channel discovery complete` lines and one channel logged `<unnamed>` because the 44100 path subscribed before its metadata arrived), re-subscribing channels we have since been removed from, and letting a stored 44101 transiently unsubscribe a channel we are still in. `since` is anchored at the moment the socket opened (`_session_started_at`) minus `MEMBERSHIP_LOOKBACK_SECONDS` (60), covering both relay clock skew and a membership change published *during* the connect/auth handshake; the slack can only cost an idempotent replay of the last minute.
+- **Live add/remove.** A kind-44100 for our pubkey subscribes to the new channel **live**, then re-issues discovery only when that channel's metadata is actually missing — an unconditional refresh is how a burst of 44100s multiplied into one discovery pass each. A kind-44101 issues `buzz_nostr.close_frame` for exactly that channel's subscription and drops its metadata.
+- **A `CLOSED` frame is recovered, not forgotten.** `_handle_closed` re-issues the subscription, bounded by `MAX_RESUBSCRIBE_ATTEMPTS` (3) per subscription id per connection **and per auth epoch** (`_resubscribe_attempts` resets on session start, on re-auth, and by `stop()`, so pre-auth rejections — which the auth branch already recovers wholesale — never spend the authenticated session's budget). The first retry is immediate (the common case is a one-off hiccup); later ones back off 1s then 2s, awaited inline in the read loop rather than in a background task that could outlive its own socket. `auth-required:` before this socket has completed its NIP-42 handshake is the expected bootstrap sequence, not a refusal: the connector opens its control REQs immediately in case the relay serves unauthenticated reads, a closed relay answers `auth-required:` plus an `AUTH` challenge, and the auth branch re-opens everything. That case is logged at DEBUG and consumes neither the permanent-refusal branch nor the retry budget (a chat subscription is still dropped from `_chat_subscriptions`, since it genuinely is not subscribed and discovery is what re-opens it). Treating it as permanent once produced an operator-facing warning claiming discovery/membership tracking was DOWN in the same run where discovery then completed, every channel was subscribed, and a brand-new channel's kind-44100 was picked up one second later. The boundary is the per-socket `_auth_completed` flag, set once the signed AUTH event has been sent and cleared on session entry, session exit, and `stop()`; the same reason *after* that stays loud, and says the subscription is down until the relay's next AUTH challenge or the next reconnect rather than borrowing the non-auth wording. `_is_transient_close` decides whether to retry at all: NIP-01/NIP-42 `auth-required:`/`restricted:`/`blocked:`/`mute:`/`invalid:`/`pow:` prefixes and buzz-relay's own removal/revocation prose are permanent (do not fight the relay over a channel that is no longer ours; a post-auth `auth-required:` is recovered by the AUTH branch, not by re-issuing), `rate-limited:`/`error:`/no-reason-at-all and anything unrecognized are transient — the default resolves toward "keep listening" because going silently deaf is the failure this exists to remove, and the attempt budget bounds a wrong guess. A chat `CLOSED` is only ever recovered for a channel already in `_chat_subscriptions`: a `CLOSED` is relay-supplied, so acting on an unknown one would let a relay induce a subscription just by naming a channel. Every subscription that goes unlistened is logged at WARNING, never INFO.
+- **Bounds on remote-fed state.** `MAX_CACHED_CHANNELS` (512) caps the kind-39000 metadata cache, the watermark map, and the resubscribe-attempt map; `MAX_CHANNEL_SUBSCRIPTIONS` (256, well under buzz-relay's own 1024-per-connection ceiling) caps live chat subscriptions — at the cap new channels are refused and named in a warning rather than evicting a working subscription.
+- **Cursors.** The replay cursor (`since`) is **per channel**, advances only for events that were actually processed, and never past `now + MAX_FUTURE_SKEW_SECONDS` (60), because it is peer-supplied (`created_at`) and a single future-dated event otherwise made the connector permanently deaf. Per channel rather than global is the safety-critical half: subscriptions are per channel, so one shared cursor is the newest event seen in *any* channel and a busy channel would drag it past a quiet channel's unread messages, skipping them on the next reconnect — measured on a live relay, three channels of one identity sat ~28h apart. Per-channel cursors can only ever cost duplicate delivery (absorbed by the manager's `event_id` dedupe), and an evicted cursor degrades to "no `since`", i.e. the relay's default backlog — both fail toward replay, never toward a miss. The known 2000-event historical bound above remains the one path that can skip.
+- **Streaming bookkeeping.** Streaming tracks every oversize chunk index (`_stream_targets` for chunk 0, `_stream_tails` for the rest), since the manager republishes cumulative text and reposting `chunks[1:]` per update flooded the channel; all of it is per-connection state cleared by `stop()`.
+- **Hidden-context send refusal.** `send()` refuses outright to publish text carrying a hidden model-context wrapper (`<memory>`, `<durable_context_data>`, `<system-reminder>` — `_HIDDEN_CONTEXT_MARKERS`), logging at ERROR and clearing the stream bookkeeping on a blocked `is_final`. This is defense in depth behind the manager's allowlist, and it lives here rather than in a sibling connector because on Buzz a leak is permanent: every streaming update is an immutable public Nostr event, so a corrective edit only changes what clients render while the original leaked event stays on the relay. Matching is on the literal opening tag, so a reply that merely talks about memory is still published.
+- **Seen-event store.** The durable replay guard uses async `aseen()` / `arecord()` / `aflush()` boundaries: initial JSON reads and coalesced atomic writes run off the Gateway event loop. `aflush()` awaits any in-flight write, attempts at most one final snapshot, leaves a still-changing generation dirty for fail-open replay, and returns without a live persistence timer. A Gateway cancellation does not cancel the underlying worker-thread write; `BuzzChannel.stop()` tracks cleanup completion separately from transport admission so ChannelService can retry the retained channel without racing a second snapshot against that write. The store is quiesced before stop (including the already-stopped guard), so a timed-out relay task that records after stop only marks data dirty and cannot schedule detached file work; a repeated `stop()` still drains that dirty state, and `BuzzChannel.start()` explicitly resumes scheduling and flushes it automatically.
+- **Trust primitives.** `buzz_nostr.verify_event` is pure and total (malformed input returns `False`, never raises); a forged kind-44100 has its `p` tag re-checked locally so it must at least name this identity.
+
 ## Runtime Model
 
 Connection records live in SQL tables under `deerflow.persistence.channel_connections`:
@@ -472,6 +521,66 @@ owner-only file permissions (`0600`); use it only where the DeerFlow data
 directory is already trusted as secret storage. WeChat QR login auth state
 follows the same local-runtime model and may persist a QR-derived bot token in
 the channel state directory.
+
+### Channel user id runtime context
+
+For user-owned connections, incoming messages carry `connection_id`,
+`owner_user_id`, and `workspace_id`; `owner_user_id` becomes the DeerFlow run
+`user_id`, while the raw platform user id remains `channel_user_id`. The Gateway
+accepts `channel_user_id` only from an internally authenticated channel caller's
+top-level `body.context`, clears it from both free-form `body.config` sections,
+and writes it into runtime context only (never `configurable`, which is
+checkpointed). `bash_tool` exposes it to sandbox commands as the fixed env var
+`DEERFLOW_CHANNEL_USER_ID` — via a shell-quoted command-string prefix, NOT the
+`execute_command(env=...)` channel, which is reserved for request-scoped secrets
+and would switch `AioSandbox` onto the `bash.exec` path (image >= 1.9.3, fresh
+session per call).
+
+Per-call injection keeps group-chat identity correct (one thread/sandbox, many
+senders) **without depending on the AIO shell's session semantics**: every
+IM-channel command carries an explicit `export VAR=<id>; ` (valid id) or
+`unset VAR; ` (empty / non-str / over the 256-char cap). The AIO no-env path
+reuses a persistent shell session (the reason for the class lock, #1433), so a
+bare command could otherwise resolve a stale id an earlier sender exported; the
+`unset` closes the window the length/type guard would open (a dropped id would
+inherit the previous sender's value). Non-IM runs (no `channel_user_id` in
+context) are left untouched. Not injected on the Windows local sandbox (its
+PowerShell/cmd.exe fallback has no `export`/`unset`).
+
+The value propagates across `task` delegation: `task_tool` captures the
+dispatching turn's id and the subagent executor forwards it into the subagent's
+runtime context, same as the guardrail attribution fields. The runtime-context
+value is authorization-grade at the Gateway/guardrail boundary, but the exported
+shell variable remains informational because any bash command can overwrite its
+own environment; skills must not treat the shell variable itself as
+authenticated identity. Tests: `backend/tests/test_gateway_services.py`,
+`backend/tests/test_channel_user_id_env.py`.
+
+### WeChat and WeCom connection runtime limits
+
+WeChat timing settings (`polling_timeout`, `polling_retry_delay`,
+`qrcode_poll_interval`, `qrcode_poll_timeout`) accept only positive finite
+seconds; invalid values fall back to their defaults so polling cannot enter a
+hot loop or sleep forever.
+
+WeCom serializes `start()` and `stop()` for each channel instance. The SDK
+`connect()` task covers connection setup only; after the handshake, the SDK owns
+a separate receive task. Shutdown cancels an in-progress connection attempt and
+awaits the SDK's actual asynchronous receive-task/socket cleanup before
+releasing lifecycle state or allowing a restart. Cancellation of `stop()` still
+propagates, but only after owned cleanup finishes and lifecycle references are
+cleared; real connection failures remain reported by `_on_ws_task_done`.
+
+WeCom outbound content is capped at the protocol's 20480 UTF-8 bytes: stream
+replies clip on a character boundary with a truncation marker (one stream
+carries the whole reply and cannot split mid-way), while proactive pushes split
+into at most 10 sequential markdown messages per push, with the remaining tail
+clipped and marker-terminated. Both paths measure bytes, not characters. A
+per-chat send lock serializes each split batch end to end, because manager
+workers run concurrently and two long pushes to the same chat would otherwise
+interleave chunks; locks are reference-counted and reclaimed once no sender
+holds or waits on them, so the registry does not grow for the life of the
+Gateway.
 
 ## Security Notes
 

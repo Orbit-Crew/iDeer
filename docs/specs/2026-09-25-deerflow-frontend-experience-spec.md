@@ -1,4 +1,10 @@
 ---
+id: docs-specs-2026-09-25-deerflow-frontend-experience-spec
+kind: plan
+status: archived
+owner: repository maintainers
+scope: workbench experience-restoration spec for the post-DeerFlow-merge frontend — original workbench destinations and layouts, new-conversation home slimming, composer control sizing, the seven chat additions, capability-gated entries, and keep-me-signed-in login; covers the experience work delivered around 2026-09-25..2026-10, whose ongoing terms are CONTEXT.md and ADR 0001-0005
+archived-reason: implemented — new-conversation home streamlining and viewport fit (721ef8ad7), welcome disclaimer anchored below recent tasks (08421210e), keep-me-signed-in login (a028dfd5f), and expert management unified in the capability center (84220974a) are ancestors of this candidate; the frontend experience baseline, capability center, Scheduled Task, and Agent-operated browser terms live in CONTEXT.md and the navigation decisions in ADR 0001-0005 (ADR 0005 verified current 2026-10-04)
 triage: ready-for-agent
 ---
 

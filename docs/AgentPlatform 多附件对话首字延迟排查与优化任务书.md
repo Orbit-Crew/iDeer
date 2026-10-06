@@ -1,3 +1,12 @@
+---
+id: docs-multi-attachment-ttft-task-brief
+kind: plan
+status: current
+owner: repository maintainers
+scope: governing task brief for the multi-attachment first-token latency campaign: staged tracing, baseline measurement, seven suspects, and prioritized optimizations; measurement phase completed per the companion diagnostic report, optimization conclusions still pending
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # AgentPlatform 多附件对话首字延迟排查与优化任务
 
 ## 1. 任务目标

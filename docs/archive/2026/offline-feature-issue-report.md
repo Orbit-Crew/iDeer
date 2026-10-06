@@ -1,6 +1,18 @@
+---
+id: docs-archive-2026-offline-feature-issue-report
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-06-23 issue report for the offline_feature branch (vs main): code-review, unit-test, build, and security findings (35+ issues) with that candidate's line-number references
+archived-reason: branch-history evidence; body paths and line numbers record the ideer-era layout of that candidate and are preserved as recorded; current product-line authority is docs/offline-product-line-governance-plan.md
+---
+
 # offline_feature 分支问题检查报告
 
 > status: archived; current product-line authority: `docs/offline-product-line-governance-plan.md`
+> source date: 2026-06-23（offline_feature vs main）
+> canonical-path: `docs/archive/2026/offline-feature-issue-report.md`
+> historical paths: 正文中 `admin.py`、`executor.py`、`authz.py` 等文件名与行号均为该候选时点的记录，按原样保留，未按现行代码重验；对应实现此后有迁移与重构（如 `backend/packages/harness/deerflow/`、`backend/app/agentplatform/workflows/v2/`）。
 
 **检查日期**: 2026-06-23
 **分支**: offline_feature (vs main)

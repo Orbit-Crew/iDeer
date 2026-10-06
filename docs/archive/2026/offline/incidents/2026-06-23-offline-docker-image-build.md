@@ -1,6 +1,19 @@
+---
+id: docs-archive-2026-offline-incidents-2026-06-23-offline-docker-image-build
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-05 离线镜像包制作与内网部署的故障复盘汇编（正文自述 2026-05-28 整理；文件名日期为归档入册日期）：按构建打包（Docker socket 权限、bash -n 误判、uv run 联网、GH001 大文件）、运行时配置合同、服务健康检查、前端访问登录、归零智能体与长任务（含 409 与 agent 记忆路径遮蔽）五类记录问题现象/根因/解决方案
+archived-reason: 故障复盘材料，正文自述为历史复盘而非安装手册或逐项 checklist；现行部署步骤以 scripts/README-intranet.md 与 docs/deployment/禁公网内网离线部署作业指导书.md 为准
+---
+
 # 离线部署 Docker 镜像制作问题与解决方案整理
 
 日期：2026-05-28
+
+> status: archived; current intranet deployment authorities: `scripts/README-intranet.md`、`docs/deployment/禁公网内网离线部署作业指导书.md`
+> source period: 2026-05 离线部署候选（2026-05-28 事件整理；文件名日期为归档入册日期）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留，不作现行依据。仍成立：intranet compose Gateway 命令保持 `uv run --no-sync uvicorn ...`；`${GATEWAY_WORKERS:-1}` 默认单 worker；`deploy-intranet.sh` 健康检查按 curl→wget→python3→python 降级（`http_ok()`）；打包排除规则含 `frontend/.env`、`frontend/test-results`、`frontend/playwright-report`、`backend/.ruff_cache`；`runtime/data/.better-auth-secret` 与 `.internal-auth-token` 复用已存值不覆盖；`--no-load` 路径存在；`agents_api.enabled` 由 `patch_agents_api_enabled()` 在 prepare 阶段补为 true。已漂移：第七节归零智能体安装（`docs/fault-zeroing-agent/agent/` 复制到 `runtime/data/agents/fault-zeroing/`、`IDEER_INSTALL_FAULT_ZEROING=0` 跳过）已由 `scripts/seed_bundled_resources.py` + `bundled-resources.json` 取代——归零智能体现源于 `resources/agents/fault-zeroing`（技能位于 `resources/skills/fault-zeroing`），以超级管理员身份安装公共资源，冲突由 `--conflict-policy` 控制；`IDEER_INSTALL_FAULT_ZEROING` 旗标与 `docs/fault-zeroing-agent/agent/` 安装路径已不在当前候选（该目录现仅存评审、进展与验证文档）。
 
 ## 一、背景
 

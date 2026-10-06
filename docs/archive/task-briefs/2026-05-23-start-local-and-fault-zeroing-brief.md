@@ -1,4 +1,17 @@
+---
+id: docs-archive-task-briefs-2026-05-23-start-local-and-fault-zeroing-brief
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: completion record of the 2026-05-23 local-start preflight and fault-zeroing agent constraint task: the scripts/start-local.sh addition, its backend test, doc and agent-rule updates, verification results, and the commit of that candidate
+archived-reason: point-in-time brief for a finished task; the recorded commit hash and GitNexus/test statistics belong to that candidate's history, and body paths use the pre-relocation layout (backend tests and the fault-zeroing agent/skill files have since moved); current startup entry is `sh scripts/start-local.sh` / `make start` (README.md)
+---
+
 # 本次任务简报：本地启动预检与归零智能体约束补强
+
+> status: archived（已结束任务简报，2026-05-23）
+> canonical-path: `docs/archive/task-briefs/2026-05-23-start-local-and-fault-zeroing-brief.md`
+> historical paths: 正文按历史记录保留，未按当前候选改写。2026-10-04 对照当前候选抽查：`scripts/start-local.sh` 与 `backend/tests/test_task_tool_core_logic.py` 仍在原位，预检命令清单（make、python3、node、pnpm、uv、配置文件、必需环境变量）与现行脚本一致；`backend/tests/test_start_local_script.py` 现位于 `backend/tests/unit/scripts/test_start_local_script.py`；`docs/fault-zeroing-agent/agent/SOUL.md` 现位于 `resources/agents/fault-zeroing/SOUL.md`；`skills/custom/fault-zeroing/SKILL.md` 现位于 `resources/skills/fault-zeroing/SKILL.md`。文中提交哈希 `dd2a23f2` 属当时候选历史，同一变更（fix(startup): add local start preflight，2026-05-23）在当前候选为 `5cc4829c4`，其改动文件清单与本文"主要变更"一致。GitNexus 索引统计、测试计数与 CodeRabbit 审查状态均为该时点记录，未按当前候选重验。
 
 ## 任务范围
 

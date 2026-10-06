@@ -1,3 +1,12 @@
+---
+id: docs-offline-product-line-governance
+kind: policy
+status: current
+owner: repository maintainers
+scope: offline product-line governance: origin/deerflow remote roles, branch and release model, dual-track upstream update policy, and acceptance gates
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # iDeer 离线产品线长期治理方案
 
 > audience: maintainers, release owners, operators<br>

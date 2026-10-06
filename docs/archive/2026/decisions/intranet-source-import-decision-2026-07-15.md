@@ -1,6 +1,17 @@
+---
+id: docs-archive-2026-decisions-intranet-source-import-decision-2026-07-15
+kind: decision
+status: archived
+owner: repository maintainers
+scope: 2026-05-25 trade-off analysis for importing the iDeer workspace into an intranet environment: must-import, suggested-import, and must-ignore path sets, packaging risks, and pre/post-packaging verification commands for offline source analysis and deployment
+archived-reason: point-in-time analysis dated 2026-05-25; directory sizes, path layout, and the packaging-script gap it reports reflect that period and are preserved as recorded. Current decision entry is docs/decisions/README.md; current packaging authority is scripts/package-intranet-offline.sh
+---
+
 # iDeer 内网源码导入取舍分析
 
 > status: archived; current decision entry: `docs/decisions/README.md`
+> source date: 2026-05-25（内网源码包取舍分析时点）
+> historical facts（2026-10-04 对照当前候选核对）：正文按当时状态保留，不作现行依据。文中 `backend/packages/` 下的 harness 包现名 `deerflow-harness`，位于 `backend/packages/harness/deerflow/`；`skills/custom/fault-zeroing/`、`.agents/skills/humanizer-zh/`、`pr-build/` 已不在仓库，随仓库分发的技能现以 `resources/skills/` 为主（`skills/public/` 仍在）；运行数据目录现为 `backend/.deer-flow/`。"需要特别注意的风险"一节指出的 `scripts/package-intranet-offline.sh` 未排除 `frontend/.env`、`frontend/test-results/`、`frontend/playwright-report/`、`frontend/tsconfig.tsbuildinfo` 的缺口已在现行脚本中修复（上述路径均显式排除）。各目录体量数字为 2026-05-25 时点测量，未按当前候选重测。
 
 日期：2026-05-25
 

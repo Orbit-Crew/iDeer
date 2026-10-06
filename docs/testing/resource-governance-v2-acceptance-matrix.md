@@ -1,5 +1,16 @@
+---
+id: docs-testing-resource-governance-v2-acceptance-matrix
+kind: evidence
+status: archived
+owner: resource-governance maintainers
+scope: acceptance matrix and execution record for the resource-governance-v2 candidate (worktree branch resource-governance-v2, records dated 2026-08-16 to 2026-08-17) — per-domain required behaviors, deployment/offline evidence, and the stage-gate checklist
+archived-reason: candidate-scoped acceptance record for the resource-governance-v2 delivery (see docs/decisions/2026-08-14-resource-governance-v2.md, which the decisions index already lists as a historical record); its lane numbers bind to that branch — later candidates must produce fresh evidence per the matrix's own rule, and current test-layer responsibility for resource governance lives in coverage-matrix.md
+---
+
 # Resource Governance V2 验收矩阵
 
+> status: archived（resource-governance-v2 候选分支的验收记录，证据日期 2026-08-16/17）。矩阵行为要求描述该交付的验收口径；按其自身规则，后续候选需重新取证，本文 lane 数字不代表当前验证状态。当前测试层责任以[覆盖矩阵](coverage-matrix.md)为准，决策与收口记录见 `docs/decisions/2026-08-14-resource-governance-v2.md` 与 `docs/governance/resource-governance-v2-cutover.md`。正文按历史记录保留。
+>
 > audience: developers, reviewers, QA, release engineering
 > status: binding acceptance contract
 > last-verified: 2026-08-17

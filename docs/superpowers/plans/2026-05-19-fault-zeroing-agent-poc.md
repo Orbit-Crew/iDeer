@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-05-19-fault-zeroing-agent-poc
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-05-19 PoC plan for the fault-zeroing custom agent — a skills/custom/fault-zeroing skill with output templates and evidence rules, docs/fault-zeroing-agent agent/subagent templates, two sample evidence packages, and a manual validation record
+archived-reason: PoC content landed and later relocated — the skill now lives at resources/skills/fault-zeroing/ and the agent templates at resources/agents/fault-zeroing/; docs/fault-zeroing-agent/agent/ no longer exists while samples and later records stay under docs/fault-zeroing-agent/; the plan's per-user install steps describe the 2026-05-19 backend/.ideer layout
+---
+
 # Fault Zeroing Agent PoC Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

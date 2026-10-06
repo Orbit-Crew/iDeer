@@ -1,4 +1,15 @@
+---
+id: docs-superpowers-plans-2026-06-08-minimax-generation-providers
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-08 plan adding MiniMax as an env-selected provider to the image/video/podcast generation skills via a _resolve_provider precedence helper (skill-level override > existing provider credentials > MINIMAX_API_KEY) and creating a new music-generation skill, with mocked pytest coverage at repo-root tests/skills/ and a frontend mock-list entry
+archived-reason: substantially implemented and since evolved — image and video provider selection, the music-generation skill (skills/public/image-generation, skills/public/video-generation, skills/public/music-generation), the frontend mock-list entry (frontend/src/app/mock/api/skills/route.ts), and tests/skills/ all exist in this candidate; image has since gained a third OpenAI-compatible fallback (IMAGE_GENERATION_API_KEY) beyond this plan's Gemini/MiniMax pair; Task 3's podcast MiniMax conversion never landed (skills/public/podcast-generation/scripts/generate.py has no MiniMax path or _resolve_tts_provider); Task 4's scaffolding command references skills/public/skill-creator/scripts/init_skill.py, which no longer exists; companion design record is docs/superpowers/specs/2026-06-08-minimax-generation-providers-design.md
+---
+
 # MiniMax 接入生成类 Skill 实施计划
+
+> **状态：archived（2026-06-08 实施计划；2026-10-04 归档核对）。** 本计划的大部分任务已落地（image/video/music、前端注册、`tests/skills/`），其中 image 后续新增了 OpenAI 兼容回退，超出本计划范围；Task 3 的 podcast MiniMax 转换未落地，Task 4 引用的 skill-creator 脚手架脚本已不存在。落地详情见上方 frontmatter `archived-reason`；现行实现以 `skills/public/*-generation/` 各脚本及其 SKILL.md 为准，以下正文按 2026-06-08 原稿保留。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

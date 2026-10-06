@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-ai-code-validation-executive-summary
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 执行摘要：frontend-validator / backend-validator / qa-tester / validation-orchestrator 四 skill 分工、能力缺口清单、统一编排方案与 Phase 1-4 完成勾选表（2026-06 validator skill 体系建设期）
+archived-reason: 描述已归档的 validator/orchestrator skill 设计——根 AGENTS.md 明确其为历史方案、当前工作树不可调用，.claude/skills/ 下亦无对应目录；无同名现行替代。现行测试权威：docs/testing/coverage-matrix.md（覆盖矩阵）、docs/testing-guidelines.md（测试规范）、docs/testing/test-lane-runbook.md（测试车道）。正文按历史记录保留
+---
+
 # AI 生成代码全流程测试验证 — 执行摘要
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-10 时点摘要，正文按当时候选保留；validator 与 orchestrator 为历史设计，非当前可调用技能）；current testing authority: `docs/testing/coverage-matrix.md`
 
 ## 文档信息
 

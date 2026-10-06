@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-validation-log
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: 2026-06-09 workflow 缺陷修复三轮验证记录：第 1 轮 19 项、第 2 轮 3 项、第 3 轮 6 项 BUG 修复清单，各轮 lint/测试通过计数与涉及文件（后端 304→4085 测试的当时候选数据）
+archived-reason: 时点验证证据——三轮全绿记录对应 2026-06-09 候选，测试计数与文件路径不代表当前状态。现行测试权威：docs/testing/coverage-matrix.md，迁移记录：docs/testing/test-migration-ledger.md。正文按历史记录保留
+---
+
 # Validation Log
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-09 三轮验证时点记录，计数与文件路径按当时候选保留）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 每轮修复后的验证记录
 

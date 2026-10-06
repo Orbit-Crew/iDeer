@@ -295,6 +295,8 @@ import { useThread } from "@/components/workspace/messages/context";
 import { fetch } from "@/core/api/fetcher";
 import { useModels } from "@/core/models/hooks";
 
+import { makeTurnSubmitTestController } from "./turn-submit-test-stub";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -324,7 +326,7 @@ function defaultProps(overrides: Record<string, any> = {}) {
   return {
     context: makeContext(),
     threadId: "thread-1",
-    onSubmit: vi.fn(),
+    turnSubmit: makeTurnSubmitTestController().controller,
     onStop: vi.fn(),
     onContextChange: vi.fn(),
     onFollowupsVisibilityChange: vi.fn(),

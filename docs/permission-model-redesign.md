@@ -1,12 +1,29 @@
+---
+id: docs-permission-model-redesign
+kind: reference
+status: current
+owner: security and platform maintainers
+scope: resource permission model implementation contract: visibility semantics, approval flow, admin lifecycle rules, and the 2026-07 DB/API/frontend/migration design baseline annotated against resource governance V2
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ a10117aaf
+---
 # 资源管理体系 — 权限模型重构（主参考文档）
 
 > audience: developers, security reviewers, maintainers<br>
 > status: current<br>
 > owner: security and platform maintainers<br>
-> last-verified: 2026-07-15<br>
+> last-verified: 2026-10-04<br>
 > canonical-path: `docs/permission-model-redesign.md`
 
 > 本文档整合了权限模型定义、数据库设计、API 规范、迁移方案。历史审计与验证结论见 [`docs/archive/2026/permission/permission-model-audit-2026-07-05.md`](archive/2026/permission/permission-model-audit-2026-07-05.md)，当前遗留待办见 [`docs/backlog.md`](backlog.md)。
+
+> **实现状态注记（2026-10-04 核对，对照候选 `a10117aaf`）**：第一章权限规则与审批语义仍是现行契约（`docs/agents/task-routing.md` 路由、`docs/project-state.md` §2 引用），已对照 `backend/app/gateway/authz.py` 核实——`check_resource_modify` 仅 owner 可改（无 admin 直改），`check_resource_access` 按 super_admin / owner / public / department / private 顺序判定，与 §4 一致。其余各节为 2026-07 设计基线，与当前实现存在差异：
+> - §0「与现有代码的主要差异」表中"现有行为"列指 2026-07 重构前状态（历史记录）；其"目标行为"列已落地（legacy `/api/admin/skill-applications` 返回 410 Gone，见 `backend/app/gateway/routers/admin_skill_applications.py`）。
+> - 第二章表结构为设计基线：实际模型见 `backend/app/agentplatform/resource_models.py`（`resource_metadata` 实际含 `is_favorited`、无 `deleted_at` 软删列）、`visibility_models.py`（`visibility_applications` 增 `canonical_resource_id`/`requested_version`/`requested_hash`）、`audit_model.py`（`audit_logs`）；资源治理 V2 另有 `resources`/`resource_versions`/`resource_dependencies`/`run_resource_snapshots`/`resource_favorites`/`resource_notifications`/`resource_drafts` 表。
+> - 第三章 API 为 2026-07 基线：统一资源入口已由[资源治理 V2 决策](decisions/2026-08-14-resource-governance-v2.md)定为 `/api/resources`（`backend/app/gateway/routers/resources.py`，cutover 2026-08-15~17 删除旧名称路由，见 [cutover 记录](governance/resource-governance-v2-cutover.md)）；`/api/tools` 当前仅有列表/详情/测试端点（`tools.py`），未实现 §3.4.1/§3.4.3 的 POST 创建与 DELETE 删除；§3.7 visibility 审批与 §3.8 审计日志路由与当前实现一致。
+> - 第四章前端页面为设计基线，未逐页复验（unverified）。
+> - 第五章迁移方案为已执行的历史记录（对应 `backend/app/agentplatform/persistence/migrations/versions/` 与 `persistence/scripts/migrate_meta_json.py`、`migrate_skill_applications.py`），文中路径与行号按记录原文保留。
+> - §9 管理员人数上限（超管 ≤2、部门管理员 ≤3）当前代码未见强制，属 [backlog](backlog.md) PERM-01 范畴（与 [permission-matrix](permission-matrix.md) 注记一致）。
 
 | 版本 | 日期 | 作者 | 变更说明 |
 |------|------|------|---------|
@@ -14,6 +31,7 @@
 | v1.1 | 2025-07-03 | — | 审查修订：明确实施范围、与现有代码差异、Tool 仅记录元数据、审计/通知延后 |
 | v1.2 | 2025-07-03 | — | 审阅修订：支持 visibility 升降级、Tool CRUD 第二期纳入、Tool 配置仅 owner、dept_admin 不保留隐式权限、导出 ZIP 格式、安全扫描延后 |
 | v1.3 | 2026-07-06 | — | 对抗式审查修订：增加设计原则例外条款（§2-9）、继承托管模式（§8.2）、Tool CRUD 提升至第一期、audit_logs 提升至第一期、修正实施范围 |
+| v1.4 | 2026-10-04 | — | 文档治理审查：加 frontmatter 与实现状态注记；核对第一章规则与 authz.py 一致；标注第二~五章相对资源治理 V2 的基线状态；修复目录锚点 |
 
 ---
 
@@ -56,8 +74,8 @@
 - [五、数据迁移方案](#五数据迁移方案)
   - [5.1 迁移总览](#51-迁移总览)
   - [5.2 Phase 1：创建新表](#52-phase-1创建新表)
-  - [5.3 Phase 2：迁移 .meta.json → resource_metadata](#53-phase-2迁移-metajson--resource_metadata)
-  - [5.4 Phase 3：迁移 skill_applications → visibility_applications](#54-phase-3迁移-skill_applications--visibility_applications)
+  - [5.3 Phase 2：迁移 .meta.json → resource_metadata](#53-phase-2迁移-metajson--resourcemetadata)
+  - [5.4 Phase 3：迁移 skill_applications → visibility_applications](#54-phase-3迁移-skillapplications--visibilityapplications)
   - [5.5 Phase 4：废弃旧表](#55-phase-4废弃旧表)
   - [5.6 Phase 5：后端代码重构](#56-phase-5后端代码重构)
   - [5.7 Phase 6：前端页面改造](#57-phase-6前端页面改造)

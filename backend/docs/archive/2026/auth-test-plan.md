@@ -1,7 +1,16 @@
+---
+id: backend-docs-archive-2026-auth-test-plan
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: frozen revision of the auth module test plan for the 2026-04 2.0-rc release-validation candidate, updated through the 2026-05/06 auth user-isolation (#2913) and LangGraph-server cleanup (#3301) passes: dual-mode startup matrix, TC-API/ATK/UI/UPG/REENT/MODE/GW/DOCKER/EDGE and red-team cases, and the section-八 regression list of that period
+archived-reason: point-in-time revision archived 2026-07-15; the maintained runbook successor is backend/docs/AUTH_TEST_PLAN.md (unified Gateway runtime, backend/.deer-flow paths), and the make dev-pro / serve.sh --gateway / deploy.sh --gateway modes and standalone LangGraph service on port 2024 documented here no longer exist
+---
+
 # Auth 模块测试计划
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
-> source date: 2026
+> status: archived; maintained successor: `backend/docs/AUTH_TEST_PLAN.md`; current test-layer mapping authority: `docs/testing/coverage-matrix.md`
+> applicable period: 2026-04 2.0-rc release-validation candidate through the 2026-06 rebrand; commands and paths below reflect that era (`make dev-pro`, standalone LangGraph service on port 2024, `backend/.ideer/data/ideer.db`) and no longer match the current candidate
 > canonical-path: `backend/docs/archive/2026/auth-test-plan.md`
 
 ## 测试矩阵

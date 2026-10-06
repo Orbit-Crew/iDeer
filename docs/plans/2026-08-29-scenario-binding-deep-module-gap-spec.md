@@ -1,4 +1,15 @@
+---
+id: docs-plans-2026-08-29-scenario-binding-deep-module-gap-spec
+kind: plan
+status: archived
+owner: engineering maintainers
+scope: architecture-only gap spec deepening the scenario cascade behind one Scenario Binding module (useScenarioBinding seam, single registry, unified ChipBar with roving tab index), removing two dead bars, and recording which earlier PRD sections were superseded
+archived-reason: refactor landed — frontend/src/core/scenarios/binding.ts exposes useScenarioBinding, a unified chip-bar.tsx carries useRovingTabIndex, FeatureChipBar/AgentOrSkillBar are gone, and the legacy adapters (getPillsByScenario, getTemplateForChip) remain only as the one-release compatibility wrappers whose deletion is still an open follow-up
+---
+
 # Gap Spec — Scenario Binding Deep Module (supplement to #2/#6, not overlapping)
+
+> status: archived（重构已落地）。2026-10-04 核对：`useScenarioBinding`（`frontend/src/core/scenarios/binding.ts`）、统一 `chip-bar.tsx`（含 `useRovingTabIndex`）已在候选中，`FeatureChipBar`/`AgentOrSkillBar` 已移除；遗留适配器（`getPillsByScenario`、`getTemplateForChip`）按 Q8 保留待后续工单删除。
 
 > audience: developers, maintainers
 > status: ready-for-agent — gap supplement, does not duplicate #2–#7 feature scope

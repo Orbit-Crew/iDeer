@@ -1,3 +1,13 @@
+---
+id: backend-docs-setup
+kind: reference
+status: current
+owner: repository maintainers
+scope: quick configuration setup for a local backend deployment
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Setup Guide
 
 Quick setup instructions for iDeer.
@@ -24,7 +34,7 @@ iDeer uses a YAML configuration file that should be placed in the **project root
    export OPENAI_API_KEY="your-key-here"
 
    # Optional: pin the project root when running from another directory
-   export IDEER_PROJECT_ROOT="/path/to/ideer"
+   export DEER_FLOW_PROJECT_ROOT="/path/to/ideer"
 
    # Option B: Edit config.yaml directly
    vim config.yaml  # or your preferred editor
@@ -33,31 +43,31 @@ iDeer uses a YAML configuration file that should be placed in the **project root
 4. **Verify configuration**:
    ```bash
    cd backend
-   python -c "from ideer.config import get_app_config; print('✓ Config loaded:', get_app_config().models[0].name)"
+   python -c "from deerflow.config import get_app_config; print('✓ Config loaded:', get_app_config().models[0].name)"
    ```
 
 ## Important Notes
 
-- **Location**: `config.yaml` should be in `ideer/` (project root)
+- **Location**: `config.yaml` should be in the project root (next to `config.example.yaml`)
 - **Git**: `config.yaml` is automatically ignored by git (contains secrets)
-- **Runtime root**: Set `IDEER_PROJECT_ROOT` if iDeer may start from outside the project root
-- **Runtime data**: State defaults to `.deer-flow` under the project root; set `IDEER_HOME` to move it
-- **Skills**: Skills default to `skills/` under the project root; set `IDEER_SKILLS_PATH` or `skills.path` to move them
+- **Runtime root**: Set `DEER_FLOW_PROJECT_ROOT` if iDeer may start from outside the project root
+- **Runtime data**: State defaults to `.deer-flow` under the project root; set `DEER_FLOW_HOME` to move it
+- **Skills**: Skills default to `skills/` under the project root; set `DEER_FLOW_SKILLS_PATH` or `skills.path` to move them
 
 ## Configuration File Locations
 
 The backend searches for `config.yaml` in this order:
 
 1. Explicit `config_path` argument from code
-2. `IDEER_CONFIG_PATH` environment variable (if set)
-3. `config.yaml` under `IDEER_PROJECT_ROOT`, or the current working directory when `IDEER_PROJECT_ROOT` is unset
+2. `DEER_FLOW_CONFIG_PATH` environment variable (if set)
+3. `config.yaml` under `DEER_FLOW_PROJECT_ROOT`, or the current working directory when `DEER_FLOW_PROJECT_ROOT` is unset
 4. Legacy backend/repository-root locations for monorepo compatibility
 
-**Recommended**: Place `config.yaml` in project root (`ideer/config.yaml`).
+**Recommended**: Place `config.yaml` in project root.
 
 ## Sandbox Setup (Optional but Recommended)
 
-If you plan to use Docker/Container-based sandbox (configured in `config.yaml` under `sandbox.use: ideer.community.aio_sandbox:AioSandboxProvider`), it's highly recommended to pre-pull the container image:
+If you plan to use Docker/Container-based sandbox (configured in `config.yaml` under `sandbox.use: deerflow.community.aio_sandbox:AioSandboxProvider`), it's highly recommended to pre-pull the container image:
 
 ```bash
 # From project root
@@ -77,13 +87,13 @@ If you skip this step, the image will be automatically pulled on first agent exe
 
 ```bash
 # Check where the backend is looking
-cd ideer/backend
-python -c "from ideer.config.app_config import AppConfig; print(AppConfig.resolve_config_path())"
+cd backend
+python -c "from deerflow.config.app_config import AppConfig; print(AppConfig.resolve_config_path())"
 ```
 
 If it can't find the config:
 1. Ensure you've copied `config.example.yaml` to `config.yaml`
-2. Verify you're in the project root, or set `IDEER_PROJECT_ROOT`
+2. Verify you're in the project root, or set `DEER_FLOW_PROJECT_ROOT`
 3. Check the file exists: `ls -la config.yaml`
 
 ### Permission denied
@@ -95,4 +105,4 @@ chmod 600 ../config.yaml  # Protect sensitive configuration
 ## See Also
 
 - [Configuration Guide](CONFIGURATION.md) - Detailed configuration options
-- [Architecture Overview](../CLAUDE.md) - System architecture
+- [Architecture Overview](ARCHITECTURE.md) - System architecture

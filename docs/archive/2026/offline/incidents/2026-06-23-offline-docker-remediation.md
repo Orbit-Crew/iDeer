@@ -1,6 +1,19 @@
+---
+id: docs-archive-2026-offline-incidents-2026-06-23-offline-docker-remediation
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-05-27 制定的离线 Docker 部署整改方案（文件名日期为归档入册日期）：P0 运行时配置合同（env 命名、config.yaml 生成、内部鉴权 token、启动预检）、P1 可诊断性与会话稳定性（YAML 校验、健康检查、密钥持久化、作业指导书排障）、P2 打包清理（tar 排除、根部 compose、.claude/.codex 可选化）三阶段 11 项任务，附提交拆分与回归验证清单
+archived-reason: 已执行的时点整改计划，主要任务已在现行脚本/compose 落地（见正文头部 historical facts），按历史计划保留；现行内网部署权威：scripts/README-intranet.md、docs/deployment/禁公网内网离线部署作业指导书.md
+---
+
 # 离线 Docker 部署整改方案
 
 日期：2026-05-27
+
+> status: archived; current intranet deployment authorities: `scripts/README-intranet.md`、`docs/deployment/禁公网内网离线部署作业指导书.md`
+> source period: 2026-05-27 整改时点的候选（正文日期为准；文件名日期为归档入册日期）
+> historical facts（2026-10-04 对照当前候选抽查核对）：正文按当时状态保留。落地情况抽查：任务 1 已落地（compose 前端 env_file 为强依赖 `${IDEER_FRONTEND_ENV_FILE:?...}`，`env.intranet` 写入 `IDEER_FRONTEND_ENV_FILE=$RUNTIME_DIR/frontend.env`）；任务 2 以"prepare 生成 `models: []`"路径落地（`config.example.yaml` 模板未改）；任务 3 已落地（intranet compose 注入 `IDEER_INTERNAL_AUTH_TOKEN`，持久化于 `runtime/data/.internal-auth-token`）；任务 4 已落地（现行 `validate_runtime()` + `require_file()`/`seed_file()` 预检，函数名与正文草案不同）；任务 5/8 已落地（作业指导书含 `models must be a list` 与 `runtime/frontend.env` 排障内容）；任务 7 已落地（`runtime/data/.better-auth-secret`）；任务 9 已落地（tar 排除 `frontend/.env`、`frontend/test-results`、`frontend/playwright-report`、`backend/.ruff_cache`）；任务 11 已落地（intranet compose 已无 `.claude`/`.codex` 默认挂载）；compose 三服务 healthcheck 已存在。任务 10 所述 `MANIFEST.txt` 提示的落地形式未逐项核对（unverified），以现行 `scripts/package-intranet-offline.sh` 产物为准。
 
 ## 目标
 

@@ -1,3 +1,12 @@
+---
+id: docs-backlog
+kind: index
+status: current
+owner: repository maintainers
+scope: single entry table of current unfinished work (DOC, PERM, SRS items) with owners, status, and acceptance criteria
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+---
 # 当前工程待办
 
 > audience: maintainers, developers, operators<br>

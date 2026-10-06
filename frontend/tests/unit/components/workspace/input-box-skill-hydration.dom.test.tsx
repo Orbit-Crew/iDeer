@@ -10,6 +10,8 @@ import { DEFAULT_LOCALE } from "@/core/i18n";
 import { I18nProvider } from "@/core/i18n/context";
 import { buildComposerDraftKey } from "@/core/threads/composer-draft";
 
+import { makeTurnSubmitTestController } from "./turn-submit-test-stub";
+
 const skillState = rs.hoisted(() => ({
   skills: [
     {
@@ -21,6 +23,7 @@ const skillState = rs.hoisted(() => ({
       editable: false,
     },
   ],
+  isLoading: false,
 }));
 
 rs.mock("next/navigation", () => ({
@@ -43,7 +46,7 @@ rs.mock("@/core/models/hooks", () => ({
 rs.mock("@/core/skills/hooks", () => ({
   useSkills: () => ({
     skills: skillState.skills,
-    isLoading: false,
+    isLoading: skillState.isLoading,
     error: null,
   }),
 }));
@@ -54,13 +57,7 @@ const draftKey = buildComposerDraftKey({
   threadId: "thread-1",
 });
 
-function renderComposer({
-  agentSkillsLoading,
-  agentSkillNames,
-}: {
-  agentSkillsLoading: boolean;
-  agentSkillNames?: string[] | null;
-}) {
+function renderComposer(allowedSkillNames?: readonly string[]) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -83,9 +80,9 @@ function renderComposer({
               <InputBox
                 threadId="thread-1"
                 draftAgentName="researcher"
-                agentSkillNames={agentSkillNames}
-                agentSkillsLoading={agentSkillsLoading}
+                allowedSkillNames={allowedSkillNames}
                 context={{ mode: "flash" } as never}
+                turnSubmit={makeTurnSubmitTestController().controller}
               />
             </PromptInputProvider>
           </ThreadContext.Provider>
@@ -101,17 +98,15 @@ afterEach(() => {
   cleanup();
 });
 
-describe("InputBox agent skill draft hydration", () => {
-  it("waits for the agent scope before restoring a saved skill chip", async () => {
+describe("InputBox skill draft hydration", () => {
+  it("waits for the skill catalog before restoring a saved skill chip", async () => {
     window.sessionStorage.setItem(
       draftKey,
       JSON.stringify({ version: 1, text: "topic", skillName: "research" }),
     );
+    skillState.isLoading = true;
 
-    const view = renderComposer({
-      agentSkillsLoading: true,
-      agentSkillNames: undefined,
-    });
+    const view = renderComposer(["research"]);
 
     expect(
       screen.queryByRole("button", { name: "Remove /research" }),
@@ -120,6 +115,7 @@ describe("InputBox agent skill draft hydration", () => {
       '"skillName":"research"',
     );
 
+    skillState.isLoading = false;
     view.rerender(
       <I18nProvider initialLocale={DEFAULT_LOCALE}>
         <QueryClientProvider
@@ -148,9 +144,9 @@ describe("InputBox agent skill draft hydration", () => {
                 <InputBox
                   threadId="thread-1"
                   draftAgentName="researcher"
-                  agentSkillNames={["research"]}
-                  agentSkillsLoading={false}
+                  allowedSkillNames={["research"]}
                   context={{ mode: "flash" } as never}
+                  turnSubmit={makeTurnSubmitTestController().controller}
                 />
               </PromptInputProvider>
             </ThreadContext.Provider>
@@ -167,21 +163,34 @@ describe("InputBox agent skill draft hydration", () => {
     expect(screen.getByRole("textbox").textContent).toBe("topic");
   });
 
-  it("preserves inherit semantics when an agent fetch fails", async () => {
+  it("preserves inherit semantics when no allowlist is set", async () => {
     window.sessionStorage.setItem(
       draftKey,
       JSON.stringify({ version: 1, text: "topic", skillName: "research" }),
     );
 
-    renderComposer({
-      agentSkillsLoading: false,
-      agentSkillNames: undefined,
-    });
+    renderComposer(undefined);
 
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Remove /research" }),
       ).toBeTruthy();
     });
+  });
+
+  it("folds the saved skill back into editable text when it is not offerable", async () => {
+    window.sessionStorage.setItem(
+      draftKey,
+      JSON.stringify({ version: 1, text: "topic", skillName: "research" }),
+    );
+
+    renderComposer(["other-skill"]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("textbox").textContent).toBe("/research topic");
+    });
+    expect(
+      screen.queryByRole("button", { name: "Remove /research" }),
+    ).toBeNull();
   });
 });

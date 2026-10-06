@@ -1,0 +1,158 @@
+# iDeer docker image cache
+docker/.cache/
+# oh-my-claudecode state
+.omc/
+# OS generated files
+.DS_Store
+*.local
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+bench_results.jsonl
+bench_optimized.jsonl
+results.jsonl
+backend/scripts/benchmark/*.jsonl
+coverage.json
+
+# Virtual environments
+.venv
+venv/
+
+# Environment variables
+.env
+
+# Configuration files
+config.yaml
+!docs/fault-zeroing-agent/agent/config.yaml
+!docs/srs-writing-agent/agent/config.yaml
+!resources/agents/*/config.yaml
+mcp_config.json
+extensions_config.json
+
+# IDE
+.idea/
+.vscode/
+
+# Tool caches
+.gitnexus/
+.mimocode/
+.agent/
+
+# Development working logs (keep local only, never commit)
+/dev-log/
+task_plan.md
+progress.md
+findings.md
+coverage.json
+backend/.test_durations
+*.qodo-cover.json
+pr-build/
+.opencode/
+.agents/
+
+# Backup files
+*.bak
+
+# Coverage report
+coverage.xml
+coverage/
+.ideer/
+.claude/
+# Windows ADS junk copied alongside skills (never track)
+*:Zone.Identifier*
+logs/
+!docs/fault-zeroing-agent/samples/**/logs/
+!docs/fault-zeroing-agent/samples/**/logs/**
+# Generated sample artifacts (regenerate via samples/generate_samples.py)
+docs/srs-writing-agent/samples/*.docx
+docs/srs-writing-agent/samples/*.pdf
+log/
+debug.log
+
+# Local git hooks (keep only on this machine, do not push)
+.githooks/
+
+# pnpm
+.pnpm-store
+sandbox_image_cache.tar
+
+# ignore the legacy `web` folder
+web/
+
+# Deployment artifacts
+dist/
+backend/Dockerfile.langgraph
+config.yaml.bak
+.playwright-mcp
+/frontend/test-results/
+/frontend/playwright-artifacts/
+/frontend/report/
+/frontend/tests/test-results/
+/frontend/playwright-report/
+.gstack/
+.worktrees
+backend/data/
+
+# WSL browser profiles
+frontend/\\\\wsl.localhost\\*
+
+# Fault-zeroing workflow runtime outputs
+docs/zero_agent_eval_cases/outputs/
+
+# Temporary / scratch
+.scratch/
+temp/
+.monocle/
+.entry-parity-routes.txt
+
+# Local runtime data (contains .jwt_secret and per-user state; never track)
+.deer-flow/
+
+# Tool state directories
+.ua/
+.workbuddy/
+.zcode/
+
+# Root-level dependency and test artifacts
+node_modules/
+/test-results/
+frontend/dev-log/
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+site-packages/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

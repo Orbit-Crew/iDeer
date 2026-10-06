@@ -1,131 +1,21 @@
-# Agents Architecture
+# Frontend guidance
 
-## Overview
+Next.js App Router + React + TypeScript. Routes in `src/app/`, UI in `src/components/`, domain logic in `src/core/`, tests mirror `src/` under `tests/unit/` (Vitest) and `tests/e2e/` (Playwright). Follow the root test selection policy; read `src/AGENTS.md` before changing data-flow, messaging, or thread state.
 
-iDeer is built on a sophisticated agent-based architecture using the [LangGraph SDK](https://github.com/langchain-ai/langgraph) to enable intelligent, stateful AI interactions. This document outlines the agent system architecture, patterns, and best practices for working with agents in the frontend application.
+## Ownership
 
-## Architecture Overview
+`src/core/threads/use-thread-page.ts` owns the shared chat-route wiring (stream wiring, welcome state, empty-thread redirect, stop/branch/regenerate, view turn-submit controller); the showcase chat, workspace chat, and agent chat routes are views over it. `src/app/workspace/chats/[thread_id]/page.tsx` owns composer busy state. `src/core/threads/turn-submit.ts` owns the message submit chain (duplicate fence, draft policy, attachment pre-uploads, turn lifecycle); the composer and chat pages are views over its controller, and `src/core/threads/hooks.ts` owns streaming while joining the shared fence through `turnSubmitGate`. Keep new shared chat-route wiring in the thread-page hook, and new submit-chain state and effects in the turn-submit module — not in the composer, pages, or stream hooks.
 
-### Core Components
+`src/components/ui/` and `src/components/ai-elements/` contain generated components. Change their source registry or generation input instead of editing generated output by hand. Keep server components as the default and add `"use client"` only where browser interaction or client state requires it.
 
-```
-┌────────────────────────────────────────────────────────┐
-│                    Frontend (Next.js)                  │
-├────────────────────────────────────────────────────────┤
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────┐  │
-│  │ UI Components│───▶│ Thread Hooks │───▶│ LangGraph│  │
-│  │              │    │              │    │   SDK    │  │
-│  └──────────────┘    └──────────────┘    └──────────┘  │
-│         │                    │                  │      │
-│         │                    ▼                  │      │
-│         │            ┌──────────────┐           │      │
-│         └───────────▶│ Thread State │◀──────────┘      │
-│                      │  Management  │                  │
-│                      └──────────────┘                  │
-└────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌────────────────────────────────────────────────────────┐
-│              LangGraph Backend (lead_agent)            │
-│  ┌────────────┐  ┌──────────┐  ┌───────────────────┐   │
-│  │Main Agent  │─▶│Sub-Agents│─▶│  Tools & Skills   │   │
-│  └────────────┘  └──────────┘  └───────────────────┘   │
-└────────────────────────────────────────────────────────┘
-```
+## Environment & dependencies
 
-## Project Structure
+`pnpm-workspace.yaml` overrides vulnerable `@xmldom/xmldom` 0.9.x releases to 0.9.12 for GHSA-965w-775f-mr7g. Nextra pulls it in through MathJax and `speech-rule-engine@4.1.2`, which pins 0.9.8. Keep the override until the upstream dependency chain resolves a patched version without it; regenerate `pnpm-lock.yaml` and verify the docs build when changing this constraint.
 
-```
-tests/
-├── e2e/                    # E2E tests (Playwright, Chromium, mocked backend)
-└── unit/                   # Unit tests (mirrors src/ layout, powered by Vitest)
-src/
-├── app/                    # Next.js App Router pages
-│   ├── api/                # API routes
-│   ├── workspace/          # Main workspace pages
-│   └── mock/               # Mock/demo pages
-├── components/             # React components
-│   ├── ui/                 # Reusable UI components
-│   ├── workspace/          # Workspace-specific components
-│   ├── landing/            # Landing page components
-│   └── ai-elements/        # AI-related UI elements
-├── core/                   # Core business logic
-│   ├── api/                # API client & data fetching
-│   ├── artifacts/          # Artifact management
-│   ├── config/              # App configuration
-│   ├── i18n/               # Internationalization
-│   ├── mcp/                # MCP integration
-│   ├── messages/           # Message handling
-│   ├── models/             # Data models & types
-│   ├── settings/           # User settings
-│   ├── skills/             # Skills system
-│   ├── threads/            # Thread management
-│   ├── todos/              # Todo system
-│   └── utils/              # Utility functions
-├── hooks/                  # Custom React hooks
-├── lib/                    # Shared libraries & utilities
-├── server/                 # Server-side authentication code
-│   └── better-auth/        # Authentication setup
-└── styles/                 # Global styles
-```
+Backend API URLs are optional; the nginx proxy is used by default. Leave `NEXT_PUBLIC_LANGGRAPH_BASE_URL` and `NEXT_PUBLIC_BACKEND_BASE_URL` unset for the standard `make dev` / Docker flow, where nginx serves the public `/api/langgraph/*` prefix and rewrites it to Gateway's native `/api/*` routes.
 
-### Technology Stack
+## Tests & conventions
 
-- **LangGraph SDK** (`@langchain/langgraph-sdk@1.5.3`) - Agent orchestration and streaming
-- **LangChain Core** (`@langchain/core@1.1.15`) - Fundamental AI building blocks
-- **TanStack Query** (`@tanstack/react-query@5.90.17`) - Server state management
-- **React Hooks** - Thread lifecycle and state management
-- **Shadcn UI** - UI components
-- **MagicUI** - Magic UI components
-- **React Bits** - React bits components
-
-### Interaction Ownership
-
-- `src/app/workspace/chats/[thread_id]/page.tsx` owns composer busy-state wiring.
-- `src/core/threads/hooks.ts` owns pre-submit upload state and thread submission.
-- `src/hooks/usePoseStream.ts` is a passive store selector; global WebSocket lifecycle stays in `App.tsx`.
-
-### Environment & Dependency Notes
-
-`pnpm-workspace.yaml` overrides vulnerable `@xmldom/xmldom` 0.9.x releases to
-0.9.12 for GHSA-965w-775f-mr7g. Nextra pulls it in through MathJax and
-`speech-rule-engine@4.1.2`, which pins 0.9.8. Keep the override until the
-upstream dependency chain resolves a patched version without it; regenerate
-`pnpm-lock.yaml` and verify the docs build when changing this constraint.
-
-Backend API URLs are optional; the nginx proxy is used by default. Leave
-`NEXT_PUBLIC_LANGGRAPH_BASE_URL` and `NEXT_PUBLIC_BACKEND_BASE_URL` unset for the
-standard `make dev` / Docker flow, where nginx serves the public `/api/langgraph/*`
-prefix and rewrites it to Gateway's native `/api/*` routes.
-
-## Resources
-
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [LangChain Core Concepts](https://js.langchain.com/docs/concepts)
-- [TanStack Query Documentation](https://tanstack.com/query/latest)
-- [Next.js App Router](https://nextjs.org/docs/app)
-
-## Contributing
-
-When adding new agent features:
-
-1. Follow the established project structure
-2. Add comprehensive TypeScript types
-3. Implement proper error handling
-4. Write unit tests under `tests/unit/` (run with `pnpm test`) and E2E tests under `tests/e2e/` (run with `pnpm test:e2e`)
-5. Update this documentation
-6. Follow the code style guide (ESLint + Prettier)
-
-## License
-
-This agent architecture is part of the iDeer project.
-
-## Active ownership rules
-
-`src/app/workspace/chats/[thread_id]/page.tsx` owns chat-page composer busy state. `src/core/threads/hooks.ts` owns pre-submit upload state and thread submission. `src/hooks/usePoseStream.ts` only selects from the store; `App.tsx` owns the global WebSocket lifecycle. Keep new state and effects with the existing owner.
-
-`ui/` and `ai-elements/` contain generated components. Change their source registry or generation input instead of editing generated output by hand. Keep server components as the default and add `"use client"` only where browser interaction or client state requires it.
-
-Follow the root test selection policy. Preserve the repository's Rstest/Vitest allocation and run the focused test plus the narrowest relevant check for each local slice. Use the frontend standard lane at implementation completion; use `pr-standard` for cross-stack and high-risk changes.
+Preserve the repository's Rstest/Vitest allocation and run the focused test plus the narrowest relevant check for each local slice. Use the frontend standard lane at implementation completion; use `pr-standard` for cross-stack and high-risk changes. Running a single test file: `pnpm vitest run <file>` for the default Vitest include, `pnpm rstest run <file>` for `*.dom.test.tsx` and the other Rstest-only suites — matching the runner to the file avoids the "No test files found" dead end.
 
 Use `@/*` for `src/*` imports and inline type imports. Keep import groups ordered by the existing ESLint rules, prefix intentionally unused variables with `_`, and use `cn()` from `@/lib/utils` for conditional Tailwind classes. Obtain the LangGraph singleton through `getAPIClient()`; thread hooks own streaming. TanStack Query owns server state, including `core/knowledge-admin/hooks.ts`; localStorage owns user settings. Validate environment variables through `src/env.js`. Auth server code in `src/server/` is active.

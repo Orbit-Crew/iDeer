@@ -1,19 +1,19 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, cleanup, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const {
   mockUseThreadChat,
-  mockUseThreadStream,
   mockUseSpecificChatMode,
-  mockShowNotification,
   mockLastInputBoxProps,
-  mockTextOfMessage,
-  mockEnvValues,
   mockLastScenarioCascadeProps,
   mockUseAgents,
   mockUseAgent,
   mockUseSkills,
   mockUseThreads,
+  mockUseThreadPage,
+  mockLastMessageListProps,
+  mockEnvValues,
 } = vi.hoisted(() => ({
   mockUseThreadChat: vi.fn().mockReturnValue({
     threadId: "test-thread",
@@ -22,33 +22,16 @@ const {
     setIsNewThread: vi.fn(),
     isMock: false,
   }),
-  mockUseThreadStream: vi.fn().mockReturnValue({
-    thread: {
-      messages: [],
-      isLoading: false,
-      isThreadLoading: false,
-      error: null,
-      values: {},
-      stop: vi.fn(),
-      getMessagesMetadata: vi.fn(),
-    },
-    pendingUsageMessages: [],
-    sendMessage: vi.fn(),
-    isUploading: false,
-    isHistoryLoading: false,
-    hasMoreHistory: false,
-    loadMoreHistory: vi.fn(),
-  }),
   mockUseSpecificChatMode: vi.fn(),
-  mockShowNotification: vi.fn(),
   mockLastInputBoxProps: { current: null as any },
-  mockTextOfMessage: vi.fn().mockReturnValue(""),
-  mockEnvValues: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "false" },
   mockLastScenarioCascadeProps: { current: null as any },
   mockUseAgents: vi.fn().mockReturnValue({ agents: [] }),
   mockUseAgent: vi.fn().mockReturnValue({ agent: null }),
   mockUseSkills: vi.fn().mockReturnValue({ skills: [] }),
   mockUseThreads: vi.fn().mockReturnValue({ data: [] }),
+  mockUseThreadPage: vi.fn(),
+  mockLastMessageListProps: { current: null as any },
+  mockEnvValues: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "false" },
 }));
 
 let mockSearchParams = new URLSearchParams();
@@ -72,6 +55,17 @@ vi.mock("@/core/i18n/hooks", () => ({
       common: {
         loading: "Loading...",
         notAvailableInDemoMode: "Not available in demo",
+      },
+      workbench: {
+        recentTasks: "最近任务",
+        reviewQuestion: "工作复盘？",
+        reviewAnswer: "iDeer带你回到过去",
+        defaultTaskType: "对话任务",
+        defaultStatus: "进行中",
+        exploreQuestion: "方向不明？",
+        exploreAnswer: "iDeer帮你找对帮手",
+        focusQuestion: "目标明确？",
+        focusAnswer: "iDeer帮你落地实现",
       },
       inputBox: { disclaimer: "内容由AI生成，重要信息请务必核查" },
       sidebar: { scheduledTasks: "Scheduled tasks" },
@@ -127,7 +121,10 @@ vi.mock("@/components/workspace/input-box", () => ({
 }));
 
 vi.mock("@/components/workspace/messages", () => ({
-  MessageList: () => <div data-testid="message-list">Messages</div>,
+  MessageList: (props: any) => {
+    mockLastMessageListProps.current = props;
+    return <div data-testid="message-list">Messages</div>;
+  },
   MESSAGE_LIST_DEFAULT_PADDING_BOTTOM: 24,
 }));
 
@@ -176,37 +173,14 @@ vi.mock("@/core/skills/hooks", () => ({
   useSkills: () => mockUseSkills(),
 }));
 
-vi.mock("@/core/notification/hooks", () => ({
-  useNotification: () => ({ showNotification: mockShowNotification }),
-}));
-
 vi.mock("@/core/settings", () => ({
   useLocalSettings: () => [{ tokenUsage: { inlineMode: "off" } }, vi.fn()],
   useThreadSettings: () => [{ context: { mode: "flash" } }, vi.fn()],
 }));
 
 vi.mock("@/core/threads/hooks", () => ({
-  useThreadMetadata: () => ({ data: null }),
-  useThreadStream: (...args: any[]) => mockUseThreadStream(...args),
   useThreadTokenUsage: () => ({ data: null }),
   useThreads: () => mockUseThreads(),
-  useBranchThread: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ thread_id: "branch-thread" }),
-    isPending: false,
-  }),
-}));
-
-vi.mock("@/components/workspace/goal-status", () => ({
-  GoalStatus: () => <div data-testid="goal-status" />,
-}));
-
-const mockSetLocalGoal = vi.fn();
-vi.mock("@/components/workspace/use-active-goal", () => ({
-  useActiveGoal: () => ({
-    activeGoal: null,
-    hasGoal: false,
-    setLocalGoal: mockSetLocalGoal,
-  }),
 }));
 
 vi.mock("@/core/threads/token-usage", () => ({
@@ -214,9 +188,10 @@ vi.mock("@/core/threads/token-usage", () => ({
 }));
 
 vi.mock("@/core/threads/utils", () => ({
-  textOfMessage: (...args: any[]) => mockTextOfMessage(...args),
-  pathOfThread: (thread: { thread_id: string }) =>
-    `/workspace/chats/${thread.thread_id}`,
+  textOfMessage: (message: any) =>
+    typeof message?.content === "string" ? message.content : null,
+  pathOfThread: (thread: string | { thread_id: string }) =>
+    `/workspace/chats/${typeof thread === "string" ? thread : thread.thread_id}`,
   titleOfThread: (thread: { thread_id: string }) => thread.thread_id,
 }));
 
@@ -228,10 +203,55 @@ vi.mock("@/lib/utils", () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(" "),
 }));
 
+// The page seam (core/threads/use-thread-page) owns the stream wiring,
+// welcome state, empty-thread redirect, stop/branch/regenerate, and the
+// turn-submit controller; those assertions live in
+// tests/unit/core/threads/use-thread-page.test.tsx. This file asserts the
+// page is a correct view over the hook: the fixture reaches the right props,
+// and the page contributes its scenario selection through the seam's ports.
+function threadPageFixture(overrides: Record<string, any> = {}) {
+  return {
+    thread: {
+      messages: [],
+      isLoading: false,
+      isThreadLoading: false,
+      error: null,
+      values: {},
+      stop: vi.fn().mockResolvedValue(undefined),
+      getMessagesMetadata: vi.fn(),
+    },
+    pendingUsageMessages: [],
+    sendMessage: vi.fn().mockResolvedValue(undefined),
+    isUploading: false,
+    isHistoryLoading: false,
+    hasMoreHistory: false,
+    loadMoreHistory: vi.fn(),
+    isWelcomeMode: false,
+    threadMetadata: {
+      data: { values: { title: "Existing" } },
+      isLoading: false,
+      isFetching: false,
+    },
+    branchPending: false,
+    turnSubmit: {
+      submit: vi.fn().mockResolvedValue(undefined),
+      hasPendingSubmission: vi.fn().mockReturnValue(false),
+    },
+    handleStop: vi.fn().mockResolvedValue(undefined),
+    handleRegenerate: vi.fn(),
+    handleEditAndRegenerate: vi.fn(),
+    handleBranchTurn: vi.fn(),
+    ...overrides,
+  };
+}
+
+vi.mock("@/core/threads/use-thread-page", () => ({
+  useThreadPage: (...args: any[]) => mockUseThreadPage(...args),
+}));
+
 // A relative import: vite's resolver mangles the "@" alias for paths
 // containing bracketed (glob-special) segments like [thread_id].
 import ChatPage from "../../../../../../src/app/workspace/chats/[thread_id]/page";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 afterEach(() => {
   cleanup();
@@ -248,26 +268,10 @@ describe("ChatPage", () => {
       setIsNewThread: vi.fn(),
       isMock: false,
     });
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        isThreadLoading: false,
-        error: null,
-        values: {},
-        stop: vi.fn(),
-        getMessagesMetadata: vi.fn(),
-      },
-      pendingUsageMessages: [],
-      sendMessage: vi.fn(),
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
+    mockUseThreadPage.mockReturnValue(threadPageFixture());
     mockLastInputBoxProps.current = null;
     mockLastScenarioCascadeProps.current = null;
-    mockTextOfMessage.mockReturnValue("");
+    mockLastMessageListProps.current = null;
     mockUseSkills.mockReturnValue({ skills: [] });
     mockUseThreads.mockReturnValue({ data: [] });
   });
@@ -346,20 +350,17 @@ describe("ChatPage", () => {
   });
 
   test("renders todo list when todos exist", () => {
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        error: null,
-        values: { todos: [{ id: "1", text: "Task 1", done: false }] },
-        stop: vi.fn(),
-      },
-      sendMessage: vi.fn(),
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({
+        thread: {
+          messages: [],
+          isLoading: false,
+          error: null,
+          values: { todos: [{ id: "1", text: "Task 1", done: false }] },
+          stop: vi.fn(),
+        },
+      }),
+    );
 
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -388,20 +389,17 @@ describe("ChatPage", () => {
   });
 
   test("renders with thread error state", () => {
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        error: "Connection failed",
-        values: {},
-        stop: vi.fn(),
-      },
-      sendMessage: vi.fn(),
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({
+        thread: {
+          messages: [],
+          isLoading: false,
+          error: "Connection failed",
+          values: {},
+          stop: vi.fn(),
+        },
+      }),
+    );
 
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -412,20 +410,17 @@ describe("ChatPage", () => {
   });
 
   test("renders with loading thread state", () => {
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: true,
-        error: null,
-        values: {},
-        stop: vi.fn(),
-      },
-      sendMessage: vi.fn(),
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({
+        thread: {
+          messages: [],
+          isLoading: true,
+          error: null,
+          values: {},
+          stop: vi.fn(),
+        },
+      }),
+    );
 
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -466,56 +461,6 @@ describe("ChatPage", () => {
     expect(mockUseSpecificChatMode).toHaveBeenCalled();
   });
 
-  test("onSend callback exits welcome mode", () => {
-    mockUseThreadChat.mockReturnValue({
-      threadId: "test-thread",
-      setThreadId: vi.fn(),
-      isNewThread: true,
-      setIsNewThread: vi.fn(),
-      isMock: false,
-    });
-
-    let capturedOnSend: (() => void) | undefined;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedOnSend = args.onSend;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    const client = new QueryClient();
-    const { rerender } = render(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    rerender(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    expect(mockLastInputBoxProps.current.isWelcomeMode).toBe(true);
-
-    act(() => {
-      capturedOnSend!();
-    });
-    expect(mockLastInputBoxProps.current.isWelcomeMode).toBe(false);
-  });
-
   test("new chat defaults the task workbench to the creative scenario", () => {
     mockUseThreadChat.mockReturnValue({
       threadId: "test-thread",
@@ -524,6 +469,10 @@ describe("ChatPage", () => {
       setIsNewThread: vi.fn(),
       isMock: false,
     });
+
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
 
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -548,6 +497,10 @@ describe("ChatPage", () => {
     mockUseAgents.mockReturnValue({
       agents: [{ slug: "fault-zeroing", resource_id: "fault-resource-id" }],
     });
+
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
 
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -636,6 +589,10 @@ describe("ChatPage", () => {
       agents: [{ slug: "fault-zeroing", resource_id: "fault-resource-id" }],
     });
 
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
+
     render(
       <QueryClientProvider client={new QueryClient()}>
         <ChatPage />
@@ -658,6 +615,10 @@ describe("ChatPage", () => {
       setIsNewThread: vi.fn(),
       isMock: false,
     });
+
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
 
     const client = new QueryClient();
     const { rerender } = render(
@@ -700,6 +661,9 @@ describe("ChatPage", () => {
         },
       ],
     });
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
     const client = new QueryClient();
     const { rerender } = render(
       <QueryClientProvider client={client}>
@@ -750,6 +714,10 @@ describe("ChatPage", () => {
       agent: { skills: ["skill-resource-id"] },
     });
 
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
+
     render(
       <QueryClientProvider client={new QueryClient()}>
         <ChatPage />
@@ -781,6 +749,10 @@ describe("ChatPage", () => {
       agents: [{ slug: "office-docs", resource_id: "agent-resource-id" }],
     });
     mockUseAgent.mockReturnValue({ agent: { skills: null } });
+
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
 
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -816,6 +788,10 @@ describe("ChatPage", () => {
       ],
     });
     mockUseAgent.mockReturnValue({ agent: { skills: ["skill-resource-id"] } });
+
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
 
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -861,446 +837,8 @@ describe("ChatPage", () => {
     });
   });
 
-  test("onStart callback sets threadId and updates URL", () => {
-    const setThreadIdMock = vi.fn();
-    const setIsNewThreadMock = vi.fn();
-    mockUseThreadChat.mockReturnValue({
-      threadId: "test-thread",
-      setThreadId: setThreadIdMock,
-      isNewThread: true,
-      setIsNewThread: setIsNewThreadMock,
-      isMock: false,
-    });
-
-    let capturedOnStart: ((id: string) => void) | undefined;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedOnStart = args.onStart;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    const replaceStateSpy = vi.spyOn(history, "replaceState");
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    act(() => {
-      capturedOnStart!("new-thread-id-123");
-    });
-
-    expect(setThreadIdMock).toHaveBeenCalledWith("new-thread-id-123");
-    expect(setIsNewThreadMock).toHaveBeenCalledWith(false);
-    expect(replaceStateSpy).toHaveBeenCalledWith(
-      null,
-      "",
-      "/workspace/chats/new-thread-id-123",
-    );
-
-    replaceStateSpy.mockRestore();
-  });
-
-  test("onFinish shows notification when document is hidden", () => {
-    let capturedOnFinish: ((state: any) => void) | undefined;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedOnFinish = args.onFinish;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    const hiddenSpy = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
-    const focusSpy = vi.spyOn(document, "hasFocus").mockReturnValue(false);
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    capturedOnFinish!({
-      messages: [{ content: "Hello world" }],
-      title: "Test Conversation",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Test Conversation", {
-      body: "Conversation finished",
-    });
-
-    hiddenSpy.mockRestore();
-    focusSpy.mockRestore();
-  });
-
-  test("onFinish does not show notification when document is visible and focused", () => {
-    let capturedOnFinish: ((state: any) => void) | undefined;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedOnFinish = args.onFinish;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    vi.spyOn(document, "hidden", "get").mockReturnValue(false);
-    vi.spyOn(document, "hasFocus").mockReturnValue(true);
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    capturedOnFinish!({
-      messages: [{ content: "Hello" }],
-      title: "Test",
-    });
-
-    expect(mockShowNotification).not.toHaveBeenCalled();
-  });
-
-  test("onFinish truncates long message text in notification body", () => {
-    mockTextOfMessage.mockReturnValue("A".repeat(250));
-
-    let capturedOnFinish: ((state: any) => void) | undefined;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedOnFinish = args.onFinish;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    capturedOnFinish!({
-      messages: [{ content: "Hello" }],
-      title: "Test",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Test", {
-      body: "A".repeat(200) + "...",
-    });
-  });
-
-  test("onFinish uses short message text as body when under 200 chars", () => {
-    mockTextOfMessage.mockReturnValue("Short message");
-
-    let capturedOnFinish: ((state: any) => void) | undefined;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedOnFinish = args.onFinish;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    capturedOnFinish!({
-      messages: [{ content: "Hello" }],
-      title: "Test",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Test", {
-      body: "Short message",
-    });
-  });
-
-  test("onFinish handles empty messages gracefully", () => {
-    let capturedOnFinish: ((state: any) => void) | undefined;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedOnFinish = args.onFinish;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
-    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    capturedOnFinish!({
-      messages: [],
-      title: "Empty Chat",
-    });
-
-    expect(mockShowNotification).toHaveBeenCalledWith("Empty Chat", {
-      body: "Conversation finished",
-    });
-  });
-
-  test("handleSubmit with files returns send promise", () => {
-    const sendMessageMock = vi.fn().mockResolvedValue(undefined);
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        isThreadLoading: false,
-        error: null,
-        values: {},
-        stop: vi.fn(),
-        getMessagesMetadata: vi.fn(),
-      },
-      pendingUsageMessages: [],
-      sendMessage: sendMessageMock,
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
-
-    const client = new QueryClient();
-    const { rerender } = render(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    rerender(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-
-    const file = new File(["content"], "test.txt", { type: "text/plain" });
-    const result = mockLastInputBoxProps.current.onSubmit({
-      text: "hello",
-      files: [file],
-    });
-    expect(result).toBeInstanceOf(Promise);
-    expect(sendMessageMock).toHaveBeenCalledWith(
-      "test-thread",
-      {
-        text: "hello",
-        files: [file],
-      },
-      {
-        connector_name: undefined,
-        mode: "flash",
-      },
-      undefined,
-    );
-  });
-
-  test("handleSubmit without files returns void", () => {
-    const sendMessageMock = vi.fn().mockResolvedValue(undefined);
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        isThreadLoading: false,
-        error: null,
-        values: {},
-        stop: vi.fn(),
-        getMessagesMetadata: vi.fn(),
-      },
-      pendingUsageMessages: [],
-      sendMessage: sendMessageMock,
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
-
-    const client = new QueryClient();
-    const { rerender } = render(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    rerender(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-
-    const result = mockLastInputBoxProps.current.onSubmit({
-      text: "hello",
-      files: [],
-    });
-    expect(result).toBeUndefined();
-    expect(sendMessageMock).toHaveBeenCalledWith(
-      "test-thread",
-      {
-        text: "hello",
-        files: [],
-      },
-      {
-        connector_name: undefined,
-        mode: "flash",
-      },
-      undefined,
-    );
-  });
-
-  test("forwards submit options (onSent) so composer cleanup can run", () => {
-    const sendMessageMock = vi.fn().mockResolvedValue(undefined);
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        isThreadLoading: false,
-        error: null,
-        values: {},
-        stop: vi.fn(),
-        getMessagesMetadata: vi.fn(),
-      },
-      pendingUsageMessages: [],
-      sendMessage: sendMessageMock,
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
-
-    const client = new QueryClient();
-    const { rerender } = render(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-    rerender(
-      <QueryClientProvider client={client}>
-        <ChatPage />
-      </QueryClientProvider>,
-    );
-
-    // InputBox relies on the forwarded options to clear the composer draft
-    // once the send proceeds past the in-flight guard; dropping them would
-    // let a stale debounced draft save resurrect cleared text.
-    const options = { onSent: vi.fn() };
-    const file = new File(["content"], "test.txt", { type: "text/plain" });
-    mockLastInputBoxProps.current.onSubmit(
-      { text: "hello", files: [file] },
-      options,
-    );
-    expect(sendMessageMock).toHaveBeenCalledWith(
-      "test-thread",
-      { text: "hello", files: [file] },
-      {
-        connector_name: undefined,
-        mode: "flash",
-      },
-      options,
-    );
-  });
-
-  test("passes displayThreadId so optimistic messages attach to the view", () => {
-    let capturedStreamArgs: any = null;
-    mockUseThreadStream.mockImplementation((args: any) => {
-      capturedStreamArgs = args;
-      return {
-        thread: {
-          messages: [],
-          isLoading: false,
-          isThreadLoading: false,
-          error: null,
-          values: {},
-          stop: vi.fn(),
-          getMessagesMetadata: vi.fn(),
-        },
-        pendingUsageMessages: [],
-        sendMessage: vi.fn(),
-        isUploading: false,
-        isHistoryLoading: false,
-        hasMoreHistory: false,
-        loadMoreHistory: vi.fn(),
-      };
-    });
-
+  // --- seam contract: the page forwards identity and its scenario binding ---
+  test("forwards the thread identity to the page seam", () => {
     mockUseThreadChat.mockReturnValue({
       threadId: "client-thread-id",
       setThreadId: vi.fn(),
@@ -1315,47 +853,68 @@ describe("ChatPage", () => {
       </QueryClientProvider>,
     );
 
-    // While the backend thread does not exist yet, `threadId` stays gated
-    // (undefined) but the client-visible id must still flow through so
-    // optimistic messages and live-message attribution match the view.
-    expect(capturedStreamArgs.threadId).toBeUndefined();
-    expect(capturedStreamArgs.displayThreadId).toBe("client-thread-id");
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    expect(seamArgs.threadId).toBe("client-thread-id");
+    expect(seamArgs.isNewThread).toBe(true);
+    expect(seamArgs.isMock).toBe(false);
   });
 
-  test("handleStop calls thread.stop", async () => {
-    const stopMock = vi.fn().mockResolvedValue(undefined);
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        isThreadLoading: false,
-        error: null,
-        values: {},
-        stop: stopMock,
-        getMessagesMetadata: vi.fn(),
-      },
-      pendingUsageMessages: [],
-      sendMessage: vi.fn(),
-      isUploading: false,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
+  test("hands the scenario selection binding to the seam's submit ports", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
 
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    expect(seamArgs.threadPath("created-1")).toBe("/workspace/chats/created-1");
+    expect(seamArgs.prepareSubmit).toBeDefined();
+    // The default (no selection) binding is valid and contributes the base
+    // context; the admission guard accepts it.
+    expect(seamArgs.admit!()).toBe(true);
+    expect(seamArgs.extraContext!()).toMatchObject({ mode: "flash" });
+  });
+
+  test("forwards the hook's controller and handlers to the composer and list", () => {
+    const fixture = threadPageFixture();
+    mockUseThreadPage.mockReturnValue(fixture);
     const client = new QueryClient();
     const { rerender } = render(
       <QueryClientProvider client={client}>
         <ChatPage />
       </QueryClientProvider>,
     );
+    // The composer mounts after the first paint (mountedRef hydration guard).
     rerender(
       <QueryClientProvider client={client}>
         <ChatPage />
       </QueryClientProvider>,
     );
 
-    await mockLastInputBoxProps.current.onStop();
-    expect(stopMock).toHaveBeenCalled();
+    expect(mockLastInputBoxProps.current.turnSubmit).toBe(fixture.turnSubmit);
+    expect(mockLastInputBoxProps.current.onStop).toBe(fixture.handleStop);
+    expect(mockLastMessageListProps.current.onEditAndRegenerateMessage).toBe(
+      fixture.handleEditAndRegenerate,
+    );
+    expect(mockLastMessageListProps.current.onBranchTurn).toBe(
+      fixture.handleBranchTurn,
+    );
+    // The page renders the welcome layout the seam owns.
+    expect(mockLastInputBoxProps.current.isWelcomeMode).toBe(false);
+  });
+
+  test("gates message-list editing while a branch mutation is in flight", () => {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ branchPending: true }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+
+    expect(mockLastMessageListProps.current.canEdit).toBe(false);
+    expect(mockLastMessageListProps.current.canBranch).toBe(false);
   });
 
   test("static website only mode shows demo message and disables input", () => {
@@ -1400,23 +959,7 @@ describe("ChatPage", () => {
   });
 
   test("input is disabled when isUploading is true", () => {
-    mockUseThreadStream.mockReturnValue({
-      thread: {
-        messages: [],
-        isLoading: false,
-        isThreadLoading: false,
-        error: null,
-        values: {},
-        stop: vi.fn(),
-        getMessagesMetadata: vi.fn(),
-      },
-      pendingUsageMessages: [],
-      sendMessage: vi.fn(),
-      isUploading: true,
-      isHistoryLoading: false,
-      hasMoreHistory: false,
-      loadMoreHistory: vi.fn(),
-    });
+    mockUseThreadPage.mockReturnValue(threadPageFixture({ isUploading: true }));
 
     const client = new QueryClient();
     const { rerender } = render(
@@ -1433,6 +976,9 @@ describe("ChatPage", () => {
   });
 
   test("renders the task-first workbench content in welcome mode", () => {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
     mockUseThreadChat.mockReturnValue({
       threadId: "test-thread",
       setThreadId: vi.fn(),
@@ -1461,14 +1007,6 @@ describe("ChatPage", () => {
   });
 
   test("does not render retired workbench content after send", () => {
-    mockUseThreadChat.mockReturnValue({
-      threadId: "test-thread",
-      setThreadId: vi.fn(),
-      isNewThread: false,
-      setIsNewThread: vi.fn(),
-      isMock: false,
-    });
-
     const client = new QueryClient();
     const { rerender } = render(
       <QueryClientProvider client={client}>
@@ -1484,6 +1022,9 @@ describe("ChatPage", () => {
   });
 
   test("renders Welcome component in welcome mode", () => {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
     mockUseThreadChat.mockReturnValue({
       threadId: "test-thread",
       setThreadId: vi.fn(),
@@ -1524,6 +1065,9 @@ describe("ChatPage", () => {
   });
 
   test("places the welcome disclaimer after recent tasks and keeps it without history", () => {
+    mockUseThreadPage.mockReturnValue(
+      threadPageFixture({ isWelcomeMode: true }),
+    );
     mockUseThreadChat.mockReturnValue({
       threadId: "test-thread",
       setThreadId: vi.fn(),

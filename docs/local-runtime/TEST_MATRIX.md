@@ -1,8 +1,19 @@
+---
+id: docs-local-runtime-test-matrix
+kind: reference
+status: current
+owner: repository maintainers
+scope: Local Runtime test matrix — device control-plane, protocol security, local MCP host, local secret, and MCP integration groups mapped to concrete backend and local-runtime test files, plus the required lanes
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 4d2496136
+---
+
 # Local Runtime test matrix
 
-The matrix maps the M7 Device and Protocol Security groups to concrete test
-files. Tests are intentionally separated from the existing Resource tests so a
-Device can never be accidentally covered as a Resource.
+The matrix maps the Local Runtime line's Device and Protocol Security groups
+plus the M8/M9 local MCP host, secret, and MCP integration groups to concrete
+test files. Tests are intentionally separated from the existing Resource tests
+so a Device can never be accidentally covered as a Resource.
 
 ## Device control-plane tests
 
@@ -23,14 +34,14 @@ Device can never be accidentally covered as a Resource.
 | Scenario | Test file | Required assertion |
 | --- | --- | --- |
 | Outbound-only WSS handshake | `backend/tests/unit/device_control/test_broker.py` | Device initiates; server has no device-dial path |
-| Envelope schema and message families | `backend/tests/unit/device_control/test_protocol.py` | All M7 message types validate and unknown critical types fail closed |
+| Signed envelope rejection | `backend/tests/unit/device_control/test_protocol.py` | Signed envelopes reject replay, expiry, cross-session delivery, and payload-hash tampering before execution |
 | Signed echo task lifecycle | `backend/tests/integration/api/test_devices_router.py` | task → ack → progress → result produces structured receipt |
 | Real Local Runtime service gate | `backend/tests/integration/api/test_devices_router.py` | Temporary uvicorn service and `LocalRuntimeClient` complete an echo task |
-| Cancel and timeout | `backend/tests/unit/device_control/test_tasks.py` | Cancel is idempotent; expiry becomes DEVICE_OFFLINE when delivery is impossible |
-| Replay protection | `backend/tests/unit/device_control/test_protocol_security.py` | Duplicate task IDs and expired envelopes are rejected |
-| Tamper protection | `backend/tests/unit/device_control/test_protocol_security.py` | Signature/hash changes are rejected before echo execution |
-| Session binding | `backend/tests/unit/device_control/test_protocol_security.py` | Envelope from another session is rejected |
-| Version negotiation | `backend/tests/unit/device_control/test_protocol.py` | Critical mismatch BLOCKED; compatible old runtime OUTDATED |
+| Cancel and timeout | `backend/tests/unit/device_control/test_broker.py` | Cancel is idempotent; expiry becomes DEVICE_OFFLINE when delivery is impossible |
+| Replay protection | `backend/tests/unit/device_control/test_protocol.py` | Duplicate task IDs and expired envelopes are rejected |
+| Tamper protection | `backend/tests/unit/device_control/test_protocol.py` | Signature/hash changes are rejected before echo execution |
+| Session binding | `backend/tests/unit/device_control/test_protocol.py` | Envelope from another session is rejected |
+| Version negotiation | `backend/tests/unit/device_control/test_protocol_versions.py` | Critical mismatch BLOCKED; compatible old runtime OUTDATED; unknown versions BLOCKED |
 | Local DENY precedence | `local-runtime/tests/test_policy.py` | Local DENY wins over server ALLOW and yields a receipt/rejection |
 | Local receipt shape | `local-runtime/tests/test_receipts.py` | Receipt binds task/run IDs, policy decision, status, and hashes |
 | Root link and handle safety | `local-runtime/tests/test_files.py` | In-root symlink/junctions are rejected; reads and writes use a verified directory handle |

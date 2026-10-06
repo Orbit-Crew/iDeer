@@ -1,27 +1,26 @@
-"""Process entrypoint for the single durable workflow worker."""
+"""Run sessions: execute a claimed task, or resume a paused run.
+
+``execute`` is the queue entry for one claimed task; ``resume`` is the
+operator-command entry and owns the fork-interrupt recovery protocol (a plain
+operator payload becomes an id-keyed resume map, one pending interrupt per
+invocation). Both entries share the graph-driving session below; the fused
+``execute_workflow_task`` from the pre-package module stays importable as an
+alias of ``execute``.
+"""
 
 from __future__ import annotations
 
-import asyncio
-import os
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager, contextmanager
-from functools import partial
 from typing import Any
 
 import yaml
 from langgraph.types import Command
 
-# Canonical runs key their sandboxes on a run-scoped identity; teach the
-# runtime's local provider to mount the run's frozen read-only skill view.
 from app.agentplatform.resources.canonical_sandbox import (
     canonical_sandbox_scope,
 )
-from app.agentplatform.resources.canonical_sandbox import (
-    install_run_skill_view_resolver as _install_run_skill_view_resolver,
-)
 from app.agentplatform.workflow_runtime import (
-    RunRecordWriter,
     WorkflowCancelled,
     WorkflowGraphCompiler,
     WorkflowInvalidRootsError,
@@ -29,33 +28,18 @@ from app.agentplatform.workflow_runtime import (
     WorkflowPaused,
     WorkflowRunError,
     WorkflowV2Store,
-    WorkflowWorker,
     enforce_result_contract,
     make_host_resolver,
     parse_workflow_v2,
     run_failure_payload,
     validate_read_roots,
     validate_workflow_roots,
-    workflow_log_root,
     workflow_snapshot,
-)
-
-# Alias legacy IDEER_* deployment env names before any config resolution.
-# The alias runs at import time inside compat_env, so importing it here first
-# is sufficient (see app/gateway/app.py for the same pattern).
-from app.gateway.compat_env import apply_legacy_env_aliases as _apply_legacy_env_aliases  # noqa: F401
-from deerflow.config import get_app_config
-from deerflow.persistence.engine import (
-    close_engine,
-    get_session_factory,
-    init_engine_from_config,
 )
 from deerflow.persistence.models.workflow_v2 import WorkflowTaskRow
 from deerflow.runtime.checkpointer.async_provider import make_checkpointer
 
-# Canonical runs key their sandboxes on a run-scoped identity; teach the
-# runtime's local provider to mount the run's frozen read-only skill view.
-_install_run_skill_view_resolver()
+from .registry import build_canonical_registry
 
 
 @contextmanager
@@ -120,102 +104,41 @@ async def load_workflow_definition_for_run(run: Any, store: Any, session_factory
     return version.definition
 
 
-async def build_canonical_registry(run: Any, config: Any, session_factory: Any, storage: Any) -> Any:
-    """Build adapters only from the Run's frozen UUID closure and runner policy."""
-
-    from sqlalchemy import select
-
-    from app.agentplatform.resource_models import Resource, RunResourceSnapshot
-    from app.agentplatform.resource_runtime import CanonicalResourceLoader
-    from app.agentplatform.workflow_runtime import (
-        ActionAdapterRegistry,
-        _CanonicalAgentAdapter,
-        _ToolAdapter,
-    )
-    from deerflow.tools.tools import get_available_tools
-
-    if session_factory is None:
-        raise RuntimeError("canonical workflow run requires catalog persistence")
-    raw_groups = run.runner_tool_groups
-    allowed_groups = frozenset(raw_groups) if raw_groups is not None else None
-    registry = ActionAdapterRegistry()
-    for tool in get_available_tools(
-        groups=sorted(allowed_groups) if allowed_groups is not None else None,
-        app_config=config,
-    ):
-        registry.register("tool", tool.name, _ToolAdapter(tool, user_id=run.created_by))
-
-    async with session_factory() as session:
-        loader = CanonicalResourceLoader(session, storage)
-        frozen_skill_versions: dict[str, tuple[int, str]] = {}
-        frozen_skill_aliases: dict[str, str] = {}
-        agent_rows = list(
-            (
-                await session.execute(
-                    select(Resource.id, Resource.slug)
-                    .join(
-                        RunResourceSnapshot,
-                        RunResourceSnapshot.resource_id == Resource.id,
-                    )
-                    .where(
-                        RunResourceSnapshot.run_id == run.run_id,
-                        Resource.type == "agent",
-                    )
-                    .order_by(Resource.id)
-                )
-            ).all()
-        )
-        for resource_id, resource_slug in agent_rows:
-            definition = await loader.load_agent(run.run_id, resource_id)
-            # Pass the already-loaded definition so the UUID-to-name skill
-            # translation lands on the object the adapter keeps — not on a
-            # discarded internal reload — and the load happens exactly once.
-            skill_definitions = await loader.load_agent_skill_definitions(run.run_id, resource_id, definition=definition)
-            skills = [value.skill for value in skill_definitions]
-            for value in skill_definitions:
-                frozen_skill_versions[value.resource_id] = (
-                    value.version,
-                    value.content_hash,
-                )
-                frozen_skill_aliases[value.resource_id] = value.skill.name
-            adapter = _CanonicalAgentAdapter(
-                definition,
-                skills,
-                run.created_by,
-                allowed_tool_groups=allowed_groups,
-            )
-            # The version is already frozen by the run snapshot; the slug is
-            # registered only as an alias to that same frozen adapter because
-            # workflow definitions author agent actions by slug. The alias never
-            # re-resolves a resource version at execution time.
-            registry.register("agent", resource_id, adapter)
-            if resource_slug and resource_slug != resource_id:
-                registry.register("agent", resource_slug, adapter)
-        await asyncio.to_thread(
-            storage.create_run_skill_view,
-            run.run_id,
-            [(resource_id, version, content_hash) for resource_id, (version, content_hash) in sorted(frozen_skill_versions.items())],
-            aliases=frozen_skill_aliases,
-        )
-    return registry
-
-
-async def execute_workflow_task(
-    task: WorkflowTaskRow,
-    *,
-    store: WorkflowV2Store,
+async def _pending_interrupt_ids(
     config: Any,
+    *,
+    thread_id: str,
     checkpointer_factory: Callable[[Any], AbstractAsyncContextManager[Any]] = make_checkpointer,
-) -> None:
-    """Execute one claimed task through the production graph and event chain."""
-    run_id = task.run_id
-    run = await store.get_run(run_id)
-    if run is None:
-        raise RuntimeError(f"workflow run '{run_id}' not found")
-    sandbox_scope = canonical_sandbox_scope(run_id, run_id)
-    # Resource storage is needed by every canonical-registry build (the frozen
-    # run skill view is written for any snapshot carrying skills, PATCH-012),
-    # so construct it unconditionally — legacy name/version runs included.
+) -> list[str]:
+    """Collect pending langgraph interrupt ids for a paused run.
+
+    The workflow store snapshot renders interrupt payloads without their
+    langgraph ids, but a fork where several branches pause on
+    ``artifacts_missing`` simultaneously leaves multiple pending interrupts
+    that can only be resumed through an id-keyed resume map.
+    """
+
+    ids: list[str] = []
+    async with checkpointer_factory(config) as checkpointer:
+        tup = await checkpointer.aget_tuple({"configurable": {"thread_id": thread_id}})
+    for write in (tup.pending_writes if tup else None) or []:
+        if write[1] != "__interrupt__":
+            continue
+        entries = write[2] if isinstance(write[2], list) else [write[2]]
+        for entry in entries:
+            interrupt_id = getattr(entry, "id", None)
+            if isinstance(interrupt_id, str) and interrupt_id:
+                ids.append(interrupt_id)
+    return ids
+
+
+async def _session_assembly(run: Any, store: WorkflowV2Store, config: Any, adapters: Any | None) -> tuple[Any, Any]:
+    """Resolve the frozen definition and the adapter registry for one session.
+
+    Resource storage is needed by every canonical-registry build (the frozen
+    run skill view is written for any snapshot carrying skills, PATCH-012),
+    so construct it unconditionally — legacy name/version runs included.
+    """
     from app.agentplatform.resource_runtime import ResourceStorage
     from deerflow.config.paths import get_paths
 
@@ -227,47 +150,155 @@ async def execute_workflow_task(
         storage,
     )
     definition = parse_workflow_v2(yaml.safe_dump(definition_payload))
-    adapters = await build_canonical_registry(
-        run,
-        config,
-        getattr(store, "session_factory", None),
-        storage,
+    registry = (
+        adapters
+        if adapters is not None
+        else await build_canonical_registry(
+            run,
+            config,
+            getattr(store, "session_factory", None),
+            storage,
+        )
     )
+    return definition, registry
+
+
+async def execute(
+    task: WorkflowTaskRow,
+    *,
+    store: WorkflowV2Store,
+    config: Any,
+    checkpointer_factory: Callable[[Any], AbstractAsyncContextManager[Any]] = make_checkpointer,
+    adapters: Any | None = None,
+) -> None:
+    """Execute one claimed task through the production graph and event chain.
+
+    A task carrying a resume command delegates to :func:`resume`; ``adapters``
+    lets embedded drivers supply the action registry directly (tests drive the
+    same seam with a stubbed agent) instead of mocking the registry builder.
+    """
+    run = await store.get_run(task.run_id)
+    if run is None:
+        raise RuntimeError(f"workflow run '{task.run_id}' not found")
     if task.resume_command_id is not None:
         command = await store.get_command(task.resume_command_id)
         if command is None:
             raise RuntimeError(f"workflow task '{task.task_id}' has no resume command")
-        # LangGraph treats an empty dict as a resume map with no entries, so a
-        # payload-less resume would never deliver a value and the interrupt gate
-        # would re-raise on every attempt. Normalize to an explicit value.
-        resume_value = command.payload if command.payload else {"resumed": True}
-        # Intake confirmations can pause a run before the graph has created a
-        # checkpoint.  Carry the immutable run inputs into the resume command
-        # so the first graph node can still render file-access and prompt
-        # templates.  For an ordinary in-graph interrupt these fields merge
-        # harmlessly with the existing checkpoint state.
-        invocation = Command(
-            update={
-                "run_id": run_id,
-                "inputs": run.inputs,
-                "model_name": run.model_name,
-            },
-            resume=resume_value,
+        await resume(
+            run,
+            command,
+            task=task,
+            store=store,
+            config=config,
+            checkpointer_factory=checkpointer_factory,
+            adapters=adapters,
         )
-        # The attempt-budget exemption applies to the immediate resume only;
-        # a later crash/take-over must count as a fresh attempt again.
-        await store.clear_resume_command(task.task_id)
-    else:
-        evidence = run.snapshot.get("run_evidence", {}) if isinstance(run.snapshot, dict) else {}
-        invocation = {
-            "run_id": run_id,
-            "inputs": run.inputs,
-            "state": {},
-            "outputs": {},
-            "model_name": run.model_name,
-            "knowledge_scope": evidence.get("knowledge_scope"),
-        }
+        return
+    definition, registry = await _session_assembly(run, store, config, adapters)
+    evidence = run.snapshot.get("run_evidence", {}) if isinstance(run.snapshot, dict) else {}
+    invocation = {
+        "run_id": task.run_id,
+        "inputs": run.inputs,
+        "state": {},
+        "outputs": {},
+        "model_name": run.model_name,
+        "knowledge_scope": evidence.get("knowledge_scope"),
+    }
+    await _drive_session(
+        run,
+        invocation,
+        resumed=False,
+        task=task,
+        store=store,
+        config=config,
+        definition=definition,
+        adapters=registry,
+        checkpointer_factory=checkpointer_factory,
+    )
 
+
+async def resume(
+    run: Any,
+    command: Any,
+    *,
+    task: WorkflowTaskRow | None = None,
+    store: WorkflowV2Store,
+    config: Any,
+    checkpointer_factory: Callable[[Any], AbstractAsyncContextManager[Any]] = make_checkpointer,
+    adapters: Any | None = None,
+) -> None:
+    """Resume a paused run through an operator command.
+
+    Carries the fork-interrupt recovery protocol: LangGraph treats an empty
+    dict as a resume map with no entries, and a fork can leave several
+    branches pending at once where only an id-keyed resume map is accepted.
+    The entry normalizes a payload-less resume, keys the payload by the first
+    pending interrupt id, and confirms one interrupt per invocation — the next
+    invocation resumes the next pending branch. ``task`` attributes the
+    session's events and snapshot writes to the claimed lease when the queue
+    drives the resume.
+    """
+    definition, registry = await _session_assembly(run, store, config, adapters)
+    # LangGraph treats an empty dict as a resume map with no entries, so a
+    # payload-less resume would never deliver a value and the interrupt gate
+    # would re-raise on every attempt. Normalize to an explicit value.
+    resume_value = command.payload if command.payload else {"resumed": True}
+    thread_id = getattr(run, "checkpoint_thread_id", None) or f"wf-{run.run_id}"
+    pending = await _pending_interrupt_ids(config, thread_id=thread_id, checkpointer_factory=checkpointer_factory)
+    if pending:
+        # A fork can pause on artifacts_missing in several branches at once;
+        # langgraph then only accepts an id-keyed resume map, and resuming
+        # every branch in one step can collide with their pending writes —
+        # so confirm one interrupt per invocation.
+        resume_value = {pending[0]: resume_value}
+    # Intake confirmations can pause a run before the graph has created a
+    # checkpoint.  Carry the immutable run inputs into the resume command
+    # so the first graph node can still render file-access and prompt
+    # templates.  For an ordinary in-graph interrupt these fields merge
+    # harmlessly with the existing checkpoint state.
+    invocation = Command(
+        update={
+            "run_id": run.run_id,
+            "inputs": run.inputs,
+            "model_name": run.model_name,
+        },
+        resume=resume_value,
+    )
+    if task is not None:
+        # Consume the resume command only once the invocation is built, just
+        # before the graph drives: the attempt-budget exemption applies to the
+        # immediate resume only, and a later crash/take-over must count as a
+        # fresh attempt again.
+        await store.clear_resume_command(task.task_id)
+    await _drive_session(
+        run,
+        invocation,
+        resumed=True,
+        task=task,
+        store=store,
+        config=config,
+        definition=definition,
+        adapters=registry,
+        checkpointer_factory=checkpointer_factory,
+    )
+
+
+async def _drive_session(
+    run: Any,
+    invocation: Any,
+    *,
+    resumed: bool,
+    task: WorkflowTaskRow | None,
+    store: WorkflowV2Store,
+    config: Any,
+    definition: Any,
+    adapters: Any,
+    checkpointer_factory: Callable[[Any], AbstractAsyncContextManager[Any]] = make_checkpointer,
+) -> None:
+    """Drive one compiled graph invocation and persist its lifecycle."""
+    run_id = run.run_id
+    sandbox_scope = canonical_sandbox_scope(run_id, run_id)
+    worker_id = getattr(task, "lease_owner", None)
     event_limit = config.workflow_runtime.max_events_per_run
 
     async def emit_event(event_type: str, payload: dict) -> None:
@@ -275,7 +306,7 @@ async def execute_workflow_task(
             run_id,
             event_type,
             payload,
-            worker_id=task.lease_owner,
+            worker_id=worker_id,
             max_events=event_limit - 1,
         )
         if event is None:
@@ -290,7 +321,7 @@ async def execute_workflow_task(
             run_id,
             event_type,
             payload,
-            worker_id=task.lease_owner,
+            worker_id=worker_id,
             max_events=event_limit,
         )
 
@@ -311,7 +342,7 @@ async def execute_workflow_task(
             **current,
             "run_evidence": {**evidence, "retrieval_receipts": receipts},
         }
-        if not await store.update_snapshot(run_id, snapshot, worker_id=task.lease_owner):
+        if not await store.update_snapshot(run_id, snapshot, worker_id=worker_id):
             return False
         run.snapshot = snapshot
         return True
@@ -339,7 +370,7 @@ async def execute_workflow_task(
                 if missing_read_roots:
                     raise WorkflowMissingInputRootsError(missing_read_roots)
                 await emit_event(
-                    "resumed" if task.resume_command_id is not None else "run_started",
+                    "resumed" if resumed else "run_started",
                     {"definition_version": run.definition_version},
                 )
                 result = await graph.ainvoke(
@@ -363,7 +394,7 @@ async def execute_workflow_task(
     snapshot = workflow_snapshot(result)
     if runtime_evidence is not None:
         snapshot["run_evidence"] = runtime_evidence
-    if not await store.update_snapshot(run_id, snapshot, worker_id=task.lease_owner):
+    if not await store.update_snapshot(run_id, snapshot, worker_id=worker_id):
         return
     if "__interrupt__" in result:
         await emit_event("interrupted", {"value": snapshot["interrupt"]})
@@ -396,56 +427,6 @@ async def execute_workflow_task(
     await emit_terminal_event("run_completed", {})
 
 
-async def run_worker() -> None:
-    config = get_app_config()
-    if config.database.backend == "memory":
-        raise RuntimeError("workflow-worker requires a durable database backend")
-    await init_engine_from_config(config.database)
-    sf = get_session_factory()
-    if sf is None:
-        raise RuntimeError("workflow-worker could not initialize persistence")
-    store = WorkflowV2Store(sf)
-    writers: dict[str, RunRecordWriter] = {}
-
-    async def record_sink(run, event) -> None:
-        writer = writers.get(run.run_id)
-        if writer is None:
-            writer = RunRecordWriter(
-                make_host_resolver(
-                    run.run_id,
-                    str(run.created_by),
-                    sandbox_scope=canonical_sandbox_scope(run.run_id, run.run_id),
-                ),
-                workflow_log_root(),
-            )
-            writers[run.run_id] = writer
-        if event is not None:
-            await writer.on_event(event)
-        if run.status in {"completed", "failed", "cancelled"}:
-            await writer.finalize(store, run)
-            writers.pop(run.run_id, None)
-
-    store.event_sink = record_sink
-
-    try:
-        runtime = config.workflow_runtime
-        # Default to a per-process id: two workers on one machine must never
-        # share the default lease owner, or they race to claim the same task.
-        await WorkflowWorker(
-            store,
-            partial(execute_workflow_task, store=store, config=config),
-            os.getenv("WORKFLOW_WORKER_ID") or f"workflow-worker-{os.getpid()}",
-            lease_seconds=runtime.lease_seconds,
-            heartbeat_seconds=runtime.heartbeat_seconds,
-            max_attempts=runtime.max_attempts,
-        ).run_forever()
-    finally:
-        await close_engine()
-
-
-def main() -> None:
-    asyncio.run(run_worker())
-
-
-if __name__ == "__main__":
-    main()
+# Backward-compatible name: the pre-package module exposed the queue-task
+# entry under this name (scripts and tests still import it).
+execute_workflow_task = execute

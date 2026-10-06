@@ -1,6 +1,15 @@
+---
+id: docs-archive-2026-testing-frontend-test-coverage-plan
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-06-10 前端测试补全计划（offline_feature vs main 分支，63 个前端源文件改动）：7 个功能域逐文件测试需求、mock 基础设施扩展设计与 7 个 Phase 的 E2E/单元测试补全清单（预估 81 个测试）
+archived-reason: 该分支战役的时点计划，已按计划执行完毕（完成数据见同目录 frontend-test-coverage-summary.md）；计划中的 spec 清单与测试计数描述当时候选，与当前 frontend/tests/ 布局不对应。现行测试权威：docs/testing/coverage-matrix.md。正文按历史记录保留
+---
+
 # 前端测试覆盖分析与补全计划
 
-> status: archived; current testing authority: `docs/testing/coverage-matrix.md`
+> status: archived（2026-06-10 时点计划，offline_feature vs main 战役，正文按当时候选保留）；current testing authority: `docs/testing/coverage-matrix.md`
 
 > 分支: `offline_feature` vs `main`
 > 生成日期: 2026-06-10

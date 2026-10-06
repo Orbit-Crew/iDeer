@@ -1,12 +1,20 @@
+---
+id: docs-knowledge-implementation-inventory
+kind: snapshot
+status: archived
+owner: engineering maintainers
+scope: M2 Ticket 01 point-in-time survey of the knowledge domain on candidate feature/m2-kb-resource-governance (develop-based, surveyed 2026-09-11) — resource API surface, dependency/snapshot schema, authz seams, RAGFlow tooling, receipt/evidence state, migration conventions
+archived-reason: survey-era snapshot scoped to the M2 candidate; ticket 02/03/04 and M4/M5 have since landed (ResourceType.KNOWLEDGE_BASE, dependency_mode/revision_id/required/purpose columns, backend/app/agentplatform/knowledge/ and the extension knowledge/ subpackage), and the unified migration head has moved on (20261001_rejoin_upstream_line as of 2026-10-04) — the body's line numbers and "current state" statements describe the M2-era candidate
+---
+
 # Implementation Inventory — 知识域现状勘察（M2 Ticket 01）
 
 > audience: developers, security reviewers<br>
-> status: current<br>
-> owner: engineering maintainers<br>
-> last-verified: 2026-09-11<br>
 > canonical-path: `docs/knowledge/IMPLEMENTATION_INVENTORY.md`
 
-本文是 M2（KnowledgeBase Resource Governance）的书面勘察底座，对应知识方案 §58–59（Phase 0）与总方案 §7 M2 任务卡。全部结论以当前分支 `feature/m2-kb-resource-governance`（基于 develop，无额外提交）代码为准，标注文件与符号。02（KB 第四类 Resource）、03（LIVE/PINNED 依赖）、04（Effective Scope + 运行时适配）三张实施票以本文为对接基础，不再重新勘察。
+> status: archived（M2 Ticket 01 勘察底稿；scope：候选 `feature/m2-kb-resource-governance`，勘察基准 2026-09-11）。2026-10-04 核对：票 02/03/04 与 M4/M5 已实施——`ResourceType.KNOWLEDGE_BASE`、`resource_dependencies` 依赖列（dependency_mode/revision_id/required/purpose）、`backend/app/agentplatform/knowledge/`（scope/revisions/documents/reconciliation 等）与扩展包 `agentplatform_extension/knowledge/`（context/scope/runtime_adapter/retrieval_receipts）均已落地；统一迁移链 head 现为 `20261001_rejoin_upstream_line`（非 §9 勘察时的 `20260909_device_control_plane`）。正文行号与"现状"结论按该历史候选保留；现行实现以 `backend/app/agentplatform/knowledge/` 与后续 Gate 记录（`docs/testing/knowledge-gate1-acceptance-report.md`、`docs/testing/knowledge-center-gate4-runbook.md`、`docs/testing/m5-gate7-acceptance-report.md`、`docs/testing/knowledge-gate8-acceptance.md`）为准。
+
+本文是 M2（KnowledgeBase Resource Governance）的书面勘察底座，对应知识方案 §58–59（Phase 0）与总方案 §7 M2 任务卡。全部结论以当时分支 `feature/m2-kb-resource-governance`（基于 develop，无额外提交）代码为准，标注文件与符号。02（KB 第四类 Resource）、03（LIVE/PINNED 依赖）、04（Effective Scope + 运行时适配）三张实施票以本文为对接基础，不再重新勘察。（历史记录：三票均已实施。）
 
 来源文档：`architecture/AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md`（下称"知识方案"）、`architecture/AgentPlatform_后续工作总方案_2026-09-08.md`（下称"总方案"）、`architecture/AgentPlatform 总体架构与模块边界基线.md`（下称"基线"）、`docs/decisions/2026-09-08-knowledge-dual-source-of-truth.md`（下称"双层真源 ADR"）。
 

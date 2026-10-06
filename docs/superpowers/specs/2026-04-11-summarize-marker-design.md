@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-specs-2026-04-11-summarize-marker-design
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-04-11 design and verification for a visible summarize marker in history — a SummarizationMiddleware subclass dispatching a summarization custom event with explicit RunnableConfig injection, RunJournal middleware-category rows, and a frontend summary_marker card at the seq position
+archived-reason: not landed — _TrackingSummarizationMiddleware, the summarization custom-event dispatch, and any summary_marker handling are absent from this candidate; summarization instead evolved into DeerFlowSummarizationMiddleware with before_summarization hooks (backend/packages/harness/deerflow/agents/middlewares/summarization_middleware.py), and the body paths backend/packages/harness/ideer/... and backend/.ideer/ carry the pre-rename ideer naming, so the design is the 2026-04-11 branch state
+---
+
 # Summarize Marker in History — Design & Verification
 
 **Date**: 2026-04-11

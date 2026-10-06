@@ -1,4 +1,14 @@
+---
+id: docs-platform-dev-summary
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: five-phase delivery summary (rename deer-flow to ideer, intranet adaptation, RBAC, workflow engine, tool extensions) in the ideer-era layout
+archived-reason: delivery-era snapshot; current layout uses backend/packages/harness/deerflow/ and workflow APIs moved to the resource governance V2 surface
+---
 # 企业内网智能体平台开发总结
+
+> status: archived（五阶段交付总结，scope：ideer 时期候选）。2026-10-04 核对：文中 `backend/packages/harness/ideer/` 路径与「8 个 Workflow API、公开端点」描述为交付时期状态；当前包名为 `backend/packages/harness/deerflow/`（v2.1.0 上游整合后恢复），工作流 API 已由资源治理 V2 的 `/api/resources/{id}/workflow-runs/...` 系列替代。现行架构参考：[架构概览](architecture/overview.md)、[后端架构](../backend/docs/ARCHITECTURE.md)。正文按历史记录保留。
 
 ## 概述
 

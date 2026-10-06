@@ -1,3 +1,13 @@
+---
+id: backend-docs-path-examples
+kind: reference
+status: current
+owner: repository maintainers
+scope: the three upload path types (path, virtual_path, artifact_url) and their conversion examples
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # 文件路径使用示例
 
 ## 三种路径类型
@@ -144,12 +154,12 @@ async function uploadAndProcess(threadId: string, file: File) {
 
 ```python
 from pathlib import Path
-from ideer.agents.middlewares.thread_data_middleware import THREAD_DATA_BASE_DIR
+from deerflow.config.paths import get_paths
 
 def process_uploaded_file(thread_id: str, filename: str):
     # 使用实际路径
-    base_dir = Path.cwd() / THREAD_DATA_BASE_DIR / thread_id / "user-data" / "uploads"
-    file_path = base_dir / filename
+    uploads_dir = Path(get_paths().sandbox_uploads_dir(thread_id))
+    file_path = uploads_dir / filename
 
     # 直接读取
     with open(file_path, 'rb') as f:

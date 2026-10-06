@@ -215,13 +215,22 @@ def migrate_skills(
 def _build_owner_map_from_db(paths: Paths) -> dict[str, str]:
     """Query threads_meta table for thread_id -> user_id mapping.
 
-    Uses raw sqlite3 to avoid async dependencies.
+    Uses raw sqlite3 to avoid async dependencies. The runtime DB moved to
+    ``{sqlite_dir}/deerflow.db`` (with ``sqlite_dir`` defaulting to
+    ``{base_dir}/data``) during the DeerFlow convergence; probe the known
+    locations newest-first so pre-convergence installs still migrate cleanly.
     """
     import sqlite3
 
-    db_path = paths.base_dir / "ideer.db"
-    if not db_path.exists():
-        logger.info("No database found at %s — using empty owner map.", db_path)
+    candidates = [
+        paths.base_dir / "data" / "deerflow.db",
+        paths.base_dir / "data" / "ideer.db",
+        paths.base_dir / "deerflow.db",
+        paths.base_dir / "ideer.db",
+    ]
+    db_path = next((path for path in candidates if path.exists()), None)
+    if db_path is None:
+        logger.info("No database found under %s — using empty owner map.", paths.base_dir)
         return {}
 
     conn = sqlite3.connect(str(db_path))

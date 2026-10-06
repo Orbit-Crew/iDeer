@@ -1,5 +1,11 @@
 ---
-status: accepted
+id: adr-0006-srs-validation-defers-result-contract
+kind: decision
+status: current
+owner: repository maintainers
+scope: srs-writing Skill output validation stays in-Skill as the floor while a platform-level SRS Result Contract is deferred (backlog SRS-01); the 2026-09-29 addendum records conversational canonical-run skill mounting
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 02af2a4e8
 ---
 
 # SRS output validation defers a platform-level Result Contract

@@ -1,6 +1,18 @@
+---
+id: docs-archive-2026-offline-feature-fix-summary
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: fix record for the 2026-06-23 code-review findings on the offline_feature branch (vs main): 20 applied fixes, deferred low-priority issues, and that candidate's test results
+archived-reason: branch-history evidence; body paths use the ideer-era and pre-relocation layouts of that candidate and are preserved as recorded; current product-line authority is docs/offline-product-line-governance-plan.md
+---
+
 # offline_feature 分支问题修复总结
 
 > status: archived; current product-line authority: `docs/offline-product-line-governance-plan.md`
+> source date: 2026-06-23（offline_feature vs main）
+> canonical-path: `docs/archive/2026/offline-feature-fix-summary.md`
+> historical paths: 正文中的 `backend/packages/harness/ideer/...`、`backend/tests/test_*.py` 等路径为当时布局，按原样保留。现工作区 harness 包为 `backend/packages/harness/deerflow/`（工作流引擎已重构至 `backend/app/agentplatform/workflows/v2/`），后端测试已迁移至 `backend/tests/integration/api/`、`backend/tests/unit/` 等位置；文中行号与测试计数均为该候选时点记录，未按现行代码重验。
 
 **修复日期**: 2026-06-23
 **分支**: offline_feature (vs main)

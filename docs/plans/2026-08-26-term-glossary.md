@@ -1,8 +1,19 @@
+---
+id: docs-plans-2026-08-26-term-glossary
+kind: snapshot
+status: archived
+owner: repository maintainers
+scope: point-in-time record of the 2026-08-26 phase-3 UI copy renames (agents/workflows descriptions, run/token wording) plus the terms deliberately kept and deferred candidates; UI display language only
+archived-reason: executed rename batch — the recorded zh/en copy changes landed in frontend/src/core/i18n/locales/ (spot-checked 2026-10-04, since further evolved e.g. agents wording now says 专家 per ADR 0007); engineering terminology authority remains CONTEXT.md
+---
+
 # 小白友好术语对照表（第三期）
 
 - 日期：2026-08-26
 - 范围：仅 UI 文案层（i18n），不动后端模型、API、路由标识
 - 原则：用户语言只用日常词；专有名词（产品名/协议名）保留；调试向功能文案保持精确性
+
+> 定位说明：本文件是历史 plan 记录（2026-08-26 第三期 UI 文案重命名），仅覆盖 UI 显示语言；工程术语的权威来源是根目录 [CONTEXT.md](../../CONTEXT.md)，本表不改变工程术语定义。
 
 ## 已执行的重命名（2026-08-26）
 

@@ -1,3 +1,13 @@
+---
+id: backend-docs-guardrails
+kind: reference
+status: current
+owner: repository maintainers
+scope: pre-tool-call guardrail middleware and its provider options (allowlist, OAP, custom)
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 3cd547c26
+---
+
 # Guardrails: Pre-Tool-Call Authorization
 
 > **Context:** [Issue #1213](https://github.com/bytedance/ideer/issues/1213) — iDeer has Docker sandboxing and human approval via `ask_clarification`, but no deterministic, policy-driven authorization layer for tool calls. An agent running autonomous multi-step tasks can execute any loaded tool with any arguments. Guardrails add a middleware that evaluates every tool call against a policy **before** execution.
@@ -89,7 +99,7 @@ The simplest option. Ships with iDeer. Block or allow tools by name. No external
 guardrails:
   enabled: true
   provider:
-    use: ideer.guardrails.builtin:AllowlistProvider
+    use: deerflow.guardrails.builtin:AllowlistProvider
     config:
       denied_tools: ["bash", "write_file"]
 ```
@@ -101,7 +111,7 @@ You can also use an allowlist (only these tools are permitted):
 guardrails:
   enabled: true
   provider:
-    use: ideer.guardrails.builtin:AllowlistProvider
+    use: deerflow.guardrails.builtin:AllowlistProvider
     config:
       allowed_tools: ["web_search", "read_file", "ls"]
 ```
@@ -156,12 +166,12 @@ An OAP passport is just a JSON file. You can create one by hand following the [O
 
 ```bash
 pip install aport-agent-guardrails
-aport setup --framework ideer
+aport setup --framework deerflow
 ```
 
 This creates:
-- `~/.aport/ideer/config.yaml` -- evaluator config (local or API mode)
-- `~/.aport/ideer/aport/passport.json` -- OAP passport with capabilities and limits
+- `~/.aport/deerflow/config.yaml` -- evaluator config (local or API mode)
+- `~/.aport/deerflow/aport/passport.json` -- OAP passport with capabilities and limits
 
 **config.yaml (using APort as the provider):**
 ```yaml
@@ -220,7 +230,7 @@ class MyGuardrailProvider:
     name = "my-company"
 
     def evaluate(self, request):
-        from ideer.guardrails.provider import GuardrailDecision, GuardrailReason
+        from deerflow.guardrails.provider import GuardrailDecision, GuardrailReason
 
         # Example: block any bash command containing "delete"
         if request.tool_name == "bash" and "delete" in str(request.tool_input):
@@ -320,12 +330,12 @@ Standard codes used by the [OAP specification](https://github.com/aporthq/aport-
 
 iDeer loads providers via `resolve_variable()` -- the same mechanism used for models, tools, and sandbox providers. The `use:` field is a Python class path: `package.module:ClassName`.
 
-The provider is instantiated with `**config` kwargs if `config:` is set, plus `framework="ideer"` is always injected. Accept `**kwargs` to stay forward-compatible:
+The provider is instantiated with `**config` kwargs if `config:` is set, plus a `framework="deerflow"` kwarg is injected when the constructor accepts it. Accept `**kwargs` to stay forward-compatible:
 
 ```python
 class YourProvider:
     def __init__(self, framework: str = "generic", **kwargs):
-        # framework="ideer" tells you which config dir to use
+        # framework="deerflow" tells you which config dir to use
         ...
 ```
 
@@ -345,7 +355,7 @@ guardrails:
 
   # Provider: loaded by class path via resolve_variable
   provider:
-    use: ideer.guardrails.builtin:AllowlistProvider
+    use: deerflow.guardrails.builtin:AllowlistProvider
     config:  # optional kwargs passed to provider.__init__
       denied_tools: ["bash"]
 ```
@@ -357,7 +367,7 @@ cd backend
 uv run python -m pytest tests/test_guardrail_middleware.py -v
 ```
 
-25 tests covering:
+49 tests covering:
 - AllowlistProvider: allow, deny, both allowlist+denylist, async
 - GuardrailMiddleware: allow passthrough, deny with OAP codes, fail-closed, fail-open, passport forwarding, empty reasons fallback, empty tool name, protocol isinstance check
 - Async paths: awrap_tool_call for allow, deny, fail-closed, fail-open
@@ -367,19 +377,19 @@ uv run python -m pytest tests/test_guardrail_middleware.py -v
 ## Files
 
 ```
-packages/harness/ideer/guardrails/
+packages/harness/deerflow/guardrails/
     __init__.py              # Public exports
     provider.py              # GuardrailProvider protocol, GuardrailRequest, GuardrailDecision
     middleware.py             # GuardrailMiddleware (AgentMiddleware subclass)
     builtin.py               # AllowlistProvider (zero deps)
 
-packages/harness/ideer/config/
+packages/harness/deerflow/config/
     guardrails_config.py     # GuardrailsConfig Pydantic model + singleton
 
-packages/harness/ideer/agents/middlewares/
+packages/harness/deerflow/agents/middlewares/
     tool_error_handling_middleware.py  # Registers GuardrailMiddleware in chain
 
 config.example.yaml          # Three provider options documented
-tests/test_guardrail_middleware.py  # 25 tests
+tests/test_guardrail_middleware.py  # 49 tests
 docs/GUARDRAILS.md           # This file
 ```

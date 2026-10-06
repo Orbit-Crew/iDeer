@@ -1,3 +1,13 @@
+---
+id: docs-deployment-mcp-ops-troubleshooting
+kind: reference
+status: current
+owner: operations maintainers
+scope: MCP 工具注册、配置、加载与调用的运维排故：extensions_config.json 的查找顺序与字段、工具加载链路、分层排障流程与 Docker 容器内排查命令
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ ca8fb0f8d
+---
+
 # MCP 工具运维排故手册
 
 > 面向需要注册、安装新 MCP Server 的用户和运维人员。
@@ -72,13 +82,15 @@
 
 ### 1.2 关键组件
 
+下表路径均相对 `backend/packages/harness/deerflow/`（Python 包 `deerflow`）：
+
 | 组件 | 文件路径 | 职责 |
 |------|---------|------|
 | 配置加载 | `config/extensions_config.py` | 读取 `extensions_config.json`，解析 MCP server 配置 |
 | 连接构建 | `mcp/client.py` | 将配置转换为 `MultiServerMCPClient` 连接参数 |
 | 工具加载 | `mcp/tools.py` | 连接 MCP server、发现工具、会话池包装 |
-| 工具缓存 | `mcp/cache.py` | 全局缓存 + mtime 感知自动失效 |
-| 会话池 | `mcp/session_pool.py` | 按 `(server_name, thread_id)` 维护持久 MCP session |
+| 工具缓存 | `mcp/cache.py` | 全局缓存 + 配置内容签名（mtime/size/sha256）感知自动失效 |
+| 会话池 | `mcp/session_pool.py` | 按 `(server_name, user_id:thread_id)` 维度维护持久 MCP session |
 | 工具聚合 | `tools/tools.py` | 合并配置工具 + 内置工具 + MCP 工具 + ACP 工具 |
 | 工具过滤 | `skills/tool_policy.py` | 按 skill `allowed-tools` 白名单过滤工具 |
 | Agent 构建 | `agents/lead_agent/agent.py` | 组装工具列表、绑定到 LLM、创建 agent graph |
@@ -109,6 +121,10 @@
 
 **Docker 部署时**：通过 volume 挂载到容器内 `/app/backend/extensions_config.json`，
 同时设置环境变量 `IDEER_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json`。
+
+环境变量名说明：Docker Compose（`docker/docker-compose*.yaml`）使用 `IDEER_EXTENSIONS_CONFIG_PATH`；
+网关进程启动时会把它别名到运行时实际读取的 `DEER_FLOW_EXTENSIONS_CONFIG_PATH`
+（见 `backend/app/gateway/compat_env.py`）。绕过网关直接跑 Python 时应使用 `DEER_FLOW_EXTENSIONS_CONFIG_PATH`。
 
 ### 2.2 配置文件格式
 
@@ -161,7 +177,7 @@
 }
 ```
 
-如果 `MY_API_KEY` 环境变量未设置，会抛出 `ValueError`。
+如果 `MY_API_KEY` 环境变量未设置，该占位符会被解析为空字符串 `""`（不会抛错），见 `ExtensionsConfig.resolve_env_variables`。
 
 ---
 
@@ -243,9 +259,9 @@ ToolMessage 返回给 Agent → LLM 继续推理
 
 ### 3.4 缓存失效机制
 
-MCP 工具缓存通过 `extensions_config.json` 文件的 **mtime**（修改时间）检测变更：
+MCP 工具缓存通过 `extensions_config.json` 文件的**内容签名**（解析路径 + mtime、size、sha256，经 `deerflow.config.file_signature` 计算）检测变更：
 
-- 每次 `get_cached_mcp_tools()` 检查 mtime 是否变化
+- 每次 `get_cached_mcp_tools()` 检查内容签名是否变化（只比较 mtime 会漏掉同秒修改或时间戳被还原的编辑）
 - 如果文件被修改（如通过 Gateway API 更新配置），自动重置缓存并重新加载
 - `reset_mcp_tools_cache()` 同时关闭所有持久 MCP session
 
@@ -254,13 +270,13 @@ MCP 工具缓存通过 `extensions_config.json` 文件的 **mtime**（修改时�
 当 `config.yaml` 中 `tool_search.enabled: true` 时：
 
 ```
-MCP 工具注册到 DeferredToolRegistry（默认不可见）
+MCP 工具注册为 deferred 工具（deferred_names，默认不进入模型上下文）
     ↓
 Agent 初始只看到 tool_search 工具
     ↓
 用户请求 → LLM 调用 tool_search 搜索
     ↓
-匹配的工具被 promote() 为可见
+匹配的工具被 promote（写入 graph state 的 state["promoted"]）为可见
     ↓
 DeferredToolFilterMiddleware 过滤未 promote 的工具 schema
     ↓
@@ -307,8 +323,8 @@ python -m your_package.mcp_server
 # Docker 部署
 docker restart ideer-gateway
 
-# 本地部署
-make restart
+# 本地部署（Makefile 无 restart 目标）
+make stop && make start
 ```
 
 **步骤 4：验证加载**
@@ -366,7 +382,7 @@ print('OK', r.status)
 ```bash
 # 获取实际工具名
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.mcp.cache import get_cached_mcp_tools
+from deerflow.mcp.cache import get_cached_mcp_tools
 for t in get_cached_mcp_tools():
     print(repr(t.name))
 "
@@ -447,7 +463,7 @@ docker exec ideer-gateway ls -la /app/backend/extensions_config.json
 
 # 模拟配置加载
 docker exec -w /app/backend ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.config.extensions_config import ExtensionsConfig
+from deerflow.config.extensions_config import ExtensionsConfig
 c=ExtensionsConfig.from_file()
 print(list(c.mcp_servers.keys()), [(s.enabled,s.type,s.url) for s in c.mcp_servers.values()])
 "
@@ -555,7 +571,7 @@ docker restart ideer-gateway
 ```bash
 # 获取实际工具名
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.mcp.cache import get_cached_mcp_tools
+from deerflow.mcp.cache import get_cached_mcp_tools
 for t in get_cached_mcp_tools():
     print(repr(t.name))
 "
@@ -575,7 +591,7 @@ SKILL.md 中必须使用**实际加载后的完整名称**。
 
 ```bash
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.tools.tools import get_available_tools
+from deerflow.tools.tools import get_available_tools
 tools = get_available_tools()
 for t in tools:
     print(t.name)
@@ -601,7 +617,7 @@ docker logs ideer-gateway 2>&1 | grep -iE "tool_calls|ToolCall|ToolNode" | tail 
 # 从容器内用和 Agent 一致的客户端测试
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
 import asyncio
-from ideer.models.vllm_provider import VllmChatModel
+from deerflow.models.vllm_provider import VllmChatModel
 from langchain_core.tools import tool
 
 async def test():
@@ -691,7 +707,7 @@ docker exec ideer-gateway ls -la /app/backend/extensions_config.json
 ```bash
 # 获取实际工具名
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.mcp.cache import get_cached_mcp_tools
+from deerflow.mcp.cache import get_cached_mcp_tools
 for t in get_cached_mcp_tools():
     print(repr(t.name))
 "
@@ -713,7 +729,7 @@ for t in get_cached_mcp_tools():
 ```bash
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
 import asyncio
-from ideer.models.vllm_provider import VllmChatModel
+from deerflow.models.vllm_provider import VllmChatModel
 from langchain_core.tools import tool
 async def test():
     llm = VllmChatModel(model='qwen3.5-122b', base_url='http://192.168.x.x:port/v1', api_key='key')
@@ -740,7 +756,7 @@ docker exec ideer-gateway cat /app/backend/extensions_config.json
 
 # 模拟配置加载
 docker exec -w /app/backend ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.config.extensions_config import ExtensionsConfig
+from deerflow.config.extensions_config import ExtensionsConfig
 c=ExtensionsConfig.from_file()
 print(list(c.mcp_servers.keys()), [(s.enabled,s.type,s.url) for s in c.mcp_servers.values()])
 "
@@ -768,14 +784,14 @@ docker inspect 容器名 --format='{{json .HostConfig.PortBindings}}'
 ```bash
 # 查看 MCP 工具实际名称
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.mcp.cache import get_cached_mcp_tools
+from deerflow.mcp.cache import get_cached_mcp_tools
 for t in get_cached_mcp_tools():
     print(repr(t.name))
 "
 
 # 查看 Agent 可用工具列表
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
-from ideer.tools.tools import get_available_tools
+from deerflow.tools.tools import get_available_tools
 for t in get_available_tools():
     print(t.name)
 "
@@ -783,8 +799,8 @@ for t in get_available_tools():
 # 测试 MCP 工具能否被 LLM 调用
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
 import asyncio
-from ideer.models.vllm_provider import VllmChatModel
-from ideer.mcp.cache import get_cached_mcp_tools
+from deerflow.models.vllm_provider import VllmChatModel
+from deerflow.mcp.cache import get_cached_mcp_tools
 async def test():
     tools = get_cached_mcp_tools()
     llm = VllmChatModel(model='模型名', base_url='http://地址/v1', api_key='key')
@@ -816,7 +832,7 @@ docker logs ideer-gateway 2>&1 | grep -iE "error|exception|failed" | tail -20
 # 测试模型 function calling 支持
 docker exec -w /app/backend -e PYTHONPATH=. ideer-gateway /app/backend/.venv/bin/python3 -c "
 import asyncio
-from ideer.models.vllm_provider import VllmChatModel
+from deerflow.models.vllm_provider import VllmChatModel
 from langchain_core.tools import tool
 async def test():
     llm = VllmChatModel(model='模型名', base_url='http://地址/v1', api_key='key')

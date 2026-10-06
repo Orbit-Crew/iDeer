@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-07-31-frontend-performance-bundle-static
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-31 plan restoring static rendering for public routes and keeping locale dictionaries, settings pages, editors, artifact panels, and Shiki out of routes that do not use them
+archived-reason: implemented with minor renames — layout-boundaries and i18n context tests exist, Shiki highlighting lazy-loads via frontend/src/components/ai-elements/shiki-highlight.ts (plan named shiki-highlight.tsx), the CodeMirror language split landed as code-editor-extensions.ts (plan named code-editor-languages.ts), and the lazy-panel gate landed as frontend/tests/unit/components/workspace/lazy-panels.test.ts (plan named lazy-panels.dom.test.tsx); route line anchors describe the 2026-07-31 tree
+---
+
 # Frontend Bundle and Static Rendering Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

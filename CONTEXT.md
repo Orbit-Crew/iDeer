@@ -1,6 +1,18 @@
+---
+id: context
+kind: reference
+status: current
+owner: repository maintainers
+scope: engineering terminology and product concept definitions for the whole repository
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ ed87169e7
+---
+
 # iDeer
 
 iDeer is an agent application that composes Thread, Agent, Skill, and Workflow resources into executable Runs.
+
+CONTEXT.md is the repository's single authority for engineering terminology. Read it when naming or reviewing resources, routes, components, or API fields, or when two documents disagree on a term's meaning. The [UI term table](docs/plans/2026-08-26-term-glossary.md) covers interface display-language copy only and does not redefine the engineering terms here.
 
 ## Scenario Entry
 
@@ -285,6 +297,10 @@ _Avoid_: Conversation, Session, Chat
 **Run**:
 A single execution attempt of an Agent or Workflow within one Thread, tracked through pending, running, success, error, timeout, or interrupted.
 _Avoid_: Execution, Job, Task
+
+**Turn**:
+One user submission inside a Thread and the assistant response it triggers, from send to completion or user stop. The composer submits one Turn at a time; stop and edit-and-regenerate act on a Turn.
+_Avoid_: Message pair, exchange, round
 
 ## Access & Visibility
 

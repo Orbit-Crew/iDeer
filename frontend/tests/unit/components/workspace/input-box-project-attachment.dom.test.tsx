@@ -10,17 +10,18 @@ import {
 import type { ReactNode } from "react";
 
 import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
-import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
-import {
-  InputBox,
-  type InputBoxSubmitOptions,
-} from "@/components/workspace/input-box";
+import { InputBox } from "@/components/workspace/input-box";
 import { ThreadContext } from "@/components/workspace/messages/context";
 import { AuthProvider } from "@/core/auth/AuthProvider";
 import { DEFAULT_LOCALE } from "@/core/i18n";
 import { I18nProvider } from "@/core/i18n/context";
 import { stageProjectAttachment } from "@/core/projects/composer-attach";
 import type { AttachProjectDocumentResult } from "@/core/projects/types";
+import {
+  createTurnSubmitController,
+  createTurnSubmitGate,
+  type TurnDispatchRequest,
+} from "@/core/threads/turn-submit";
 
 rs.mock("next/navigation", () => ({
   useRouter: () => ({ push: rs.fn(), replace: rs.fn(), refresh: rs.fn() }),
@@ -71,13 +72,46 @@ const OTHER_STAGED_FILE = {
   status: "uploaded",
 };
 
-type SubmitSpy = ReturnType<typeof rs.fn>;
+/**
+ * A real turn-submit controller over a stream-module send double that mimics
+ * the gate protocol (join the send phase, mark dispatched, settle). The
+ * recorded dispatch requests stand in for the old onSubmit spy; the
+ * lifecycle runs through the module's gate instead of submit-option
+ * callbacks.
+ */
+function makeTurnSubmitHarness(options: { holdTurn?: boolean } = {}) {
+  const gate = createTurnSubmitGate();
+  const requests: TurnDispatchRequest[] = [];
+  const completeTurn = () => gate.completeTurn();
+  const send = rs.fn(async (request: TurnDispatchRequest) => {
+    if (!gate.beginSend()) {
+      return;
+    }
+    gate.markDispatched();
+    requests.push(request);
+    gate.endSend();
+  });
+  const controller = createTurnSubmitController({ gate, send });
+  return {
+    gate,
+    send,
+    requests,
+    completeTurn,
+    controller,
+    // The stream is "busy" — the submitted run has not finished yet.
+    get turnPending() {
+      return options.holdTurn === true;
+    },
+  };
+}
 
-function renderComposer({ onSubmit }: { onSubmit: SubmitSpy }) {
+type Harness = ReturnType<typeof makeTurnSubmitHarness>;
+
+function renderComposer({ turnSubmit }: { turnSubmit: Harness["controller"] }) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  const tree = (onSubmitProp: SubmitSpy): ReactNode => (
+  const tree = (controller: Harness["controller"]): ReactNode => (
     <I18nProvider initialLocale={DEFAULT_LOCALE}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider
@@ -97,7 +131,7 @@ function renderComposer({ onSubmit }: { onSubmit: SubmitSpy }) {
                 threadId="thread-1"
                 status="ready"
                 context={{ mode: "flash" } as never}
-                onSubmit={onSubmitProp}
+                turnSubmit={controller}
               />
             </PromptInputProvider>
           </ThreadContext.Provider>
@@ -105,7 +139,7 @@ function renderComposer({ onSubmit }: { onSubmit: SubmitSpy }) {
       </QueryClientProvider>
     </I18nProvider>
   );
-  return render(tree(onSubmit));
+  return render(tree(turnSubmit));
 }
 
 function getSubmitButton(container: HTMLElement): HTMLButtonElement {
@@ -116,15 +150,12 @@ function getSubmitButton(container: HTMLElement): HTMLButtonElement {
   return button;
 }
 
-function lastSubmit(onSubmit: SubmitSpy): {
-  message: PromptInputMessage;
-  options: InputBoxSubmitOptions | undefined;
-} {
-  const [message, options] = onSubmit.mock.calls.at(-1) as [
-    PromptInputMessage,
-    InputBoxSubmitOptions?,
-  ];
-  return { message, options };
+function lastRequest(harness: Harness): TurnDispatchRequest {
+  const request = harness.requests.at(-1);
+  if (!request) {
+    throw new Error("no dispatch recorded");
+  }
+  return request;
 }
 
 afterEach(() => {
@@ -136,23 +167,23 @@ afterEach(() => {
 describe("InputBox staged project attachments", () => {
   it("submits an attachment-only message instead of reading it as empty", async () => {
     stageProjectAttachment("thread-1", ATTACHMENT);
-    const onSubmit = rs.fn();
-    const { container } = renderComposer({ onSubmit });
+    const harness = makeTurnSubmitHarness();
+    const { container } = renderComposer({ turnSubmit: harness.controller });
 
     // The staged chip is applied from session storage on mount.
     await screen.findByTestId("project-attachment-chip");
     fireEvent.click(getSubmitButton(container));
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    const { message, options } = lastSubmit(onSubmit);
-    expect(message.text).toBe("");
-    expect(options?.additionalKwargs?.files).toEqual([STAGED_FILE]);
+    await waitFor(() => expect(harness.requests).toHaveLength(1));
+    const request = lastRequest(harness);
+    expect(request.message.text).toBe("");
+    expect(request.options?.additionalKwargs?.files).toEqual([STAGED_FILE]);
   });
 
   it("does not intercept /goal while an attach chip is present", async () => {
     stageProjectAttachment("thread-1", ATTACHMENT);
-    const onSubmit = rs.fn();
-    const { container } = renderComposer({ onSubmit });
+    const harness = makeTurnSubmitHarness();
+    const { container } = renderComposer({ turnSubmit: harness.controller });
 
     await screen.findByTestId("project-attachment-chip");
     fireEvent.change(screen.getByRole("textbox"), {
@@ -163,32 +194,32 @@ describe("InputBox staged project attachments", () => {
     // The line goes out as an ordinary message WITH the attachment — the
     // goal interception would have stripped the "/goal " prefix and dropped
     // the staged files.
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    const { message, options } = lastSubmit(onSubmit);
-    expect(message.text).toBe("/goal check this");
-    expect(options?.additionalKwargs?.files).toEqual([STAGED_FILE]);
+    await waitFor(() => expect(harness.requests).toHaveLength(1));
+    const request = lastRequest(harness);
+    expect(request.message.text).toBe("/goal check this");
+    expect(request.options?.additionalKwargs?.files).toEqual([STAGED_FILE]);
   });
 
   it("keeps plain text-only and truly-empty submit behavior unchanged", async () => {
-    const onSubmit = rs.fn();
-    const { container } = renderComposer({ onSubmit });
+    const harness = makeTurnSubmitHarness();
+    const { container } = renderComposer({ turnSubmit: harness.controller });
 
     // No staged attachment, empty text: nothing is submitted.
     fireEvent.click(getSubmitButton(container));
     await waitFor(() =>
       expect(screen.queryByTestId("project-attachment-chip")).toBeNull(),
     );
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(harness.requests).toHaveLength(0);
 
     // Plain text submits with no staged files attached.
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "hello" },
     });
     fireEvent.click(getSubmitButton(container));
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    const { message, options } = lastSubmit(onSubmit);
-    expect(message.text).toBe("hello");
-    expect(options?.additionalKwargs).toBeUndefined();
+    await waitFor(() => expect(harness.requests).toHaveLength(1));
+    const request = lastRequest(harness);
+    expect(request.message.text).toBe("hello");
+    expect(request.options?.additionalKwargs).toBeUndefined();
   });
 
   it("submits every pending shelf attachment when several were staged across a navigation", async () => {
@@ -197,17 +228,17 @@ describe("InputBox staged project attachments", () => {
     // list. Both must reach the next message.
     stageProjectAttachment("thread-1", ATTACHMENT);
     stageProjectAttachment("thread-1", OTHER_ATTACHMENT);
-    const onSubmit = rs.fn();
-    const { container } = renderComposer({ onSubmit });
+    const harness = makeTurnSubmitHarness();
+    const { container } = renderComposer({ turnSubmit: harness.controller });
 
     await waitFor(() =>
       expect(screen.getAllByTestId("project-attachment-chip")).toHaveLength(2),
     );
     fireEvent.click(getSubmitButton(container));
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    const { options } = lastSubmit(onSubmit);
-    expect(options?.additionalKwargs?.files).toEqual([
+    await waitFor(() => expect(harness.requests).toHaveLength(1));
+    const request = lastRequest(harness);
+    expect(request.options?.additionalKwargs?.files).toEqual([
       STAGED_FILE,
       OTHER_STAGED_FILE,
     ]);
@@ -216,8 +247,8 @@ describe("InputBox staged project attachments", () => {
   it("keeps a removed chip removed across a remount", async () => {
     stageProjectAttachment("thread-1", ATTACHMENT);
     stageProjectAttachment("thread-1", OTHER_ATTACHMENT);
-    const onSubmit = rs.fn();
-    const first = renderComposer({ onSubmit });
+    const harness = makeTurnSubmitHarness();
+    const first = renderComposer({ turnSubmit: harness.controller });
 
     await waitFor(() =>
       expect(screen.getAllByTestId("project-attachment-chip")).toHaveLength(2),
@@ -234,7 +265,7 @@ describe("InputBox staged project attachments", () => {
     );
 
     first.unmount();
-    const second = renderComposer({ onSubmit });
+    const second = renderComposer({ turnSubmit: harness.controller });
     await waitFor(() =>
       expect(screen.getAllByTestId("project-attachment-chip")).toHaveLength(1),
     );
@@ -242,24 +273,19 @@ describe("InputBox staged project attachments", () => {
     second.unmount();
   });
 
-  it("resets the staged count after a sent message clears the chip", async () => {
+  it("resets the staged count after the turn completes and clears the chip", async () => {
     stageProjectAttachment("thread-1", ATTACHMENT);
-    const onSubmit: SubmitSpy = rs.fn(
-      (_message: unknown, options?: InputBoxSubmitOptions) => {
-        // The composer clears one-time send state (staged project
-        // attachments, quotes, references) in the onSendCompleted
-        // completion callback, not in onSent — the draft-preservation
-        // restructure moved the cleanup site. Simulate the full
-        // lifecycle: send accepted, then completed.
-        options?.onSent?.();
-        options?.onSendCompleted?.();
-      },
-    );
-    const { container } = renderComposer({ onSubmit });
+    const harness = makeTurnSubmitHarness();
+    const { container } = renderComposer({ turnSubmit: harness.controller });
 
     await screen.findByTestId("project-attachment-chip");
     fireEvent.click(getSubmitButton(container));
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(harness.requests).toHaveLength(1));
+
+    // The turn-submit gate's completion event owns the one-time send-state
+    // cleanup (staged project attachments, quotes, references). Settle the
+    // dispatched turn through the real gate, as the stream's onFinish would.
+    harness.completeTurn();
 
     // onSendCompleted cleared the staged attachments; a second empty
     // submit is a no-op again.
@@ -270,6 +296,6 @@ describe("InputBox staged project attachments", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("project-attachment-chip")).toBeNull(),
     );
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(harness.requests).toHaveLength(1);
   });
 });

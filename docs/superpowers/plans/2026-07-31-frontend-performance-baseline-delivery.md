@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-07-31-frontend-performance-baseline-delivery
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-07-31 plan turning route-weight findings into repeatable gates — a measure-route-assets budget script, Nginx textual compression, lazy landing case-study images, and a static manifest replacing request-derived mock filesystem traversal
+archived-reason: implemented — frontend/scripts/measure-route-assets.mjs, frontend/performance-budgets.json, the perf:check script, backend/tests/test_nginx_compression.py with identical gzip directives in both nginx configs, and the static-demo and case-study tests all exist; task line anchors describe the 2026-07-31 tree
+---
+
 # Frontend Performance Baseline and Delivery Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,4 +1,18 @@
+---
+id: docs-experiments-task-continuity-20260912-validation
+kind: evidence
+status: archived
+owner: repository maintainers
+scope: implementation validation record of the task-continuity integration PR — review-regression fixes, focused and full-suite backend results, clean-base failure comparison, and the live recovery checks on that candidate
+archived-reason: these rows record the integration PR candidate and its review rounds, not the current candidate; a historical passing result never satisfies current validation — current feature and validation entry points live in docs/task-continuity.md
+---
+
 # Implementation validation
+
+> Historical record: the rows below cover the task-continuity integration PR
+> candidate and its review fixes at the commits named in the text. They are not
+> validation of the current candidate; current feature and validation entry
+> points are documented in [task-continuity.md](../../task-continuity.md).
 
 These checks exercise the implementation and review fixes. They are separate
 from the historical prototype A/B/C/D quality scores.

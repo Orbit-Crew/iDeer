@@ -1,3 +1,13 @@
+---
+id: docs-agents-maintainer-orchestrator-design
+kind: reference
+status: current
+owner: repository maintainers
+scope: design rationale for the deerflow-maintainer-orchestrator skill (comment-only safety model, posting bar, review principles); the skill itself remains the executable contract
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+---
+
 # DeerFlow Maintainer Orchestrator — design notes
 
 This document explains the *thinking* behind the `deerflow-maintainer-orchestrator` skill: what it is for, the boundaries that make it safe to run, and the principles that shape how it reviews. It is written for DeerFlow maintainers who run the skill, and for anyone in the community who wants to understand — or adapt — the pattern of delegating issue and PR triage to an agent.

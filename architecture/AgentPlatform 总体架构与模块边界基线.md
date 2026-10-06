@@ -1,10 +1,21 @@
+---
+id: architecture-module-boundary-baseline
+kind: policy
+status: current
+owner: repository maintainers
+scope: 三线建设（DeerFlow Runtime 收敛、企业知识库、Local Runtime）的规范性总体架构与模块边界基线——Upstream First 原则、Resource/Workflow/ExecutionTarget/Evidence 边界、架构不变量与架构评审检查清单；当前已实现边界的描述以 docs/architecture/overview.md 为权威
+last-verified: 2026-10-04
+verified-against: worktree docs/agent-doc-disclosure @ dc35cf985
+---
+
 # AgentPlatform 总体架构与模块边界基线
 
 > **文档性质**：总体架构基线 / 模块边界基线 / 开发约束基线  
 > **适用对象**：架构设计人员、项目维护者、Coding Agent、测试人员、部署人员  
 > **适用版本**：DeerFlow `main` 已收敛进入 AgentPlatform `develop` 后的目标架构  
 > **制定日期**：2026-09-06  
-> **状态**：Baseline v1.0
+> **状态**：Baseline v1.0  
+> **现行实现参考**：[架构概览](../docs/architecture/overview.md)描述当前已实现的系统边界与执行关系；本文件规定三线建设的**目标**架构与约束基线，两者范围不同、互不替代。
 
 ---
 
@@ -71,7 +82,7 @@ Business Packages
 Offline / Intranet Distribution
 ```
 
-其中 DeerFlow 作为唯一 Server Agent Runtime 真源，AgentPlatform 长期保留的差异应主要集中于企业资源治理、Workflow、企业策略、业务包、扩展适配和内网发行，而不是重新维护 Memory、Sub-Agent、MCP、Guardrail、Sandbox、Run/Checkpoint 等通用 Runtime Fork。该方向与 DeerFlow 收敛方案定义的目标边界一致。fileciteturn3file1L103-L130
+其中 DeerFlow 作为唯一 Server Agent Runtime 真源，AgentPlatform 长期保留的差异应主要集中于企业资源治理、Workflow、企业策略、业务包、扩展适配和内网发行，而不是重新维护 Memory、Sub-Agent、MCP、Guardrail、Sandbox、Run/Checkpoint 等通用 Runtime Fork。该方向与 DeerFlow 收敛方案定义的目标边界一致。（见[合并 DeerFlow main 实施方案](AgentPlatform_合并_DeerFlow_main_完整实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -360,7 +371,7 @@ Run Evidence
 └──────────────────────────────────────────────────────────────┘
 ```
 
-该结构是在 DeerFlow 收敛方案既定的 UI → Control Plane → Workflow → Extension → DeerFlow Runtime 分层基础上，加入 Knowledge 和 Local Execution Plane。fileciteturn3file0L46-L70
+该结构是在 DeerFlow 收敛方案既定的 UI → Control Plane → Workflow → Extension → DeerFlow Runtime 分层基础上，加入 Knowledge 和 Local Execution Plane。（见[合并 DeerFlow main 实施方案](AgentPlatform_合并_DeerFlow_main_完整实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -472,7 +483,7 @@ Resource
 └── KnowledgeBase
 ```
 
-KnowledgeBase 必须正式进入 Resource Governance，而不得建设独立、平行身份体系。知识库方案已明确 KnowledgeBase 是第四类一等 Resource。fileciteturn3file6L831-L846
+KnowledgeBase 必须正式进入 Resource Governance，而不得建设独立、平行身份体系。知识库方案已明确 KnowledgeBase 是第四类一等 Resource。（见[知识库能力建设实施方案](AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md)）
 
 四类 Resource 统一继承：
 
@@ -506,7 +517,7 @@ Knowledge 可以具有 convenience API，但不得形成：
 /api/knowledge-bases
 ```
 
-作为第二身份真源。知识库方案对此已有明确约束。fileciteturn4file6L891-L908
+作为第二身份真源。知识库方案对此已有明确约束。（见[知识库能力建设实施方案](AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -600,7 +611,7 @@ retry
 fallback
 ```
 
-Local Runtime 方案已经要求 Workflow 支持 `USER_DEVICE`。fileciteturn2file10L1337-L1361
+Local Runtime 方案已经要求 Workflow 支持 `USER_DEVICE`。（见[Local Runtime 实施方案](AgentPlatform_Local_Runtime_桌面执行代理建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -715,7 +726,7 @@ DeerFlow
 - Tool Receipt；
 - Agent / Sub-Agent 调用。
 
-这一职责划分与知识库方案一致。fileciteturn3file7L901-L935
+这一职责划分与知识库方案一致。（见[知识库能力建设实施方案](AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -788,7 +799,7 @@ LocalKnowledgeProvider
 Local Index
 ```
 
-Local Runtime 方案已提出上述 Server / User Device 双位置模型。fileciteturn3file13L1677-L1719
+Local Runtime 方案已提出上述 Server / User Device 双位置模型。（见[Local Runtime 实施方案](AgentPlatform_Local_Runtime_桌面执行代理建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -906,7 +917,7 @@ KB ACL 负责回答：
 具体允许搜索哪些知识？
 ```
 
-知识方案已经明确二者必须同时成立。fileciteturn4file6L1049-L1069
+知识方案已经明确二者必须同时成立。（见[知识库能力建设实施方案](AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -959,7 +970,7 @@ Run
 Evidence
 ```
 
-Local Runtime 方案明确使用该职责划分。fileciteturn2file3L258-L286
+Local Runtime 方案明确使用该职责划分。（见[Local Runtime 实施方案](AgentPlatform_Local_Runtime_桌面执行代理建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -1120,7 +1131,7 @@ Server
 → User PC localhost MCP
 ```
 
-Local Runtime 原方案已明确该链路。fileciteturn3file13L1599-L1643
+Local Runtime 原方案已明确该链路。（见[Local Runtime 实施方案](AgentPlatform_Local_Runtime_桌面执行代理建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -1341,7 +1352,7 @@ Run Evidence
 └── Business Provenance
 ```
 
-知识方案明确要求 Knowledge Retrieval Receipt 不得成为独立平行证据系统，而应进入 DeerFlow Tool Receipt / Run Evidence。fileciteturn4file4L413-L445
+知识方案明确要求 Knowledge Retrieval Receipt 不得成为独立平行证据系统，而应进入 DeerFlow Tool Receipt / Run Evidence。（见[知识库能力建设实施方案](AgentPlatform_知识库能力建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 
@@ -1919,7 +1930,7 @@ Offline Distribution
 
 > Local Knowledge 不得早于 KnowledgeBase 基础治理。
 
-Local Runtime 原方案也明确将 Local Knowledge 建立在 KnowledgeBase 基础能力完成之后。fileciteturn2file7L774-L818
+Local Runtime 原方案也明确将 Local Knowledge 建立在 KnowledgeBase 基础能力完成之后。（见[Local Runtime 实施方案](AgentPlatform_Local_Runtime_桌面执行代理建设实施方案_CodingAgent版_2026-09-04.md)）
 
 ---
 

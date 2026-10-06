@@ -16,7 +16,8 @@ import app.agentplatform.visibility_models  # noqa: F401
 from app.agentplatform.knowledge.documents import DocumentValidationError, KnowledgeDocumentService
 from app.agentplatform.knowledge.models import KnowledgeDocument
 from app.agentplatform.knowledge.provider import KnowledgeProviderError, ProviderIngestionResult
-from app.agentplatform.resources.service import ResourceAction, ResourceActor, ResourceNotFound, ResourcePermissionDenied
+from app.agentplatform.resources.actors import role_permissions
+from app.agentplatform.resources.service import ResourceActor, ResourceNotFound, ResourcePermissionDenied
 from deerflow.persistence.base import Base
 
 
@@ -31,12 +32,12 @@ async def session(tmp_path) -> AsyncIterator[AsyncSession]:
     await engine.dispose()
 
 
-def _actor(user_id: str = "owner", permissions: set[ResourceAction] | None = None) -> ResourceActor:
+def _actor(user_id: str = "owner", permissions: set[str] | None = None) -> ResourceActor:
     return ResourceActor(
         user_id=user_id,
         department_id=None,
         role="user",
-        permissions=frozenset(permissions or {ResourceAction.READ, ResourceAction.WRITE}),
+        permissions=frozenset(permissions or role_permissions("user")),
     )
 
 

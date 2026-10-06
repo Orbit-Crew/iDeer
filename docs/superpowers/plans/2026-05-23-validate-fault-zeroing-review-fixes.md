@@ -1,3 +1,12 @@
+---
+id: docs-superpowers-plans-2026-05-23-validate-fault-zeroing-review-fixes
+kind: plan
+status: archived
+owner: repository maintainers
+scope: 2026-05-23 plan closing two validator false negatives — expected-analysis evidence sources cited with line suffixes, and coverage-matrix rows masked by mentions elsewhere in the report
+archived-reason: both fixes landed — `test_expected_analysis_file_cannot_use_line_suffixes` and the hardened `test_material_coverage_matrix_must_cover_required_categories` live in backend/tests/unit/scripts/test_validate_fault_zeroing_outputs.py, and the Task 2 regex is now backend/app/agentplatform/fault_zeroing/contract.py; the validator script itself became a thin shim over the versioned Result Contract, so the plan's script line anchors describe the pre-refactor layout
+---
+
 # Fault-Zeroing Validator Review Fixes Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
