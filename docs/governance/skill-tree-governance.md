@@ -5,7 +5,7 @@ status: current
 owner: repository maintainers
 scope: skill-tree authority relationship (resources/skills authoritative, skills/public upstream landing zone), the upstream skill upgrade flow with lock-SHA diff command and enterprise adaptation checklist, first-round overlap curation verdicts, and the skill review waiver/acceptance principles
 last-verified: 2026-10-06
-verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
+verified-against: worktree docs/doc-disclosure-followup @ d202ae1c3
 ---
 
 # 技能树治理与上游升级流程
@@ -13,13 +13,13 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 > audience: maintainers, skill maintainers, release owners<br>
 > canonical-path: `docs/governance/skill-tree-governance.md`
 
-本文件是技能区（`resources/skills/` 与 `skills/public/`）的治理专节：权威关系、上游升级流程、锁定 SHA 登记、重叠技能清点结论与评审豁免原则。它不重复根 `AGENTS.md` 与 `skills/public/README.md` 的声明，只把可执行流程和登记事实集中在一处。
+本文件是技能区（`resources/skills/` 与 `skills/public/`）的治理专节：权威关系、上游升级流程、锁定 SHA 登记、重叠技能清点结论、评审豁免原则与部署态技能发现解析的豁免裁定。它不重复根 `AGENTS.md` 与 `skills/public/README.md` 的声明，只把可执行流程和登记事实集中在一处。
 
 ## 1. 权威关系
 
 | 树 | 角色 | 事实依据 |
 | --- | --- | --- |
-| `resources/skills/` | **权威技能树**（86 个技能）：docker 运行时 bind mount（`../resources/skills:/app/skills:ro`）、内网离线包打包源、评审门控 pathspec（`scripts/review_changed_public_skills.py` 的 `SKILL_PACKAGE_PATHSPEC`）、脚本级测试加载器（`backend/tests/unit/skills/skill_loader.py`）与豁免清单（`resources/skills/` 前缀约束）的唯一消费对象 | 根 `AGENTS.md` 项目结构段；票 17（cc3e5b674）把全部消费方从 `skills/public` 切换至此 |
+| `resources/skills/` | **权威技能树**（86 个技能）：docker 运行时 bind mount（`../resources/skills:/app/skills:ro`，实际消费边界见 §6）、内网离线包打包源、评审门控 pathspec（`scripts/review_changed_public_skills.py` 的 `SKILL_PACKAGE_PATHSPEC`）、脚本级测试加载器（`backend/tests/unit/skills/skill_loader.py`）与豁免清单（`resources/skills/` 前缀约束）的唯一消费对象 | 根 `AGENTS.md` 项目结构段；票 17（cc3e5b674）把全部消费方从 `skills/public` 切换至此 |
 | `skills/public/` | **上游落地区**（15 个技能）：只接收原始上游技能包，不做企业改造（治理 frontmatter、离线行为、rebrand）；上游合并可随时整树覆盖 | `skills/public/README.md`；根 `AGENTS.md` 同款声明 |
 
 推论：对 `skills/public` 与 `resources` 之间的差异做 diff 时，**resources 侧携带企业适配是预期噪声**（见 §3 改造清单）；`skills/public` 侧不回移企业适配，也不为对齐而修改。
@@ -104,3 +104,17 @@ git diff cc3e5b6745f62e79050dc483bdbbc7c915af9ce6 -- skills/public
 - **有意企业适配被扫描器误报为 error**：以豁免登记，理由写明适配来源（如 data-analysis `python-dynamic-import` 注明票 16 离线改造）；接受理由同时留痕于本文件 §3 清点表。
 - **warning 级发现**：不阻塞门控（CI 口径 `--fail-on error --fail-on-incomplete`）。现存 warning 主体为上游 Markdown 围栏被资源解析器误读的样式噪声（`resource.missing` 指向代码块、`escaping-link` 指向 `/mnt/user-data`），接受为上游文档风格产物，不做企业侧改写。
 - **豁免到期**：到期即重新评审；若适配仍在，续期并复述理由；若上游已修复，删除豁免行。
+
+## 6. 部署态公共技能发现豁免（票 28，2026-10-06）
+
+**观察**（票 18 §6 相邻观察，票 28 实测确认）：`deerflow` 存储层的 `_iter_skill_files` 只发现 `{skills_root}/{public,custom,legacy,integrations}/` 分类子目录；docker 与内网 compose 把扁平的 `resources/skills`（87 个技能目录，无 `public/` 子目录）直接挂载为容器 `/app/skills` 并以其为 `skills_root`（内网 compose 显式 `DEER_FLOW_SKILLS_PATH=/app/skills`，docker compose 经 `project_root()/skills` 解析到同一路径）。复现实测：扁平根下 `_iter_skill_files` 0 条、`load_skills()` 0 个、`public_skill_exists()` 恒 False；同代码对 `{root}/public` 分类根正常发现（复现脚本与输出：`dev-log/t28-skill-discovery.md`）。
+
+**裁定：设计如此，不改发现逻辑。** 部署态技能可见性走 canonical（Resource 目录）链路，不经文件系统发现：
+
+1. 内容入库：bundled 播种（`bundled-resources.json` 59 个 skill 条目，`source: resources/skills/<slug>`）经 `../resources:/app/resources` 挂载由 `scripts/seed_bundled_resources.py` 复制进 Resource 目录版本库——读的是 `/app/resources`，不是 `/app/skills`。
+2. 用户可见面：前端技能页列表走 `/api/resources?type=skill`（DB）；Agent Run 与 workflow 节点消费冻结 resource versions（`frozen.skills` + `create_run_skill_view`）；canonical 沙箱把 `/mnt/skills` 直接映射到冻结运行视图，绕过投影契约（`backend/app/agentplatform/resources/canonical_sandbox.py` 模块头自述；`backend/app/agentplatform/agent_bootstrap.py`："AgentPlatform is canonical-only"）。
+3. 依赖文件系统发现的仅有上游非 canonical 面（`GET /api/skills`、bootstrap 代理、IM 渠道斜杠技能、非 canonical 沙箱投影）：企业前端不调用 `GET /api/skills`（仅 `/api/skills/custom/<path>` 导出，读每用户 custom 目录，不受影响），bootstrap 代理在网关组合期被 canonical 包装替换（`app/gateway/services.py` `_install_canonical_agent_bootstrap()`）。部署态无用户可见面因扁平根变暗。
+4. `/app/skills` 挂载的现存作用：为上游运行时的 `skills_root` 解析（`skills.path` / `DEER_FLOW_SKILLS_PATH` / `project_root()/skills`）提供一个真实存在的根（每用户 custom 目录树的父根、container-path 身份等）；其公共发现为空是预期，不是缺陷。
+5. 非回归：`a942aef14`（2026-08-18）把挂载源从 `../skills`（当时不入 git，无 `public/`）换成 `resources/skills`（自入库起即扁平）——部署态文件系统公共发现从未工作过，无回归点。`IDEER_HOST_SKILLS_PATH`/`DEER_FLOW_HOST_SKILLS_PATH` 自 v2.1.0 起废弃（managed `/mnt/skills` 投影取代宿主技能路径翻译），与宿主侧发现布局无关。
+
+**规则**：除非出现 canonical 面诉求，禁止为部署态给 `_iter_skill_files` 加扁平根自动兼容——仅改发现会造成"清单可见但沙箱投影（`/mnt/skills/public`、`public_skill_exists`、`projection._load_public_skills`、`_source_signature` 各自独立假设分类布局）挂载不出内容"的不一致半修；全修则波及 storage/projection/provider 多个已评审契约（`backend/tests/unit/skills` 677 用例钉住分类布局）。上游升级流程（§2）落地到 `resources/skills` 后，部署态可见性经由 bundled 播种同步进 Resource 目录获得，无需文件系统发现参与。
