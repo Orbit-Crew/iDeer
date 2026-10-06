@@ -555,4 +555,60 @@ describe("useThreadPage turn-submit controller", () => {
     // submission is accepted again.
     expect(gate.openTurn({ onSent: vi.fn() })).toBe(true);
   });
+
+  it("runs the page's pre-dispatch prepare before the stream send", async () => {
+    const order: string[] = [];
+    const prepare = vi.fn(async () => {
+      order.push("prepare");
+    });
+    // The stream mock builds a fresh result per render; keep one instrumented
+    // sendMessage identity so the dispatch order is observed reliably.
+    const sendMessage = vi.fn(async () => {
+      order.push("send");
+    });
+    mockUseThreadStream.mockImplementation((args: any) => {
+      lastStreamArgs = args;
+      streamResult = {
+        thread: streamThread,
+        pendingUsageMessages: [],
+        sendMessage,
+        regenerateMessage: vi.fn().mockResolvedValue(undefined),
+        editAndRegenerateMessage: vi.fn().mockResolvedValue(undefined),
+        isUploading: false,
+        isHistoryLoading: false,
+        hasMoreHistory: false,
+        loadMoreHistory: vi.fn(),
+      };
+      return streamResult;
+    });
+    const { result } = renderThreadPage({
+      threadId: "current-thread",
+      prepare,
+    });
+
+    await act(async () => {
+      await result.current.turnSubmit.submit({
+        threadId: "current-thread",
+        message: { text: "hello", files: [] },
+      });
+    });
+
+    // The project pre-create (prepare port) must complete before the run
+    // request goes out — the sole membership channel for a scoped new chat.
+    expect(order).toEqual(["prepare", "send"]);
+  });
+
+  it("invalidates an in-flight submission when the view's scope changes without a thread switch", () => {
+    const { result, rerender } = renderThreadPage({
+      threadId: "thread-a",
+      scopeKey: "project-1",
+    });
+    const gate = result.current.turnSubmitGate;
+    expect(gate.openTurn({ onSent: vi.fn() })).toBe(true);
+
+    rerender(baseArgs({ threadId: "thread-a", scopeKey: "project-2" }));
+    // The scope change (new-chat project param) invalidated the fence even
+    // though the thread id is unchanged: a fresh submission is accepted.
+    expect(gate.openTurn({ onSent: vi.fn() })).toBe(true);
+  });
 });

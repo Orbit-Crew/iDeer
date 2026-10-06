@@ -34,6 +34,7 @@ vi.mock("@/core/i18n/hooks", () => ({
       inputBox: {
         createSkillPrompt: "Create a skill",
       },
+      projects: { projectUnavailable: "会话创建失败，请稍后重试" },
       scenarios: {
         daily: "Daily Office",
         creative: "Creative Design",
@@ -137,6 +138,7 @@ vi.mock("@/core/i18n/hooks", () => ({
         createSkillPrompt: "Create a skill",
       },
       sidebar: { scheduledTasks: "Scheduled tasks" },
+      projects: { projectUnavailable: "会话创建失败，请稍后重试" },
       scenarios: {
         daily: "Daily Office",
         creative: "Creative Design",
@@ -178,7 +180,10 @@ vi.mock("@/core/threads/token-usage", () => ({
   selectContextUsage: () => null,
 }));
 
-vi.mock("@/core/threads/utils", () => ({
+vi.mock("@/core/threads/utils", async (importOriginal) => ({
+  // Keep the real isThreadArchived: the page header mounts the archive
+  // status component, which reads it from this module.
+  ...(await importOriginal<typeof import("@/core/threads/utils")>()),
   textOfMessage: () => "",
   pathOfThread: (thread: string | { thread_id: string }) =>
     `/workspace/chats/${typeof thread === "string" ? thread : thread.thread_id}`,
