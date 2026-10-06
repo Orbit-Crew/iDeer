@@ -744,3 +744,58 @@ def test_frontmatter_document_with_bold_blockquote_metadata_is_reported(tmp_path
     assert all(hit["severity"] == "error" and hit["location"].isdigit() for hit in hits)
     keys = " ".join(hit["reason"] for hit in hits)
     assert "状态" in keys and "日期" in keys
+
+
+# --- Ticket 19: GitNexus doc-only exemption line guard ---
+
+GITNEXUS_BLOCK_WITHOUT_EXEMPTION = """<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+## Always Do
+
+- MUST run impact analysis before editing.
+- NEVER commit before graph change analysis.
+
+<!-- gitnexus:end -->
+"""
+
+GITNEXUS_EXEMPTION_LINE = "- **Doc-only commits are exempt from re-indexing.** A commit that touches only Markdown documentation files satisfies detect-changes via a recorded `partial` result.\n"
+
+
+def test_gitnexus_block_missing_exemption_line_is_reported(tmp_path: Path, capsys) -> None:
+    # GitNexus re-indexing regenerates the managed block and can silently
+    # swallow the hand-added doc-only exemption line; the checker reports it.
+    files = _base_files()
+    files["AGENTS.md"] = (AGENTS_MD + "\n" + GITNEXUS_BLOCK_WITHOUT_EXEMPTION).encode("utf-8")
+    _materialize(tmp_path, files, _base_policy(files))
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    hits = _findings_by_rule(payload, "gitnexus-exemption-missing")
+    assert [hit["file"] for hit in hits] == ["AGENTS.md"]
+    assert hits[0]["severity"] == "error"
+    assert hits[0]["location"].isdigit()
+    assert "exemption" in hits[0]["reason"]
+
+
+def test_gitnexus_block_with_exemption_line_reports_nothing(tmp_path: Path, capsys) -> None:
+    # Only the bold lead phrase is guarded; the explanatory wording after it
+    # may legitimately evolve without tripping the rule.
+    exempt_block = GITNEXUS_BLOCK_WITHOUT_EXEMPTION.replace(
+        "## Always Do\n\n",
+        "## Always Do\n\n" + GITNEXUS_EXEMPTION_LINE,
+    )
+    files = _base_files()
+    files["AGENTS.md"] = (AGENTS_MD + "\n" + exempt_block).encode("utf-8")
+    _materialize(tmp_path, files, _base_policy(files))
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 0
+    assert payload["counts"]["findings"] == 0
+
+
+def test_candidate_without_gitnexus_block_reports_nothing(tmp_path: Path, capsys) -> None:
+    # No managed block means nothing to guard: removing the block wholesale is
+    # a deliberate governance decision, not the silent-drop failure mode.
+    _materialize_base(tmp_path)
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 0
+    assert _findings_by_rule(payload, "gitnexus-exemption-missing") == []

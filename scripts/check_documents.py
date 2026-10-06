@@ -26,6 +26,7 @@ Rule IDs (stable):
   stale-package-path            old ideer package paths in current documents
   blockquote-metadata-residue   legacy bold blockquote metadata beside frontmatter
   protected-fingerprint-mismatch  protected file content fingerprints
+  gitnexus-exemption-missing    AGENTS.md GitNexus block keeps the doc-only exemption line
 
 Optional policy key ``task_routes``: a list of
 ``{"route": path, "targets": [path, ...], "validation": path}`` entries.
@@ -74,6 +75,7 @@ RULE_EVIDENCE_MISSING = "evidence-missing"
 RULE_STALE_PACKAGE_PATH = "stale-package-path"
 RULE_BLOCKQUOTE_METADATA_RESIDUE = "blockquote-metadata-residue"
 RULE_PROTECTED_FINGERPRINT = "protected-fingerprint-mismatch"
+RULE_GITNEXUS_EXEMPTION = "gitnexus-exemption-missing"
 
 FRONTMATTER_REQUIRED_KEYS = ("id", "kind", "status", "owner", "scope")
 VALID_STATUS = frozenset({"current", "draft", "superseded", "archived"})
@@ -1123,6 +1125,76 @@ def check_blockquote_metadata_residue(
     return findings
 
 
+# The doc-only detect-changes exemption is a hand-added line inside the
+# tool-managed GitNexus block of AGENTS.md (authoritative semantics:
+# docs/governance/document-governance.md). GitNexus re-indexing regenerates
+# the block between the markers and can silently drop the line, so presence
+# is asserted mechanically. Only the bold lead phrase is matched: the
+# explanatory wording after it may legitimately evolve. A candidate without
+# the managed block reports nothing — removing the block wholesale is a
+# deliberate governance decision, not the silent-drop failure mode.
+_GITNEXUS_START_MARKER = "<!-- gitnexus:start -->"
+_GITNEXUS_END_MARKER = "<!-- gitnexus:end -->"
+_GITNEXUS_EXEMPTION_LEAD = "**Doc-only commits are exempt from re-indexing.**"
+_AGENTS_GUIDANCE_PATH = PurePosixPath("AGENTS.md")
+
+
+def check_gitnexus_exemption(
+    policy: dict, texts: dict[PurePosixPath, str]
+) -> list[Finding]:
+    """Report a missing doc-only exemption line in the AGENTS.md GitNexus block.
+
+    The line is hand-added inside the tool-managed block (``gitnexus:start``
+    to ``gitnexus:end``); re-indexing regenerates that block and can silently
+    drop the line. Only the bold lead phrase is matched because the rest of
+    the sentence may legitimately evolve. A candidate without the managed
+    block reports nothing.
+    """
+    findings: list[Finding] = []
+    for row in policy["inventory"]["files"]:
+        path = PurePosixPath(str(row["path"]))
+        if path != _AGENTS_GUIDANCE_PATH:
+            continue
+        text = texts.get(path)
+        if text is None:
+            continue
+        lines = text.splitlines()
+        start = next(
+            (
+                index
+                for index, line in enumerate(lines)
+                if _GITNEXUS_START_MARKER in line
+            ),
+            None,
+        )
+        if start is None:
+            continue
+        end = next(
+            (
+                index
+                for index in range(start + 1, len(lines))
+                if _GITNEXUS_END_MARKER in lines[index]
+            ),
+            len(lines),
+        )
+        if any(
+            _GITNEXUS_EXEMPTION_LEAD in lines[index]
+            for index in range(start + 1, end)
+        ):
+            continue
+        findings.append(
+            Finding(
+                RULE_GITNEXUS_EXEMPTION,
+                "error",
+                path.as_posix(),
+                str(start + 1),
+                "GitNexus block is missing the doc-only detect-changes exemption "
+                "line; restore it after regenerating the managed block",
+            )
+        )
+    return findings
+
+
 def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings: list[Finding] = []
     findings.extend(check_inventory_coverage(policy, source))
@@ -1138,6 +1210,7 @@ def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings.extend(check_evidence(policy, texts))
     findings.extend(check_stale_package_paths(policy, texts))
     findings.extend(check_blockquote_metadata_residue(policy, texts))
+    findings.extend(check_gitnexus_exemption(policy, texts))
     return findings
 
 
