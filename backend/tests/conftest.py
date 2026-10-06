@@ -136,6 +136,22 @@ def provisioner_module():
 # context should mark themselves ``@pytest.mark.no_auto_user``.
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _no_bytecode_writing():
+    """Keep test runs from writing bytecode caches into source trees.
+
+    Tests load skill sources directly (``resources/skills``, ``skills``) via
+    ``spec_from_file_location``; with bytecode writing enabled every such
+    load drops ``__pycache__`` residue into the shipped packages. Repository
+    guards assert those trees stay clean, so writing is disabled for the
+    whole session instead of patched per loader.
+    """
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    yield
+    sys.dont_write_bytecode = previous
+
+
 @pytest.fixture(autouse=True)
 def _reset_skill_storage_singleton():
     """Reset the SkillStorage singleton between tests to prevent cross-test contamination."""
