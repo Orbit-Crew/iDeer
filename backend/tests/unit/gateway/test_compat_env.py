@@ -17,6 +17,8 @@ _ALIASED_KEYS = (
     "IDEER_CHANNELS_GATEWAY_URL",
     "DEER_FLOW_CHANNELS_LANGGRAPH_URL",
     "DEER_FLOW_CHANNELS_GATEWAY_URL",
+    "IDEER_SANDBOX_HOST",
+    "DEER_FLOW_SANDBOX_HOST",
 )
 
 
@@ -54,6 +56,24 @@ def test_channels_env_vars_are_aliased(monkeypatch):
     service = ChannelService(channels_config={})
     assert service.manager._langgraph_url == "http://gateway:8001/api"
     assert service.manager._gateway_url == "http://gateway:8001"
+
+
+def test_sandbox_host_env_var_is_aliased(monkeypatch):
+    """Compose exports IDEER_SANDBOX_HOST; the AIO sandbox backend reads DEER_FLOW_SANDBOX_HOST.
+
+    Found by the compose-env contract test: both production compose files export
+    IDEER_SANDBOX_HOST=host.docker.internal for DooD path/network translation, while
+    deerflow.community.aio_sandbox.local_backend resolves the sandbox address from
+    DEER_FLOW_SANDBOX_HOST (defaulting to "localhost", unreachable from the gateway
+    container) — the same silently-dropped-export shape as the channels incident.
+    """
+    monkeypatch.setenv("IDEER_SANDBOX_HOST", "host.docker.internal")
+    monkeypatch.delenv("DEER_FLOW_SANDBOX_HOST", raising=False)
+
+    applied = apply_legacy_env_aliases()
+
+    assert applied["IDEER_SANDBOX_HOST"] == "DEER_FLOW_SANDBOX_HOST"
+    assert os.environ["DEER_FLOW_SANDBOX_HOST"] == "host.docker.internal"
 
 
 def test_explicit_modern_channels_value_wins(monkeypatch):
