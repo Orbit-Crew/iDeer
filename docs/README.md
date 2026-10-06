@@ -4,15 +4,15 @@ kind: index
 status: current
 owner: repository maintainers
 scope: entry index of engineering documentation: reader routes, current-authority table, and archive pointers
-last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
+last-verified: 2026-10-06
+verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 ---
 # 工程文档入口
 
 > audience: developers, operators, testers, maintainers<br>
 > status: current<br>
 > owner: repository maintainers<br>
-> last-verified: 2026-10-04<br>
+> last-verified: 2026-10-06<br>
 > canonical-path: `docs/README.md`
 
 这里是开发、运维、测试和内部治理文档的入口。面向最终用户和公开开发者的产品说明，请从公开文档站（部署后路由 `/zh/docs` 与 `/en/docs`；仓库内内容源见[中文文档内容](/frontend/src/content/zh/)与[英文文档内容](/frontend/src/content/en/)）开始；`skills/**` 及其专用资料不属于本入口的治理范围。
@@ -44,6 +44,7 @@ verified-against: worktree docs/agent-doc-disclosure @ bfb00cc49
 | 待实现规格 | [specs/](specs/) 目录（`to-spec` 输出，`ready-for-agent` 状态） |
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
 | 上游兼容基线与补丁 | [上游锁定记录](upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)、[根上游补丁账本](../UPSTREAM_PATCH_LEDGER.md)、[本地运行时补丁账本](local-runtime/PATCH_LEDGER.md) |
+| 技能树治理与上游技能升级 | [skill-tree-governance.md](governance/skill-tree-governance.md)（权威关系、锁定 SHA 登记与升级流程；技能包内容本身不属本入口治理范围） |
 | 当前工程待办 | [backlog.md](backlog.md) |
 
 ## 历史证据

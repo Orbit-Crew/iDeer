@@ -3272,11 +3272,20 @@
         "docs/backlog.md"
       ],
       "declared_by": "docs/README.md current-source table"
+    },
+    {
+      "topic": "skill-tree-governance",
+      "scope": "skill-tree authority relationship, upstream skill upgrade flow and lock-SHA registration, overlap curation verdicts",
+      "authorities": [
+        "docs/governance/skill-tree-governance.md"
+      ],
+      "declared_by": "docs/README.md current-source table",
+      "note": "skills/public/README.md and the root AGENTS.md hold the short authority declaration; the governance file holds the executable flow and the dated lock ledger"
     }
   ],
   "supplements": {
-    "count": 10,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 3 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed)",
+    "count": 11,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 4 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed)",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3377,6 +3386,16 @@
         "protected": false,
         "role": "workflow assets README",
         "referenced_by": "docs/document-retention-assessment.md"
+      },
+      {
+        "path": "docs/governance/skill-tree-governance.md",
+        "registration": "post-baseline-addition",
+        "sha256": "6aa259c0150a8a4e42508307fd7377c81a9790ef67381ea1eda96d15c33ec184",
+        "lines": 106,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "skill-tree governance: authority relationship, upstream skill upgrade flow with lock-SHA diff command, overlap curation verdicts, and skill review waiver principles (created 2026-10-06 with curation ticket 18)",
+        "referenced_by": "docs/README.md current-authority table, skills/public/README.md (see root AGENTS.md authority declaration)"
       }
     ]
   },
