@@ -661,3 +661,16 @@ restored.
 | `backend/tests/test_user_deletion.py` | `backend/tests/integration/api/test_user_deletion.py` | Database commit precedes filesystem cleanup; cleanup failure remains auditable and retryable. | `cd backend && PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/integration/api/test_user_deletion.py -q` |
 | `backend/tests/test_reconcile_user_state.py` | `backend/tests/unit/scripts/test_reconcile_user_state.py` | Read-only inventory and guarded deletion for stale runtime-user state. | `cd backend && PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/unit/scripts/test_reconcile_user_state.py -q` |
 | `backend/tests/test_runtime_user_context.py` | `backend/tests/unit/runtime/test_runtime_user_context.py` | Pytest uses a temporary `IDEER_HOME`, distinct from production runtime state. | `cd backend && PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/unit/runtime/test_runtime_user_context.py -q` |
+
+## Batch 2026-10-06: Stale `detect_blocking_io_static` duplicate removal
+
+`60f0ef382` moved `backend/tests/test_detect_blocking_io_static.py` to
+`backend/tests/unit/scripts/`; `40c4ec32` (#4200) later re-created the
+top-level file with a superset of the tests, orphaning the moved copy. Its
+`from support...` import resolves only under the lane environment
+(`PYTHONPATH=.:tests`), so bare `pytest tests/unit/scripts` aborted with
+`ModuleNotFoundError: No module named 'support'`.
+
+| Removed path | Replacement path | Core assertions retained | Validation |
+| --- | --- | --- | --- |
+| `backend/tests/unit/scripts/test_detect_blocking_io_static.py` | `backend/tests/test_detect_blocking_io_static.py` | Static blocking-IO detector: direct async blocking calls, sync helpers reachable from async code and via self/cls attribute chains, Path/httpx/os detection, CLI JSON and summary output, parse-error reporting | `cd backend && PYTHONPATH=.:tests PYTHONIOENCODING=utf-8 PYTHONUTF8=1 .venv/bin/python -m pytest tests/test_detect_blocking_io_static.py -q` |
