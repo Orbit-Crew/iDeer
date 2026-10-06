@@ -83,6 +83,18 @@ def _assert_timing_consistent(output: str, artifacts: Path, summary: str, *, evi
         assert evidence["duration_seconds"] == int(seconds)
 
 
+def _assert_failure_tail(output: str, lane: str, lane_artifacts: Path, *, status: int) -> None:
+    """Ticket 06 output contract on failure paths.
+
+    The duration line still reports the lane's final status, and when the
+    artifact directory was created the runner prints the artifact pointer
+    AFTER it, so failing stdout ends with TEST_LANE_ARTIFACT, not with the
+    status itself.
+    """
+    assert re.search(rf"^TEST_LANE_DURATION lane={lane} seconds=\d+ status={status}$", output, re.M)
+    assert output.rstrip().endswith(f"TEST_LANE_ARTIFACT lane={lane} dir={lane_artifacts}")
+
+
 def _assert_status_consistent(
     output: str,
     artifacts: Path,
@@ -138,7 +150,7 @@ def test_evidence_failure_fails_successful_lane_and_leaves_incomplete_evidence(
     metadata = (artifacts / "run.meta").read_text(encoding="utf-8")
     assert result.returncode == 1
     assert "TEST_LANE_EVIDENCE_ERROR lane=test-contracts status=23" in result.stdout
-    assert result.stdout.rstrip().endswith("status=1")
+    _assert_failure_tail(result.stdout, "test-contracts", artifacts, status=1)
     assert "status=1" in metadata
     assert "Exit status: 1" in summary
     assert "Outcome: failed" in summary
@@ -164,7 +176,7 @@ def test_test_failure_is_preserved_when_evidence_completion_also_fails(
     metadata = (artifacts / "run.meta").read_text(encoding="utf-8")
     assert result.returncode == 7
     assert "TEST_LANE_EVIDENCE_ERROR lane=test-contracts status=23" in result.stdout
-    assert result.stdout.rstrip().endswith("status=7")
+    _assert_failure_tail(result.stdout, "test-contracts", artifacts, status=7)
     assert "status=7" in metadata
     assert "Exit status: 7" in summary
     assert "Outcome: failed" in summary
