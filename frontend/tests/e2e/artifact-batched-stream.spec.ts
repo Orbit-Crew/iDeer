@@ -189,6 +189,8 @@ test("assembles streamed write-file argument deltas in the artifact preview", as
     });
 
     const artifactsPanel = page.locator("#artifacts");
+    await expect(artifactsPanel).toBeHidden();
+    await page.getByText(ARTIFACT_PATH).click();
     await expect(artifactsPanel).toBeVisible();
     await expect(artifactsPanel.getByText("batched-report.md")).toBeVisible();
     await expect(artifactsPanel.getByText("Hello world")).toBeVisible();

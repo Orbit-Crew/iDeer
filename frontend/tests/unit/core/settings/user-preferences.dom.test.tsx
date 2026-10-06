@@ -184,8 +184,39 @@ describe("authenticated workspace preferences", () => {
       sessionStorage.getItem("deerflow.preferences.alice.pending"),
     ).toBeNull();
     expect(getThreadModelSnapshot("slow-hydration")).toBeUndefined();
+    finish(
+      Response.json({
+        model_name: "server-choice",
+        mode: "ultra",
+        reasoning_effort: "high",
+      }),
+    );
+    await screen.findByText("true:server-choice:ultra");
+    expect(getBaseSettingsSnapshot().context.reasoning_effort).toBe("high");
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+  });
+  it("does not persist an automatic fallback before account preferences activate", async () => {
+    let finish!: (response: Response) => void;
+    mocks.fetch.mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+
+    act(() =>
+      resolveThreadContext("before-owner", {
+        model_name: "fallback",
+        mode: "pro",
+      }),
+    );
+    expect(getThreadModelSnapshot("before-owner")).toBeUndefined();
+
+    render(<Workspace />);
+    await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(1));
     finish(Response.json({ model_name: "server-choice", mode: "ultra" }));
     await screen.findByText("true:server-choice:ultra");
+    expect(getThreadModelSnapshot("before-owner")).toBeUndefined();
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
   });
   it("restores server preferences after clearing browser storage and sends only edited fields", async () => {

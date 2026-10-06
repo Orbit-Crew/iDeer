@@ -352,7 +352,6 @@ function createTurnDraftPolicy(
       }
     },
     completed() {
-      const holdWasArmed = gate.isDraftHeld(draft.key);
       const saved = readComposerDraft(storage(), draft.key);
       const tracked = draft.tracked();
       const visible = draft.visible();
@@ -371,7 +370,12 @@ function createTurnDraftPolicy(
       ) {
         clearComposerDraft(storage(), draft.key);
       }
-      if (holdWasArmed) {
+      if (!hasNewDraft) {
+        // The gate releases the draft hold before this terminal callback
+        // runs, so the hold state cannot be observed here. Drop the tracked
+        // pending draft whenever no newer draft took over: this is the only
+        // reset that stops the composer's next flush (thread switch,
+        // pagehide) from re-persisting the submitted text as a draft.
         gate.releaseDraftHold();
         draft.forget();
       }

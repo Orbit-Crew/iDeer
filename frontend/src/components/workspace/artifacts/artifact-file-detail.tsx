@@ -463,7 +463,7 @@ export function ArtifactFileDetail({
           {(isSaving || isDirty || activeDraft.conflict) && (
             <span
               className={cn(
-                "text-muted-foreground type-compact max-w-32 truncate",
+                "text-muted-foreground type-compact max-w-32 shrink-0 truncate",
                 activeDraft.conflict && "text-destructive",
               )}
               aria-live="polite"

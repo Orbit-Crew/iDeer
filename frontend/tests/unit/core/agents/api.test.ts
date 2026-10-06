@@ -81,6 +81,7 @@ describe("listAgents", () => {
         // (slug) so API-identifier consumers can pass it back verbatim.
         name: "shared-agent",
         slug: "shared-agent",
+        display_name: "Shared Agent",
         read_only: true,
       }),
     ]);

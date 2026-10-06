@@ -53,6 +53,31 @@ const skills = [
 
 async function mockCatalog(page: Page) {
   mockLangGraphAPI(page, { skills, threads: [] });
+  await page.route(/\/api\/resources\?.*/, (route) => {
+    const url = new URL(route.request().url());
+    if (
+      route.request().method() !== "GET" ||
+      url.pathname !== "/api/resources" ||
+      url.searchParams.get("type") !== "skill"
+    ) {
+      return route.fallback();
+    }
+    const items = skills.map((skill) => ({
+      id: `00000000-0000-0000-0000-${skill.name.slice(-12).padStart(12, "0")}`,
+      type: "skill",
+      slug: skill.name,
+      display_name: skill.name,
+      description: skill.description,
+      owner_id: "e2e-user",
+      visibility: "public",
+      scope_department_id: null,
+      latest_version: 1,
+      draft_revision: 1,
+      system_owned: false,
+      can_modify: false,
+    }));
+    return route.fulfill({ json: { items, total: items.length } });
+  });
   await page.route("**/api/mcp/config", (route) =>
     route.fulfill({
       json: {
@@ -110,12 +135,14 @@ test("catalog navigation, search, details, and migrated settings", async ({
     .context()
     .addCookies([{ name: "locale", value: "zh-CN", url: baseURL! }]);
   await mockCatalog(page);
-  await page.goto("/workspace/capabilities");
+  await page.goto("/workspace/capabilities/connectors");
   await expect(
-    page.getByRole("heading", { name: "能力中心", exact: true }),
+    page.getByRole("heading", { name: "资源", exact: true }),
   ).toBeVisible();
   await expect(page.locator("article")).toHaveCount(6);
-  await expect(page.locator("a[href='/workspace/capabilities']")).toBeVisible();
+  await expect(
+    page.locator("a[href='/workspace/capabilities/agents']"),
+  ).toBeVisible();
   await screenshot(page, "capability-center-plugins.png");
 
   await page
@@ -145,22 +172,29 @@ test("catalog navigation, search, details, and migrated settings", async ({
   await page.getByRole("tab", { name: "社区", exact: true }).click();
   await expect(page.getByText("从社区带来新的技能")).toBeVisible();
 
-  await page.goto("/workspace/capabilities?settings=appearance");
+  await page.goto("/workspace/capabilities/agents?settings=appearance");
   const settings = page.getByRole("dialog", { name: "设置", exact: true });
   await expect(settings).toBeVisible();
-  for (const name of ["工具", "集成", "技能"]) {
-    await expect(
-      settings.getByRole("button", { name, exact: true }),
-    ).toHaveCount(0);
-  }
+  await expect(
+    settings.getByRole("button", { name: "集成", exact: true }),
+  ).toBeVisible();
+  await settings.getByRole("button", { name: "工具", exact: true }).click();
+  await expect(page).toHaveURL(/workspace\/capabilities\/connectors$/);
+  await expect(
+    page.getByRole("heading", { name: "资源", exact: true }),
+  ).toBeVisible();
+  await page.goto("/workspace/capabilities/agents?settings=appearance");
+  await expect(settings).toBeVisible();
+  await settings.getByRole("button", { name: "技能", exact: true }).click();
+  await expect(page).toHaveURL(/workspace\/capabilities\/skills$/);
   expect(errors).toEqual([]);
 });
 
 test("the skills catalog fits a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockCatalog(page);
-  await page.goto("/workspace/capabilities?tab=skills");
-  await expect(page).toHaveURL(/workspace\/capabilities\?tab=skills/);
+  await page.goto("/workspace/capabilities/skills");
+  await expect(page).toHaveURL(/workspace\/capabilities\/skills(?:\?.*)?$/);
   await expect(page.locator("article")).toHaveCount(9);
   expect(
     await page.evaluate(
@@ -182,7 +216,7 @@ test("MCP access errors preserve the independently available Lark integration", 
   await page.route("**/api/mcp/config", (route) =>
     route.fulfill({ status: 403, json: { detail: "Admin only" } }),
   );
-  await page.goto("/workspace/capabilities");
+  await page.goto("/workspace/capabilities/connectors");
   await expect(
     page.getByRole("alert").filter({ hasText: "Admin privileges" }),
   ).toBeVisible();
@@ -198,7 +232,7 @@ test("Community search gives feedback and clearing it restores import guidance",
   page,
 }) => {
   await mockCatalog(page);
-  await page.goto("/workspace/capabilities?tab=skills");
+  await page.goto("/workspace/capabilities/skills");
   await expect(page.locator("article")).toHaveCount(9);
   const search = page.getByRole("textbox", {
     name: "Search skills by name or purpose",
@@ -238,7 +272,7 @@ test("plugin filters remain usable after an MCP refetch fails", async ({
       return route.fulfill({ status: 403, json: { detail: "Admin only" } });
     return route.fallback();
   });
-  await page.goto("/workspace/capabilities");
+  await page.goto("/workspace/capabilities/connectors");
   await expect(page.locator("article")).toHaveCount(6);
   const installed = page.getByRole("tab", { name: "Installed", exact: true });
   await installed.click();
@@ -246,7 +280,9 @@ test("plugin filters remain usable after an MCP refetch fails", async ({
   await page
     .getByRole("switch", { name: "Enabled GitHub", exact: true })
     .click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Admin privileges" }),
+  ).toBeVisible();
   await expect(installed).toHaveAttribute("aria-selected", "true");
   await expect(
     page.getByRole("button", { name: "Add MCP plugin" }),

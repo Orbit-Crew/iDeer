@@ -41,7 +41,7 @@ test.describe("Integrations settings", () => {
   }) => {
     mockLangGraphAPI(page);
 
-    await page.goto("/workspace/capabilities?tab=plugins&plugin=lark");
+    await page.goto("/workspace/capabilities/connectors?plugin=lark");
 
     const dialog = page.getByRole("dialog", { name: "Plugin settings" });
     await expect(dialog).toBeVisible();
@@ -70,7 +70,10 @@ test.describe("Integrations settings", () => {
       });
     });
 
-    await page.goto("/workspace/chats/new?settings=integrations");
+    await page.goto("/workspace/chats/new");
+    const sidebar = page.locator("[data-sidebar='sidebar']");
+    await sidebar.getByRole("button", { name: /Settings and more/ }).click();
+    await page.getByRole("menuitem", { name: "Settings" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Settings" });
     await expect(dialog).toBeVisible();
@@ -142,7 +145,7 @@ test.describe("Integrations settings", () => {
       },
     );
 
-    await page.goto("/workspace/capabilities?tab=plugins&plugin=lark");
+    await page.goto("/workspace/capabilities/connectors?plugin=lark");
     const dialog = page.getByRole("dialog", { name: "Plugin settings" });
     const popupPromise = page.waitForEvent("popup");
     await dialog.getByRole("button", { name: "Connect Lark" }).click();
@@ -180,7 +183,7 @@ test.describe("Integrations settings", () => {
     mockLangGraphAPI(page);
 
     // Deep link opens the shared dialog on Integrations.
-    await page.goto("/workspace/capabilities?tab=plugins&plugin=lark");
+    await page.goto("/workspace/capabilities/connectors?plugin=lark");
     const dialog = page.getByRole("dialog", { name: "Plugin settings" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText("Lark / Feishu CLI")).toBeVisible();
@@ -265,7 +268,7 @@ test.describe("Integrations settings", () => {
       });
     });
 
-    await page.goto("/workspace/capabilities?tab=plugins&plugin=lark");
+    await page.goto("/workspace/capabilities/connectors?plugin=lark");
     const dialog = page.getByRole("dialog", { name: "Plugin settings" });
     await expect(dialog).toBeVisible();
 
@@ -396,7 +399,7 @@ test.describe("Integrations settings", () => {
       });
     });
 
-    await page.goto("/workspace/capabilities?tab=plugins&plugin=lark");
+    await page.goto("/workspace/capabilities/connectors?plugin=lark");
 
     const dialog = page.getByRole("dialog", { name: "Plugin settings" });
     await expect(dialog).toBeVisible();
@@ -461,7 +464,7 @@ test.describe("Integrations settings", () => {
       await route.fallback();
     });
 
-    await page.goto("/workspace/capabilities?tab=plugins&plugin=lark");
+    await page.goto("/workspace/capabilities/connectors?plugin=lark");
     const dialog = page.getByRole("dialog", { name: "Plugin settings" });
     await dialog.getByRole("button", { name: "Calendar" }).click();
     await dialog

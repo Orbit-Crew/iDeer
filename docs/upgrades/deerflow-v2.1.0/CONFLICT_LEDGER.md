@@ -121,3 +121,7 @@ Makefile 目标并集；AGENTS.md 家族保本地重写+回填上游事实句（
 ## Closure record
 
 2026-10-02 关闭：各片以票 03-09 status 行 + 后端全量（29386 passed / 237 skipped / 0 failed，候选 `1f18d4170..c18d47b59` 同内容）+ 前端 vitest/pnpm check + entry-parity 四层为证据；标准/交付级 lane 结果由票 11 记录于 DoD_CHECKLIST（不影响片处置关闭）。
+
+## §7 Post-merge test deduplication addendum
+
+- **2026-10-03（T6）**：保留上游 `frontend/tests/unit/core/threads/message-merge.test.ts` 的 Rstest suite，并移除 `frontend/tests/unit/core/threads/message-merge-local.test.ts` 中与之重复的 9 项 Vitest cases。§6 片 E 的 `api-client/message-merge` 框架拆分仍是合并时的原始处置记录；本次删重保留上游原路径，未迁移 Rstest 或 Vitest，也未改动测试框架收集规则。逐项替代关系和本候选验证见 `docs/testing/test-migration-ledger.md` 的 T6 记录。

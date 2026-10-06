@@ -28,7 +28,13 @@ vi.mock("sonner", () => ({
 const mockMutateAsync = vi.fn();
 const mockToggleMutateAsync = vi.fn();
 let mockDeletePending = false;
+let mockPublishedAgent: Agent | null = null;
 vi.mock("@/core/agents", () => ({
+  useAgent: () => ({
+    agent: mockPublishedAgent,
+    isLoading: false,
+    error: null,
+  }),
   useDeleteAgent: () => ({
     mutateAsync: mockMutateAsync,
     get isPending() {
@@ -97,6 +103,7 @@ let AgentCard: (props: { agent: Agent }) => React.JSX.Element;
 beforeEach(async () => {
   vi.clearAllMocks();
   mockDeletePending = false;
+  mockPublishedAgent = null;
   const mod = await import("@/components/workspace/agents/agent-card");
   AgentCard = mod.AgentCard;
 });
@@ -116,6 +123,10 @@ describe("AgentCard", () => {
     render(<AgentCard agent={makeAgent()} />);
     expect(screen.getByTestId("agent-card")).toBeInTheDocument();
     expect(screen.getByText("test-agent")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "test-agent" })).toHaveAttribute(
+      "href",
+      "/workspace/agents/test-agent",
+    );
   });
 
   test("does not render a visibility badge", () => {
@@ -210,6 +221,35 @@ describe("AgentCard", () => {
     );
     expect(screen.getByText("web")).toBeInTheDocument();
     expect(screen.getByText("translate")).toBeInTheDocument();
+  });
+
+  test("hydrates badges from published detail while retaining list metadata", () => {
+    mockPublishedAgent = makeAgent({
+      name: "published-name",
+      resource_id: "11111111-1111-1111-1111-111111111111",
+      display_name: "Listed name",
+      read_only: true,
+      tool_groups: ["web"],
+      skills: ["data-analysis"],
+    });
+    const listAgent = makeAgent({
+      resource_id: "11111111-1111-1111-1111-111111111111",
+      display_name: "Listed name",
+      tool_groups: null,
+      skills: null,
+      read_only: true,
+    });
+
+    render(<AgentCard agent={listAgent} />);
+
+    expect(screen.getByText("data-analysis")).toBeInTheDocument();
+    expect(screen.getByText("web")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Listed name" })).toHaveAttribute(
+      "href",
+      "/workspace/agents/11111111-1111-1111-1111-111111111111",
+    );
+    expect(screen.getByText("Template")).toBeInTheDocument();
+    expect(screen.queryByText("published-name")).not.toBeInTheDocument();
   });
 
   test("does not render badges section when both tool_groups and skills are null", () => {

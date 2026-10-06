@@ -20,6 +20,179 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## Batch 2026-10-03: Thread initialization ordering duplicate
+
+Removed `frontend/tests/e2e/workflows/chat-thread-init-ordering.spec.ts` and
+retained the upstream-path copy at
+`frontend/tests/e2e/chat-thread-init-ordering.spec.ts`. The files contain the
+same Playwright test, request event capture, 250 ms stream delay, and assertions
+that neither `/history` nor `GET /runs` starts before `POST /runs/stream`. Their
+only source differences were equivalent relative imports to the same mock API
+module and the issue URL in a comment. Both tests use the same Playwright
+configuration, Chromium project, page fixture, mock handlers, and runtime.
+There are no markers or path-sensitive behaviors.
+
+GitNexus returned `UNKNOWN` with no resolved callers for the removed path. A
+repository text search found no imports or active configuration references;
+the remaining path references are the specification's keeper/removal table and
+its paired baseline command. Full `detect-changes --scope all` mapped the two
+documentation files but did not list the deleted test path; the Git diff has
+three changed paths including that deletion. The graph omission is recorded as
+an unresolved index limitation, not as evidence of no effect. The T1
+result-consistency record confirms its
+focused regression and static check passed, so the prerequisite is satisfied.
+
+The paired Chromium baseline first collected exactly two tests, then passed
+both tests in 22.7 seconds in the allowed browser/socket environment. After
+deletion, the retained-file command passed 1 test. The preflight exited 0 with
+Chromium launch and local socket bind ready. The removed test's assertions map
+one-to-one to the retained test:
+
+| Removed assertion | Retained assertion |
+| --- | --- |
+| `POST /runs/stream` is issued during send | Same request assertion |
+| No `GET /history` request precedes stream initiation | Same sequence assertion |
+| No `GET /runs` request precedes stream initiation | Same sequence assertion |
+| Delay stream response by 250 ms to expose early initialization requests | Same delayed route handlers |
+
+Validation used the locked frontend dependencies and unchanged Chromium test
+configuration:
+
+```bash
+CI=1 PLAYWRIGHT_DEV_SERVER=1 pnpm exec playwright test \
+  tests/e2e/chat-thread-init-ordering.spec.ts \
+  tests/e2e/workflows/chat-thread-init-ordering.spec.ts \
+  --project=chromium --retries=0 --list
+CI=1 PLAYWRIGHT_DEV_SERVER=1 pnpm exec playwright test \
+  tests/e2e/chat-thread-init-ordering.spec.ts \
+  tests/e2e/workflows/chat-thread-init-ordering.spec.ts \
+  --project=chromium --retries=0
+CI=1 PLAYWRIGHT_DEV_SERVER=1 pnpm exec playwright test \
+  tests/e2e/chat-thread-init-ordering.spec.ts \
+  --project=chromium --retries=0
+```
+
+The collected count changed from 2 to 1. No test was skipped, weakened, or
+removed from the formal lane configuration.
+
+## Batch 2026-10-03: Serialization test duplicate
+
+Removed `backend/tests/unit/runtime/test_serialize_message_content.py` and
+retained the upstream-path copy at `backend/tests/test_serialize_message_content.py`.
+The files have the same 13 pytest cases, fixtures, imports, markers, and execution
+semantics. Their only source difference was the GitHub issue URL in the module
+docstring. Both run from `backend/` and use the same `backend/tests/conftest.py`
+fixture context; neither uses `__file__`, package-relative imports, or path-based
+behavior. No marker or other execution option exists in either file. GitNexus
+could not resolve upstream callers for the removed test classes (`UNKNOWN`); a
+repository text search found no imports or calls to them. The remaining exact
+path references outside this ledger are this specification and its historical
+paired command.
+
+The 13 removed test cases map one-to-one to the cases retained in the upstream
+path:
+
+| Removed case | Retained case | Assertion retained |
+| --- | --- | --- |
+| `TestSerializeToolMessageContent.test_string_content` | Same case | `"ok"` content and `"tool"` type |
+| `test_list_of_blocks_content` | Same case | Extracted text, with no `[` or `{` repr artifacts |
+| `test_multiple_text_blocks` | Same case | Text blocks joined with a newline |
+| `test_string_chunks_are_joined_without_newlines` | Same case | String chunks joined contiguously |
+| `test_mixed_string_chunks_and_blocks` | Same case | String chunks contiguous; text block separated by newline |
+| `test_mixed_blocks_with_non_text` | Same case | Text retained while image block is skipped |
+| `test_empty_list_content` | Same case | Empty list serializes to empty text |
+| `test_plain_string_in_list` | Same case | Bare string in list is retained |
+| `test_unknown_content_type_falls_back` | Same case | Integer content falls back to `"42"` |
+| `TestExtractText.test_string_passthrough` | Same case | String passes through unchanged |
+| `test_list_text_blocks` | Same case | Text block content is extracted |
+| `test_empty_list` | Same case | Empty list extracts to empty text |
+| `test_fallback_non_iterable` | Same case | Non-iterable integer falls back to `"123"` |
+
+Current-candidate validation used the preconfigured backend Python 3.12
+environment, locked dependencies, and `UV_CACHE_DIR=/tmp/deer-flow-uv-cache`.
+The test-scope patch fingerprint is
+`a9d23fb8bdeb33713871702c2f2e3ab4069e4c9684397565578b6dfc92d2633f`,
+computed by `git diff --binary 83eaecb879e28d8f726cc7d114e59f5735e7da3f --
+backend/tests/unit/runtime/test_serialize_message_content.py | sha256sum`.
+The paired baseline command exited 0 with 26 passed in 7.66s:
+
+```bash
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/test_serialize_message_content.py \
+  tests/unit/runtime/test_serialize_message_content.py -q
+```
+
+After deletion, the keeper command exited 0 with 13 passed in 8.33s. The narrow
+static check, `UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run --no-sync ruff check
+tests/test_serialize_message_content.py`, exited 0 (`All checks passed!`).
+`python3 scripts/test_inventory.py --collect --json` exited 0 in 32.28s.
+Its JSON reported 13 collected keeper nodes at the upstream path and no
+duplicate-path entry. No other root-level test was moved or deleted.
+
+GitNexus impact for both deleted test classes returned `UNKNOWN` with zero
+resolved callers. Text search found no imports or calls; outside this ledger,
+the exact removed-path references remain only in the specification and its
+baseline command. Both
+MCP and CLI `detect_changes --scope all` completed without partial or
+truncated output and mapped 2 documentation files, 4 symbols, and 0 processes.
+The worktree diff contains 3 tracked files, including the removed test path;
+GitNexus did not list that deleted path. Its impact therefore remains
+`UNKNOWN`, not zero. The paired 26-to-13 run and one-to-one mapping above
+provide the behavior evidence for this deletion.
+
+## Batch 2026-10-03: Message merge duplicate
+
+Removed `frontend/tests/unit/core/threads/message-merge-local.test.ts` and
+retained `frontend/tests/unit/core/threads/message-merge.test.ts`, the upstream
+Rstest path. The nine Vitest cases have one-to-one equivalents in the retained
+file. Both exercise the same exported message merge or optimistic visibility
+behavior with the same input and expected result. The retained file also covers
+protected early messages, history/live ordering, historical run metadata,
+pagination, summarization, and replay ordering, including its parameterized
+cases.
+
+| Removed Vitest case | Retained Rstest case | Behavior kept |
+| --- | --- | --- |
+| `mergeMessages removes duplicate messages already present in history` | Same case | Duplicate human and AI messages appear once |
+| `mergeMessages lets live thread messages replace overlapping history` | Same case | Live human and AI copies replace older history copies |
+| `mergeMessages deduplicates tool messages by tool_call_id` | Same case | Live tool output replaces history with the same tool call ID |
+| `getVisibleOptimisticMessages hides optimistic user input after server human arrives` | Same case | Server confirmation hides the optimistic input |
+| `mergeMessages shows server human instead of optimistic duplicate after first response` | Same case | The first server human is rendered without an optimistic duplicate |
+| `getVisibleOptimisticMessages keeps optimistic user input until server human arrives` | Same case | Pending input remains visible before server confirmation |
+| `getVisibleOptimisticMessages keeps non-human optimistic status messages` | Same case | Non-human status messages remain visible |
+| `getVisibleOptimisticMessages hides the upload optimistic pair after server human arrives` | Same case | Server confirmation hides the optimistic upload pair |
+| `getVisibleOptimisticMessages hides optimistic user input after later server turns` | Same case | A later server turn hides the prior input, while the current pending input remains visible |
+
+The tests use no DOM, setup hook, marker, timer, fixture, or path-dependent
+behavior. Vitest runs the removed file in jsdom with `tests/setup.ts`; Rstest
+runs the retained file in Node. Both resolve `@` to `frontend/src`, and the
+tested functions are pure, so the environment difference does not supply any
+unique assertion. The project continues to collect files by framework import.
+
+The paired baseline used the locked frontend dependencies. Vitest passed 9 of
+9 tests in 8.53s. Rstest first failed to start in the restricted sandbox with
+`listen EPERM` on `127.0.0.1:3000`; the same command passed when rerun with local
+socket access, collecting and passing 102 tests (1 file; 754ms total, including
+372ms build and 382ms test time). This is an environment denial, not a test
+failure. After removal, the same Rstest command passed all 102 collected tests.
+`python3 scripts/test_inventory.py --collect --json` exited 0 with 1900
+inventory entries. It reported 98 statically discovered test declarations at
+the retained Rstest path and no entry for the removed path. The static count
+does not expand `test.each`; the Rstest execution report is the actual count of
+102 tests. Vitest and Rstest remain separate frameworks; this change only
+removes the duplicate Vitest file.
+
+GitNexus did not map the deleted test path and returned `UNKNOWN` for that
+target. Impact on the underlying `mergeMessages` implementation reported 13
+symbols across 5 processes, and `getVisibleOptimisticMessages` reported 10
+symbols across 5 processes, both `CRITICAL`; neither implementation changed.
+Repository search found no imports or active configuration references to the
+removed file. Its remaining path references are in the migration and conflict
+ledgers, the specification, and the ticket's paired-baseline command. The graph
+result remains an index limitation, not a zero-impact claim. The full candidate
+`detect-changes --scope all` result and exact tracked diff count are recorded in
+the ticket execution record.
+
 ## Batch 2026-10-03: i18n key parity moves from runtime checks to the compiler
 
 Ticket `architecture-deepening` issue 09 (spec candidate 8, Q12=a). The

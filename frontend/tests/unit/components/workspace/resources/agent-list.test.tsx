@@ -79,8 +79,7 @@ describe("AgentList", () => {
 
     render(<AgentList />);
 
-    expect(
-      screen.getAllByRole("link", { name: "New Agent" })[0],
-    ).toBeInTheDocument();
+    const newAgentLink = screen.getAllByRole("link", { name: "New Agent" })[0];
+    expect(newAgentLink).toHaveAttribute("href", "/workspace/agents/new");
   });
 });

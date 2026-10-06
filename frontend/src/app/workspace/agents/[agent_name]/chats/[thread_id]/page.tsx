@@ -26,6 +26,7 @@ import {
   SidecarProvider,
   SidecarTrigger,
 } from "@/components/workspace/sidecar";
+import { ThreadArchiveStatus } from "@/components/workspace/thread-archive-status";
 import { ThreadBackgroundTasks } from "@/components/workspace/thread-background-tasks";
 import { ThreadSubagentBatches } from "@/components/workspace/thread-subagent-batches";
 import { ThreadTitle } from "@/components/workspace/thread-title";
@@ -44,6 +45,7 @@ import {
 import { isHiddenFromUIMessage } from "@/core/messages/utils";
 import { useModels } from "@/core/models/hooks";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
+import { resolveThreadContext } from "@/core/settings/store";
 import { useThreadTokenUsage } from "@/core/threads/hooks";
 import {
   selectContextUsage,
@@ -182,6 +184,14 @@ export default function AgentChatPage() {
                   thread={thread}
                   canonicalTitle={threadMetadata.data?.values?.title}
                 />
+                {!isNewThread &&
+                  !isMock &&
+                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" && (
+                    <ThreadArchiveStatus
+                      threadId={threadId}
+                      metadata={threadMetadata.data?.metadata}
+                    />
+                  )}
               </div>
               <div className="flex shrink-0 items-center sm:mr-4">
                 {!isNewThread &&
@@ -368,9 +378,13 @@ export default function AgentChatPage() {
                       isUploading ||
                       (!isNewThread && isHistoryLoading)
                     }
-                    onContextChange={(context) =>
-                      setSettings("context", context)
-                    }
+                    onContextChange={(context, options) => {
+                      if (options?.automatic) {
+                        resolveThreadContext(threadId, context);
+                      } else {
+                        setSettings("context", context);
+                      }
+                    }}
                     onGoalChange={setLocalGoal}
                     turnSubmit={turnSubmit}
                     onStop={handleStop}

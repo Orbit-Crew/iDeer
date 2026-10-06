@@ -48,6 +48,7 @@ function fromResource(resource: Resource, content?: unknown): Agent {
       (config.description as string) ??
       resource.description ??
       resource.display_name,
+    display_name: resource.display_name,
     model: (config.model as string) ?? null,
     tool_groups: (config.tool_groups as string[]) ?? null,
     skills: (config.skills as string[]) ?? null,

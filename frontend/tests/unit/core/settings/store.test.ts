@@ -162,6 +162,37 @@ describe("settings store", () => {
     });
   });
 
+  it("loads existing device settings before resolving a cold automatic context", async () => {
+    vi.resetModules();
+    mockGetLocalSettings.mockReturnValue({
+      notification: { enabled: false },
+      projectsDisplayMode: "grouped",
+      tokenUsage: { headerTotal: false, inlineMode: "off" },
+      context: {
+        model_name: "device-model",
+        mode: "thinking",
+        reasoning_effort: "high",
+      },
+    });
+    const freshStore = await import("@/core/settings/store");
+
+    freshStore.resolveThreadContext("cold-fallback", {
+      model_name: "fallback-model",
+      mode: "pro",
+    });
+
+    expect(mockSaveLocalSettings).toHaveBeenLastCalledWith({
+      notification: { enabled: false },
+      projectsDisplayMode: "grouped",
+      tokenUsage: { headerTotal: false, inlineMode: "off" },
+      context: {
+        model_name: "fallback-model",
+        mode: "pro",
+        reasoning_effort: "high",
+      },
+    });
+  });
+
   describe("updateThreadSettings", () => {
     it("updates base settings and saves to localStorage", () => {
       updateThreadSettings("thread-1", "notification", { enabled: false });

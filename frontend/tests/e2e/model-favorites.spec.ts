@@ -102,8 +102,8 @@ function modelButton(page: Page, modelName: string) {
 }
 
 async function openMainModelPicker(page: Page, name = "Alpha") {
-  const trigger = page.getByRole("button", { name, exact: true }).first();
-  await expect(trigger).toBeVisible();
+  const trigger = page.getByTestId("model-selector-trigger").first();
+  await expect(trigger).toContainText(name);
   await trigger.click();
   await expect(picker(page)).toBeVisible();
   return trigger;
@@ -185,15 +185,12 @@ test("favorites a model without selecting it and persists the choice after refre
   await modelButton(page, "beta-api").click();
 
   await expect(picker(page)).toBeHidden();
-  const sharedTrigger = page.getByRole("button", {
-    name: "Shared",
-    exact: true,
-  });
-  await expect(sharedTrigger).toBeVisible();
+  const sharedTrigger = page.getByTestId("model-selector-trigger").first();
+  await expect(sharedTrigger).toContainText("Shared");
   expect(runRequests).toEqual([]);
 
   await page.reload();
-  await expect(sharedTrigger).toBeVisible();
+  await expect(sharedTrigger).toContainText("Shared");
   await sharedTrigger.click();
   await expect(favoriteButton(page, "beta-api")).toHaveAttribute(
     "aria-pressed",

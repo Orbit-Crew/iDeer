@@ -1,5 +1,11 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+const { mockEnvValues, mockResolveThreadContext } = vi.hoisted(() => ({
+  mockEnvValues: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "false" },
+  mockResolveThreadContext: vi.fn(),
+}));
 
 const mockStopFn = vi.fn();
 const mockSendMessage = vi.fn();
@@ -81,8 +87,19 @@ vi.mock("@/core/i18n/hooks", () => ({
         newChat: "New Chat",
         skilledAt: (skills: string[]) => `擅长：${skills.join("、")}`,
       },
+      projects: { projectUnavailable: "会话创建失败，请稍后重试" },
+      chats: {
+        archiveDescription: "该会话已归档",
+        archivedChats: "已归档",
+        restoreChat: "恢复会话",
+      },
     },
   }),
+}));
+
+vi.mock("@/core/settings/store", () => ({
+  resolveThreadContext: (...args: unknown[]) =>
+    mockResolveThreadContext(...args),
 }));
 
 vi.mock("@/core/agents", () => ({
@@ -220,7 +237,7 @@ vi.mock("@/components/ui/sidebar", () => ({
 }));
 
 vi.mock("@/env", () => ({
-  env: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "false" },
+  env: mockEnvValues,
 }));
 
 vi.mock("@/lib/utils", () => ({
@@ -232,6 +249,17 @@ vi.mock("@/core/threads/use-thread-page", () => ({
 }));
 
 import AgentChatPage from "@/app/workspace/agents/[agent_name]/chats/[thread_id]/page";
+
+// The ported archive header (ThreadArchiveStatus → useArchiveThread) mounts a
+// react-query mutation, so every render needs a QueryClientProvider like the
+// real workspace layout provides.
+function renderPage() {
+  return render(
+    <QueryClientProvider client={new QueryClient()}>
+      <AgentChatPage />
+    </QueryClientProvider>,
+  );
+}
 
 afterEach(() => {
   cleanup();
@@ -249,8 +277,11 @@ describe("AgentChatPage", () => {
     mockSendMessage.mockReset().mockReturnValue(Promise.resolve());
     mockSetThreadId.mockReset();
     mockSetIsNewThread.mockReset();
+    mockSetSettings.mockReset();
+    mockResolveThreadContext.mockReset();
     mockRouterPush.mockReset();
     mockRouterReplace.mockReset();
+    mockEnvValues.NEXT_PUBLIC_STATIC_WEBSITE_ONLY = "false";
 
     mockUseAgent.mockReturnValue({
       agent: { name: "test-agent", description: "A test agent" },
@@ -266,27 +297,27 @@ describe("AgentChatPage", () => {
   });
 
   test("renders chat box", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("chat-box")).toBeInTheDocument();
   });
 
   test("renders message list", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("message-list")).toBeInTheDocument();
   });
 
   test("renders agent name badge", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByText("test-agent")).toBeInTheDocument();
   });
 
   test("renders new chat button", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByText("New Chat")).toBeInTheDocument();
   });
 
   test("renders input box", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("input-box")).toBeInTheDocument();
   });
 
@@ -297,7 +328,7 @@ describe("AgentChatPage", () => {
         skills: ["docx-helper", "skill-resource-id"],
       },
     });
-    render(<AgentChatPage />);
+    renderPage();
     expect(lastInputBoxProps.allowedSkillNames).toEqual([
       "docx-helper",
       "skill-resource-id",
@@ -308,40 +339,40 @@ describe("AgentChatPage", () => {
     mockUseAgent.mockReturnValue({
       agent: { name: "test-agent", skills: null },
     });
-    render(<AgentChatPage />);
+    renderPage();
     expect(lastInputBoxProps.allowedSkillNames).toEqual([]);
   });
 
   test("leaves skills unfiltered while agent details are loading", () => {
     mockUseAgent.mockReturnValue({ agent: null });
-    render(<AgentChatPage />);
+    renderPage();
     expect(lastInputBoxProps.allowedSkillNames).toBeUndefined();
   });
 
   test("renders thread title", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("thread-title")).toBeInTheDocument();
   });
 
   test("renders token usage indicator when token usage is enabled", () => {
     tokenUsageEnabledFlag = true;
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("token-usage")).toBeInTheDocument();
   });
 
   test("renders the context usage badge when token usage is disabled", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("context-usage-badge")).toBeInTheDocument();
     expect(screen.queryByTestId("token-usage")).not.toBeInTheDocument();
   });
 
   test("renders export trigger", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("export-trigger")).toBeInTheDocument();
   });
 
   test("renders artifact trigger", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("artifact-trigger")).toBeInTheDocument();
   });
 
@@ -349,13 +380,13 @@ describe("AgentChatPage", () => {
     mockUseAgent.mockReturnValue({
       agent: { name: "My Custom Agent", description: "Custom" },
     });
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByText("My Custom Agent")).toBeInTheDocument();
   });
 
   test("shows agent_name param when agent data is null", () => {
     mockUseAgent.mockReturnValue({ agent: null });
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByText("test-agent")).toBeInTheDocument();
   });
 
@@ -371,14 +402,14 @@ describe("AgentChatPage", () => {
       isMock: false,
     });
 
-    render(<AgentChatPage />);
+    renderPage();
     expect(
       screen.getByTestId("input-box").getAttribute("data-welcome-mode"),
     ).toBe("true");
   });
 
   test("renders conversation layout on an existing thread", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(
       screen.getByTestId("input-box").getAttribute("data-welcome-mode"),
     ).toBe("false");
@@ -399,19 +430,19 @@ describe("AgentChatPage", () => {
       }),
     );
 
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("todo-list")).toBeInTheDocument();
   });
 
   test("does not render todo list when no todos", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.queryByTestId("todo-list")).not.toBeInTheDocument();
   });
 
   // --- seam contract: the page contributes its agent binding ---
   test("scopes the thread URL policy to the agent route with encoded segments", () => {
     agentNameParam = "ops/team";
-    render(<AgentChatPage />);
+    renderPage();
 
     const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
     expect(seamArgs.threadPath("thread/#1")).toBe(
@@ -420,7 +451,7 @@ describe("AgentChatPage", () => {
   });
 
   test("passes the agent binding as run context and lazy-thread pre-create", () => {
-    render(<AgentChatPage />);
+    renderPage();
 
     const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
     expect(seamArgs.context).toEqual({
@@ -435,7 +466,7 @@ describe("AgentChatPage", () => {
   test("forwards the hook's turn-submit controller and stop handler to the composer", () => {
     const fixture = threadPageFixture();
     mockUseThreadPage.mockReturnValue(fixture);
-    render(<AgentChatPage />);
+    renderPage();
 
     expect(lastInputBoxProps.turnSubmit).toBe(fixture.turnSubmit);
     expect(lastInputBoxProps.onStop).toBe(fixture.handleStop);
@@ -444,7 +475,7 @@ describe("AgentChatPage", () => {
   test("forwards regenerate handlers to the message list", () => {
     const fixture = threadPageFixture();
     mockUseThreadPage.mockReturnValue(fixture);
-    render(<AgentChatPage />);
+    renderPage();
 
     expect(lastMessageListProps.onRegenerateMessage).toBe(
       fixture.handleRegenerate,
@@ -457,7 +488,7 @@ describe("AgentChatPage", () => {
   test("input box is disabled when isUploading is true", () => {
     mockUseThreadPage.mockReturnValue(threadPageFixture({ isUploading: true }));
 
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("input-box").getAttribute("data-disabled")).toBe(
       "true",
     );
@@ -465,7 +496,7 @@ describe("AgentChatPage", () => {
 
   // --- Input not disabled when not uploading ---
   test("input box is not disabled when isUploading is false", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("input-box").getAttribute("data-disabled")).toBe(
       "false",
     );
@@ -474,7 +505,7 @@ describe("AgentChatPage", () => {
   // --- tokenUsageInlineMode when tokenUsageEnabled is false ---
   test("token usage indicator receives inline mode preference", () => {
     tokenUsageEnabledFlag = true;
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("token-usage")).toBeInTheDocument();
     expect(lastTokenUsageProps.preferences).toEqual({
       inlineMode: "off",
@@ -490,7 +521,7 @@ describe("AgentChatPage", () => {
       isMock: true,
     });
 
-    render(<AgentChatPage />);
+    renderPage();
     const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
     expect(seamArgs.isMock).toBe(true);
     expect(screen.getByTestId("chat-box")).toBeInTheDocument();
@@ -505,7 +536,7 @@ describe("AgentChatPage", () => {
       isMock: false,
     });
 
-    render(<AgentChatPage />);
+    renderPage();
     const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
     expect(seamArgs.threadId).toBe("new");
     expect(seamArgs.isNewThread).toBe(true);
@@ -527,7 +558,7 @@ describe("AgentChatPage", () => {
       }),
     );
 
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("input-box").getAttribute("data-status")).toBe(
       "streaming",
     );
@@ -549,7 +580,7 @@ describe("AgentChatPage", () => {
       }),
     );
 
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("input-box").getAttribute("data-status")).toBe(
       "error",
     );
@@ -557,7 +588,7 @@ describe("AgentChatPage", () => {
 
   // --- normal status ---
   test("passes 'ready' status when not loading and no error", () => {
-    render(<AgentChatPage />);
+    renderPage();
     expect(screen.getByTestId("input-box").getAttribute("data-status")).toBe(
       "ready",
     );
@@ -565,7 +596,7 @@ describe("AgentChatPage", () => {
 
   // --- new chat button onClick ---
   test("new chat button navigates to new chat page", () => {
-    render(<AgentChatPage />);
+    renderPage();
     const newChatButton = screen.getByText("New Chat").closest("button");
     newChatButton?.click();
 
@@ -576,9 +607,79 @@ describe("AgentChatPage", () => {
 
   // --- onContextChange handler ---
   test("onContextChange updates settings context", () => {
-    render(<AgentChatPage />);
+    renderPage();
     lastInputBoxProps.onContextChange({ mode: "deep" });
     expect(mockSetSettings).toHaveBeenCalledWith("context", { mode: "deep" });
+  });
+
+  // --- 03-B1: automatic context fallback must not write the account preference ---
+  test("routes automatic context changes to the thread fallback resolver, not the settings write", () => {
+    renderPage();
+    act(() => {
+      lastInputBoxProps.onContextChange({ mode: "deep" }, { automatic: true });
+    });
+    expect(mockResolveThreadContext).toHaveBeenCalledWith("test-thread", {
+      mode: "deep",
+    });
+    expect(mockSetSettings).not.toHaveBeenCalled();
+  });
+
+  // --- 03-D2: archived-thread status and restore entry in the page header ---
+  const archivedThreadPageFixture = () =>
+    threadPageFixture({
+      threadMetadata: {
+        data: {
+          values: { title: "Existing" },
+          metadata: { deerflow_archived: true },
+        },
+        isLoading: false,
+        isFetching: false,
+      },
+    });
+
+  test("mounts the archive status header for a persisted archived thread", () => {
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    renderPage();
+    expect(screen.getByRole("button", { name: "恢复会话" })).toBeInTheDocument();
+  });
+
+  test("does not mount the archive header for a new thread", () => {
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    mockUseThreadChat.mockReturnValue({
+      threadId: "new",
+      setThreadId: mockSetThreadId,
+      isNewThread: true,
+      setIsNewThread: mockSetIsNewThread,
+      isMock: false,
+    });
+    renderPage();
+    expect(
+      screen.queryByRole("button", { name: "恢复会话" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("does not mount the archive header in mock mode", () => {
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    mockUseThreadChat.mockReturnValue({
+      threadId: "test-thread",
+      setThreadId: mockSetThreadId,
+      isNewThread: false,
+      setIsNewThread: mockSetIsNewThread,
+      isMock: true,
+    });
+    renderPage();
+    expect(
+      screen.queryByRole("button", { name: "恢复会话" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("does not mount the archive header in static website only mode", () => {
+    mockEnvValues.NEXT_PUBLIC_STATIC_WEBSITE_ONLY = "true";
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    renderPage();
+    expect(
+      screen.queryByRole("button", { name: "恢复会话" }),
+    ).not.toBeInTheDocument();
   });
 
   // --- clarification cards stay answerable in expert chats ---
@@ -586,7 +687,7 @@ describe("AgentChatPage", () => {
     mockSendMessage.mockImplementation(async (...args: unknown[]) => {
       (args[3] as { onSent?: () => void } | undefined)?.onSent?.();
     });
-    render(<AgentChatPage />);
+    renderPage();
 
     expect(typeof lastMessageListProps.onSubmitHumanInput).toBe("function");
     const sent = await lastMessageListProps.onSubmitHumanInput(
@@ -610,7 +711,7 @@ describe("AgentChatPage", () => {
   // --- onPreferencesChange handler ---
   test("onPreferencesChange updates local settings for token usage", () => {
     tokenUsageEnabledFlag = true;
-    render(<AgentChatPage />);
+    renderPage();
     lastTokenUsageProps.onPreferencesChange({ inlineMode: "compact" });
     expect(mockSetLocalSettings).toHaveBeenCalledWith("tokenUsage", {
       inlineMode: "compact",

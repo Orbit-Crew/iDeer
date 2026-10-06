@@ -59,7 +59,7 @@ test("custom export previews, handles stale content and downloads only after ref
           body: Buffer.from("synthetic transport fixture"),
         });
   });
-  await page.goto("/workspace/capabilities?tab=skills");
+  await page.goto("/workspace/capabilities/skills");
   await page
     .getByRole("button", { name: "View details public-demo", exact: true })
     .click();
@@ -104,7 +104,7 @@ test("custom export previews, handles stale content and downloads only after ref
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(
-    page.getByRole("heading", { name: "Capability Center", exact: true }),
+    page.getByRole("heading", { name: "Resources", exact: true }),
   ).toBeVisible();
 });
 
@@ -138,7 +138,7 @@ test("mobile manifest blockers are readable and cannot download", async ({
       },
     }),
   );
-  await page.goto("/workspace/capabilities?tab=skills");
+  await page.goto("/workspace/capabilities/skills");
   await page.getByRole("tab", { name: "My skills", exact: true }).click();
   await page
     .getByRole("button", { name: "View details demo", exact: true })

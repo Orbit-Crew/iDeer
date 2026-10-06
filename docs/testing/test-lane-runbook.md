@@ -26,6 +26,8 @@ verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
 
 记录每次运行的候选（提交或未提交 diff 指纹）、完整命令、环境、依赖与测试配置、状态和耗时。状态区分 `passed`、`failed`、`cancelled`、`unexecuted` 和 `incomplete`。`incomplete` 包括挂起、超时或没有最终摘要的运行。
 
+Runner 先收尾证据，再输出最终耗时、`run.meta` 状态和 CI 摘要。缺少 Stagehand 凭据时进程退出码仍为 0，控制台、证据和摘要都记录 `unexecuted`。证据收尾失败时会输出 `TEST_LANE_EVIDENCE_ERROR`；原测试成功则最终退出码为 1，原测试已失败则保留其退出码。证据收尾失败不会发布完成记录，缺少最终状态字段的 JSON 按 `incomplete` 处理。
+
 新增或移动测试后运行 `python3 scripts/test_inventory.py --collect --json`。它保留
 无法导入外部服务测试的静态归属；`collection_status` 为
 `static-only` 时表示尚未执行框架收集；外部凭据专项在无法安全导入时保留静态归属。

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from "@/core/i18n/hooks";
 
@@ -34,9 +35,12 @@ export function ResourceGallery({
   return (
     <div className="workbench-resource-surface flex h-full flex-col gap-6 p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="type-page-title font-bold">{t.resources.title}</h1>
-          <p className="text-muted-foreground">{t.resources.description}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <SidebarTrigger className="md:hidden" />
+          <div className="min-w-0">
+            <h1 className="type-page-title font-bold">{t.resources.title}</h1>
+            <p className="text-muted-foreground">{t.resources.description}</p>
+          </div>
         </div>
         <div className="relative w-full md:w-64">
           <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />

@@ -87,7 +87,7 @@ test.describe("Artifact visualization", () => {
     await expect(page.getByText("To verify")).toBeVisible();
     expect(faultTreeJsonRequests).toBeGreaterThan(0);
 
-    await page.getByRole("radio", { name: /code/i }).click();
+    await page.getByRole("radio", { name: "View source" }).click();
     await expect(page.getByText('"top_event"')).toBeVisible();
   });
 

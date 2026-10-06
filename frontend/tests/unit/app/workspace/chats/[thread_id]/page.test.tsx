@@ -14,6 +14,11 @@ const {
   mockUseThreadPage,
   mockLastMessageListProps,
   mockEnvValues,
+  mockSetSettings,
+  mockResolveThreadContext,
+  mockCreateThread,
+  mockToastError,
+  mockInfiniteThreadsQueryKey,
 } = vi.hoisted(() => ({
   mockUseThreadChat: vi.fn().mockReturnValue({
     threadId: "test-thread",
@@ -32,6 +37,11 @@ const {
   mockUseThreadPage: vi.fn(),
   mockLastMessageListProps: { current: null as any },
   mockEnvValues: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "false" },
+  mockSetSettings: vi.fn(),
+  mockResolveThreadContext: vi.fn(),
+  mockCreateThread: vi.fn(),
+  mockToastError: vi.fn(),
+  mockInfiniteThreadsQueryKey: ["threads", "infinite-test-prefix"],
 }));
 
 let mockSearchParams = new URLSearchParams();
@@ -69,6 +79,12 @@ vi.mock("@/core/i18n/hooks", () => ({
       },
       inputBox: { disclaimer: "内容由AI生成，重要信息请务必核查" },
       sidebar: { scheduledTasks: "Scheduled tasks" },
+      projects: { projectUnavailable: "会话创建失败，请稍后重试" },
+      chats: {
+        archiveDescription: "该会话已归档",
+        archivedChats: "已归档",
+        restoreChat: "恢复会话",
+      },
       scenarios: {
         daily: "日常办公",
         creative: "创意设计",
@@ -175,19 +191,43 @@ vi.mock("@/core/skills/hooks", () => ({
 
 vi.mock("@/core/settings", () => ({
   useLocalSettings: () => [{ tokenUsage: { inlineMode: "off" } }, vi.fn()],
-  useThreadSettings: () => [{ context: { mode: "flash" } }, vi.fn()],
+  useThreadSettings: () => [{ context: { mode: "flash" } }, mockSetSettings],
+}));
+
+vi.mock("@/core/settings/store", () => ({
+  resolveThreadContext: (...args: unknown[]) =>
+    mockResolveThreadContext(...args),
+}));
+
+vi.mock("sonner", async (importOriginal) => {
+  const original = await importOriginal<typeof import("sonner")>();
+  return {
+    ...original,
+    toast: {
+      ...original.toast,
+      error: (...args: Parameters<typeof original.toast.error>) =>
+        mockToastError(...args),
+    },
+  };
+});
+
+vi.mock("@/core/threads/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/threads/api")>()),
+  createThread: (...args: unknown[]) => mockCreateThread(...args),
 }));
 
 vi.mock("@/core/threads/hooks", () => ({
   useThreadTokenUsage: () => ({ data: null }),
   useThreads: () => mockUseThreads(),
+  INFINITE_THREADS_QUERY_KEY_PREFIX: mockInfiniteThreadsQueryKey,
 }));
 
 vi.mock("@/core/threads/token-usage", () => ({
   threadTokenUsageToTokenUsage: () => ({}),
 }));
 
-vi.mock("@/core/threads/utils", () => ({
+vi.mock("@/core/threads/utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/threads/utils")>()),
   textOfMessage: (message: any) =>
     typeof message?.content === "string" ? message.content : null,
   pathOfThread: (thread: string | { thread_id: string }) =>
@@ -1126,5 +1166,235 @@ describe("ChatPage", () => {
     expect(
       screen.getByText("内容由AI生成，重要信息请务必核查"),
     ).toBeInTheDocument();
+  });
+
+  // --- 03-B1: automatic context fallback must not write the account preference ---
+  test("routes automatic context changes to the thread fallback resolver, not the settings write", () => {
+    const client = new QueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    rerender(
+      <QueryClientProvider client={client}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    act(() => {
+      mockLastInputBoxProps.current.onContextChange(
+        { mode: "deep" },
+        { automatic: true },
+      );
+    });
+    expect(mockResolveThreadContext).toHaveBeenCalledWith("test-thread", {
+      mode: "deep",
+    });
+    expect(mockSetSettings).not.toHaveBeenCalled();
+  });
+
+  test("writes explicit context selections to the thread settings", () => {
+    const client = new QueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    rerender(
+      <QueryClientProvider client={client}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    act(() => {
+      mockLastInputBoxProps.current.onContextChange({ mode: "deep" });
+    });
+    expect(mockSetSettings).toHaveBeenCalledWith("context", { mode: "deep" });
+    expect(mockResolveThreadContext).not.toHaveBeenCalled();
+  });
+
+  // --- 03-D1: project-scoped pre-create wired through the seam's prepare port ---
+  test("wires the project pre-create as the seam prepare port scoped to the project param", () => {
+    mockSearchParams = new URLSearchParams("project=proj-1");
+    mockUseThreadChat.mockReturnValue({
+      threadId: "client-thread-id",
+      setThreadId: vi.fn(),
+      isNewThread: true,
+      setIsNewThread: vi.fn(),
+      isMock: false,
+    });
+    const client = new QueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    rerender(
+      <QueryClientProvider client={client}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    expect(seamArgs.scopeKey).toBe("proj-1");
+    expect(seamArgs.prepare).toBeDefined();
+    // The goal path pre-creates through the same callback as the seam port.
+    expect(mockLastInputBoxProps.current.onPrepareThread).toBe(
+      seamArgs.prepare,
+    );
+  });
+
+  test("prepare pre-creates the thread with the project and invalidates the threads cache", async () => {
+    mockSearchParams = new URLSearchParams("project=proj-1");
+    mockUseThreadChat.mockReturnValue({
+      threadId: "client-thread-id",
+      setThreadId: vi.fn(),
+      isNewThread: true,
+      setIsNewThread: vi.fn(),
+      isMock: false,
+    });
+    mockCreateThread.mockResolvedValue({ thread_id: "client-thread-id" });
+    const client = new QueryClient();
+    const invalidateSpy = vi
+      .spyOn(client, "invalidateQueries")
+      .mockResolvedValue(undefined as never);
+    render(
+      <QueryClientProvider client={client}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    await act(async () => {
+      await seamArgs.prepare();
+    });
+    expect(mockCreateThread).toHaveBeenCalledWith(
+      "client-thread-id",
+      "proj-1",
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mockInfiniteThreadsQueryKey,
+    });
+  });
+
+  test("prepare is a no-op without a project scope", async () => {
+    mockSearchParams = new URLSearchParams();
+    mockUseThreadChat.mockReturnValue({
+      threadId: "client-thread-id",
+      setThreadId: vi.fn(),
+      isNewThread: true,
+      setIsNewThread: vi.fn(),
+      isMock: false,
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    await act(async () => {
+      await seamArgs.prepare();
+    });
+    expect(mockCreateThread).not.toHaveBeenCalled();
+  });
+
+  test("prepare failure reports the project as unavailable and rethrows", async () => {
+    mockSearchParams = new URLSearchParams("project=proj-1");
+    mockUseThreadChat.mockReturnValue({
+      threadId: "client-thread-id",
+      setThreadId: vi.fn(),
+      isNewThread: true,
+      setIsNewThread: vi.fn(),
+      isMock: false,
+    });
+    mockCreateThread.mockRejectedValueOnce(new Error("backend down"));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+
+    const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
+    await expect(seamArgs.prepare()).rejects.toThrow("backend down");
+    expect(mockToastError).toHaveBeenCalledWith("会话创建失败，请稍后重试");
+    expect(mockCreateThread).toHaveBeenCalledWith(
+      "client-thread-id",
+      "proj-1",
+    );
+  });
+
+  // --- 03-D2: archived-thread status and restore entry in the page header ---
+  const archivedThreadPageFixture = () =>
+    threadPageFixture({
+      threadMetadata: {
+        data: {
+          values: { title: "Existing" },
+          metadata: { deerflow_archived: true },
+        },
+        isLoading: false,
+        isFetching: false,
+      },
+    });
+
+  test("mounts the archive status header for a persisted archived thread", () => {
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole("button", { name: "恢复会话" })).toBeInTheDocument();
+  });
+
+  test("does not mount the archive header for a new thread", () => {
+    mockUseThreadChat.mockReturnValue({
+      threadId: "new",
+      setThreadId: vi.fn(),
+      isNewThread: true,
+      setIsNewThread: vi.fn(),
+      isMock: false,
+    });
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: "恢复会话" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("does not mount the archive header in mock mode", () => {
+    mockUseThreadChat.mockReturnValue({
+      threadId: "mock-thread",
+      setThreadId: vi.fn(),
+      isNewThread: false,
+      setIsNewThread: vi.fn(),
+      isMock: true,
+    });
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: "恢复会话" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("does not mount the archive header in static website only mode", () => {
+    mockEnvValues.NEXT_PUBLIC_STATIC_WEBSITE_ONLY = "true";
+    mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ChatPage />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: "恢复会话" }),
+    ).not.toBeInTheDocument();
+    mockEnvValues.NEXT_PUBLIC_STATIC_WEBSITE_ONLY = "false";
   });
 });

@@ -211,6 +211,8 @@ test("previews an unsaved draft and preserves it after a save conflict", async (
     return route.fallback();
   });
   await panel.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByTestId("artifact-trigger").click();
+  await expect(panel).toBeVisible();
   await expect(
     panel.getByText("Changed remotely", { exact: true }),
   ).toBeVisible();

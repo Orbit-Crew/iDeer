@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -28,6 +29,7 @@ import {
   SidecarProvider,
   SidecarTrigger,
 } from "@/components/workspace/sidecar";
+import { ThreadArchiveStatus } from "@/components/workspace/thread-archive-status";
 import { ThreadBackgroundTasks } from "@/components/workspace/thread-background-tasks";
 import { ThreadScheduledTasksLink } from "@/components/workspace/thread-scheduled-tasks-link";
 import { ThreadTitle } from "@/components/workspace/thread-title";
@@ -49,8 +51,14 @@ import {
 import { getChipsByPill } from "@/core/scenarios/config";
 import type { ScenarioId } from "@/core/scenarios/types";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
+import { resolveThreadContext } from "@/core/settings/store";
 import { useSkills } from "@/core/skills/hooks";
-import { useThreadTokenUsage, useThreads } from "@/core/threads/hooks";
+import { createThread } from "@/core/threads/api";
+import {
+  INFINITE_THREADS_QUERY_KEY_PREFIX,
+  useThreadTokenUsage,
+  useThreads,
+} from "@/core/threads/hooks";
 import { threadTokenUsageToTokenUsage } from "@/core/threads/token-usage";
 import { useThreadPage } from "@/core/threads/use-thread-page";
 import {
@@ -148,6 +156,14 @@ export default function ChatPage() {
     isMock,
     selectedConnector,
   } = useThreadChat();
+  // Project-scoped new chat: `/workspace/chats/new?project={id}` assigns the
+  // thread to the project on the FIRST submit — via an explicit
+  // `POST /api/threads` pre-create with `project_id` before the run. Only
+  // meaningful while the thread is still lazy (`isNewThread`); once
+  // materialized the URL is replaced with the thread route and the param is
+  // gone. Invalid ids are dropped by backend admission.
+  const projectParam = isNewThread ? searchParams.get("project") : null;
+  const queryClient = useQueryClient();
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
   const { tokenUsageEnabled } = useModels();
@@ -240,6 +256,51 @@ export default function ChatPage() {
   const selectionContext = selectionBinding.valid
     ? selectionBinding.context
     : { ...settings.context };
+
+  // Keep the identity current during render so pending preparation can detect
+  // thread switches and project-scope changes immediately.
+  const submissionIdentityRef = useRef({ threadId, projectParam });
+  submissionIdentityRef.current = { threadId, projectParam };
+
+  // Born assigned: pre-create the thread row with its project so the sidebar
+  // lists it under the project immediately. Idempotent server-side on
+  // `thread_id`, so retrying the same first message (same `threadId` while
+  // `isNewThread`) reuses the existing row instead of double-creating. This
+  // is the sole membership channel — run requests never carry the project
+  // key.
+  //
+  // Also runs before InputBox issues a `/goal <condition>` PUT (via
+  // `onPrepareThread`): the goal endpoint materializes a missing thread row
+  // itself, and an unassigned row would make this later idempotent create a
+  // membership no-op.
+  const prepareProjectThread = useCallback(async () => {
+    if (!isNewThread || !projectParam) {
+      return;
+    }
+    const submissionIdentity = { threadId, projectParam };
+    try {
+      await createThread(threadId, projectParam);
+      void queryClient.invalidateQueries({
+        queryKey: INFINITE_THREADS_QUERY_KEY_PREFIX,
+      });
+    } catch (error) {
+      // Any failure (e.g. the project was deleted/archived between page load
+      // and submit): do NOT submit unassigned. Reject so the composer keeps
+      // the text for a retry.
+      toast.error(t.projects.projectUnavailable);
+      throw error;
+    }
+    // Stricter than the shared fence: an identity change between prepare and
+    // dispatch drops the continuation even when no navigation unmounted the
+    // view.
+    const currentIdentity = submissionIdentityRef.current;
+    if (
+      currentIdentity.threadId !== submissionIdentity.threadId ||
+      currentIdentity.projectParam !== submissionIdentity.projectParam
+    ) {
+      throw new Error("thread-submission-stale");
+    }
+  }, [isNewThread, projectParam, queryClient, t, threadId]);
 
   const handleRemoveTag = useCallback(
     (id: string) => {
@@ -336,6 +397,10 @@ export default function ChatPage() {
     },
     extraContext: () =>
       selectionBinding.valid ? selectionBinding.context : undefined,
+    // Project-scoped pre-create on the turn-submit fence; the project param
+    // is the scope so a scope change invalidates an in-flight submission.
+    prepare: prepareProjectThread,
+    scopeKey: projectParam,
   });
 
   const tokenUsageInlineMode = tokenUsageEnabled
@@ -381,6 +446,14 @@ export default function ChatPage() {
                   thread={thread}
                   canonicalTitle={threadMetadata.data?.values?.title}
                 />
+                {!isNewThread &&
+                  !isMock &&
+                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" && (
+                    <ThreadArchiveStatus
+                      threadId={threadId}
+                      metadata={threadMetadata.data?.metadata}
+                    />
+                  )}
               </div>
               <div className="flex items-center gap-2">
                 <TokenUsageIndicator
@@ -547,10 +620,15 @@ export default function ChatPage() {
                           env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
                           isUploading
                         }
-                        onContextChange={(context) =>
-                          setSettings("context", context)
-                        }
+                        onContextChange={(context, options) => {
+                          if (options?.automatic) {
+                            resolveThreadContext(threadId, context);
+                          } else {
+                            setSettings("context", context);
+                          }
+                        }}
                         onGoalChange={setLocalGoal}
+                        onPrepareThread={prepareProjectThread}
                         turnSubmit={turnSubmit}
                         onStop={handleStop}
                       />

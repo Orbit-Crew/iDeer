@@ -2625,6 +2625,8 @@ export function handleRunStream(
   overrides?: {
     responseMessage?: Record<string, unknown>;
     messageMetadata?: Record<string, unknown>;
+    streamedMessages?: Array<Record<string, unknown>>;
+    runId?: string;
     goal?: unknown;
   },
 ) {
@@ -2642,7 +2644,8 @@ export function handleRunStream(
     id: "msg-human-1",
     content: [{ type: "text", text: "Hello" }],
   };
-  const streamedMessages = [
+  const runId = overrides?.runId ?? MOCK_RUN_ID;
+  const streamedMessages = overrides?.streamedMessages ?? [
     humanMessage,
     { ...aiMessage, metadata: overrides?.messageMetadata },
   ];
@@ -2650,7 +2653,7 @@ export function handleRunStream(
   const events = [
     {
       event: "metadata",
-      data: { run_id: MOCK_RUN_ID, thread_id: threadId },
+      data: { run_id: runId, thread_id: threadId },
     },
     {
       event: "values",
@@ -2680,7 +2683,7 @@ export function handleRunStream(
     headers: {
       // The gateway returns run metadata in this header (thread_runs.py) and
       // the SDK extracts run/thread ids from it to fire onCreated -> onStart.
-      "Content-Location": `/api/threads/${threadId}/runs/${MOCK_RUN_ID}`,
+      "Content-Location": `/api/threads/${threadId}/runs/${runId}`,
     },
     body,
   });
