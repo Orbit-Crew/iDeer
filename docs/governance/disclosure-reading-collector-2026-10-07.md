@@ -96,16 +96,20 @@ Codex config supports these feature and MCP allowlist controls in its
 
 Each attempt has a unique ID and its original record is retained. Only an
 infrastructure or protocol failure can have one linked retry, with an explicit
-reason and identical candidate, task, model, and tool configuration. A timeout
-or submitted answer cannot be retried. Mark externally provided help or other
-contamination before submission with the audit tool. The reader cannot mark an
-answer correct or change the failure status.
+reason and identical candidate, task, model, and tool configuration. Startup
+expiration is retryable infrastructure; a task timeout or submitted answer is
+not retryable. An interruption is retryable only when its recorded failure
+class is infrastructure or protocol; a task-class interruption remains a
+failed attempt. Mark externally provided help or other contamination before
+submission with the audit tool. The reader cannot mark an answer correct or
+change the failure status.
 
 The runner defaults to the `non-scored` stage. Its `--stage formal` option uses
 a separate formal-session label; the selected stage is recorded in the tool
-configuration and included in its fingerprint. Ticket 08 must freeze the
-complete prompt and stage configuration before formal use; no formal
-experiment is frozen yet.
+configuration and included in its fingerprint. Ticket 08 froze experiment
+`pdr-2026-10-07-16cc740f` after pilot review. Its immutable queue and candidate
+manifests are recorded in the coordinator handoff below; no formal session has
+started yet.
 
 For a frozen batch, supply the same single-model catalog with
 `--model-catalog-file` to every session. The runner records the source-file
@@ -173,7 +177,56 @@ absence evidence. The CLI still does not expose the resolved backend model
 revision. Report that limitation, and do not claim strict model comparability
 or a strict pass. The runner defaults to `non-scored`; its `--stage formal`
 option selects the distinct formal-session label and fingerprints that stage.
-Ticket 08 must freeze the prompt and stage configuration before formal use;
-formal sessions must report any outside-help request as contamination. Freeze
-one single-model catalog file and use it for every attempt so the source and
-effective catalog digests stay fixed within the experiment.
+Ticket 08 has frozen the prompt and stage configuration; formal sessions must
+report any outside-help request as contamination. Use the same single-model
+catalog file for every attempt so source and effective catalog digests stay
+fixed within the experiment.
+
+## Ticket 08 formal experiment handoff
+
+The frozen experiment uses baseline commit
+`867f6709642854721f209a15e362d79a96b3b489` (tree
+`f2309f2e6c2fb7b64bfe59c5ace9523b6c742838`) and after commit
+`16cc740f839876b7b7581a7cbbaf9a318d4c14ac` (tree
+`6f1c4e340758b92ec8e8d3c165185a98a832253f`). The frozen manifest digests are
+`ea6d866455937115b99f9bcb9d688923f37bd20cac967e34f8d79030bbcb924a` and
+`45e45e0e61b15f812a767978e8354b17ce49bb509c28ffbb703d79811d01303b`. The
+32-slot queue is `dev-log/disclosure-readability-recovery/ticket08/archive/manifests/frozen-queue-pdr-2026-10-07-16cc740f.csv`
+(SHA-256 `54458c060c267c2272b69cd2ec5330e95d5cb83c13d200d8c746f6a1c3dba1fe`);
+the complete machine-readable freeze record is
+`dev-log/disclosure-readability-recovery/ticket08/archive/manifests/frozen-experiment-pdr-2026-10-07-16cc740f.json`.
+Ticket 09 occupies the first 20 routine slots and ticket 10 the final 12
+special slots. The queue reverses task order between replicates and alternates
+candidate-first order within each task.
+
+Use `--stage formal`, the pinned source catalog
+`dev-log/disclosure-readability-recovery/ticket08/archive/model-catalog/gpt-6.1-sol-source.json`
+(SHA-256 `9ce669a7c68b7b64004832d0479fa78563f008d4d2b8cc4e26bfc09346d0f33d`),
+model alias `gpt-6.1-sol`, and medium reasoning for every slot. The offline
+formal tool-configuration fingerprint is
+`da55cd757919611c8577414c449a548e3c3ec52b3c4f8955596e15d4ab2cd078`; check
+the first session sidecar and require every later sidecar to match it and both
+catalog digests before accepting a record. The archived effective JSON is
+retained for audit and is not supplied as `--model-catalog-file`; the runner
+derives the effective catalog and passes a temporary copy to Codex. The
+scoring rubric is fixed at SHA-256
+`bb40af129e64da013885c4b74cb51169bf047ae5139f4f3deee16af0cb9fc171`.
+
+Each session has a 60-second startup limit and 300-second task limit, with no
+more than three readers at once. Only an infrastructure or protocol failure
+allows one linked retry; retain the first attempt and retry unchanged task,
+candidate, manifest, prompt, catalog, and formal config. A wrong answer or task
+timeout remains a failed logical slot and cannot be replaced. An interrupted
+attempt can be retried only when it is explicitly classified as infrastructure
+or protocol; a task-class interruption remains failed and is not replaced.
+The scorer input contains exactly 32 logical slots; keep every raw retry
+attempt in its audit archive rather than adding it as another logical record.
+Reader access remains limited to candidate material through the four collector
+tools; scorer, rubric, specifications, and this handoff remain excluded.
+
+Codex CLI 0.160.0 reports the requested alias but not the resolved backend
+model revision; this is a documented strict-comparability limitation, not a
+freeze blocker. Provider identifier and endpoint host are not available from
+the local catalog. Raw records and audit files remain in the ignored local
+`dev-log` archive; no external durable archive is configured, so a clean
+checkout cannot reproduce raw reads or answers.

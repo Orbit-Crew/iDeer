@@ -3578,8 +3578,8 @@
       {
         "path": "docs/governance/disclosure-reading-collector-2026-10-07.md",
         "registration": "post-baseline-addition",
-        "sha256": "1886a33a7cd1df35ea43428b43fce81f674752b0ded9479a4e85db877ca2cdee",
-        "lines": 179,
+        "sha256": "4b286bb42a0e157ceab57299b4fad7f30d42b3b9b56adb0e0b616c96dd61b3a0",
+        "lines": 232,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "candidate-pinned reading session collector contract and reader-isolation record",
