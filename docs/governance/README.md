@@ -20,5 +20,6 @@ verified-against: worktree docs/agent-doc-disclosure @ c9981aac3
 - [文档留存评估](../document-retention-assessment.md)
 - [历史证据归档](../archive/README.md)
 - [披露阅读收集器协议](disclosure-reading-collector-2026-10-07.md)
+- [披露阅读实验票 09 会话记录](disclosure-readability-experiment-pdr-2026-10-07-ticket09.md)：冻结队列前20槽的采集、失败重试、审计与待评分状态；不构成整体验收结论。
 
 治理材料默认不发布到公开文档站。

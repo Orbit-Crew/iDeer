@@ -3292,8 +3292,8 @@
     }
   ],
   "supplements": {
-    "count": 29,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 22 post-baseline additions; the next baseline capture decides which additions enter the seed, including this coordinator-only scoring rubric",
+    "count": 30,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 23 post-baseline additions; the next baseline capture decides which additions enter the seed, including this coordinator-only scoring rubric",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3584,6 +3584,16 @@
         "protected": false,
         "role": "candidate-pinned reading session collector contract and reader-isolation record",
         "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "bfd508d683165036cbd93176d0d1921f34629dc5d61e7027945e2cdd787982fd",
+        "lines": 80,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only record of the first 20 routine-task slots in the frozen progressive-disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
+        "referenced_by": "docs/governance/README.md"
       }
     ]
   },
