@@ -41,10 +41,24 @@ scope: nine engineering task domains
 
 ## 2. 对话提交与流式状态（chat submit / stream state）
 
-- **当前契约**：[deerflow runtime 模块指南](../../backend/packages/harness/deerflow/runtime/AGENTS.md)——运行时模块约束（改 harness runtime 时读）；[STREAMING.md](../../backend/docs/STREAMING.md)——流式事件与 message-id 去重（改流式交付时读）；[CONTEXT.md](../../CONTEXT.md)——Thread/Run/Turn 术语。Run 取消、恢复或持久化任务读[开发参考的 Run delivery and stream recovery mechanics](../../backend/docs/development-reference.md#run-delivery-and-stream-recovery-mechanics)，其中 `interrupt` 保留当前检查点、`rollback` 恢复运行前状态，过期租约恢复会终结 Run 而非续跑；已提交的远程工具副作用不随取消撤销。改事件投影时读 [Run 事件流契约](../../backend/docs/RUN_EVENT_STREAM.md) 的 Record Envelope、Categories 与 Compatibility；改 Thread 状态恢复、再生成或 edit-replay 时读 [Run/Thread 生命周期](../../backend/docs/THREAD_LIFECYCLE.md) 对应条款。只读流观察者断开不取消 Run，见 [API PAT Constraints](../../backend/docs/API.md#pat-constraints)。
-- **代码入口**：Gateway 侧 `backend/app/gateway/routers/thread_runs.py` 的取消路由与 `backend/app/gateway/deps.py` 的启动恢复；harness 侧 `backend/packages/harness/deerflow/runtime/runs/manager.py`（取消、RunStore 持久化和孤儿恢复）、`worker.py`（运行、工具执行与检查点回滚）、`runs/store/`（持久化接口），Thread 状态读写经 `runtime/checkpoint_state.py`。前端提交和流状态仍由 `frontend/src/core/threads/turn-submit.ts`、`hooks.ts` 与 `use-thread-page.ts` 接线。
-- **条件决策**：修改 harness runtime 时遵循根 `AGENTS.md` 的 Extension → Adapter → 已登记最小 runtime patch 顺序，并分别验证定制关闭与企业约束开启；仅在改动或新增登记补丁时更新根 `UPSTREAM_PATCH_LEDGER.md`。仅当任务同时改本地设备执行控制时，才展开第 6 节本地运行时入口及其授权/补丁账本。
-- **验证入口**：取消与恢复先核对 `backend/tests/test_run_worker_rollback.py`、`test_run_manager.py` 和 `test_gateway_run_recovery.py` 中匹配路径；涉及事件投影或恢复再查 `test_run_event_stream_contract.py`、`test_checkpoint_lineage.py`。按根 `AGENTS.md` 做定制关闭/开启兼容验证；持久化或核心 runtime 改动跑匹配的 backend standard lane 与 `pr-standard`，命令和 lane 组合以[测试 Lane 运行手册](../testing/test-lane-runbook.md)为准。
+### Chat 提交、流状态与共享页面
+
+- **当前契约**：[frontend Ownership](../../frontend/AGENTS.md#ownership) 定义提交、流和共享页面职责；Thread/Run/Turn 术语见 [CONTEXT.md](../../CONTEXT.md#execution)。改 Thread 数据流、消息或状态时读 [frontend/src/AGENTS.md](../../frontend/src/AGENTS.md)。
+  - Gateway/SSE 传输变更读 [STREAMING.md Gateway 路径](../../backend/docs/STREAMING.md#gateway-路径async--http-sse)。
+  - 嵌入式 `DeerFlowClient.stream()` 跨模式去重或 usage 计数变更读 [三个 ID set 不变量](../../backend/docs/STREAMING.md#三个-id-set-为什么不能合并)。前者定义 Gateway 事件交付，后者定义嵌入式流；UI 列表规则见 `message-order.ts`。
+- **代码入口**：前端入口在 `frontend/src/core/threads/`：`turn-submit.ts` 管提交栅栏和 Turn 生命周期，`hooks.ts` 管流状态并加入栅栏，`use-thread-page.ts` 接线共享页面，`message-order.ts` 合并展示消息。Gateway/SSE 入口为 `thread_runs.py`、`services.py::sse_consumer` 和 `backend/packages/harness/deerflow/runtime/stream_bridge/`；这些 Gateway 文件位于 `backend/app/gateway/`。嵌入式流入口为 `backend/packages/harness/deerflow/client.py::DeerFlowClient.stream`。
+- **条件决策**：仅改观察者断开或授权行为时读 [API PAT Constraints](../../backend/docs/API.md#pat-constraints)。Run 生命周期资料见下节对应条件。
+- **验证入口**：
+  - 前端先看 `frontend/tests/unit/core/threads/turn-submit.test.ts`、`message-order.test.ts`、`hooks.test.ts`；增量渲染加 `incremental-stream-state.dom.test.tsx`。实现时跑匹配 Vitest/Rstest、`cd frontend && pnpm check` 和 frontend standard lane。
+  - Gateway/SSE 改动先看 `backend/tests/unit/gateway/test_services_behavior.py` 和 `backend/tests/unit/runtime/test_stream_bridge.py`；PAT 取消授权再看 `backend/tests/test_pat_auth.py::test_runs_read_only_pat_cannot_cancel_then_stream`。
+  - 嵌入式流的去重或 usage 变更先看 `backend/tests/test_client.py`。Gateway/SSE 与嵌入式流改动跑 backend standard lane；PR gate 为 `pr-standard`。
+
+### Run 取消、恢复或持久化
+
+- **当前契约**：仅这些任务读取 [Run delivery and stream recovery mechanics](../../backend/docs/development-reference.md#run-delivery-and-stream-recovery-mechanics)，核对 interrupt/rollback、过期租约恢复及已提交远程工具副作用。
+- **代码入口**：`backend/app/gateway/routers/thread_runs.py`、`backend/app/gateway/deps.py`、`backend/packages/harness/deerflow/runtime/runs/manager.py`、`backend/packages/harness/deerflow/runtime/runs/worker.py`、`backend/packages/harness/deerflow/runtime/runs/store/` 与 `backend/packages/harness/deerflow/runtime/checkpoint_state.py`（Thread 状态读写）。改 harness runtime 时另读 [runtime 模块指南](../../backend/packages/harness/deerflow/runtime/AGENTS.md)。
+- **条件决策**：事件投影另读 [Run 事件流契约](../../backend/docs/RUN_EVENT_STREAM.md) 的 Record Envelope、Categories、Compatibility；Thread 状态恢复、再生成或 edit-replay 另读 [Run/Thread 生命周期](../../backend/docs/THREAD_LIFECYCLE.md)。只有任务同时修改本地设备执行控制时，才展开第 6 节本地运行时入口及其授权/补丁账本。改 harness runtime 时遵循根 `AGENTS.md` 的 Extension → Adapter → 已登记最小 runtime patch 顺序，分别验证定制关闭与企业约束开启；仅在改动或新增登记补丁时更新根 `UPSTREAM_PATCH_LEDGER.md`。
+- **验证入口**：取消/恢复先看 `backend/tests/test_run_worker_rollback.py`、`test_run_manager.py` 和 `test_gateway_run_recovery.py`；事件投影再看 `test_run_event_stream_contract.py`，Thread 状态恢复再看 `test_checkpoint_lineage.py`。持久化或核心 runtime 改动跑匹配 backend standard lane 与 `pr-standard`；命令以[测试 Lane 运行手册](../testing/test-lane-runbook.md)为准。
 
 ## 3. 资源授权（visibility / RBAC / 权限）
 
