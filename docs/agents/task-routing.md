@@ -48,10 +48,10 @@ scope: nine engineering task domains
 
 ## 3. 资源授权（visibility / RBAC / 权限）
 
-- **当前契约**：[permission-model-redesign.md](../permission-model-redesign.md)——授权模型设计（改授权语义前读）；[permission-matrix.md](../permission-matrix.md)——角色 × 操作矩阵（判断某角色能否做某事时读）。
-- **代码入口**：`backend/app/gateway/auth/`、`backend/app/gateway/routers/visibility_applications.py`、`backend/app/agentplatform/rbac_models.py`、`backend/app/agentplatform/visibility_models.py`、`backend/app/agentplatform/resource_service.py`。
-- **条件决策**：涉及设备/本地执行的授权时读[双层授权与本地否决权决策](../decisions/2026-09-08-local-authorization-veto.md)；涉及资源可见性生命周期时读[资源治理 V2 决策](../decisions/2026-08-14-resource-governance-v2.md)。
-- **验证入口**：auth/RBAC 变更必须跑匹配的标准 lane 与 `pr-standard`，并补齐对应 contract/integration 检查；GitHub Actions 对保护高危路径选择 Real E2E 时，交接 PR 须报告该选择（根 `AGENTS.md` 测试指引）。
+- **当前契约**：改授权语义时读[授权规则](../permission-model-redesign.md#2-设计原则)；判断角色能否执行某操作时读[角色权限](../permission-model-redesign.md#3-角色与权限)和[角色 × 操作矩阵](../permission-matrix.md#核心操作权限表)；判断资源对用户的可见范围时读[可见性规则](../permission-model-redesign.md#4-浏览权限visibility-控制)；变更或核验可见性申请处理时读[审批流程](../permission-model-redesign.md#6-审批流程)。两份权限文档中 2026-07 的 API、数据库、前端和迁移章节是设计基线，不是当前实现入口。只有当权限任务涉及 KB 治理身份与 Provider 索引职责边界时，才读[知识双层真源决策](../decisions/2026-09-08-knowledge-dual-source-of-truth.md)：AgentPlatform 管理 KB 身份与可见性，Provider 管索引与检索状态。
+- **代码入口**：通用路由授权在 `backend/app/gateway/authz.py`（`require_permission`、`check_resource_access`、`check_resource_modify`）；角色在 `backend/app/agentplatform/rbac_models.py`；可见性申请在 `backend/app/gateway/routers/visibility_applications.py`；资源目录与生命周期从 `backend/app/gateway/routers/resources.py`、`backend/app/agentplatform/resource_service.py` 核验。
+- **条件决策**：资源目录的发布、可见性、归档或依赖生命周期变更时读[资源治理 V2 决策](../decisions/2026-08-14-resource-governance-v2.md)；只有任务涉及设备本地执行时，才读[双层授权与本地否决权决策](../decisions/2026-09-08-local-authorization-veto.md)、[本地运行时安全模型](../local-runtime/SECURITY_MODEL.md)及[第 6 节本地运行时代码入口](#6-本地运行时补丁local-runtime--设备执行)。
+- **验证入口**：先看 `backend/tests/contracts/test_rbac_matrix.py` 和 `backend/tests/unit/resources/test_resource_service_access.py`；涉及可见性申请时加 `backend/tests/contracts/test_visibility_applications.py`。权限或资源治理改动还需匹配 contract/integration 检查及 backend standard lane，PR 执行 `pr-standard`；命令与组合见[测试 Lane 运行手册](../testing/test-lane-runbook.md#选择与运行)。涉及设备本地执行实现时，先看 `local-runtime/tests/test_policy_denial.py` 和 `local-runtime/tests/test_file_service.py`，再运行 `local-runtime` lane。高危路径是否选择 Real E2E 由 GitHub Actions 决定，交接 PR 时报告选择结果（根 `AGENTS.md` 测试指引）。
 
 ## 4. KnowledgeBase（知识库）
 
