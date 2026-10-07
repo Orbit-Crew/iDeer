@@ -3292,8 +3292,8 @@
     }
   ],
   "supplements": {
-    "count": 27,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 18 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed) — the 4 governance-rollout pages and the 14 first test-system batch records (batch merged at e33a103f1, registered at merge 5d10796ab)",
+    "count": 28,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 21 post-baseline additions; the next baseline capture decides which additions enter the seed, including this coordinator-only scoring rubric",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3564,6 +3564,16 @@
         "protected": false,
         "role": "specification for five progressive disclosure reading-effect follow-up improvements",
         "referenced_by": "docs/README.md specs directory entry"
+      },
+      {
+        "path": "docs/governance/disclosure-scoring-rubric-2026-10-07.md",
+        "registration": "post-baseline-addition",
+        "sha256": "bb40af129e64da013885c4b74cb51169bf047ae5139f4f3deee16af0cb9fc171",
+        "lines": 125,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only human scoring rubric; excluded from timed reader access",
+        "referenced_by": "docs/governance/document-governance.md"
       }
     ]
   },
