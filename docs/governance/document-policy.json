@@ -3594,6 +3594,16 @@
         "protected": false,
         "role": "coordinator-only record of the first 20 routine-task slots in the frozen progressive-disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
         "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket10.md",
+        "registration": "post-baseline-addition",
+        "sha256": "72306f9d198af8d1f09a0d4bccfdb4e0c2391f6408cdeb834826f80e2a472750",
+        "lines": 76,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only record of frozen special-task slots 21–32, grading, retries, and audit limitations; created after candidate freeze and absent from timed-reader candidate roots",
+        "referenced_by": "docs/governance/README.md"
       }
     ]
   },
