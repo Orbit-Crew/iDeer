@@ -3588,8 +3588,8 @@
       {
         "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket09.md",
         "registration": "post-baseline-addition",
-        "sha256": "bfd508d683165036cbd93176d0d1921f34629dc5d61e7027945e2cdd787982fd",
-        "lines": 80,
+        "sha256": "de156062d6c52fd5f040eada037b8aa1993e407bf40c94b72e27db4b3bdeb318",
+        "lines": 85,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "coordinator-only record of the first 20 routine-task slots in the frozen progressive-disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
