@@ -3338,8 +3338,8 @@
       {
         "path": "docs/agents/task-routing.md",
         "registration": "post-baseline-addition",
-        "sha256": "95cf0e70cb8f2c7e8ffdb234546f73b0677030b49794f4e52f83edb31cd812f4",
-        "lines": 88,
+        "sha256": "8abbb8e38398ec64f6853765bc38ac4d6f96dbf49e43401109d8d30f0b569df2",
+        "lines": 110,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "task-domain routing page referenced by the root AGENTS.md task map and docs/README.md current-source table",
@@ -3576,10 +3576,10 @@
         "referenced_by": "docs/governance/document-governance.md"
       },
       {
-      "path": "docs/governance/disclosure-reading-collector-2026-10-07.md",
-      "registration": "post-baseline-addition",
-      "sha256": "2ad4f0c03d701f56b71cf1ead2803c95374c78ddc1ba33f2d3ed24aefd59b152",
-      "lines": 172,
+        "path": "docs/governance/disclosure-reading-collector-2026-10-07.md",
+        "registration": "post-baseline-addition",
+        "sha256": "1886a33a7cd1df35ea43428b43fce81f674752b0ded9479a4e85db877ca2cdee",
+        "lines": 179,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "candidate-pinned reading session collector contract and reader-isolation record",

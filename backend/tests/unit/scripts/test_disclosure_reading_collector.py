@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import subprocess
@@ -321,6 +322,7 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
         "if '--version' in sys.argv:\n"
         "    print('codex-cli 0.160.0')\n"
         "elif sys.argv[1:3] == ['debug', 'models']:\n"
+        "    Path(os.environ['CODEX_DEBUG_MODELS_CALLS']).write_text('called', encoding='utf-8')\n"
         '    print(\'{\\"models\\":[{\\"slug\\":\\"gpt-6.1-sol\\",\\"apply_patch_tool_type\\":\\"freeform\\"}]}\')\n'
         "elif 'exec' in sys.argv and os.environ.get('CODEX_CAPTURE'):\n"
         "    raw = next(arg.split('=', 1)[1] for arg in sys.argv if arg.startswith('model_catalog_json='))\n"
@@ -349,20 +351,40 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
         manifests.append(manifest)
     prompt = tmp_path / "prompt.txt"
     prompt.write_text("A generic task prompt.\n", encoding="utf-8")
+    model_catalog = tmp_path / "pinned-model-catalog.json"
+    model_catalog.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "slug": "gpt-6.1-sol",
+                        "tool_mode": "code_mode_only",
+                        "shell_type": "unified_exec",
+                        "apply_patch_tool_type": "freeform",
+                        "experimental_supported_tools": ["send_user_message_async", "clock"],
+                        "catalog_note": "stable pinned catalog",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
     env = {
         **os.environ,
         "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"],
         "CODEX_MODE": "protocol",
+        "CODEX_DEBUG_MODELS_CALLS": str(tmp_path / "debug-models-called"),
     }
     fingerprints = []
     configs = []
     invocations = [
-        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline", None, "formal"),
-        ("after", roots[1], manifests[1], tmp_path / "output-after", None, "formal"),
-        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-retry", 0, "formal"),
-        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-default", None, None),
+        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline", None, "formal", True),
+        ("after", roots[1], manifests[1], tmp_path / "output-after", None, "formal", True),
+        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-retry", 0, "formal", True),
+        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-default", None, None, True),
+        ("baseline", roots[0], manifests[0], tmp_path / "output-live-catalog", None, None, False),
     ]
-    for side, root, manifest, output, retry_index, stage in invocations:
+    for side, root, manifest, output, retry_index, stage, use_pinned_catalog in invocations:
         capture_path = tmp_path / f"{output.name}.capture.json"
         invocation_env = {**env, "CODEX_CAPTURE": str(capture_path)}
         command = [
@@ -381,6 +403,8 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
             "--out-dir",
             str(output),
         ]
+        if use_pinned_catalog:
+            command.extend(("--model-catalog-file", str(model_catalog)))
         if stage is not None:
             command.extend(("--stage", stage))
         if retry_index is not None:
@@ -414,6 +438,10 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
         assert "tools.update_plan.enabled=false" in captured["argv"]
         assert "tools.experimental_request_user_input.enabled=false" in captured["argv"]
         assert not Path(captured["catalog_path"]).exists()
+        debug_models_called = Path(env["CODEX_DEBUG_MODELS_CALLS"]).exists()
+        assert debug_models_called is (not use_pinned_catalog)
+        assert configs[-1]["config"]["model_catalog_source"] == ("pinned-file" if use_pinned_catalog else "codex-debug-models")
+        assert configs[-1]["config"]["model_catalog_source_sha256"] == (hashlib.sha256(model_catalog.read_bytes()).hexdigest() if use_pinned_catalog else None)
         assert configs[-1]["config"]["model_tool_metadata_original"]["apply_patch_tool_type"] == "freeform"
         assert configs[-1]["config"]["model_tool_metadata_effective"]["apply_patch_tool_type"] is None
         assert configs[-1]["config"]["mcp_resource_handlers"] == [
@@ -451,6 +479,39 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
     assert retry_record["attempt_no"] == 2
     assert original_record["retry_run_id"] == retry_record["run_id"]
     assert original_record["failure_class"] == "protocol"
+
+    invalid_catalog = tmp_path / "invalid-model-catalog.json"
+    invalid_catalog.write_text('{"models": [null]}', encoding="utf-8")
+    invalid_env = {
+        **env,
+        "CODEX_DEBUG_MODELS_CALLS": str(tmp_path / "invalid-debug-models-called"),
+    }
+    invalid_result = subprocess.run(
+        [
+            sys.executable,
+            str(RUNNER),
+            "--root",
+            str(roots[0]),
+            "--manifest",
+            str(manifests[0]),
+            "--candidate",
+            "baseline",
+            "--task",
+            "history",
+            "--prompt-file",
+            str(prompt),
+            "--out-dir",
+            str(tmp_path / "output-invalid-catalog"),
+            "--model-catalog-file",
+            str(invalid_catalog),
+        ],
+        text=True,
+        capture_output=True,
+        env=invalid_env,
+        check=False,
+    )
+    assert invalid_result.returncode == 2
+    assert "pinned model catalog must contain the selected model" in invalid_result.stderr
 
 
 def test_runner_no_submit_is_terminal_and_pre_read_hang_has_finite_deadline(tmp_path):

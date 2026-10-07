@@ -107,6 +107,11 @@ configuration and included in its fingerprint. Ticket 08 must freeze the
 complete prompt and stage configuration before formal use; no formal
 experiment is frozen yet.
 
+For a frozen batch, supply the same single-model catalog with
+`--model-catalog-file` to every session. The runner records the source-file
+digest and the effective catalog digest after native patch metadata is
+removed. Do not rely on a fresh live catalog lookup for each attempt.
+
 The non-scored synthetic dry run for ticket 02 used Codex CLI 0.160.0, model
 `gpt-6.1-sol`, and medium reasoning. Its local trace and record are in the
 ignored `dev-log/disclosure-readability-recovery/ticket02/` directory. This is
@@ -169,4 +174,6 @@ revision. Report that limitation, and do not claim strict model comparability
 or a strict pass. The runner defaults to `non-scored`; its `--stage formal`
 option selects the distinct formal-session label and fingerprints that stage.
 Ticket 08 must freeze the prompt and stage configuration before formal use;
-formal sessions must report any outside-help request as contamination.
+formal sessions must report any outside-help request as contamination. Freeze
+one single-model catalog file and use it for every attempt so the source and
+effective catalog digests stay fixed within the experiment.

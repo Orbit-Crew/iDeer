@@ -104,7 +104,7 @@ scope: nine engineering task domains
 
 ## 9. 上游同步（upstream sync）
 
-- **当前契约**：改 harness 前后读根 [UPSTREAM_PATCH_LEDGER.md](../../UPSTREAM_PATCH_LEDGER.md) 的有效上游锁定点、补丁理由、替代方案、影响、验证、owner 和移除条件；依根 `AGENTS.md`"Enterprise changes and upstream compatibility"节选择 Extension、Adapter 或已登记的最小 runtime patch，并保留 Run/Thread 等生命周期约束。
+- **当前契约**：改 harness 前后，先核对根 [UPSTREAM_PATCH_LEDGER.md](../../UPSTREAM_PATCH_LEDGER.md) 的有效上游锁定点，并为每个补丁登记完整六项：理由、替代方案、影响、验证、owner、移除条件。按根 `AGENTS.md` 的 "Enterprise changes and upstream compatibility" 选择 Extension、Adapter 或已登记的最小 runtime patch，并保留 Run/Thread 等生命周期约束。
 - **代码入口**：`backend/packages/harness/deerflow/`（`deerflow-harness` 包）。
 - **条件决策**：报告同步、集成或验证状态前，先核对根补丁账本中最新的锁定裁决，并以它作为有效上游锚点的唯一权威。再按目标候选 SHA 查看[项目状态](../project-state.md)：仅当页首候选与目标匹配时，沿用其候选验证状态；否则在目标候选上核验，旧状态不能代替当前验证。分支职责和收敛/修复流程见[离线产品线治理方案](../offline-product-line-governance-plan.md)；其 0f7d8709 基线句及各轮 `UPSTREAM_LOCK.md` 只描述当时范围，不能覆盖较新的锁定裁决。处理具体冲突时，才读该轮升级档案中的路径政策、冲突台账和锁定记录。路径归属只提供逐项评估的起点。每个冲突按行为和契约单独决定采用上游、保留本地或重新实现，并在冲突台账记录理由与验证；镜像同步、产品集成、兼容验证分别报告状态。
 - **验证入口**：改动补丁时更新根账本；按实际行为分别验证定制关闭和企业约束开启，再运行匹配标准 lane 与 `pr-standard`。仅追溯或读状态时不运行这些检查。

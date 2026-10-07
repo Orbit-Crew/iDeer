@@ -48,7 +48,23 @@ def isolation_model_catalog(catalog, model):
     return {"models": [isolated]}
 
 
-def load_isolation_model_catalog(codex, model):
+def load_isolation_model_catalog(codex, model, catalog_file=None):
+    catalog_source_sha256 = None
+    if catalog_file is not None:
+        catalog_bytes = catalog_file.read_bytes()
+        try:
+            catalog = json.loads(catalog_bytes)
+        except json.JSONDecodeError as exc:
+            raise ValueError("pinned model catalog is not valid JSON") from exc
+        entries = catalog.get("models") if isinstance(catalog, dict) else None
+        if not isinstance(entries, list) or len(entries) != 1:
+            raise ValueError("pinned model catalog must contain exactly one model")
+        if not isinstance(entries[0], dict) or entries[0].get("slug") != model:
+            raise ValueError("pinned model catalog must contain the selected model")
+        catalog_source_sha256 = hashlib.sha256(catalog_bytes).hexdigest()
+        isolated = isolation_model_catalog(catalog, model)
+        return isolated, entries[0], catalog_source_sha256
+
     result = subprocess.run(
         [codex, "debug", "models"],
         text=True,
@@ -64,7 +80,7 @@ def load_isolation_model_catalog(codex, model):
         raise RuntimeError("Codex model catalog output was not JSON") from exc
     isolated = isolation_model_catalog(catalog, model)
     original = next(entry for entry in catalog["models"] if entry.get("slug") == model)
-    return isolated, original
+    return isolated, original, catalog_source_sha256
 
 
 def classify_runner_failure(trace_path):
@@ -145,6 +161,7 @@ def main():
     parser.add_argument("--prompt-file", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--stage", choices=("non-scored", "formal"), default="non-scored")
+    parser.add_argument("--model-catalog-file", type=Path)
     parser.add_argument("--model", default="gpt-6.1-sol")
     parser.add_argument(
         "--reasoning",
@@ -170,7 +187,7 @@ def main():
     args.out_dir = args.out_dir.resolve()
     args.out_dir.mkdir(parents=True, exist_ok=True)
     try:
-        isolation_catalog, original_model = load_isolation_model_catalog(codex, args.model)
+        isolation_catalog, original_model, model_catalog_source_sha256 = load_isolation_model_catalog(codex, args.model, args.model_catalog_file)
     except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as exc:
         parser.error(f"could not prepare the isolated model tool catalog: {exc}")
     catalog_json = json.dumps(isolation_catalog, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -200,6 +217,8 @@ def main():
         "reasoning": args.reasoning,
         "resolved_model_version": None,
         "model_version_limit": "codex exec --json exposes the requested model alias and CLI build, not the resolved backend model revision",
+        "model_catalog_source": "pinned-file" if args.model_catalog_file else "codex-debug-models",
+        "model_catalog_source_sha256": model_catalog_source_sha256,
         "model_catalog_sha256": catalog_sha256,
         "model_tool_metadata_original": {
             "tool_mode": original_model.get("tool_mode"),
