@@ -2,11 +2,13 @@
 """Run one isolated Codex reading session through the disclosure collector MCP tools."""
 
 import argparse
+import atexit
 import hashlib
 import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -35,6 +37,37 @@ DISABLED_FEATURES = [
     "memories",
 ]
 STARTUP_TIMEOUT_SECONDS = 60
+
+
+def isolation_model_catalog(catalog, model):
+    """Keep the selected catalog entry intact except for native file patch access."""
+    matches = [
+        entry for entry in catalog.get("models", []) if entry.get("slug") == model
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"expected one model catalog entry for {model!r}")
+    isolated = dict(matches[0])
+    isolated["apply_patch_tool_type"] = None
+    return {"models": [isolated]}
+
+
+def load_isolation_model_catalog(codex, model):
+    result = subprocess.run(
+        [codex, "debug", "models"],
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=60,
+    )
+    if result.returncode:
+        raise RuntimeError("Codex could not load the current model catalog")
+    try:
+        catalog = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Codex model catalog output was not JSON") from exc
+    isolated = isolation_model_catalog(catalog, model)
+    original = next(entry for entry in catalog["models"] if entry.get("slug") == model)
+    return isolated, original
 
 
 def classify_runner_failure(trace_path):
@@ -142,6 +175,27 @@ def main():
         parser.error("startup timeout must be a positive number of seconds")
     args.out_dir = args.out_dir.resolve()
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        isolation_catalog, original_model = load_isolation_model_catalog(
+            codex, args.model
+        )
+    except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as exc:
+        parser.error(f"could not prepare the isolated model tool catalog: {exc}")
+    catalog_json = json.dumps(
+        isolation_catalog, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    catalog_sha256 = hashlib.sha256(catalog_json.encode("utf-8")).hexdigest()
+    catalog_model = isolation_catalog["models"][0]
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        suffix=".json",
+        prefix="disclosure-model-catalog-",
+        delete=False,
+    ) as catalog_file:
+        catalog_file.write(catalog_json)
+        catalog_path = Path(catalog_file.name)
+    atexit.register(catalog_path.unlink, missing_ok=True)
     run_id = f"{args.candidate}-{args.task}-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{time.monotonic_ns()}"
     record = args.out_dir / f"{run_id}.json"
     trace = args.out_dir / f"{run_id}.jsonl"
@@ -157,13 +211,47 @@ def main():
         "reasoning": args.reasoning,
         "resolved_model_version": None,
         "model_version_limit": "codex exec --json exposes the requested model alias and CLI build, not the resolved backend model revision",
+        "model_catalog_sha256": catalog_sha256,
+        "model_tool_metadata_original": {
+            "tool_mode": original_model.get("tool_mode"),
+            "shell_type": original_model.get("shell_type"),
+            "apply_patch_tool_type": original_model.get("apply_patch_tool_type"),
+            "experimental_supported_tools": original_model.get(
+                "experimental_supported_tools", []
+            ),
+        },
+        "model_tool_metadata_effective": {
+            "tool_mode": catalog_model.get("tool_mode"),
+            "shell_type": catalog_model.get("shell_type"),
+            "apply_patch_tool_type": catalog_model.get("apply_patch_tool_type"),
+            "experimental_supported_tools": catalog_model.get(
+                "experimental_supported_tools", []
+            ),
+        },
         "task_timeout_seconds": MAX_SESSION_SECONDS,
         "startup_timeout_seconds": args.startup_timeout_seconds,
-        "sandbox": "workspace-write via --approve-for-me (candidate-only cwd; no execution tools)",
+        "sandbox": "workspace-write via --approve-for-me with candidate-only cwd; native tools are gated by shell feature/model metadata and disabled-feature settings",
         "user_config": "ignored",
         "project_doc_max_bytes": 0,
-        "mcp_server": "single required disclosure collector stdio server",
+        "mcp_server": "single required disclosure collector stdio server; Codex also registers three generic resource handlers with this server",
         "mcp_tools": MCP_TOOLS,
+        "mcp_resource_handlers": [
+            "list_mcp_resources",
+            "list_mcp_resource_templates",
+            "read_mcp_resource",
+        ],
+        "mcp_resource_access": "collector advertises tools only and returns method-not-found for all resource methods; see resource-protocol-probe-summary.json",
+        "model_metadata_tools": {
+            "send_user_message_async": [
+                "request_user_input_async (legacy alias)",
+                "send_message_to_user_async",
+            ],
+            "clock": ["current_time"],
+        },
+        "core_utility_tools_disabled": [
+            "update_plan",
+            "request_user_input",
+        ],
         "mcp_tool_schema_sha256": digest(
             json.dumps(
                 mcp_tool_schemas(),
@@ -175,7 +263,7 @@ def main():
         "mcp_approval": "auto for the four explicitly allowlisted collector tools",
         "web_search": "disabled",
         "disabled_features": DISABLED_FEATURES,
-        "approval_policy": "automatic review; no execution tools enabled",
+        "approval_policy": "automatic review; shell feature disabled and apply_patch metadata removed; code-mode wrappers may expose only enabled nested handlers",
     }
     tool_config["collector_sha256"] = hashlib.sha256(
         args.collector.read_bytes()
@@ -200,6 +288,12 @@ def main():
         f"model_reasoning_effort={json.dumps(args.reasoning)}",
         "-c",
         "project_doc_max_bytes=0",
+        "-c",
+        f"model_catalog_json={json.dumps(str(catalog_path))}",
+        "-c",
+        "tools.update_plan.enabled=false",
+        "-c",
+        "tools.experimental_request_user_input.enabled=false",
     ]
     for feature in DISABLED_FEATURES:
         command.extend(["--disable", feature])
@@ -290,48 +384,55 @@ def main():
         encoding="utf-8",
     )
 
-    with trace.open("w", encoding="utf-8") as log:
-        process_started = time.monotonic()
-        process = subprocess.Popen(
-            command, stdout=log, stderr=subprocess.STDOUT, text=True
-        )
-        timed_out = False
-        startup_timed_out = False
-        while process.poll() is None:
-            current = json.loads(record.read_text(encoding="utf-8"))
-            started = current.get("started_monotonic")
-            if (
-                started is None
-                and time.monotonic() - process_started > args.startup_timeout_seconds
-            ):
-                process.kill()
-                process.wait()
-                call_collector(
-                    args,
-                    "failed",
-                    "--record",
-                    record,
-                    "--reason",
-                    f"no successful first read within {args.startup_timeout_seconds} seconds of runner launch",
-                    "--failure-class",
-                    "infrastructure",
-                )
-                startup_timed_out = True
-                break
-            if started is not None and time.monotonic() - started > MAX_SESSION_SECONDS:
-                process.kill()
-                process.wait()
-                call_collector(
-                    args,
-                    "timeout",
-                    "--record",
-                    record,
-                    "--reason",
-                    f"task exceeded {MAX_SESSION_SECONDS} seconds after first successful read",
-                )
-                timed_out = True
-                break
-            time.sleep(0.2)
+    try:
+        with trace.open("w", encoding="utf-8") as log:
+            process_started = time.monotonic()
+            process = subprocess.Popen(
+                command, stdout=log, stderr=subprocess.STDOUT, text=True
+            )
+            timed_out = False
+            startup_timed_out = False
+            while process.poll() is None:
+                current = json.loads(record.read_text(encoding="utf-8"))
+                started = current.get("started_monotonic")
+                if (
+                    started is None
+                    and time.monotonic() - process_started
+                    > args.startup_timeout_seconds
+                ):
+                    process.kill()
+                    process.wait()
+                    call_collector(
+                        args,
+                        "failed",
+                        "--record",
+                        record,
+                        "--reason",
+                        f"no successful first read within {args.startup_timeout_seconds} seconds of runner launch",
+                        "--failure-class",
+                        "infrastructure",
+                    )
+                    startup_timed_out = True
+                    break
+                if (
+                    started is not None
+                    and time.monotonic() - started > MAX_SESSION_SECONDS
+                ):
+                    process.kill()
+                    process.wait()
+                    call_collector(
+                        args,
+                        "timeout",
+                        "--record",
+                        record,
+                        "--reason",
+                        f"task exceeded {MAX_SESSION_SECONDS} seconds after first successful read",
+                    )
+                    timed_out = True
+                    break
+                time.sleep(0.2)
+    finally:
+        catalog_path.unlink(missing_ok=True)
     current = json.loads(record.read_text(encoding="utf-8"))
     if current["status"] == "started":
         evidence_class = (

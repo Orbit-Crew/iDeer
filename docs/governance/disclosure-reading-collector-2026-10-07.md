@@ -109,19 +109,60 @@ The non-scored synthetic dry run for ticket 02 used Codex CLI 0.160.0, model
 `gpt-6.1-sol`, and medium reasoning. Its local trace and record are in the
 ignored `dev-log/disclosure-readability-recovery/ticket02/` directory. This is
 tooling evidence only; it is not part of a formal sample or a semantic grade.
-Its trace records only collector calls; it does not prove native file, image,
-editing, or permission tools were absent from the model context. The runner
-now explicitly disables Codex's `view_image` and
-`request_permissions_tool` features. A real-provider inventory probe was
-blocked before the model turn by a Codex usage limit. Two later loopback mock
-provider requests reached `/v1/responses` but advertised an empty `tools`
-array, so they did not establish whether MCP initialization succeeded or which
-native tools were available. These diagnostic attempts used a different local
-provider and are not formal-model evidence. The usage-limit attempts and
-loopback requests, traces, configs, manifests, and synthetic candidate are
-preserved under
-`dev-log/disclosure-readability-recovery/ticket02/tool-inventory-probe/` and
-`dev-log/disclosure-readability-recovery/ticket02/tool-schema-probe-loopback/`.
-Verified absence of native file, image, editing, and permission tools remains
-a formal-run readiness blocker. Do not claim an MCP-only context until an
-actual inventory and harmless negative-access probe establish that boundary.
+The same-provider trace records the collector calls and a harmless attempt to
+read `../external-canary.txt`; the collector rejected it with
+`ERROR: read requires a safe, candidate-relative path` and persisted the same
+denial in `tool_errors`. No canary content was returned or read. The reader
+then submitted the six-field answer. The prior trace by itself did not establish
+the native tool boundary; the audit now combines this negative proof with the
+exact-version Codex registration source and the effective runner config.
+
+The runner requests disabling `shell_tool` and `unified_exec`, but Codex 0.160.0
+reports `unified_exec` as stable and the selected model metadata has
+`shell_type=unified_exec`. The source shows the shell registration first exits
+when `Feature::ShellTool` is disabled (or no execution environment exists, or
+the model shell type is disabled), before checking `UnifiedExec`. Thus the
+`unified_exec` feature readout does not register shell execution in this run;
+the runner's `shell_tool` feature gate is the outer control. Native
+`ApplyPatchHandler` has a separate model metadata gate; the runner now passes
+an ephemeral catalog with `apply_patch_tool_type=null`, preserving the model
+alias and all other selected metadata. The runner also explicitly disables
+the configuration-gated `update_plan` and ordinary `request_user_input`
+handlers. The public runner CLI test checks that the effective catalog and
+these configuration settings reach the subprocess and that the temporary file
+is removed after exit.
+
+The selected model metadata also enables `send_user_message_async` and
+`clock`. Codex 0.160.0 registers the legacy `request_user_input_async` alias,
+`send_message_to_user_async`, and `current_time` for those entries. These are
+human-interaction/time utilities, not candidate or scoring-file readers. No
+such calls appear in the fresh trace. A future request for outside help must be
+recorded through `report_session_event` and treated as contamination. The
+`exec` and `wait` tools are CodeMode V8 orchestration wrappers; they dispatch
+only enabled nested handlers and have no Node filesystem or fetch/network
+global, with module imports rejected. The MCP registry additionally registers
+`list_mcp_resources`, `list_mcp_resource_templates`, and `read_mcp_resource`.
+The single collector server advertises only tool capability and responds
+`-32601 method not found` to all three resource protocol methods, so it exposes
+no candidate or scoring resources. The runner config now records these three
+handlers and all three model-metadata handlers rather than labeling the four
+collector tools as the entire Codex registry. The normal plan and synchronous
+user-input handlers are explicitly disabled in the run configuration. The
+metadata-enabled asynchronous human-help handlers remain available and are
+listed rather than mislabeled as absent.
+
+The source audit is pinned to the installed CLI build `codex-cli 0.160.0` and
+upstream tag `rust-v0.160.0` at commit
+`a956835d020762cb2b570053af06f643a11c0ecc`. The reviewed `spec_plan.rs`
+snapshot has SHA-256
+`849ef21d4e5c83febdc31eacd7609911d43e3f69a35168fe02ae899273b5ef3e`; its
+`add_shell_tools` gate is at lines 1083–1117. The complete versioned source,
+config, protocol probe, and per-session canary evidence are summarized in the
+ignored audit file
+`dev-log/disclosure-readability-recovery/ticket02/final-isolation-audit/tool-registration-audit.md`.
+Earlier usage-limit failures and loopback requests with empty `tools` arrays
+remain preserved as inconclusive historical diagnostics; they are not used as
+absence evidence. The CLI still does not expose the resolved backend model
+revision. Report that limitation, and do not claim strict model comparability
+or a strict pass. Ticket 08 must freeze the prompt and stage label for formal
+use; formal sessions must report any outside-help request as contamination.

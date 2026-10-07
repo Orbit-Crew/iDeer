@@ -316,9 +316,19 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
     fake_codex = fake_bin / "codex"
     fake_codex.write_text(
         "#!/usr/bin/env python3\n"
-        "import os, sys, time\n"
+        "import json, os, sys, time\n"
+        "from pathlib import Path\n"
         "if '--version' in sys.argv:\n"
         "    print('codex-cli 0.160.0')\n"
+        "elif sys.argv[1:3] == ['debug', 'models']:\n"
+        '    print(\'{\\"models\\":[{\\"slug\\":\\"gpt-6.1-sol\\",\\"apply_patch_tool_type\\":\\"freeform\\"}]}\')\n'
+        "elif 'exec' in sys.argv and os.environ.get('CODEX_CAPTURE'):\n"
+        "    raw = next(arg.split('=', 1)[1] for arg in sys.argv if arg.startswith('model_catalog_json='))\n"
+        "    catalog_path = json.loads(raw)\n"
+        "    catalog = json.loads(Path(catalog_path).read_text(encoding='utf-8'))\n"
+        "    Path(os.environ['CODEX_CAPTURE']).write_text(json.dumps({'argv': sys.argv, 'catalog_path': catalog_path, 'catalog': catalog}), encoding='utf-8')\n"
+        "    sys.stderr.write(\"Error: unexpected argument '--not-valid' found\\n\")\n"
+        "    sys.exit(1)\n"
         "elif os.environ.get('CODEX_MODE') == 'hang':\n"
         "    time.sleep(3)\n"
         "elif os.environ.get('CODEX_MODE') == 'clean':\n"
@@ -352,6 +362,8 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
         ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-retry", 0),
     ]
     for side, root, manifest, output, retry_index in invocations:
+        capture_path = tmp_path / f"{output.name}.capture.json"
+        invocation_env = {**env, "CODEX_CAPTURE": str(capture_path)}
         result = subprocess.run(
             [
                 sys.executable,
@@ -381,7 +393,7 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
             ],
             text=True,
             capture_output=True,
-            env=env,
+            env=invocation_env,
             check=False,
         )
         assert result.returncode == 1, result.stderr
@@ -389,6 +401,30 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
         config_path = result_data["config"]
         configs.append(json.loads(Path(config_path).read_text(encoding="utf-8")))
         fingerprints.append(configs[-1]["tool_config_sha256"])
+        captured = json.loads(capture_path.read_text(encoding="utf-8"))
+        assert captured["catalog"]["models"][0]["apply_patch_tool_type"] is None
+        assert captured["catalog"]["models"][0]["slug"] == "gpt-6.1-sol"
+        assert "tools.update_plan.enabled=false" in captured["argv"]
+        assert "tools.experimental_request_user_input.enabled=false" in captured["argv"]
+        assert not Path(captured["catalog_path"]).exists()
+        assert configs[-1]["config"]["model_tool_metadata_original"]["apply_patch_tool_type"] == "freeform"
+        assert configs[-1]["config"]["model_tool_metadata_effective"]["apply_patch_tool_type"] is None
+        assert configs[-1]["config"]["mcp_resource_handlers"] == [
+            "list_mcp_resources",
+            "list_mcp_resource_templates",
+            "read_mcp_resource",
+        ]
+        assert configs[-1]["config"]["model_metadata_tools"] == {
+            "send_user_message_async": [
+                "request_user_input_async (legacy alias)",
+                "send_message_to_user_async",
+            ],
+            "clock": ["current_time"],
+        }
+        assert configs[-1]["config"]["core_utility_tools_disabled"] == [
+            "update_plan",
+            "request_user_input",
+        ]
         output.mkdir(exist_ok=True)
         (output / "result.json").write_text(result.stdout, encoding="utf-8")
     assert fingerprints[0] == fingerprints[1]
@@ -418,6 +454,8 @@ def test_runner_no_submit_is_terminal_and_pre_read_hang_has_finite_deadline(tmp_
         "import os, sys, time\n"
         "if '--version' in sys.argv:\n"
         "    print('codex-cli 0.160.0')\n"
+        "elif sys.argv[1:3] == ['debug', 'models']:\n"
+        '    print(\'{\\"models\\":[{\\"slug\\":\\"gpt-6.1-sol\\",\\"apply_patch_tool_type\\":\\"freeform\\"}]}\')\n'
         "elif os.environ.get('CODEX_MODE') == 'hang':\n"
         "    time.sleep(3)\n"
         "elif os.environ.get('CODEX_MODE') == 'clean':\n"
