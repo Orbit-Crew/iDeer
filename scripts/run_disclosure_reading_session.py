@@ -28,6 +28,8 @@ DISABLED_FEATURES = [
     "browser_use_external",
     "computer_use",
     "image_generation",
+    "view_image",
+    "request_permissions_tool",
     "apps",
     "plugins",
     "memories",

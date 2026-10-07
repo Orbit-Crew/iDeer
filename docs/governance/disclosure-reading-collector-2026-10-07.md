@@ -40,7 +40,8 @@ the comparable identity so linked retries and baseline/after candidates can
 match. Codex JSONL identifies the requested model alias and CLI build but does
 not expose the resolved backend model revision; the sidecar records this limit
 instead of claiming a pinned revision. This blocks claims of strict model
-comparability or acceptance until formal setup resolves or accepts the limit.
+comparability. A result may report this as a limitation, but accepting the
+limitation does not establish strict comparability or permit a strict pass.
 Its default is
 `gpt-6.1-sol` with medium reasoning. Change the model only when a registered
 experiment explicitly requires it; baseline and after sessions must use the
@@ -78,7 +79,8 @@ directory.
 
 The runner starts Codex with user configuration ignored and automatic review
 enabled. It disables shell execution, unified execution, delegation, sleep,
-web search, browser, computer use, image generation, apps, plugins, and memory.
+web search, browser, computer use, image generation, image viewing, permission
+requests, apps, plugins, and memory.
 The only enabled MCP server is the required collector, allowlisted to the four
 tools above. `project_doc_max_bytes=0` prevents automatic loading of project
 `AGENTS.md`; the reader must get that content through the timed collector.
@@ -108,11 +110,18 @@ The non-scored synthetic dry run for ticket 02 used Codex CLI 0.160.0, model
 ignored `dev-log/disclosure-readability-recovery/ticket02/` directory. This is
 tooling evidence only; it is not part of a formal sample or a semantic grade.
 Its trace records only collector calls; it does not prove native file, image,
-editing, or permission tools were absent from the model context. A separate
-synthetic tool-inventory probe was blocked before the model turn by a Codex
-usage limit. Both attempts, including traces, configs, manifests, and the
-synthetic candidate, are preserved under
-`dev-log/disclosure-readability-recovery/ticket02/tool-inventory-probe/`.
-Verified absence of other native tools remains a formal-run readiness blocker;
-do not claim an MCP-only context until an actual inventory and harmless
-negative-access probe establishes that boundary.
+editing, or permission tools were absent from the model context. The runner
+now explicitly disables Codex's `view_image` and
+`request_permissions_tool` features. A real-provider inventory probe was
+blocked before the model turn by a Codex usage limit. Two later loopback mock
+provider requests reached `/v1/responses` but advertised an empty `tools`
+array, so they did not establish whether MCP initialization succeeded or which
+native tools were available. These diagnostic attempts used a different local
+provider and are not formal-model evidence. The usage-limit attempts and
+loopback requests, traces, configs, manifests, and synthetic candidate are
+preserved under
+`dev-log/disclosure-readability-recovery/ticket02/tool-inventory-probe/` and
+`dev-log/disclosure-readability-recovery/ticket02/tool-schema-probe-loopback/`.
+Verified absence of native file, image, editing, and permission tools remains
+a formal-run readiness blocker. Do not claim an MCP-only context until an
+actual inventory and harmless negative-access probe establish that boundary.

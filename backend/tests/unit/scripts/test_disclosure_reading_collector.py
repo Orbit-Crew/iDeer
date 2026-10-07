@@ -397,6 +397,7 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
     assert len(configs[0]["config"]["mcp_tool_schema_sha256"]) == 64
     assert configs[0]["config"]["mcp_tool_schema_sha256"] == configs[1]["config"]["mcp_tool_schema_sha256"]
     assert configs[0]["config"]["task_timeout_seconds"] == 300
+    assert {"view_image", "request_permissions_tool"}.issubset(configs[0]["config"]["disabled_features"])
     assert configs[0]["config"]["resolved_model_version"] is None
     assert "not the resolved backend model revision" in configs[0]["config"]["model_version_limit"]
     assert fingerprints[0] == fingerprints[2]
