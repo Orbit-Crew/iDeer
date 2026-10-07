@@ -66,7 +66,7 @@ For each harness patch, record its reason, alternatives, impact, validation, own
 
 ### Task documentation routing
 
-Once the task domain is known, read the matching route in [docs/agents/task-routing.md](docs/agents/task-routing.md): for each of the nine common task domains it names the current contract, code entry point, conditional decisions, and the first validation hop, and states the stopping point where document reading ends and source verification begins. Engineering terminology is defined in [CONTEXT.md](CONTEXT.md); the [UI term table](docs/plans/2026-08-26-term-glossary.md) covers display-language copy only.
+Once the task domain is known, read its route in [docs/agents/task-routing.md](docs/agents/task-routing.md). Use that route's five stop conditions to decide when the documents give a verifiable starting point, then check the implementation in source. The route supplies domain details; this file keeps the repository-wide rules. Engineering terminology is defined in [CONTEXT.md](CONTEXT.md); the [UI term table](docs/plans/2026-08-26-term-glossary.md) covers display-language copy only.
 
 `docs/README.md` is the engineering documentation index. `docs/adr/` holds ADR records; `docs/decisions/` holds dated decisions, and both are indexed from the decisions README. Current documents govern active work. Drafts are proposals, superseded documents point to their replacement, and archived records provide history only. A historical test result never satisfies validation for the current candidate. Update documentation when behavior, interfaces, configuration, architecture, or workflow changes.
 
