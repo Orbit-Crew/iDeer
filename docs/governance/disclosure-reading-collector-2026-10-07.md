@@ -101,9 +101,11 @@ or submitted answer cannot be retried. Mark externally provided help or other
 contamination before submission with the audit tool. The reader cannot mark an
 answer correct or change the failure status.
 
-The runner's prompt currently labels sessions as non-scored. Ticket 08 must
-freeze the prompt and stage label for formal use; later formal-stage runners
-must not inherit this pilot label implicitly.
+The runner defaults to the `non-scored` stage. Its `--stage formal` option uses
+a separate formal-session label; the selected stage is recorded in the tool
+configuration and included in its fingerprint. Ticket 08 must freeze the
+complete prompt and stage configuration before formal use; no formal
+experiment is frozen yet.
 
 The non-scored synthetic dry run for ticket 02 used Codex CLI 0.160.0, model
 `gpt-6.1-sol`, and medium reasoning. Its local trace and record are in the
@@ -164,5 +166,7 @@ Earlier usage-limit failures and loopback requests with empty `tools` arrays
 remain preserved as inconclusive historical diagnostics; they are not used as
 absence evidence. The CLI still does not expose the resolved backend model
 revision. Report that limitation, and do not claim strict model comparability
-or a strict pass. Ticket 08 must freeze the prompt and stage label for formal
-use; formal sessions must report any outside-help request as contamination.
+or a strict pass. The runner defaults to `non-scored`; its `--stage formal`
+option selects the distinct formal-session label and fingerprints that stage.
+Ticket 08 must freeze the prompt and stage configuration before formal use;
+formal sessions must report any outside-help request as contamination.

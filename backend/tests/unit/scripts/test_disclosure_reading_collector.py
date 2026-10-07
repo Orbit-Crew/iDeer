@@ -357,40 +357,43 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
     fingerprints = []
     configs = []
     invocations = [
-        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline", None),
-        ("after", roots[1], manifests[1], tmp_path / "output-after", None),
-        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-retry", 0),
+        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline", None, "formal"),
+        ("after", roots[1], manifests[1], tmp_path / "output-after", None, "formal"),
+        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-retry", 0, "formal"),
+        ("baseline", roots[0], manifests[0], tmp_path / "output-baseline-default", None, None),
     ]
-    for side, root, manifest, output, retry_index in invocations:
+    for side, root, manifest, output, retry_index, stage in invocations:
         capture_path = tmp_path / f"{output.name}.capture.json"
         invocation_env = {**env, "CODEX_CAPTURE": str(capture_path)}
+        command = [
+            sys.executable,
+            str(RUNNER),
+            "--root",
+            str(root),
+            "--manifest",
+            str(manifest),
+            "--candidate",
+            side,
+            "--task",
+            "history",
+            "--prompt-file",
+            str(prompt),
+            "--out-dir",
+            str(output),
+        ]
+        if stage is not None:
+            command.extend(("--stage", stage))
+        if retry_index is not None:
+            command.extend(
+                (
+                    "--retry-of",
+                    json.loads(Path(invocations[retry_index][3] / "result.json").read_text(encoding="utf-8"))["record"],
+                    "--retry-reason",
+                    "synthetic protocol setup failure",
+                )
+            )
         result = subprocess.run(
-            [
-                sys.executable,
-                str(RUNNER),
-                "--root",
-                str(root),
-                "--manifest",
-                str(manifest),
-                "--candidate",
-                side,
-                "--task",
-                "history",
-                "--prompt-file",
-                str(prompt),
-                "--out-dir",
-                str(output),
-                *(
-                    [
-                        "--retry-of",
-                        json.loads(Path(invocations[retry_index][3] / "result.json").read_text(encoding="utf-8"))["record"],
-                        "--retry-reason",
-                        "synthetic protocol setup failure",
-                    ]
-                    if retry_index is not None
-                    else []
-                ),
-            ],
+            command,
             text=True,
             capture_output=True,
             env=invocation_env,
@@ -402,6 +405,10 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
         configs.append(json.loads(Path(config_path).read_text(encoding="utf-8")))
         fingerprints.append(configs[-1]["tool_config_sha256"])
         captured = json.loads(capture_path.read_text(encoding="utf-8"))
+        expected_stage = stage or "non-scored"
+        assert configs[-1]["config"]["stage"] == expected_stage
+        expected_prompt = "Complete one independent formal reading session." if expected_stage == "formal" else "Complete one independent, non-scored reading session."
+        assert captured["argv"][-1].startswith(expected_prompt)
         assert captured["catalog"]["models"][0]["apply_patch_tool_type"] is None
         assert captured["catalog"]["models"][0]["slug"] == "gpt-6.1-sol"
         assert "tools.update_plan.enabled=false" in captured["argv"]
@@ -437,6 +444,7 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
     assert configs[0]["config"]["resolved_model_version"] is None
     assert "not the resolved backend model revision" in configs[0]["config"]["model_version_limit"]
     assert fingerprints[0] == fingerprints[2]
+    assert fingerprints[0] != fingerprints[3]
     retry_record = json.loads(Path(json.loads((invocations[2][3] / "result.json").read_text(encoding="utf-8"))["record"]).read_text(encoding="utf-8"))
     original_record = json.loads(Path(json.loads((invocations[0][3] / "result.json").read_text(encoding="utf-8"))["record"]).read_text(encoding="utf-8"))
     assert retry_record["retry_of"] == original_record["run_id"]

@@ -155,6 +155,31 @@ def test_cli_single_record_rejects_inconsistent_supplied_summary(tmp_path: Path)
     assert "summary" in result.stderr.lower()
 
 
+def test_cli_uses_rubric_severity_for_runtime_and_upstream_anchors(tmp_path: Path) -> None:
+    records = _records()
+    for task, anchor_id in (("runtime", "RUN-05"), ("upstream", "UP-04")):
+        sample = next(row for row in records if row["run_id"] == f"after-{task}-1")
+        for review in sample["reviews"]:
+            anchor = next(item for item in review["anchors"] if item["id"] == anchor_id)
+            anchor.update(
+                decision="missed",
+                evidence={
+                    "answer": sample["answer"]["entry"],
+                    "candidate": f"Candidate evidence for {anchor_id}.",
+                },
+            )
+
+    result = _invoke(tmp_path, {"records": records})
+
+    assert result.returncode == 0, result.stderr
+    report = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    for task, anchor_id in (("runtime", "RUN-05"), ("upstream", "UP-04")):
+        scored = next(row for row in report["records"] if row["run_id"] == f"after-{task}-1")
+        assert scored["correct"] is False
+        assert scored["missed_anchors"] == 1
+        assert scored["critical_errors"] == 0, anchor_id
+
+
 def test_cli_rejects_answer_evidence_not_quoted_from_the_submitted_answer(tmp_path: Path) -> None:
     records = _records()
     review = next(row for row in records if row["run_id"] == "after-ui-1")["reviews"][0]
