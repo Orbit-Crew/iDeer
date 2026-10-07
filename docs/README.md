@@ -45,6 +45,7 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
 | 上游兼容基线与补丁 | [上游锁定记录](upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)、[根上游补丁账本](../UPSTREAM_PATCH_LEDGER.md)、[本地运行时补丁账本](local-runtime/PATCH_LEDGER.md) |
 | 技能树治理与上游技能升级 | [skill-tree-governance.md](governance/skill-tree-governance.md)（权威关系、锁定 SHA 登记与升级流程；技能包内容本身不属本入口治理范围） |
+| 披露阅读会话收集器 | [disclosure-reading-collector-2026-10-07.md](governance/disclosure-reading-collector-2026-10-07.md)（隔离读取、六字段提交与尝试审计） |
 | 当前工程待办 | [backlog.md](backlog.md) |
 
 ## 历史证据

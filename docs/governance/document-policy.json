@@ -3292,8 +3292,8 @@
     }
   ],
   "supplements": {
-    "count": 28,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 21 post-baseline additions; the next baseline capture decides which additions enter the seed, including this coordinator-only scoring rubric",
+    "count": 29,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 22 post-baseline additions; the next baseline capture decides which additions enter the seed, including this coordinator-only scoring rubric",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3574,6 +3574,16 @@
         "protected": false,
         "role": "coordinator-only human scoring rubric; excluded from timed reader access",
         "referenced_by": "docs/governance/document-governance.md"
+      },
+      {
+        "path": "docs/governance/disclosure-reading-collector-2026-10-07.md",
+        "registration": "post-baseline-addition",
+        "sha256": "c18f54e56787d1a4c582520ad4d041ad98816ec1397e6f19ca9466fe6f4d938d",
+        "lines": 118,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "candidate-pinned reading session collector contract and reader-isolation record",
+        "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
       }
     ]
   },
