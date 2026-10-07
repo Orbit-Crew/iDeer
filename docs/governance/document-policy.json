@@ -3292,8 +3292,8 @@
     }
   ],
   "supplements": {
-    "count": 30,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 23 post-baseline additions; the next baseline capture decides which additions enter the seed, including this coordinator-only scoring rubric",
+    "count": 32,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 25 post-baseline additions; the next baseline capture decides which additions enter the seed, including coordinator-only experiment evidence",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3358,8 +3358,8 @@
       {
         "path": "docs/project-state.md",
         "registration": "post-baseline-addition",
-        "sha256": "22912431179c7c8385dc26f08f6692d41932280672de4a7fc1dd674d6e8dd472",
-        "lines": 109,
+        "sha256": "8a620fa931c1bfa3ccdda25a75b049e4707aa00bda44f139550f1d0aff218ec8",
+        "lines": 122,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "candidate-scoped seven-domain implementation/integration/verification state summary referenced by the decisions index and domain guides",
@@ -3588,7 +3588,7 @@
       {
         "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket09.md",
         "registration": "post-baseline-addition",
-        "sha256": "de156062d6c52fd5f040eada037b8aa1993e407bf40c94b72e27db4b3bdeb318",
+        "sha256": "95ff068cf993472183d1f96e02487fd993c7a535c0db9efe9c1dbf59706bdd58",
         "lines": 85,
         "classification": "engineering-body-review",
         "protected": false,
@@ -3604,6 +3604,16 @@
         "protected": false,
         "role": "coordinator-only record of frozen special-task slots 21–32, grading, retries, and audit limitations; created after candidate freeze and absent from timed-reader candidate roots",
         "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md",
+        "registration": "post-baseline-addition",
+        "sha256": "89cc0e68576ded715a0985bd5a3bf292a53a744aca8611027b0e54396b16036b",
+        "lines": 130,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only integrated verdict for the frozen 32-slot progressive disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
+        "referenced_by": "docs/governance/README.md, docs/project-state.md"
       }
     ]
   },

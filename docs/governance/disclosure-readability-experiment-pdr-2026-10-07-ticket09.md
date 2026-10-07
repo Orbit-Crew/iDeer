@@ -4,7 +4,7 @@ kind: evidence
 status: current
 owner: repository maintainers
 scope: ticket 09 formal sessions for the frozen 32-session progressive-disclosure experiment
-last-verified: 2026-10-07
+last-verified: 2026-10-08
 verified-against: baseline candidate 867f6709642854721f209a15e362d79a96b3b489; after candidate 16cc740f839876b7b7581a7cbbaf9a318d4c14ac
 ---
 
@@ -60,7 +60,7 @@ slot16、slot17、slot18 首次 attempt 的 Codex trace 均以 `turn.failed: fai
 
 以下为20个逻辑槽最终attempt按文件区间并集计算的去重 UTF-8 字节，按路径类别拆分。“收集器禁读评估材料”计数仅指rubric、scorer和评估fixtures等拒绝路径，不指document-policy里的67条治理指纹。重复读取另行保留在逐会话审计文件；它不会再次计入以下合计。slot18失败重试的实际读取成本仍保留在after样本里。
 
-| 候选 | 根指引 | 任务路由 | 当前契约 | 源码 | 历史材料 | 收集器禁读评估材料 | 其他 |
+| 候选 | 各级指引（根及后代） | 任务路由 | 当前契约 | 源码 | 历史材料 | 收集器禁读评估材料 | 其他 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | baseline | 554388 | 0 | 611540 | 247918 | 77848 | 0 | 153 |
 | after | 318752 | 173700 | 610968 | 353649 | 62952 | 0 | 0 |

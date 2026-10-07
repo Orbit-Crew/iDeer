@@ -4,7 +4,7 @@ kind: reference
 status: current
 owner: repository maintainers
 scope: develop 线候选的七域实现/集成/验证状态摘要
-last-verified: 2026-10-06
+last-verified: 2026-10-08
 verified-against: develop @ 002b29878 plus this worktree; document governance section only
 ---
 
@@ -13,7 +13,7 @@ verified-against: develop @ 002b29878 plus this worktree; document governance se
 > audience: coding agents, developers, maintainers<br>
 > canonical-path: `docs/project-state.md`
 
-本页包含不同候选的领域快照。**2026-10-06 仅重核文档治理与本页第 7 节**，基于 `develop @ 002b29878` 加本次修复；第 1–6 节未重跑产品验收，沿用下述原候选记录。
+本页包含不同候选的领域快照。**2026-10-08 重核文档治理与第 7 节**，基于 `develop @ 002b29878` 加本次修复和冻结阅读实验报告；第 1–6 节未重跑产品验收，沿用下述原候选记录。
 
 第 1–6 节保留 2026-10-04 文档改造期间的领域快照，原记录涉及 `9de1de284` 与后续文档候选 `ba5c37163`。这些状态尚未在当前 develop 上复核；各节所引证据只适用于其记录的候选，不能据此推断当前产品状态。第 7 节记录本次实际检查的文档治理状态。
 
@@ -109,3 +109,14 @@ verified-against: develop @ 002b29878 plus this worktree; document governance se
 - **Current contract**: [测试入口](testing/README.md) + [lane 运行手册](testing/test-lane-runbook.md) + 根 `AGENTS.md` 测试指引节。
 - **Next work**: 覆盖矩阵内容复核（对照当前候选与 v2.1.0 后的测试面，不得只刷日期）；文档治理原 59 票已完成并合入，后续补强也已合入；本次审查缺口及验收状态见修复记录。
 - **Owner**: test maintainers（据 testing 文档 owner 列）。
+
+### Progressive disclosure reading effect
+
+- **Implementation**: 本轮报告整合冻结的 baseline 与 after 候选评估，不修改产品行为、候选内容、runner、rubric 或评分记录；候选身份及工具哈希见[实验最终汇总](governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md)。
+- **Integration**: 票09与票10完成32槽采集和审计；30份答案完成A/B评分，9个真实分歧均经第三人裁决。两个失败槽保留在正式分母。
+- **Verification**: **reading effect failed**。after正确性14/16（门槛16/16）；critical errors 0、历史权威误用0；常规耗时门槛因slot18没有提交耗时而不可计算（9份after提交的描述性中位数为92.327秒，失败关闭时间不能代替提交时间）；常规 pooled unique-byte median 从baseline 151,647增至after 176,095.5，降幅公式为-16.12%（门槛≥30%）。仓库文档卫生检查和PR `pr-standard` 的当前候选结果须分别按实际运行记录，不由阅读评分替代。
+- **Limitations**: 后端模型修订号不可用，不能声称严格模型可比；原始session、trace与评分包仅在本地ignored `dev-log/`，无外部持久归档，hash不能重建原始读数；冻结runner存在读取collector并发写入JSON的失败模式。现有冻结成本分类能复算所有路径区间总字节，但不能严格区分当前契约与历史资料的语义类别；这不影响完整unique-byte门槛。报告详列失败原因、重算口径和下一轮前置工作。
+- **Evidence**: [实验最终汇总](governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md)、[票09记录](governance/disclosure-readability-experiment-pdr-2026-10-07-ticket09.md)、[票10记录](governance/disclosure-readability-experiment-pdr-2026-10-07-ticket10.md)。
+- **Current contract**: [渐进披露阅读恢复规格](specs/2026-10-07-progressive-disclosure-readability-recovery-spec.md)；失败时保留原门槛并形成下一步，不自动无限重跑。
+- **Next work**: 修复冻结runner并发写读取问题、建立原始证据耐久归档、解析模型修订身份，再按原门槛冻结新候选和队列重测；在新证据完整通过前不标记阅读效果通过。
+- **Owner**: repository maintainers。
