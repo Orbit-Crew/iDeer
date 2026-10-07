@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 25,
+    "count": 27,
     "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 18 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed) — the 4 governance-rollout pages and the 14 first test-system batch records (batch merged at e33a103f1, registered at merge 5d10796ab)",
     "files": [
       {
@@ -3544,6 +3544,26 @@
         "protected": false,
         "role": "mock e2e recovery batch retrospective",
         "referenced_by": "docs/testing/first-batch-final-validation-2026-10-06.md"
+      },
+      {
+        "path": "docs/governance/disclosure-review-fixes-2026-10-06.md",
+        "registration": "post-baseline-addition",
+        "sha256": "65ab1a683b8e444d986166b4e09d6933fad060c1978e4c12c8b51d3b045d09af",
+        "lines": 151,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "candidate-scoped disclosure review remediation evidence",
+        "referenced_by": "docs/project-state.md"
+      },
+      {
+        "path": "docs/specs/2026-10-07-progressive-disclosure-readability-recovery-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "eab0b792015f25ded241b0e99a9b79872067e81103f533f790b3ee6f5c0936f5",
+        "lines": 137,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "specification for five progressive disclosure reading-effect follow-up improvements",
+        "referenced_by": "docs/README.md specs directory entry"
       }
     ]
   },
@@ -3585,9 +3605,107 @@
       "unknowns"
     ],
     "baseline_run": {
-      "status": "pending",
-      "detail": "the 16 baseline session records live in the coordinator-owned gitignored dev-log and are not yet scored; no measurement, threshold, or correctness claim is made in this tracked file"
+      "status": "historical-records-present",
+      "detail": "Original independent baseline records and scores exist in the original implementation worktree; the original after-history-b read baseline guidance and is invalid for candidate isolation. A fresh historical-task comparison is recorded in docs/governance/disclosure-review-fixes-2026-10-06.md."
     },
     "restricted_material": "scoring rubric and thresholds are coordinator-owned and deliberately absent from this tracked file; evaluation agents must not read them"
-  }
+  },
+  "task_domains": [
+    "ui",
+    "chat",
+    "permissions",
+    "knowledge",
+    "capabilities",
+    "local-runtime",
+    "deployment",
+    "tests",
+    "upstream"
+  ],
+  "task_routes": [
+    {
+      "domain": "ui",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "frontend/AGENTS.md",
+        "frontend/src/components/ui/terminal.tsx"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    },
+    {
+      "domain": "chat",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "backend/docs/STREAMING.md",
+        "backend/app/gateway/routers/runs.py",
+        "frontend/src/core/threads/use-thread-page.ts",
+        "frontend/src/core/threads/turn-submit.ts",
+        "frontend/src/core/threads/hooks.ts"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    },
+    {
+      "domain": "permissions",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "docs/permission-matrix.md",
+        "backend/app/agentplatform/resource_service.py"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    },
+    {
+      "domain": "knowledge",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "docs/decisions/2026-09-08-knowledge-dual-source-of-truth.md",
+        "backend/app/gateway/routers/resources.py"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    },
+    {
+      "domain": "capabilities",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "CONTEXT.md",
+        "backend/app/gateway/routers/resources.py"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    },
+    {
+      "domain": "local-runtime",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "docs/local-runtime/SECURITY_MODEL.md",
+        "backend/app/gateway/routers/devices.py"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    },
+    {
+      "domain": "deployment",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "docs/operations/README.md",
+        "config.example.yaml",
+        "scripts/serve.sh"
+      ],
+      "validation": "docs/operations/README.md"
+    },
+    {
+      "domain": "tests",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "docs/testing/README.md",
+        "scripts/run-test-lane.sh"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    },
+    {
+      "domain": "upstream",
+      "route": "docs/agents/task-routing.md",
+      "targets": [
+        "UPSTREAM_PATCH_LEDGER.md",
+        "backend/packages/harness/deerflow/runtime/runs/manager.py"
+      ],
+      "validation": "docs/testing/test-lane-runbook.md"
+    }
+  ]
 }

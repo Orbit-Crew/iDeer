@@ -1,3 +1,11 @@
+---
+id: task-routing
+kind: index
+status: current
+owner: repository maintainers
+scope: nine engineering task domains
+---
+
 # Task Routing
 
 按任务域进入文档的路由页。根 `AGENTS.md` 只承载全局义务；本页是全局规则与模块参考之间的指针层，为九个常见任务域各给出四元组：当前契约（读哪些文档）、代码入口（真实路径）、条件决策（何时读哪个 decision/ledger）、验证入口（聚焦检查 → lane → PR gate 的第一跳）。
@@ -34,7 +42,7 @@
 ## 2. 对话提交与流式状态（chat submit / stream state）
 
 - **当前契约**：[deerflow runtime 模块指南](../../backend/packages/harness/deerflow/runtime/AGENTS.md)——运行时模块的现行约束（任务涉及 `backend/packages/harness/deerflow/runtime/` 时读）；[STREAMING.md](../../backend/docs/STREAMING.md)——流式事件语义与按 message-id 去重不变量（改流式交付或消息合并时读）；[CONTEXT.md](../../CONTEXT.md)——Thread/Run/Turn 术语。
-- **代码入口**：Gateway 侧 `backend/app/gateway/routers/runs.py`、`backend/app/gateway/routers/thread_runs.py`；运行时侧 `backend/packages/harness/deerflow/runtime/runs/manager.py` 与 `backend/packages/harness/deerflow/runtime/stream_bridge/`；前端 `frontend/src/core/api/client.ts` 与 `frontend/src/components/workspace/chats/`，turn-submit 生命周期 hook 在 `frontend/src/core/threads/use-thread-page.ts`（聊天页 `frontend/src/app/workspace/chats/[thread_id]/page.tsx` 经 `useThreadPage` 接线）。
+- **代码入口**：Gateway 侧 `backend/app/gateway/routers/runs.py`、`backend/app/gateway/routers/thread_runs.py`；运行时侧 `backend/packages/harness/deerflow/runtime/runs/manager.py` 与 `backend/packages/harness/deerflow/runtime/stream_bridge/`；前端 `frontend/src/core/api/client.ts` 与 `frontend/src/components/workspace/chats/`，提交链、重复提交围栏、草稿与附件预上传由 `frontend/src/core/threads/turn-submit.ts` 承担；流式状态在 `frontend/src/core/threads/hooks.ts`；`frontend/src/core/threads/use-thread-page.ts` 负责页面共享接线（聊天页 `frontend/src/app/workspace/chats/[thread_id]/page.tsx` 经 `useThreadPage` 接线）。
 - **条件决策**：触及线程生命周期时读 [THREAD_LIFECYCLE.md](../../backend/docs/THREAD_LIFECYCLE.md)；改 run 事件流时读 [RUN_EVENT_STREAM.md](../../backend/docs/RUN_EVENT_STREAM.md)；触及 Run/Thread 生命周期、持久化或流契约时遵循根 `AGENTS.md`"Enterprise changes and upstream compatibility"节的保留约束。
 - **验证入口**：聚焦 pytest（`backend/tests/`）+ 最窄静态检查；实现完成跑匹配的标准 lane；PR gate 为 `pr-standard`。
 
@@ -84,5 +92,5 @@
 
 - **当前契约**：根 [UPSTREAM_PATCH_LEDGER.md](../../UPSTREAM_PATCH_LEDGER.md)——当前 harness 补丁登记与移除条件（任何 harness 补丁改动前后读）；根 `AGENTS.md`"Enterprise changes and upstream compatibility"节——Extension → Adapter → 注册补丁的优先序、生命周期保留与双向兼容验证要求。
 - **代码入口**：`backend/packages/harness/deerflow/`（`deerflow-harness` 包）。
-- **条件决策**：追溯 0f7d8709 基线锁定与冲突裁定时读[上游锁定记录](../upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)（冻结历史，只读）；分支与同步状态（镜像/产品集成/兼容验证分立）时读[离线产品线治理方案](../offline-product-line-governance-plan.md)。
+- **条件决策**：追溯 0f7d8709 基线锁定与冲突裁定时读[上游锁定记录](../upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)（冻结历史，只读）；分支与同步状态（镜像/产品集成/兼容验证分立）时读[离线产品线治理方案](../offline-product-line-governance-plan.md)。路径所有权偏好只是逐项评估的起点；每个冲突仍须按行为和契约单独裁定，并记录采用上游、保留本地或重新实现的理由与验证，不能整文件或全局地优先一方。
 - **验证入口**：补丁登记检查 + 定制关闭/开启双向的兼容验证；匹配的标准 lane 与 `pr-standard`。
