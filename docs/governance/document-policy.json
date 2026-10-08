@@ -2980,7 +2980,7 @@
     "bytes": [
       {
         "path": "AGENTS.md",
-        "bytes": 16363
+        "bytes": 10226
       },
       {
         "path": "backend/AGENTS.md",
@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 35,
+    "count": 44,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3338,12 +3338,12 @@
       {
         "path": "docs/agents/task-routing.md",
         "registration": "post-baseline-addition",
-        "sha256": "8abbb8e38398ec64f6853765bc38ac4d6f96dbf49e43401109d8d30f0b569df2",
-        "lines": 110,
+        "sha256": "6e9529ce321d344626d0ee08b245af37f374706ba5a6e6d343eb001540af22c9",
+        "lines": 37,
         "classification": "engineering-body-review",
         "protected": false,
-        "role": "task-domain routing page referenced by the root AGENTS.md task map and docs/README.md current-source table",
-        "referenced_by": "AGENTS.md, docs/README.md, docs/project-state.md"
+        "role": "nine-domain route index and single definition of source-verification stop conditions",
+        "referenced_by": "AGENTS.md"
       },
       {
         "path": "docs/governance/document-governance.md",
@@ -3644,6 +3644,96 @@
         "protected": false,
         "role": "independent A/B/third-party calibration procedure and decision record template for disclosure-reading-v2",
         "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/agents/routes/ui.md",
+        "registration": "post-baseline-addition",
+        "sha256": "fe3db8ec2cf34090c3938aff6731fd47833256182c0dab0ab551e8108c8716b7",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused ui task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/chat.md",
+        "registration": "post-baseline-addition",
+        "sha256": "76c32aabfba8867dd95311566b57ccd19a6d86ceb7d2bc87ec6158cbc293bcb2",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused chat task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/permissions.md",
+        "registration": "post-baseline-addition",
+        "sha256": "d415e190ff3a3b504f33bbfb7065a4c40b14d1193482077dbfd69a02d15b1dde",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused permissions task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/knowledge.md",
+        "registration": "post-baseline-addition",
+        "sha256": "e2bbe46f2d670bdd528c0275ac772435698d520942b1b0eae7a04bf512b326b6",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused knowledge task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/capabilities.md",
+        "registration": "post-baseline-addition",
+        "sha256": "78b299990f9f17eea21421edfbfbc9faa8726250369dc65a384073370a4d5568",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused capabilities task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/local-runtime.md",
+        "registration": "post-baseline-addition",
+        "sha256": "4e11884b75afc7edd902374567be3ac718613305ad90ec663fd229fa086cda64",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused local-runtime task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/deployment.md",
+        "registration": "post-baseline-addition",
+        "sha256": "b148924197e8272143a73068e57ba0ecae700bba73edf36abe07139b6764e191",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused deployment task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/tests.md",
+        "registration": "post-baseline-addition",
+        "sha256": "6459b447a0e706e4ebb7d648875e779463d0dad15d32ac826a09bb8ab3b0fe72",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused tests task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/upstream.md",
+        "registration": "post-baseline-addition",
+        "sha256": "0bddac1abf9ac3236f62d7c43295e5aae27be0cd39447b02c3ead66bd1bfe173",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused upstream task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
       }
     ]
   },
@@ -3704,7 +3794,7 @@
   "task_routes": [
     {
       "domain": "ui",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/ui.md",
       "targets": [
         "frontend/AGENTS.md",
         "frontend/src/components/ui/terminal.tsx"
@@ -3713,7 +3803,7 @@
     },
     {
       "domain": "chat",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/chat.md",
       "targets": [
         "backend/docs/STREAMING.md",
         "backend/app/gateway/routers/runs.py",
@@ -3725,7 +3815,7 @@
     },
     {
       "domain": "permissions",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/permissions.md",
       "targets": [
         "docs/permission-matrix.md",
         "backend/app/agentplatform/resource_service.py"
@@ -3734,7 +3824,7 @@
     },
     {
       "domain": "knowledge",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/knowledge.md",
       "targets": [
         "docs/decisions/2026-09-08-knowledge-dual-source-of-truth.md",
         "backend/app/gateway/routers/resources.py"
@@ -3743,7 +3833,7 @@
     },
     {
       "domain": "capabilities",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/capabilities.md",
       "targets": [
         "CONTEXT.md",
         "backend/app/gateway/routers/resources.py"
@@ -3752,7 +3842,7 @@
     },
     {
       "domain": "local-runtime",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/local-runtime.md",
       "targets": [
         "docs/local-runtime/SECURITY_MODEL.md",
         "backend/app/gateway/routers/devices.py"
@@ -3761,7 +3851,7 @@
     },
     {
       "domain": "deployment",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/deployment.md",
       "targets": [
         "docs/operations/README.md",
         "config.example.yaml",
@@ -3771,7 +3861,7 @@
     },
     {
       "domain": "tests",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/tests.md",
       "targets": [
         "docs/testing/README.md",
         "scripts/run-test-lane.sh"
@@ -3780,7 +3870,7 @@
     },
     {
       "domain": "upstream",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/upstream.md",
       "targets": [
         "UPSTREAM_PATCH_LEDGER.md",
         "backend/packages/harness/deerflow/runtime/runs/manager.py"
