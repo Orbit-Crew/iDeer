@@ -17,7 +17,7 @@ The overall v2 experiment remains **incomplete and does not pass**. Ticket 07 co
 
 The six candidate roots are parentless exercise-input commits: UI baseline `c74fbe1223e194fae5b8af7e128cc927fde26875`, UI after `1308bf2d251669575669d70945032cd0b076e37e`, Chat baseline `38480a771ff13d8163a3a68a59cdea273454df9e`, Chat after `c426e7057d53e3948c8d849ff5cf86b574953fee`, Permissions baseline `54ba0f27d34baa44b064db63c346c4ce86916097`, and Permissions after `6d5d28fe1d4778e5e3bef97f6a6b652f56fac58d`. All share the frozen non-Markdown product/test/tool tree (4,927 paths; canonical SHA-256 `0e72504b9dc429f0ae6ff36df2ee07bd95dc3eae46761681c5c8a4a1aba8ec1d`). The after inputs project the `.md` documents from the frozen after snapshot onto that common tree; they do not claim the original ticket07 candidate manifests were identical. Evaluator-only materials were excluded from coder-readable inputs. Blinding was instructional, not a physical access boundary around shared git objects.
 
-Each baseline/after pair used the same prepared task overlay. The overlay produced observed failing focused assertions on both sides; restoring an implementation produced passing assertions on both sides. UI checks covered the optional SettingsSection header action. Chat checks covered pending duplicate rejection and allowing a subsequent turn. Permissions checks covered visibility filtering before pagination, count, and invisible-row leakage. The independent fixture review passed. Input and origin manifests preserve their distinct provenance and hashes in the archive.
+Each baseline/after pair used the same task-specific input and acceptance tests. For UI, the missing optional SettingsSection action failed on both frozen inputs; adding the requested action made both candidates pass. For Chat and Permissions, the same fault overlay failed on both sides, and restoring the source behavior made both sides pass. Chat checks covered pending duplicate rejection and allowing a subsequent turn. Permissions checks covered visibility filtering before pagination, count, and invisible-row leakage. The independent fixture review passed. Input and origin manifests preserve their distinct provenance and hashes in the archive.
 
 ## Sessions and validation
 
@@ -25,14 +25,15 @@ Sessions ran serially in this order: UI baseline, UI after, Chat baseline, Chat 
 
 | Session | Focused result after implementation | Narrow static check | Patch SHA-256 | Independent review |
 | --- | --- | --- | --- | --- |
-| UI baseline | 2 passed | ESLint, Prettier, diff check passed | `ff22eb4969c2ae8a33794676733073344bb0301186c32df09c3fc3ba34e41ca3` | Pass |
+| UI baseline | 2 passed | ESLint, Prettier, diff check passed | `ff22eb4969c2ae8a33794676733073344bb0301186c32fd09c3fc3ba34e41ca3` | Pass |
 | UI after | 2 passed | ESLint and diff check passed | `f4a8ab0a9a271164750993107b0b41f883a99b0586b82df4f11054b32137dafd` | Pass; non-blocking note that a `0` ReactNode action is omitted by truthiness rendering |
 | Chat baseline | 1 passed | ESLint and diff check passed | `0689f53ee3907a0b5e5f64a89f0451c110e954f74fb9295ad133bae010f436ff` | Pass |
 
-The Chat-baseline red run fails at the public gate assertion before it reaches the controller duplicate-path assertion; the green run verifies duplicate rejection and next-turn behavior. This is a non-blocking test-boundary limitation.
 | Chat after | 1 passed | ESLint passed | `f2c50d3625cf9c7fe9fafb90746b6f88d12e9d3f57d28d136858b0b8813b7732` | Pass |
 | Permissions baseline | 1 passed, 9 deselected | Ruff and diff check passed | `72856e551cb59a49feb8764befd581d452d30a0e54406e3fd8f6d5151373b5d9` | Pass |
 | Permissions after | 1 passed, 9 deselected | Ruff and diff check passed | `72856e551cb59a49feb8764befd581d452d30a0e54406e3fd8f6d5151373b5d9` | Pass |
+
+The Chat-baseline red run fails at the public gate assertion before it reaches the controller duplicate-path assertion; the green run verifies duplicate rejection and next-turn behavior. This is a non-blocking test-boundary limitation.
 
 Each patch changes only its intended source file. The corrected archive audit records exact candidate root, input commit, changed path, base blob, patch SHA-256, and resulting source SHA-256. The wrong-working-directory diffs found during packaging are preserved under `superseded/` as explicitly invalid audit artifacts; they are not candidate patches. Independent reviewers inspected the actual candidate trees; the corrected chat-after and both Permissions patch/source hashes received supplemental review.
 

@@ -3748,8 +3748,8 @@
       {
         "path": "docs/experiments/disclosure-dual-track-ticket08-results-2026-10-09.md",
         "registration": "post-baseline-addition",
-        "sha256": "be1a6ba43e07a130ca112a9608c8b8e39628b353af4a9889d91258f9a2387474",
-        "lines": 43,
+        "sha256": "a3dcef5efd2232d7dbed0efd19765ef137f65d0e21cb88627e32bd6c66aaf7e8",
+        "lines": 44,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "coordinator-only formal ticket 08 practical results, six isolated exercises, fixture validation, and clean-restore evidence; created after candidate freeze and absent from timed-reader candidates",
