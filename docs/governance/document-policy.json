@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 47,
+    "count": 49,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3764,6 +3764,26 @@
         "protected": false,
         "role": "coordinator-only final four-state ticket 10 verdict, gate evidence pointers, archive restoration checks, and measured comparability limits; created after frozen reader candidates and absent from timed-reader inputs",
         "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
+      },
+      {
+        "path": "docs/specs/2026-10-09-disclosure-task-branch-navigation-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "e8dc273608d3da3c2b9ff71238b6042f479d6482d803f710cff286b38fe09a85",
+        "lines": 98,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "ready-for-agent draft specification for retrospective item 5: evidence-led task-branch navigation and independent reading acceptance",
+        "referenced_by": "docs/README.md pending disclosure specifications"
+      },
+      {
+        "path": "docs/specs/2026-10-09-root-gitnexus-guidance-compaction-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "113175e8a85ed30fbc35fbd68faff770cccf970e2b32af79f4e15caabd3034ec",
+        "lines": 99,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "ready-for-agent draft specification for retrospective item 6: root GitNexus guidance compaction, obligation preservation and regeneration validation",
+        "referenced_by": "docs/README.md pending disclosure specifications"
       }
     ]
   },

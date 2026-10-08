@@ -52,6 +52,13 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 双轨披露票10最终状态 | [四轨状态与最终裁决](experiments/disclosure-dual-track-ticket10-final-verdict-2026-10-09.md)（工程交付、文档卫生、新版未通过、旧轨未执行及恢复证据） |
 | 当前工程待办 | [backlog.md](backlog.md) |
 
+## 待实现的披露改进规格
+
+- [按具体改动分支引导文档阅读](specs/2026-10-09-disclosure-task-branch-navigation-spec.md)：复盘第 5 项，依据读取事件改热点路由，分别验证分支选择、规则理解和读取成本。
+- [精简根指引中的 GitNexus 说明](specs/2026-10-09-root-gitnexus-guidance-compaction-spec.md)：复盘第 6 项，下移操作参考，保留关键义务并验证再生成、镜像与字节预算。
+
+两份均为 `draft`、`triage: ready-for-agent`，采用现有 CLI 与阅读验收；规格发布不表示改造已实现或效果已通过。
+
 ## 历史证据
 
 已结束的计划、审计、事故复盘和阶段总结进入 [`docs/archive/`](archive/README.md)。历史正文已物理迁移，旧路径不保留跳转桩；评估依据见[文档留存必要性评估](document-retention-assessment.md)。
