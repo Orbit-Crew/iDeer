@@ -431,6 +431,7 @@ def recompute_pilots(experiment_root: Path, output: Path) -> dict[str, object]:
         "incomplete_slots": incomplete_slots,
         "unstarted_queue_slots": unstarted_slots,
         "read_intervals_recomputed": False,
+        "read_intervals_scope": "This completeness summary does not calculate intervals. See the separate pilot interval/cost report recomputed from raw ranges and frozen candidate snapshots.",
         "answer_scoring_performed": False,
         "records": records,
     }

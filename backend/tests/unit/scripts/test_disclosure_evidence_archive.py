@@ -198,6 +198,8 @@ def test_pilot_recompute_retains_failed_slot_and_unstarted_queue_order(tmp_path:
     assert summary["attempt_count"] == 1
     assert summary["terminal_failures"] == 1
     assert summary["unstarted_queue_slots"] == [2]
+    assert summary["read_intervals_recomputed"] is False
+    assert "pilot interval/cost report" in summary["read_intervals_scope"]
 
 
 def test_pilot_recompute_fails_closed_when_trace_is_missing(tmp_path: Path) -> None:
