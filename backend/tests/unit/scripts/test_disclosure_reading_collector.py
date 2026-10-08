@@ -146,6 +146,148 @@ def test_overlap_union_counts_utf8_bytes_and_rejects_escape(tmp_path):
     assert "safe, candidate-relative" in escaped.stderr
 
 
+def test_public_heading_listing_and_full_hierarchy_read(tmp_path):
+    root, _ = candidate(tmp_path)
+    (root / "guide.md").write_text(
+        "# Permissions\n\nIntro.\n\n## Visibility\n\n可见范围。\n\n### Before pagination\n\nFilter first.\n\n## Roles\n\nMatrix.\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "headings-manifest.json"
+    assert run("manifest", "--root", root, "--out", manifest).returncode == 0
+    record = start(tmp_path, root, manifest, "headings")
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "AGENTS.md").returncode == 0
+
+    listed = run("headings", "--manifest", manifest, "--record", record, "--path", "guide.md")
+    assert listed.returncode == 0, listed.stderr
+    rows = json.loads(listed.stdout)["headings"]
+    assert [row["path"] for row in rows] == [
+        ["Permissions"],
+        ["Permissions", "Visibility"],
+        ["Permissions", "Visibility", "Before pagination"],
+        ["Permissions", "Roles"],
+    ]
+
+    section = run(
+        "read",
+        "--manifest",
+        manifest,
+        "--record",
+        record,
+        "--path",
+        "guide.md",
+        "--heading-path",
+        '["Permissions", "Visibility"]',
+    )
+    assert section.returncode == 0, section.stderr
+    payload = json.loads(section.stdout)
+    assert payload["content"] == "## Visibility\n\n可见范围。\n\n### Before pagination\n\nFilter first.\n\n"
+    saved = json.loads(record.read_text(encoding="utf-8"))
+    assert saved["events"][-1]["content_bytes"] == len(payload["content"].encode("utf-8"))
+    assert saved["events"][-1]["unique_bytes_read"] == len(payload["content"].encode("utf-8"))
+
+
+def test_heading_reads_reject_duplicates_missing_titles_and_fenced_pseudo_headings(tmp_path):
+    root, _ = candidate(tmp_path)
+    (root / "guide.md").write_text(
+        "# Parent\n\n```md\n## Fake\n```\n\n## Same\nOne.\n\n## Same\nTwo.\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "headings-manifest.json"
+    assert run("manifest", "--root", root, "--out", manifest).returncode == 0
+    record = start(tmp_path, root, manifest, "heading-errors")
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "AGENTS.md").returncode == 0
+
+    listed = run("headings", "--manifest", manifest, "--record", record, "--path", "guide.md")
+    assert listed.returncode == 0, listed.stderr
+    assert [row["path"] for row in json.loads(listed.stdout)["headings"]] == [["Parent"], ["Parent", "Same"], ["Parent", "Same"]]
+    duplicate = run("read", "--manifest", manifest, "--record", record, "--path", "guide.md", "--heading-path", '["Parent", "Same"]')
+    missing = run("read", "--manifest", manifest, "--record", record, "--path", "guide.md", "--heading-path", '["Parent", "Absent"]')
+    assert duplicate.returncode == missing.returncode == 2
+    assert "duplicate" in duplicate.stderr.lower()
+    assert "not found" in missing.stderr.lower()
+    out_of_bounds = run(
+        "read",
+        "--manifest",
+        manifest,
+        "--record",
+        record,
+        "--path",
+        "guide.md",
+        "--start",
+        "99",
+    )
+    assert out_of_bounds.returncode == 2
+    assert "invalid line range" in out_of_bounds.stderr
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "guide.md", "--heading-path", '["Parent", "Fake"]').returncode == 2
+
+
+def test_heading_listing_preserves_literal_hash_and_includes_setext_headings(tmp_path):
+    root, _ = candidate(tmp_path)
+    (root / "guide.md").write_text("# Literal title#\n\nSetext\nmulti-line title\n===\n", encoding="utf-8")
+    manifest = tmp_path / "setext-manifest.json"
+    assert run("manifest", "--root", root, "--out", manifest).returncode == 0
+    record = start(tmp_path, root, manifest, "setext")
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "AGENTS.md").returncode == 0
+    result = run("headings", "--manifest", manifest, "--record", record, "--path", "guide.md")
+    assert result.returncode == 0, result.stderr
+    assert [row["path"] for row in json.loads(result.stdout)["headings"]] == [
+        ["Literal title#"],
+        ["Setext multi-line title"],
+    ]
+    saved = json.loads(record.read_text(encoding="utf-8"))
+    event = saved["events"][-1]
+    assert event["ranges"] == [
+        {"path": "guide.md", "start": 1, "end": 1},
+        {"path": "guide.md", "start": 3, "end": 5},
+    ]
+    assert event["content_bytes"] == len(b"# Literal title#\nSetext\nmulti-line title\n===\n")
+
+
+def test_heading_tools_are_advertised_by_mcp_and_reject_forbidden_paths(tmp_path):
+    assert "headings" in run("--help").stdout
+    assert "heading-path" in run("read", "--help").stdout
+    root, manifest = candidate(tmp_path)
+    record = start(tmp_path, root, manifest, "heading-forbidden")
+    listed = run(
+        "mcp",
+        "--manifest",
+        manifest,
+        "--record",
+        record,
+        input_text=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}) + "\n",
+    )
+    tools = json.loads(listed.stdout)["result"]["tools"]
+    assert "list_candidate_headings" in {tool["name"] for tool in tools}
+    read_schema = next(tool for tool in tools if tool["name"] == "read_candidate")["inputSchema"]
+    assert "heading_path" in read_schema["properties"]
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "AGENTS.md").returncode == 0
+    denied = run("headings", "--manifest", manifest, "--record", record, "--path", "docs/specs/private.md")
+    assert denied.returncode == 2
+    assert "forbidden" in denied.stderr.lower()
+
+
+def test_cost_report_implementation_is_not_readable_during_a_session(tmp_path):
+    root, _ = candidate(tmp_path)
+    evaluator_file = root / "scripts" / "report_disclosure_costs.py"
+    evaluator_file.parent.mkdir()
+    evaluator_file.write_text("# private evaluator\n", encoding="utf-8")
+    manifest = tmp_path / "evaluator-manifest.json"
+    assert run("manifest", "--root", root, "--out", manifest).returncode == 0
+    record = start(tmp_path, root, manifest, "evaluator-read-denied")
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "AGENTS.md").returncode == 0
+    denied = run(
+        "read",
+        "--manifest",
+        manifest,
+        "--record",
+        record,
+        "--path",
+        "scripts/report_disclosure_costs.py",
+    )
+    assert denied.returncode == 2
+    assert "forbidden for evaluation" in denied.stderr.lower()
+
+
 def test_parallel_public_reads_preserve_every_recorded_event(tmp_path):
     root, manifest = candidate(tmp_path)
     record = start(tmp_path, root, manifest)
@@ -438,6 +580,18 @@ def test_mcp_exposes_only_collector_operations_and_submits_answer(tmp_path):
             "jsonrpc": "2.0",
             "id": 4,
             "method": "tools/call",
+            "params": {"name": "list_candidate_headings", "arguments": {"path": "AGENTS.md"}},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {"name": "read_candidate", "arguments": {"path": "AGENTS.md", "heading_path": ["Test candidate"]}},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "tools/call",
             "params": {
                 "name": "submit_answer",
                 "arguments": {"answer": {field: "generic" for field in ("entry", "constraints", "authorities", "relevant_decisions", "validation", "unknowns")}},
@@ -448,7 +602,7 @@ def test_mcp_exposes_only_collector_operations_and_submits_answer(tmp_path):
     assert result.returncode == 0
     replies = [json.loads(line) for line in result.stdout.splitlines()]
     names = [item["name"] for item in replies[1]["result"]["tools"]]
-    assert names == ["read_candidate", "search_candidate", "submit_answer", "report_session_event"]
+    assert names == ["read_candidate", "list_candidate_headings", "search_candidate", "submit_answer", "report_session_event"]
     saved = json.loads(record.read_text(encoding="utf-8"))
     assert saved["status"] == "submitted"
     assert saved["answer"]["entry"] == "generic"

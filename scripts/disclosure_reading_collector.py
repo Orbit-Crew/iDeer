@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -45,9 +46,11 @@ EVALUATOR_MATERIAL = {
     "docs/specs/2026-10-07-progressive-disclosure-readability-recovery-spec.md",
     "scripts/score_disclosure_readability.py",
     "scripts/disclosure_reading_collector.py",
+    "scripts/report_disclosure_costs.py",
     "scripts/run_disclosure_reading_session.py",
     "backend/tests/unit/scripts/test_score_disclosure_readability.py",
     "backend/tests/unit/scripts/test_disclosure_reading_collector.py",
+    "backend/tests/unit/scripts/test_report_disclosure_costs.py",
 }
 
 
@@ -85,7 +88,9 @@ def record_lock(path, *other_paths):
 def write_record(path, record):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as output:
             json.dump(record, output, ensure_ascii=False, indent=2)
@@ -281,6 +286,103 @@ def permitted_path(root, requested, by_path):
     return key, raw
 
 
+_ATX_HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+|$)(.*?)\s*$")
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+_SETEXT = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
+
+
+def markdown_headings(raw):
+    """List Markdown ATX and Setext headings, ignoring fenced code blocks."""
+    lines = raw.decode("utf-8").splitlines()
+    found = []
+    fence_char = None
+    fence_size = 0
+    for index, line in enumerate(lines):
+        fence = _FENCE.match(line)
+        if fence_char is not None:
+            if (
+                fence
+                and fence.group(1)[0] == fence_char
+                and len(fence.group(1)) >= fence_size
+                and not fence.group(2).strip()
+            ):
+                fence_char = None
+                fence_size = 0
+            continue
+        if fence:
+            fence_char = fence.group(1)[0]
+            fence_size = len(fence.group(1))
+            continue
+        setext = _SETEXT.match(line)
+        if setext and index > 0:
+            start = index - 1
+            previous = lines[start]
+            if (
+                previous.strip()
+                and not _ATX_HEADING.match(previous)
+                and not _FENCE.match(previous)
+            ):
+                while start > 0:
+                    candidate = lines[start - 1]
+                    if (
+                        not candidate.strip()
+                        or _ATX_HEADING.match(candidate)
+                        or _FENCE.match(candidate)
+                        or _SETEXT.match(candidate)
+                    ):
+                        break
+                    start -= 1
+                found.append(
+                    {
+                        "level": 1 if setext.group(1).startswith("=") else 2,
+                        "title": " ".join(part.strip() for part in lines[start:index]),
+                        "line": start + 1,
+                        "end_line": index + 1,
+                    }
+                )
+                continue
+        atx = _ATX_HEADING.match(line)
+        if atx:
+            title = atx.group(2).strip()
+            title = re.sub(r"[ \t]+#+[ \t]*$", "", title)
+            found.append(
+                {
+                    "level": len(atx.group(1)),
+                    "title": title,
+                    "line": index + 1,
+                    "end_line": index + 1,
+                }
+            )
+    stack = []
+    for item in found:
+        while stack and stack[-1]["level"] >= item["level"]:
+            stack.pop()
+        stack.append({"level": item["level"], "title": item["title"]})
+        item["path"] = [part["title"] for part in stack]
+    return found
+
+
+def section_range(headings, heading_path, line_count):
+    if (
+        not isinstance(heading_path, list)
+        or not heading_path
+        or any(not isinstance(part, str) or not part.strip() for part in heading_path)
+    ):
+        fail("heading path must be a non-empty array of titles")
+    matches = [item for item in headings if item["path"] == heading_path]
+    if not matches:
+        fail("heading path not found")
+    if len(matches) > 1:
+        fail("heading path is duplicate; select a unique complete title hierarchy")
+    selected = matches[0]
+    end = line_count
+    for item in headings:
+        if item["line"] > selected["line"] and item["level"] <= selected["level"]:
+            end = item["line"] - 1
+            break
+    return selected["line"], end
+
+
 def unique_byte_count(events):
     ranges = {}
     for event in events:
@@ -383,7 +485,21 @@ def read_content(args):
         fail("session candidate differs from its frozen manifest")
     key, raw = permitted_path(root, args.path, by_path)
     lines = raw.decode("utf-8").splitlines(keepends=True)
-    start, end = args.start, len(lines) if args.end is None else args.end
+    heading_path = getattr(args, "heading_path", None)
+    if heading_path is not None:
+        if not key.casefold().endswith(".md"):
+            fail("heading reads require a Markdown file")
+        try:
+            requested_path = (
+                json.loads(heading_path)
+                if isinstance(heading_path, str)
+                else heading_path
+            )
+        except json.JSONDecodeError as exc:
+            raise UsageError("heading path must be a JSON array of titles") from exc
+        start, end = section_range(markdown_headings(raw), requested_path, len(lines))
+    else:
+        start, end = args.start, len(lines) if args.end is None else args.end
     if start < 1 or end < start or end > len(lines):
         fail("invalid line range")
     require_root_guidance(record, key, start, end, len(lines))
@@ -405,6 +521,54 @@ def read_content(args):
         "unique_bytes_read": event["unique_bytes_read"],
     }
     printed = json.dumps(reply, ensure_ascii=False)
+    event["output_bytes"] = len(printed.encode("utf-8"))
+    write_record(args.record, record)
+    print(printed)
+
+
+@serialized_record_update
+def list_headings(args):
+    record = load_record(args.record)
+    root = Path(record["candidate_root"]).resolve(strict=True)
+    manifest, by_path = load_manifest(
+        Path(args.manifest).resolve(strict=True), root, verify_tree=True
+    )
+    if manifest["manifest_sha256"] != record["manifest_sha256"]:
+        fail("session candidate differs from its frozen manifest")
+    require_root_guidance(record)
+    key, raw = permitted_path(root, args.path, by_path)
+    if not key.casefold().endswith(".md"):
+        fail("heading listing requires a Markdown file")
+    headings = markdown_headings(raw)
+    ranges = [
+        {"path": key, "start": item["line"], "end": item["end_line"]}
+        for item in headings
+    ]
+    lines = raw.decode("utf-8").splitlines(keepends=True)
+    content_bytes = sum(
+        sum(
+            len(line.encode("utf-8"))
+            for line in lines[item["line"] - 1 : item["end_line"]]
+        )
+        for item in headings
+    )
+    event = {
+        "kind": "headings",
+        "ranges": ranges,
+        "content_bytes": content_bytes,
+        "output_bytes": 0,
+    }
+    record["events"].append(event)
+    event["unique_bytes_read"] = unique_byte_count([{**event, "root": str(root)}])
+    printed = json.dumps(
+        {
+            "path": key,
+            "headings": headings,
+            "content_bytes": content_bytes,
+            "unique_bytes_read": event["unique_bytes_read"],
+        },
+        ensure_ascii=False,
+    )
     event["output_bytes"] = len(printed.encode("utf-8"))
     write_record(args.record, record)
     print(printed)
@@ -554,7 +718,7 @@ def mcp_tool_schemas():
     return [
         {
             "name": "read_candidate",
-            "description": "Read a candidate-relative UTF-8 line range. The first successful call must read all of AGENTS.md at the candidate root.",
+            "description": "Read a candidate-relative UTF-8 line range or one complete Markdown heading path. The first successful content call must read all of AGENTS.md at the candidate root.",
             "annotations": {
                 "readOnlyHint": True,
                 "destructiveHint": False,
@@ -567,7 +731,28 @@ def mcp_tool_schemas():
                     "path": {"type": "string"},
                     "start": {"type": "integer", "minimum": 1},
                     "end": {"type": "integer", "minimum": 1},
+                    "heading_path": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                        "minItems": 1,
+                    },
                 },
+                "required": ["path"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "list_candidate_headings",
+            "description": "List Markdown headings with their complete title hierarchy. Returned heading lines count as read content.",
+            "annotations": {
+                "readOnlyHint": True,
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "idempotentHint": True,
+            },
+            "inputSchema": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}},
                 "required": ["path"],
                 "additionalProperties": False,
             },
@@ -696,6 +881,16 @@ def mcp_server(args):
                                 path=values.get("path", ""),
                                 start=values.get("start", 1),
                                 end=values.get("end"),
+                                heading_path=values.get("heading_path"),
+                            )
+                        )
+                        payload = json.loads(output.getvalue())
+                    elif name == "list_candidate_headings":
+                        list_headings(
+                            argparse.Namespace(
+                                manifest=args.manifest,
+                                record=args.record,
+                                path=values.get("path", ""),
                             )
                         )
                         payload = json.loads(output.getvalue())
@@ -732,9 +927,11 @@ def mcp_server(args):
                 try:
                     with record_lock(args.record):
                         record = json.loads(args.record.read_text(encoding="utf-8"))
-                        if name in {"read_candidate", "search_candidate"} and record.get(
-                            "events"
-                        ):
+                        if name in {
+                            "read_candidate",
+                            "list_candidate_headings",
+                            "search_candidate",
+                        } and record.get("events"):
                             record["events"][-1]["tool_output_bytes"] = len(
                                 content.encode("utf-8")
                             )
@@ -818,12 +1015,24 @@ def parser():
         default="",
         help="infrastructure/protocol failure that caused the retry",
     )
-    item = commands.add_parser("read", help="read a candidate-relative line range")
+    item = commands.add_parser(
+        "read", help="read a candidate-relative line range or Markdown heading"
+    )
     item.add_argument("--manifest", type=Path, required=True)
     item.add_argument("--record", type=Path, required=True)
     item.add_argument("--path", required=True)
     item.add_argument("--start", type=int, default=1)
     item.add_argument("--end", type=int)
+    item.add_argument(
+        "--heading-path",
+        help='JSON array of complete Markdown heading titles, e.g. ["Parent", "Child"]',
+    )
+    item = commands.add_parser(
+        "headings", help="list complete Markdown heading hierarchies"
+    )
+    item.add_argument("--manifest", type=Path, required=True)
+    item.add_argument("--record", type=Path, required=True)
+    item.add_argument("--path", required=True)
     item = commands.add_parser("search", help="search readable candidate text")
     item.add_argument("--manifest", type=Path, required=True)
     item.add_argument("--record", type=Path, required=True)
@@ -841,7 +1050,13 @@ def parser():
         item.add_argument("--reason", required=True)
         item.add_argument(
             "--failure-class",
-            choices=("infrastructure", "quota_exhausted", "workspace_load", "protocol", "task"),
+            choices=(
+                "infrastructure",
+                "quota_exhausted",
+                "workspace_load",
+                "protocol",
+                "task",
+            ),
             required=True,
         )
     item = commands.add_parser(
@@ -883,6 +1098,7 @@ def main():
         "manifest": lambda: build_manifest(args.root, args.out),
         "start": lambda: start_session(args),
         "read": lambda: read_content(args),
+        "headings": lambda: list_headings(args),
         "search": lambda: search_content(args),
         "submit": lambda: submit(args),
         "failed": lambda: close_failed_attempt(args),

@@ -50,10 +50,20 @@ same value.
 Before timing starts, the reader receives the complete MCP tool schemas and
 this six-field contract: `entry`, `constraints`, `authorities`, `relevant_decisions`,
 `validation`, and `unknowns` must each be a non-empty string. The runner
-allowlists these four MCP tools:
+allowlists these five MCP tools:
 
 - `read_candidate` reads a candidate-relative UTF-8 line range. Its first
   successful call must read every line of the candidate root `AGENTS.md`.
+- `list_candidate_headings` lists Markdown headings with their complete title
+  hierarchy. The CLI equivalent is `headings --path <file>`. Returned heading
+  lines count as read content and use the same frozen candidate checks.
+- `read_candidate` also accepts `heading_path`, an array of exact titles from
+  the root heading through the selected heading. The CLI equivalent is
+  `read --heading-path '["Parent", "Child"]'`. It returns the selected
+  heading and its body up to (but not including) the next heading of the same
+  or higher level. Fenced code is ignored while listing and selecting
+  headings. Missing and duplicate complete paths fail explicitly. Full-file
+  and line-range reads remain available.
 - `search_candidate` performs a literal text search. Returned lines count as
   read content; empty queries are rejected.
 - `submit_answer` persists exactly the six fields and stops the timer at the
@@ -61,7 +71,7 @@ allowlists these four MCP tools:
 - `report_session_event` records external help or contamination.
 
 The collector validates the entire candidate tree against its full manifest
-before each read or search. Direct reads of metadata, specifications, benchmark
+before each read, heading listing, or search. Direct reads of metadata, specifications, benchmark
 cases, evaluator instructions, scoring files, and scoring tests fail. Searches
 skip the same material. The manifest retains the full candidate file hashes,
 the exclusion list, and an exclusion digest. The timed model does not receive
@@ -75,13 +85,26 @@ preserves the actual Codex tool calls and results. Keep the record, trace,
 prompt copy, and configuration sidecar together in the session artifact
 directory.
 
+`scripts/report_disclosure_costs.py --records <attempts.json> --out <costs.json>`
+recomputes the layered cost report from raw physical attempt records. Input
+contains an `attempts` array and a frozen `role_map` with format `1`, candidate
+manifest digests, exact path roles, and optional heading-path section roles.
+Supported roles are `root_guidance`, `descendant_guidance`, `route`,
+`current_documentation`, `historical_material`, `source_test_config`, and
+`other`. Unmapped paths remain in `other` and are listed in
+`unknown_role_paths`. The report verifies the candidate snapshot and each
+event's UTF-8 byte count, groups linked retries into final logical attempts,
+and separately totals final logical and all physical attempts. Submission
+elapsed time and failure-close time are distinct; missing submission time is
+reported as null and never inferred from failure close.
+
 ## Isolation and retries
 
 The runner starts Codex with user configuration ignored and automatic review
 enabled. It disables shell execution, unified execution, delegation, sleep,
 web search, browser, computer use, image generation, image viewing, permission
 requests, apps, plugins, and memory.
-The only enabled MCP server is the required collector, allowlisted to the four
+The only enabled MCP server is the required collector, allowlisted to the five
 tools above. `project_doc_max_bytes=0` prevents automatic loading of project
 `AGENTS.md`; the reader must get that content through the timed collector.
 The comparable configuration fixes the first-read startup deadline at 60
