@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 46,
+    "count": 47,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3618,7 +3618,7 @@
       {
         "path": "docs/specs/2026-10-08-disclosure-dual-track-recovery-spec.md",
         "registration": "post-baseline-addition",
-        "sha256": "a07eec88b9549634acde37c38f8456ed79958c78cc4567c12e98d599db00b5a9",
+        "sha256": "46da9ee7335be87f570895ac4b80162a86a674c013ececeb7589a282dada440f",
         "lines": 77,
         "classification": "engineering-body-review",
         "protected": false,
@@ -3738,7 +3738,7 @@
       {
         "path": "docs/experiments/disclosure-dual-track-ticket07-results-2026-10-08.md",
         "registration": "post-baseline-addition",
-        "sha256": "bb874a002a78e41133efd62fb9cc5beb9cd7d739941fb9df2fddeb18d7d9919e",
+        "sha256": "30578e5706e959b0e8dae2e4225df10d6a1d083d8d24d73d7978f4924b78523d",
         "lines": 42,
         "classification": "engineering-body-review",
         "protected": false,
@@ -3748,11 +3748,21 @@
       {
         "path": "docs/experiments/disclosure-dual-track-ticket08-results-2026-10-09.md",
         "registration": "post-baseline-addition",
-        "sha256": "a3dcef5efd2232d7dbed0efd19765ef137f65d0e21cb88627e32bd6c66aaf7e8",
-        "lines": 44,
+        "sha256": "6fa0294cddf4867e02918b95e0dc3565034b13f6a100c42f95a2ed484ba1fea6",
+        "lines": 52,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "coordinator-only formal ticket 08 practical results, six isolated exercises, fixture validation, and clean-restore evidence; created after candidate freeze and absent from timed-reader candidates",
+        "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
+      },
+      {
+        "path": "docs/experiments/disclosure-dual-track-ticket10-final-verdict-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "7383abe3b8c42f884b811b06dfa706e834f74e4a9eee59369b9b0c7323df23b8",
+        "lines": 60,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only final four-state ticket 10 verdict, gate evidence pointers, archive restoration checks, and measured comparability limits; created after frozen reader candidates and absent from timed-reader inputs",
         "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
       }
     ]

@@ -1,12 +1,12 @@
 ---
 id: docs-specs-2026-10-08-disclosure-dual-track-recovery
 kind: plan
-status: draft
+status: archived
 owner: repository maintainers
 scope: reliable progressive-disclosure reading tools, focused guidance, and dual-track acceptance
-last-verified: 2026-10-08
-verified-against: disclosure-readability-recovery @ 5687f8b90b96de73887e91e3984ad74d0772a01b
-triage: ready-for-agent
+last-verified: 2026-10-09
+verified-against: ticket 10 independent archive audit and integration worktree @ 47b46a5454031be1f1c8ed2c6ea16a52df46865d
+triage: execution-complete; new-acceptance-incomplete-not-passed; legacy-not-executed
 ---
 
 # 渐进式文档披露双轨修复规格
@@ -46,7 +46,7 @@ triage: ready-for-agent
 4. The existing file/line read stays. Add a Markdown heading listing operation and a heading read operation. A full heading path selects exactly one section through the next heading of the same or higher level. Duplicate or absent headings fail explicitly. Code-fence text cannot become a heading. Both new operations use the same candidate manifest, path authorization and byte-accounting rules; search returns remain counted. Full reads remain available.
 5. New reports distinguish submitted elapsed time from failure-close time; a missing submission duration remains null. Separate root guidance, descendant guidance, route, current documentation, historical material, source/test/config, other and repeated returns. Freeze a document/section role map before formal sessions; unknown roles remain counted as other and visible. Cost summaries include final logical attempts and all physical attempts. Original total-unique-byte calculation remains available for the legacy gate.
 6. New prompts contain concrete intended behavior for UI, Chat, Knowledge, Permissions, Tests, Runtime, Upstream and History, but not answer locations or rubric hints. Retain six answer fields. Required anchors test applicable task constraints; auxiliary anchors are reported without failing an answer. Conditional Chat anchors distinguish submit gate, SDK merge, Gateway stream and embedded cross-mode behavior. UI requires identifying the actual task target, not an arbitrary example.
-7. The new reading baseline is the pre-edit integration candidate. The after candidate differs in engineering documentation only; products and test tools are identical. Both sides use the same tool and model alias, reasoning setting and CLI, with interleaved scheduling. The model service provider is assumed stable as the user directed; unknown backend revision is reported, never claimed known.
+7. The new reading baseline is the pre-edit integration candidate. The frozen ticket 07 manifests and `git diff 5687f8b90b96de73887e91e3984ad74d0772a01b..fe65d5b98ca699bfc7c4694a19d7476949b68062` agree on 25 changed paths: 19 Markdown paths and six non-Markdown paths covering two collector/cost tests, three reader/evaluation scripts, and the document policy JSON. The product feature source remained the same, but the whole Git candidates were not a pure documentation-only pair. Evaluator-only materials were excluded from coder-readable inputs, and the external reader tool fingerprint was held fixed. Both sides used the same model alias, reasoning setting, and CLI with interleaved scheduling. The model service provider was assumed stable as the user directed; its resolved backend revision was not exposed and is not claimed known. Ticket 08 separately projected readable Markdown onto one common 4,927-path non-Markdown product/test/tool tree. Neither result supports generalization to another model revision.
 8. Root guidance remains the source for global obligations and is capped at 10 KiB. The shared nine-domain index is capped at 4 KiB; each domain page at 6 KiB. The limits do not permit omission of obligations. A necessary overflow fails the size check and must be resolved by removing duplication or moving conditional details to the authoritative target.
 9. Domain pages carry applicability, exact current-contract sections, conditional decisions, source start points and first focused verification. Preserve the current stop conditions. Do not rewrite protected bodies or create a second normative contract. Sync every modified AGENTS.md to its CLAUDE.md mirror.
 10. Permissions points to current authorization and matrix sections and marks historic implementation chapters as history. Tests points to procedure before ledger entries. Knowledge links list and visibility entry points. Chat foregrounds SDK message chunk assembly and ID deduplication on relevant paths. Other six domains retain their current obligations while moving into the short-page format.

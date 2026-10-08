@@ -26,5 +26,6 @@ verified-against: ticket11 integration worktree; governance index links and scop
 - [披露阅读双轨协议 v2](disclosure-dual-track-protocol-v2-2026-10-08.md)：新版六字段答案、八任务域锚点、独立评分和双轨门禁；不改写旧分数。
 - [披露阅读双轨校准记录](disclosure-dual-track-calibration-2026-10-08.md)：评分者独立校准程序与裁决记录模板。
 - [披露双轨实作票 08 结果](../experiments/disclosure-dual-track-ticket08-results-2026-10-09.md)：六次隔离实作、夹具及 clean-restore 证据；整体 v2 门槛仍未通过。
+- [披露双轨票 10 最终裁决](../experiments/disclosure-dual-track-ticket10-final-verdict-2026-10-09.md)：区分工程交付、文档状态、新版未通过与旧轨未执行，并记录归档恢复与当前候选门禁位置。
 
 治理材料默认不发布到公开文档站。
