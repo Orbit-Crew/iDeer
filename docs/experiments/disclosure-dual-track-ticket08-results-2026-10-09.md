@@ -3,7 +3,7 @@ id: disclosure-dual-track-ticket08-results
 kind: evidence
 status: archived
 owner: repository maintainers
-scope: Six isolated practical implementation sessions, fixture validation, and clean-restore evidence for disclosure dual-track ticket 08
+scope: Ticket 08 practical sessions and clean-restore evidence, plus ticket 09 conditional legacy-gate decision
 ---
 # Disclosure dual-track ticket 08 practical results
 
@@ -42,3 +42,11 @@ Each patch changes only its intended source file. The corrected archive audit re
 The portable archive is `dev-log/disclosure-dual-track/ticket08/ticket08-clean-restore-20261009.tar.gz`, SHA-256 `9ba23c1e51c7b075be4823c04ad573843997c525851f40e76e75e1ecf81616b0`; the identical external copy is `/tmp/ticket08-clean-restore-20261009.tar.gz`. Its 135 manifest entries were verified against file bytes and SHA-256. Clean restoration reconstructed all six parentless inputs, applied each candidate patch to its input, verified the one-file changed-path boundary and resulting source hashes, and reran the focused checks successfully. The recomputation record contains six restores with no failures. Raw session transcripts, commands, test/static outputs, reviews, fixture checks, manifests, patches, and superseded archive correction records are included.
 
 Timing, evaluator-material exclusion, and instructional-blinding limits are retained in the audit records. This report records the practical subgate only; the ticket07 reading and cost gates remain as reported in [ticket 07 results](disclosure-dual-track-ticket07-results-2026-10-08.md).
+
+## Ticket 09 conditional decision
+
+**Outcome: not executed.** The recovery specification requires both the new reading and practical gates to pass before the legacy gate starts. Ticket 08 passed its six-session practical subgate, but ticket 07's new reading and cost gate remains incomplete and does not pass.
+
+Ticket 07's frozen v2 report records 14 of 16 after answers confirmed correct, one unresolved conditional answer, and one answer invalidated by collector fingerprint drift. Its routine Markdown unique-byte median fell by 11.8058%, below the required 30% reduction. The fixed denominator and original records remain intact. See [ticket 07 formal results](disclosure-dual-track-ticket07-results-2026-10-08.md).
+
+No legacy reading session was started. No old score, failure, or threshold was reused or changed. There are no new 32-session legacy results to report; the legacy gate is neither a pass nor a failure. Ticket 09 remains unexecuted until all applicable new gates pass. This decision makes no claim about what a future independent legacy run would find.

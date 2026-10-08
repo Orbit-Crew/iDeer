@@ -48,7 +48,7 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 披露阅读会话收集器 | [disclosure-reading-collector-2026-10-07.md](governance/disclosure-reading-collector-2026-10-07.md)（隔离读取、六字段提交与尝试审计） |
 | 披露阅读实验最终裁决 | [ticket11 汇总](governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md)（32个槽的评分、门槛与限制） |
 | 双轨披露阅读票07结果 | [正式结果与审计](experiments/disclosure-dual-track-ticket07-results-2026-10-08.md)（v2评分、物理成本、恢复复算与未通过门槛） |
-| 双轨披露实作票08结果 | [正式结果与审计](experiments/disclosure-dual-track-ticket08-results-2026-10-09.md)（六次隔离实作、夹具公平性、恢复复算；整体v2仍未通过） |
+| 双轨披露实作票08与票09裁决 | [正式结果与条件裁决](experiments/disclosure-dual-track-ticket08-results-2026-10-09.md)（六次隔离实作；因新版门槛未满足，旧轨未执行） |
 | 当前工程待办 | [backlog.md](backlog.md) |
 
 ## 历史证据
