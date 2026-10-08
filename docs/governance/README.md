@@ -25,5 +25,6 @@ verified-against: ticket11 integration worktree; governance index links and scop
 - [披露阅读实验票 11 汇总裁决](disclosure-readability-experiment-pdr-2026-10-07-ticket11.md)：合并32个逻辑槽、39个attempt、评分裁决与门槛复算；正确性和常规字节门槛失败，阅读效果未通过。
 - [披露阅读双轨协议 v2](disclosure-dual-track-protocol-v2-2026-10-08.md)：新版六字段答案、八任务域锚点、独立评分和双轨门禁；不改写旧分数。
 - [披露阅读双轨校准记录](disclosure-dual-track-calibration-2026-10-08.md)：评分者独立校准程序与裁决记录模板。
+- [披露双轨实作票 08 结果](../experiments/disclosure-dual-track-ticket08-results-2026-10-09.md)：六次隔离实作、夹具及 clean-restore 证据；整体 v2 门槛仍未通过。
 
 治理材料默认不发布到公开文档站。
