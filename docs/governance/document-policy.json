@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 32,
+    "count": 33,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 25 post-baseline additions; the next baseline capture decides which additions enter the seed, including coordinator-only experiment evidence",
     "files": [
       {
@@ -3614,6 +3614,16 @@
         "protected": false,
         "role": "coordinator-only integrated verdict for the frozen 32-slot progressive disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
         "referenced_by": "docs/governance/README.md, docs/project-state.md"
+      },
+      {
+        "path": "docs/specs/2026-10-08-disclosure-dual-track-recovery-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "a07eec88b9549634acde37c38f8456ed79958c78cc4567c12e98d599db00b5a9",
+        "lines": 77,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "specification for repaired disclosure tools, focused guidance, and dual-track reading acceptance",
+        "referenced_by": "docs/README.md specs directory entry"
       }
     ]
   },
