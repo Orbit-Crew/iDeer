@@ -346,24 +346,26 @@ def test_runner_timeout_cleans_only_its_child_process_group(tmp_path):
     fake_codex = fake_bin / "codex"
     marker = tmp_path / "orphan-was-not-killed"
     child_pid = tmp_path / "child.pid"
+    startup_timeout_seconds = 5
     fake_codex.write_text(
         "#!/usr/bin/env python3\n"
         "import os, subprocess, sys, time\n"
         "if '--version' in sys.argv: print('codex-cli test')\n"
         "elif sys.argv[1:3] == ['debug', 'models']: print('{\"models\":[{\"slug\":\"gpt-6.1-sol\"}]}')\n"
         "else:\n"
-        f"    child = subprocess.Popen([sys.executable, '-c', \"import pathlib,time; time.sleep(0.7); pathlib.Path('{marker}').touch()\"])\n"
+        f"    child = subprocess.Popen([sys.executable, '-c', \"import pathlib,time; time.sleep({startup_timeout_seconds + 1}); pathlib.Path('{marker}').touch()\"])\n"
         f"    pathlib = __import__('pathlib'); pathlib.Path('{child_pid}').write_text(str(child.pid))\n"
-        "    time.sleep(5)\n",
+        "    time.sleep(60)\n",
         encoding="utf-8",
     )
     fake_codex.chmod(0o755)
     root, manifest = candidate(tmp_path)
     prompt = tmp_path / "prompt.txt"
     prompt.write_text("A generic task prompt.\n", encoding="utf-8")
-    sibling = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(10)"])
+    sibling = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    runner = None
     try:
-        result = subprocess.run(
+        runner = subprocess.Popen(
             [
                 sys.executable,
                 str(RUNNER),
@@ -380,24 +382,39 @@ def test_runner_timeout_cleans_only_its_child_process_group(tmp_path):
                 "--out-dir",
                 str(tmp_path / "runner-output"),
                 "--startup-timeout-seconds",
-                "0.1",
+                str(startup_timeout_seconds),
             ],
             text=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             env={**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"]},
-            check=False,
         )
-        assert result.returncode == 124
-        run_data = json.loads(result.stdout)
+
+        # Wait for the fake CLI to prove it spawned the child before the
+        # runner's startup deadline. This makes the cleanup assertion about
+        # the process-group timeout phase, even under a loaded test lane.
+        readiness_deadline = time.monotonic() + startup_timeout_seconds
+        while not child_pid.exists() and runner.poll() is None:
+            if time.monotonic() >= readiness_deadline:
+                break
+            time.sleep(0.01)
+        assert child_pid.exists(), "fake Codex did not spawn its child before timeout"
+
+        stdout, _stderr = runner.communicate(timeout=startup_timeout_seconds + 2)
+        assert runner.returncode == 124
+        run_data = json.loads(stdout)
         record = json.loads(Path(run_data["record"]).read_text(encoding="utf-8"))
         assert record["status"] == "failed"
         assert record["failure_class"] == "workspace_load"
         assert Path(run_data["trace"]).is_file()
-        time.sleep(0.9)
+        time.sleep(1.5)
         assert not marker.exists()
         assert sibling.poll() is None
         assert child_pid.exists()
     finally:
+        if runner is not None and runner.poll() is None:
+            runner.terminate()
+            runner.wait()
         sibling.terminate()
         sibling.wait()
 

@@ -47,6 +47,7 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 技能树治理与上游技能升级 | [skill-tree-governance.md](governance/skill-tree-governance.md)（权威关系、锁定 SHA 登记与升级流程；技能包内容本身不属本入口治理范围） |
 | 披露阅读会话收集器 | [disclosure-reading-collector-2026-10-07.md](governance/disclosure-reading-collector-2026-10-07.md)（隔离读取、六字段提交与尝试审计） |
 | 披露阅读实验最终裁决 | [ticket11 汇总](governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md)（32个槽的评分、门槛与限制） |
+| 双轨披露阅读票07结果 | [正式结果与审计](experiments/disclosure-dual-track-ticket07-results-2026-10-08.md)（v2评分、物理成本、恢复复算与未通过门槛） |
 | 当前工程待办 | [backlog.md](backlog.md) |
 
 ## 历史证据

@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 44,
+    "count": 45,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3734,6 +3734,16 @@
         "protected": false,
         "role": "focused upstream task route with applicable contract, conditional references, code entry and first validation",
         "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/experiments/disclosure-dual-track-ticket07-results-2026-10-08.md",
+        "registration": "post-baseline-addition",
+        "sha256": "bb874a002a78e41133efd62fb9cc5beb9cd7d739941fb9df2fddeb18d7d9919e",
+        "lines": 42,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only formal ticket 07 result, v2 score, physical cost audit, and clean-restore evidence; created after candidate freeze and absent from timed-reader candidates",
+        "referenced_by": "docs/README.md current-source table"
       }
     ]
   },
