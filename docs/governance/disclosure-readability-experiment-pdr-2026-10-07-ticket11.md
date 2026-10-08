@@ -79,6 +79,12 @@ The values below describe each logical slot's terminal attempt. `failure clock` 
 
 The two failed clocks above are recomputed from the final raw collector records as `closed_monotonic - started_monotonic`. Slot 18: `249745.192073124 - 249740.486971534 = 4.705` seconds. Slot 24 is its second and final attempt: `264935.031377499 - 264780.229202070 = 154.802` seconds. Slot 24's first attempt took 99.841 seconds, but it is not the terminal logical-slot reading and is excluded from the table. No failed record was assigned a fabricated answer, submission time, or semantic grade.
 
+## Slot 18 attribution correction (2026-10-08)
+
+The terminal cause for after Chat slot 18 is model-service quota exhaustion. Its final retry JSONL ends with `You’ve hit your usage limit`; the retry record has no submitted answer. The initial attempt separately records a workspace-requirements load failure, while its runner crashed reading the collector JSON during a concurrent write. These are distinct events across the linked attempts, not one proven root cause. The final attempt's 4.705-second interval remains a failure-close clock only, so the elapsed-time gate remains incomplete and the frozen scorer value is not a submission-time result.
+
+This correction narrows the earlier blanket attribution of slot 18 to a collector race. It does not alter either attempt, the failure classification in frozen records, any byte/time value, anchor score, fixed denominator, threshold, or the formal verdict above. Raw JSONL, collector records, and runner logs remain in the local ignored ticket09 archive referenced in the diagnosis record.
+
 ## Eight task metrics
 
 Each pair below reports correct submitted answers / two logical slots, then the median seconds and median unique bytes for the two slots. A failed slot remains in the fixed two-slot denominator and its actual failed-read bytes are included. A failed slot's displayed timing is its failure clock, from first successful content read to protocol close; this descriptive interval is not a submission duration. Special-task elapsed/byte figures are descriptive and are not included in the routine efficiency gate.

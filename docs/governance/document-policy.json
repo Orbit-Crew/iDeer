@@ -3292,8 +3292,8 @@
     }
   ],
   "supplements": {
-    "count": 33,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents and 25 post-baseline additions; the next baseline capture decides which additions enter the seed, including coordinator-only experiment evidence",
+    "count": 35,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3608,8 +3608,8 @@
       {
         "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md",
         "registration": "post-baseline-addition",
-        "sha256": "89cc0e68576ded715a0985bd5a3bf292a53a744aca8611027b0e54396b16036b",
-        "lines": 130,
+        "sha256": "7551ba8b4b53ab2ef0e6e34fe0e8b87e83f63b95038378f3998c9daaa0c8bfeb",
+        "lines": 136,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "coordinator-only integrated verdict for the frozen 32-slot progressive disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
@@ -3624,6 +3624,26 @@
         "protected": false,
         "role": "specification for repaired disclosure tools, focused guidance, and dual-track reading acceptance",
         "referenced_by": "docs/README.md specs directory entry"
+      },
+      {
+        "path": "docs/governance/disclosure-dual-track-protocol-v2-2026-10-08.md",
+        "registration": "post-baseline-addition",
+        "sha256": "5f92c9f97941449236186da3a84cef99aea883851832a54a00f7afc0491a7e21",
+        "lines": 83,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "current versioned protocol, task-domain scoring anchors, and dual-track rules for the disclosure reading acceptance",
+        "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-dual-track-calibration-2026-10-08.md",
+        "registration": "post-baseline-addition",
+        "sha256": "25da17276fa697bf73ab887d436da3f09996f6f32c026cde6d9792b44ff9b4c7",
+        "lines": 37,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "independent A/B/third-party calibration procedure and decision record template for disclosure-reading-v2",
+        "referenced_by": "docs/governance/README.md"
       }
     ]
   },
