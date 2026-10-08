@@ -4,10 +4,14 @@
 import argparse
 import contextlib
 import fnmatch
+import fcntl
+import functools
 import hashlib
 import io
 import json
+import os
 import sys
+import tempfile
 import time
 from pathlib import Path, PurePosixPath
 
@@ -63,6 +67,50 @@ def canonical_json(value):
     return json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
+
+
+@contextlib.contextmanager
+def record_lock(path, *other_paths):
+    paths = sorted({Path(item).resolve() for item in (path, *other_paths)})
+    with contextlib.ExitStack() as stack:
+        for target in paths:
+            lock_path = Path(f"{target}.lock")
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            lock_file = stack.enter_context(lock_path.open("a", encoding="utf-8"))
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            stack.callback(fcntl.flock, lock_file.fileno(), fcntl.LOCK_UN)
+        yield
+
+
+def write_record(path, record):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as output:
+            json.dump(record, output, ensure_ascii=False, indent=2)
+            output.write("\n")
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary_name, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if os.path.exists(temporary_name):
+            os.unlink(temporary_name)
+
+
+def serialized_record_update(function):
+    @functools.wraps(function)
+    def wrapped(args, *positional, **named):
+        other_paths = (args.retry_of,) if getattr(args, "retry_of", None) else ()
+        with record_lock(args.record, *other_paths):
+            return function(args, *positional, **named)
+
+    return wrapped
 
 
 def is_readable(path):
@@ -248,6 +296,7 @@ def unique_byte_count(events):
     return total
 
 
+@serialized_record_update
 def start_session(args):
     root = args.root.resolve(strict=True)
     if args.startup_timeout_seconds <= 0:
@@ -267,9 +316,9 @@ def start_session(args):
         prior = json.loads(prior_path.read_text(encoding="utf-8"))
         if prior.get("status") not in {"failed", "interrupted"} or prior.get(
             "failure_class"
-        ) not in {"infrastructure", "protocol"}:
+        ) not in {"infrastructure", "workspace_load", "protocol"}:
             fail(
-                "only failed or interrupted infrastructure/protocol attempts may be retried"
+                "only failed or interrupted infrastructure, workspace-load, or protocol attempts may be retried"
             )
         if prior.get("retry_run_id") or prior.get("attempt_no", 1) >= 2:
             fail("the one permitted retry has already been used")
@@ -312,15 +361,11 @@ def start_session(args):
         "events": [],
         "status": "started",
     }
-    args.record.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    write_record(args.record, record)
     if prior is not None:
         prior["retry_run_id"] = args.run_id
         prior["retry_reason"] = args.retry_reason.strip()
-        prior_path.write_text(
-            json.dumps(prior, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+        write_record(prior_path, prior)
     print(
         json.dumps(
             {"status": "started", "run_id": args.run_id, "root_guidance": "AGENTS.md"}
@@ -328,6 +373,7 @@ def start_session(args):
     )
 
 
+@serialized_record_update
 def read_content(args):
     record = load_record(args.record)
     root = Path(record["candidate_root"]).resolve(strict=True)
@@ -360,12 +406,11 @@ def read_content(args):
     }
     printed = json.dumps(reply, ensure_ascii=False)
     event["output_bytes"] = len(printed.encode("utf-8"))
-    args.record.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    write_record(args.record, record)
     print(printed)
 
 
+@serialized_record_update
 def search_content(args):
     if not args.query:
         fail("search query must not be empty")
@@ -416,12 +461,11 @@ def search_content(args):
     }
     printed = json.dumps(reply, ensure_ascii=False)
     event["output_bytes"] = len(printed.encode("utf-8"))
-    args.record.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    write_record(args.record, record)
     print(printed)
 
 
+@serialized_record_update
 def submit(args):
     record = load_record(args.record)
     if not record["events"] or record["events"][0]["ranges"][0]["path"] != "AGENTS.md":
@@ -459,9 +503,7 @@ def submit(args):
     record["unique_bytes_read"] = unique_byte_count(
         [{**event, "root": str(root)} for event in record["events"]]
     )
-    args.record.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    write_record(args.record, record)
     print(
         json.dumps(
             {
@@ -473,6 +515,7 @@ def submit(args):
     )
 
 
+@serialized_record_update
 def close_failed_attempt(args):
     record = json.loads(args.record.read_text(encoding="utf-8"))
     if record.get("status") != "started":
@@ -481,15 +524,15 @@ def close_failed_attempt(args):
         fail("a failure or interruption requires a reason")
     record["status"] = args.command
     record["failure_reason"] = args.reason.strip()
-    if args.command != "timeout":
-        record["failure_class"] = args.failure_class
-    record["closed_monotonic"] = time.monotonic()
-    args.record.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    record["failure_class"] = (
+        "task_timeout" if args.command == "timeout" else args.failure_class
     )
+    record["closed_monotonic"] = time.monotonic()
+    write_record(args.record, record)
     print(json.dumps({"status": record["status"], "run_id": record["run_id"]}))
 
 
+@serialized_record_update
 def mark_session(args):
     record = json.loads(args.record.read_text(encoding="utf-8"))
     if record.get("status") != "started":
@@ -500,9 +543,7 @@ def mark_session(args):
     record[target].append(
         {"details": args.details.strip(), "monotonic": time.monotonic()}
     )
-    args.record.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    write_record(args.record, record)
     print(
         json.dumps({"run_id": record["run_id"], "event": args.event, "recorded": True})
     )
@@ -613,14 +654,12 @@ def mcp_server(args):
 
     def log_tool_error(name, message):
         try:
-            record = json.loads(args.record.read_text(encoding="utf-8"))
-            record.setdefault("tool_errors", []).append(
-                {"tool": name, "message": message, "monotonic": time.monotonic()}
-            )
-            args.record.write_text(
-                json.dumps(record, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
+            with record_lock(args.record):
+                record = json.loads(args.record.read_text(encoding="utf-8"))
+                record.setdefault("tool_errors", []).append(
+                    {"tool": name, "message": message, "monotonic": time.monotonic()}
+                )
+                write_record(args.record, record)
         except (OSError, ValueError):
             pass
 
@@ -691,17 +730,15 @@ def mcp_server(args):
                         raise UsageError("unknown collector tool")
                 content = json.dumps(payload, ensure_ascii=False)
                 try:
-                    record = json.loads(args.record.read_text(encoding="utf-8"))
-                    if name in {"read_candidate", "search_candidate"} and record.get(
-                        "events"
-                    ):
-                        record["events"][-1]["tool_output_bytes"] = len(
-                            content.encode("utf-8")
-                        )
-                        args.record.write_text(
-                            json.dumps(record, ensure_ascii=False, indent=2) + "\n",
-                            encoding="utf-8",
-                        )
+                    with record_lock(args.record):
+                        record = json.loads(args.record.read_text(encoding="utf-8"))
+                        if name in {"read_candidate", "search_candidate"} and record.get(
+                            "events"
+                        ):
+                            record["events"][-1]["tool_output_bytes"] = len(
+                                content.encode("utf-8")
+                            )
+                            write_record(args.record, record)
                 except (OSError, ValueError):
                     pass
                 result = {
@@ -804,7 +841,7 @@ def parser():
         item.add_argument("--reason", required=True)
         item.add_argument(
             "--failure-class",
-            choices=("infrastructure", "protocol", "task"),
+            choices=("infrastructure", "quota_exhausted", "workspace_load", "protocol", "task"),
             required=True,
         )
     item = commands.add_parser(

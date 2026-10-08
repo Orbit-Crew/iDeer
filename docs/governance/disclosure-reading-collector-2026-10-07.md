@@ -3,9 +3,9 @@ id: disclosure-reading-collector-2026-10-07
 kind: reference
 status: current
 owner: repository maintainers
-scope: reader-isolated document inspection, six-field submission, and preserved attempt records
-last-verified: 2026-10-07
-verified-against: worktree docs/disclosure-readability-recovery
+scope: reader-isolated document inspection, six-field submission, dispatch stopping, and preserved attempt lifecycle
+last-verified: 2026-10-08
+verified-against: worktree docs/disclosure-dual-track, ticket 02 recovery changes
 ---
 
 # Disclosure reading collector
@@ -86,23 +86,39 @@ tools above. `project_doc_max_bytes=0` prevents automatic loading of project
 `AGENTS.md`; the reader must get that content through the timed collector.
 The comparable configuration fixes the first-read startup deadline at 60
 seconds and the task timeout at 300 seconds. Startup expiration is retained as
-a retryable infrastructure failure; task timeout is terminal and cannot be
+a retryable workspace-load failure; task timeout is terminal and cannot be
 redrawn. Both values are recorded with the session and included in the config
 fingerprint. A completed run that exits without a persisted submission is a
-terminal task failure; only nonzero exits with explicit transport/config
-evidence are eligible protocol retries.
+terminal task failure; explicit collector transport/config evidence is a
+protocol failure.
 Codex config supports these feature and MCP allowlist controls in its
 [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference).
 
-Each attempt has a unique ID and its original record is retained. Only an
-infrastructure or protocol failure can have one linked retry, with an explicit
-reason and identical candidate, task, model, and tool configuration. Startup
-expiration is retryable infrastructure; a task timeout or submitted answer is
-not retryable. An interruption is retryable only when its recorded failure
-class is infrastructure or protocol; a task-class interruption remains a
-failed attempt. Mark externally provided help or other contamination before
-submission with the audit tool. The reader cannot mark an answer correct or
-change the failure status.
+Each attempt has a unique ID and its original record is retained. An
+infrastructure, workspace-load, or protocol failure can have one linked retry,
+with an explicit reason and identical candidate, task, model, and tool
+configuration. Quota exhaustion is terminal for dispatch: the runner records a
+quota marker before closing the attempt, and later invocations in the same
+output directory recover the stop from that marker, a quota-classified record,
+or a retained trace, then return `dispatch_stopped` with exit code 75. Each
+runner invocation accepts one task and does not own the caller's queue; the
+caller must stop launching tasks and leave unstarted entries in their existing
+order. A task timeout or submitted answer is not retryable; a
+wrong answer remains a submitted answer for the scorer to grade. The runner
+handles SIGINT and SIGTERM by killing and waiting for only its Codex process
+group, then records an open attempt as interrupted/infrastructure. If an
+answer was already persisted, cancellation preserves the submitted status.
+Mark externally provided help or other contamination before submission with
+the audit tool. The reader cannot mark an answer correct or change the failure
+status.
+
+Session records are updated under a per-record process lock. Each update is
+flushed to a same-directory temporary file and atomically replaced, so runner
+polling sees a complete JSON snapshot and concurrent collector commands do not
+discard each other's events. A terminal submission cannot be overwritten by a
+later failure close. The final record and JSONL trace remain together even for
+failed, timed-out, or interrupted attempts; failure-close time is not an answer
+submission duration.
 
 The runner defaults to the `non-scored` stage. Its `--stage formal` option uses
 a separate formal-session label; the selected stage is recorded in the tool

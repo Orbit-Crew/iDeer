@@ -1,8 +1,11 @@
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -143,6 +146,190 @@ def test_overlap_union_counts_utf8_bytes_and_rejects_escape(tmp_path):
     assert "safe, candidate-relative" in escaped.stderr
 
 
+def test_parallel_public_reads_preserve_every_recorded_event(tmp_path):
+    root, manifest = candidate(tmp_path)
+    record = start(tmp_path, root, manifest)
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "AGENTS.md").returncode == 0
+
+    def read_line(line):
+        return run(
+            "read",
+            "--manifest",
+            manifest,
+            "--record",
+            record,
+            "--path",
+            "notes.md",
+            "--start",
+            str(line),
+        )
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        results = list(pool.map(read_line, [1, 2] * 6))
+
+    assert all(result.returncode == 0 for result in results)
+    saved = json.loads(record.read_text(encoding="utf-8"))
+    assert len(saved["events"]) == 13
+    assert [event["ranges"][0]["path"] for event in saved["events"]].count("notes.md") == 12
+
+
+def test_failure_close_cannot_replace_a_persisted_submission(tmp_path):
+    root, manifest = candidate(tmp_path)
+    record = start(tmp_path, root, manifest)
+    assert run("read", "--manifest", manifest, "--record", record, "--path", "AGENTS.md").returncode == 0
+    answer = {field: f"answer for {field}" for field in ("entry", "constraints", "authorities", "relevant_decisions", "validation", "unknowns")}
+    submitted = run("submit", "--record", record, input_text=json.dumps(answer))
+    assert submitted.returncode == 0
+
+    late_failure = run(
+        "failed",
+        "--record",
+        record,
+        "--reason",
+        "late runner failure",
+        "--failure-class",
+        "infrastructure",
+    )
+
+    assert late_failure.returncode == 2
+    saved = json.loads(record.read_text(encoding="utf-8"))
+    assert saved["status"] == "submitted"
+    assert saved["answer"] == answer
+    assert "failure_reason" not in saved
+
+
+def test_runner_timeout_cleans_only_its_child_process_group(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_codex = fake_bin / "codex"
+    marker = tmp_path / "orphan-was-not-killed"
+    child_pid = tmp_path / "child.pid"
+    fake_codex.write_text(
+        "#!/usr/bin/env python3\n"
+        "import os, subprocess, sys, time\n"
+        "if '--version' in sys.argv: print('codex-cli test')\n"
+        "elif sys.argv[1:3] == ['debug', 'models']: print('{\"models\":[{\"slug\":\"gpt-6.1-sol\"}]}')\n"
+        "else:\n"
+        f"    child = subprocess.Popen([sys.executable, '-c', \"import pathlib,time; time.sleep(0.7); pathlib.Path('{marker}').touch()\"])\n"
+        f"    pathlib = __import__('pathlib'); pathlib.Path('{child_pid}').write_text(str(child.pid))\n"
+        "    time.sleep(5)\n",
+        encoding="utf-8",
+    )
+    fake_codex.chmod(0o755)
+    root, manifest = candidate(tmp_path)
+    prompt = tmp_path / "prompt.txt"
+    prompt.write_text("A generic task prompt.\n", encoding="utf-8")
+    sibling = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(10)"])
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(RUNNER),
+                "--root",
+                str(root),
+                "--manifest",
+                str(manifest),
+                "--candidate",
+                "after",
+                "--task",
+                "history",
+                "--prompt-file",
+                str(prompt),
+                "--out-dir",
+                str(tmp_path / "runner-output"),
+                "--startup-timeout-seconds",
+                "0.1",
+            ],
+            text=True,
+            capture_output=True,
+            env={**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"]},
+            check=False,
+        )
+        assert result.returncode == 124
+        run_data = json.loads(result.stdout)
+        record = json.loads(Path(run_data["record"]).read_text(encoding="utf-8"))
+        assert record["status"] == "failed"
+        assert record["failure_class"] == "workspace_load"
+        assert Path(run_data["trace"]).is_file()
+        time.sleep(0.9)
+        assert not marker.exists()
+        assert sibling.poll() is None
+        assert child_pid.exists()
+    finally:
+        sibling.terminate()
+        sibling.wait()
+
+
+def test_runner_sigterm_cleans_child_group_and_records_interruption(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_codex = fake_bin / "codex"
+    marker = tmp_path / "cancelled-child-ran"
+    child_pid = tmp_path / "cancelled-child.pid"
+    fake_codex.write_text(
+        "#!/usr/bin/env python3\n"
+        "import pathlib, subprocess, sys, time\n"
+        "if '--version' in sys.argv: print('codex-cli test')\n"
+        "elif sys.argv[1:3] == ['debug', 'models']: print('{\"models\":[{\"slug\":\"gpt-6.1-sol\"}]}')\n"
+        "else:\n"
+        f"    child = subprocess.Popen([sys.executable, '-c', \"import pathlib,time; time.sleep(0.7); pathlib.Path('{marker}').touch()\"])\n"
+        f"    pathlib.Path('{child_pid}').write_text(str(child.pid))\n"
+        "    time.sleep(10)\n",
+        encoding="utf-8",
+    )
+    fake_codex.chmod(0o755)
+    root, manifest = candidate(tmp_path)
+    prompt = tmp_path / "prompt.txt"
+    prompt.write_text("A generic task prompt.\n", encoding="utf-8")
+    sibling = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(10)"])
+    runner = subprocess.Popen(
+        [
+            sys.executable,
+            str(RUNNER),
+            "--root",
+            str(root),
+            "--manifest",
+            str(manifest),
+            "--candidate",
+            "after",
+            "--task",
+            "history",
+            "--prompt-file",
+            str(prompt),
+            "--out-dir",
+            str(tmp_path / "cancel-output"),
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env={**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"]},
+    )
+    try:
+        deadline = time.monotonic() + 10
+        while not child_pid.exists() and runner.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert child_pid.exists()
+        os.kill(runner.pid, signal.SIGTERM)
+        stdout, stderr = runner.communicate(timeout=5)
+
+        assert runner.returncode == 128 + signal.SIGTERM
+        assert stderr == ""
+        result_data = json.loads(stdout)
+        record = json.loads(Path(result_data["record"]).read_text(encoding="utf-8"))
+        assert record["status"] == "interrupted"
+        assert record["failure_class"] == "infrastructure"
+        assert Path(result_data["trace"]).is_file()
+        assert sibling.poll() is None
+        time.sleep(0.9)
+        assert not marker.exists()
+    finally:
+        if runner.poll() is None:
+            runner.kill()
+            runner.wait()
+        sibling.terminate()
+        sibling.wait()
+
+
 def test_only_one_linked_retry_for_infrastructure_or_protocol_failure(tmp_path):
     root, manifest = candidate(tmp_path)
     original = start(tmp_path, root, manifest)
@@ -182,6 +369,57 @@ def test_only_one_linked_retry_for_infrastructure_or_protocol_failure(tmp_path):
     )
     assert denied.returncode == 2
     assert "already been used" in denied.stderr
+
+
+def test_concurrent_retry_launches_claim_only_one_retry_slot(tmp_path):
+    root, manifest = candidate(tmp_path)
+    original = start(tmp_path, root, manifest)
+    assert (
+        run(
+            "failed",
+            "--record",
+            original,
+            "--reason",
+            "collector process exited before submit",
+            "--failure-class",
+            "protocol",
+        ).returncode
+        == 0
+    )
+
+    def launch(run_id):
+        return run(
+            "start",
+            "--root",
+            root,
+            "--manifest",
+            manifest,
+            "--record",
+            tmp_path / f"{run_id}.json",
+            "--run-id",
+            run_id,
+            "--candidate",
+            "after",
+            "--task",
+            "history",
+            "--task-hash",
+            "a" * 64,
+            "--model-config",
+            "gpt-6.1-sol; reasoning=medium",
+            "--tool-config-sha256",
+            "b" * 64,
+            "--retry-of",
+            original,
+            "--retry-reason",
+            "one retry is permitted",
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        attempts = list(pool.map(launch, ("retry-a", "retry-b")))
+
+    assert sorted(result.returncode for result in attempts) == [0, 2]
+    prior = json.loads(original.read_text(encoding="utf-8"))
+    assert prior["retry_run_id"] in {"retry-a", "retry-b"}
 
 
 def test_mcp_exposes_only_collector_operations_and_submits_answer(tmp_path):
@@ -269,6 +507,7 @@ def test_timeout_cannot_be_retried_and_external_help_is_audited(tmp_path):
     original = start(tmp_path, root, manifest)
     timeout = run("timeout", "--record", original, "--reason", "session exceeded the fixed task limit")
     assert timeout.returncode == 0
+    assert json.loads(original.read_text(encoding="utf-8"))["failure_class"] == "task_timeout"
     retry = run(
         "start",
         "--root",
@@ -295,7 +534,7 @@ def test_timeout_cannot_be_retried_and_external_help_is_audited(tmp_path):
         "do not redraw a timeout",
     )
     assert retry.returncode == 2
-    assert "only failed or interrupted infrastructure/protocol attempts" in retry.stderr
+    assert "only failed or interrupted infrastructure" in retry.stderr
     next_record = start(tmp_path, root, manifest, "trial-help")
     audited = run(
         "mark",
@@ -540,8 +779,8 @@ def test_runner_no_submit_is_terminal_and_pre_read_hang_has_finite_deadline(tmp_
     prompt.write_text("A generic task prompt.\n", encoding="utf-8")
     for mode, expected_class in (
         ("clean", "task"),
-        ("hang", "infrastructure"),
-        ("usage", "infrastructure"),
+        ("hang", "workspace_load"),
+        ("usage", "quota_exhausted"),
     ):
         out_dir = tmp_path / f"output-{mode}"
         env = {
@@ -589,7 +828,7 @@ def test_runner_no_submit_is_terminal_and_pre_read_hang_has_finite_deadline(tmp_
             assert "no successful first read" in record["failure_reason"]
         elif mode == "usage":
             assert result.returncode == 1
-            assert "classified as infrastructure" in record["failure_reason"]
+            assert "classified as quota_exhausted" in record["failure_reason"]
             trace = Path(result_data["trace"]).read_text(encoding="utf-8")
             assert "usage limit" in trace.lower()
         else:
@@ -620,4 +859,100 @@ def test_runner_no_submit_is_terminal_and_pre_read_hang_has_finite_deadline(tmp_
                 "must reject terminal task failure",
             )
             assert retry.returncode == 2
-            assert "only failed or interrupted infrastructure/protocol attempts" in retry.stderr
+            assert "only failed or interrupted infrastructure" in retry.stderr
+
+
+def test_runner_quota_exhaustion_stops_later_dispatches(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_codex = fake_bin / "codex"
+    calls = tmp_path / "exec-calls"
+    fake_codex.write_text(
+        "#!/usr/bin/env python3\n"
+        "import os, sys\n"
+        "if '--version' in sys.argv: print('codex-cli test')\n"
+        "elif sys.argv[1:3] == ['debug', 'models']: print('{\"models\":[{\"slug\":\"gpt-6.1-sol\"}]}')\n"
+        "else:\n"
+        f"    with open('{calls}', 'a', encoding='utf-8') as output: output.write('started\\n')\n"
+        '    print(\'{"type":"error","message":"You have hit your usage limit."}\')\n'
+        "    sys.exit(1)\n",
+        encoding="utf-8",
+    )
+    fake_codex.chmod(0o755)
+    root, manifest = candidate(tmp_path)
+    prompt = tmp_path / "prompt.txt"
+    prompt.write_text("A generic task prompt.\n", encoding="utf-8")
+    output = tmp_path / "runner-output"
+    env = {**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"]}
+    command = [
+        sys.executable,
+        str(RUNNER),
+        "--root",
+        str(root),
+        "--manifest",
+        str(manifest),
+        "--candidate",
+        "after",
+        "--task",
+        "history",
+        "--prompt-file",
+        str(prompt),
+        "--out-dir",
+        str(output),
+    ]
+    exhausted = subprocess.run(command, text=True, capture_output=True, env=env, check=False)
+    assert exhausted.returncode == 1
+    stopped = subprocess.run(command, text=True, capture_output=True, env=env, check=False)
+
+    assert stopped.returncode == 75
+    assert json.loads(stopped.stdout)["status"] == "dispatch_stopped"
+    assert calls.read_text(encoding="utf-8").splitlines() == ["started"]
+
+
+def test_runner_recovers_quota_stop_from_record_without_marker(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_codex = fake_bin / "codex"
+    called = tmp_path / "codex-was-launched"
+    fake_codex.write_text(
+        f"#!/usr/bin/env python3\nimport pathlib\npathlib.Path('{called}').touch()\n",
+        encoding="utf-8",
+    )
+    fake_codex.chmod(0o755)
+    root, manifest = candidate(tmp_path)
+    prompt = tmp_path / "prompt.txt"
+    prompt.write_text("A generic task prompt.\n", encoding="utf-8")
+    output = tmp_path / "runner-output"
+    output.mkdir()
+    (output / "quota-attempt.json").write_text(
+        json.dumps({"run_id": "quota-attempt", "status": "failed", "failure_class": "quota_exhausted"}),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(RUNNER),
+            "--root",
+            str(root),
+            "--manifest",
+            str(manifest),
+            "--candidate",
+            "after",
+            "--task",
+            "history",
+            "--prompt-file",
+            str(prompt),
+            "--out-dir",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+        env={**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"]},
+        check=False,
+    )
+
+    assert result.returncode == 75
+    assert json.loads(result.stdout)["blocked_by_run_id"] == "quota-attempt"
+    assert not called.exists()
+    assert (output / "quota-exhausted.json").is_file()

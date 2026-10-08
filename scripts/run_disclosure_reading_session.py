@@ -5,6 +5,8 @@ import argparse
 import atexit
 import hashlib
 import json
+import os
+import signal
 import shutil
 import subprocess
 import sys
@@ -12,7 +14,12 @@ import tempfile
 import time
 from pathlib import Path
 
-from disclosure_reading_collector import MAX_SESSION_SECONDS, digest, mcp_tool_schemas
+from disclosure_reading_collector import (
+    MAX_SESSION_SECONDS,
+    digest,
+    mcp_tool_schemas,
+    write_record,
+)
 
 MCP_TOOLS = [
     "read_candidate",
@@ -84,11 +91,17 @@ def load_isolation_model_catalog(codex, model, catalog_file=None):
 
 
 def classify_runner_failure(trace_path):
+    quota_indicators = ("usage limit", "quota exhausted", "quota exceeded", "hit your limit")
+    workspace_indicators = (
+        "workspace requirements",
+        "failed to load workspace",
+        "workspace load failed",
+        "could not load workspace",
+    )
     infrastructure_indicators = (
         "connection refused",
         "rate limit",
         "try again at",
-        "usage limit",
     )
     protocol_indicators = (
         "approval policy",
@@ -97,33 +110,70 @@ def classify_runner_failure(trace_path):
         "unexpected argument",
         "transport",
     )
+
+    def classify_message(message):
+        message = message.casefold()
+        if any(word in message for word in quota_indicators):
+            return "quota_exhausted"
+        if any(word in message for word in workspace_indicators):
+            return "workspace_load"
+        if any(word in message for word in protocol_indicators):
+            return "protocol"
+        if any(word in message for word in infrastructure_indicators):
+            return "infrastructure"
+        return None
+
     for line in trace_path.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
             if line.lstrip().casefold().startswith(("error:", "fatal:")):
-                message = line.casefold()
-                if any(word in message for word in infrastructure_indicators):
-                    return "infrastructure"
-                if any(word in message for word in protocol_indicators):
-                    return "protocol"
+                if classification := classify_message(line):
+                    return classification
             continue
         if event.get("type") in {"error", "turn.failed"}:
-            message = json.dumps(event).casefold()
-            if any(word in message for word in infrastructure_indicators):
-                return "infrastructure"
-            if any(word in message for word in protocol_indicators):
-                return "protocol"
+            if classification := classify_message(json.dumps(event)):
+                return classification
         item = event.get("item", {})
-        if item.get("type") == "error":
-            return "protocol"
         error = event.get("error") or item.get("error")
         if error:
-            message = json.dumps(error).casefold()
-            if any(word in message for word in infrastructure_indicators):
-                return "infrastructure"
-            if any(word in message for word in protocol_indicators):
-                return "protocol"
+            if classification := classify_message(json.dumps(error)):
+                return classification
+        if item.get("type") == "error":
+            return "protocol"
+    return None
+
+
+def find_quota_exhaustion(out_dir, marker_path):
+    if marker_path.exists():
+        return json.loads(marker_path.read_text(encoding="utf-8"))
+    for record_path in sorted(out_dir.glob("*.json")):
+        if record_path == marker_path:
+            continue
+        try:
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if record.get("failure_class") == "quota_exhausted":
+            marker = {
+                "run_id": record.get("run_id"),
+                "record": str(record_path),
+                "trace": str(out_dir / f"{record_path.stem}.jsonl"),
+            }
+            write_record(marker_path, marker)
+            return marker
+    for trace_path in sorted(out_dir.glob("*.jsonl")):
+        try:
+            if classify_runner_failure(trace_path) == "quota_exhausted":
+                marker = {
+                    "run_id": trace_path.stem,
+                    "record": str(out_dir / f"{trace_path.stem}.json"),
+                    "trace": str(trace_path),
+                }
+                write_record(marker_path, marker)
+                return marker
+        except OSError:
+            continue
     return None
 
 
@@ -137,6 +187,19 @@ def call_collector(args, *command):
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or result.stdout.strip())
     return result.stdout
+
+
+def terminate_process_group(process):
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait()
+
+
+class RunnerCancelled(Exception):
+    def __init__(self, signum):
+        self.signum = signum
 
 
 def main():
@@ -186,6 +249,18 @@ def main():
         parser.error("startup timeout must be a positive number of seconds")
     args.out_dir = args.out_dir.resolve()
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    quota_marker = args.out_dir / "quota-exhausted.json"
+    if marker := find_quota_exhaustion(args.out_dir, quota_marker):
+        print(
+            json.dumps(
+                {
+                    "status": "dispatch_stopped",
+                    "failure_class": "quota_exhausted",
+                    "blocked_by_run_id": marker.get("run_id"),
+                }
+            )
+        )
+        return 75
     try:
         isolation_catalog, original_model, model_catalog_source_sha256 = load_isolation_model_catalog(codex, args.model, args.model_catalog_file)
     except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as exc:
@@ -384,18 +459,35 @@ def main():
         encoding="utf-8",
     )
 
+    process = None
+    cancelled_signal = None
+    previous_handlers = {}
+
+    def handle_cancellation(signum, _frame):
+        raise RunnerCancelled(signum)
+
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        previous_handlers[signum] = signal.signal(signum, handle_cancellation)
     try:
         with trace.open("w", encoding="utf-8") as log:
             process_started = time.monotonic()
-            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, text=True)
+            process = subprocess.Popen(
+                command,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                text=True,
+                start_new_session=True,
+            )
             timed_out = False
             startup_timed_out = False
             while process.poll() is None:
                 current = json.loads(record.read_text(encoding="utf-8"))
+                if current.get("status") != "started":
+                    terminate_process_group(process)
+                    break
                 started = current.get("started_monotonic")
                 if started is None and time.monotonic() - process_started > args.startup_timeout_seconds:
-                    process.kill()
-                    process.wait()
+                    terminate_process_group(process)
                     call_collector(
                         args,
                         "failed",
@@ -404,13 +496,12 @@ def main():
                         "--reason",
                         f"no successful first read within {args.startup_timeout_seconds} seconds of runner launch",
                         "--failure-class",
-                        "infrastructure",
+                        "workspace_load",
                     )
                     startup_timed_out = True
                     break
                 if started is not None and time.monotonic() - started > MAX_SESSION_SECONDS:
-                    process.kill()
-                    process.wait()
+                    terminate_process_group(process)
                     call_collector(
                         args,
                         "timeout",
@@ -422,12 +513,35 @@ def main():
                     timed_out = True
                     break
                 time.sleep(0.2)
+    except RunnerCancelled as cancellation:
+        cancelled_signal = cancellation.signum
     finally:
+        if process is not None:
+            terminate_process_group(process)
+        for signum, handler in previous_handlers.items():
+            signal.signal(signum, handler)
         catalog_path.unlink(missing_ok=True)
     current = json.loads(record.read_text(encoding="utf-8"))
+    if cancelled_signal is not None and current["status"] == "started":
+        call_collector(
+            args,
+            "interrupted",
+            "--record",
+            record,
+            "--reason",
+            f"runner received {signal.Signals(cancelled_signal).name} after cleaning its child process group",
+            "--failure-class",
+            "infrastructure",
+        )
+        current = json.loads(record.read_text(encoding="utf-8"))
     if current["status"] == "started":
         evidence_class = classify_runner_failure(trace) if process.returncode != 0 else None
         failure_class = evidence_class or "task"
+        if failure_class == "quota_exhausted":
+            write_record(
+                quota_marker,
+                {"run_id": run_id, "record": str(record), "trace": str(trace)},
+            )
         reason = f"Codex exited with status {process.returncode} without a persisted six-field submit; classified as {failure_class}"
         call_collector(
             args,
@@ -450,9 +564,12 @@ def main():
                 "config": str(config_path),
                 "timed_out": timed_out,
                 "startup_timed_out": startup_timed_out,
+                "interrupted": cancelled_signal is not None,
             }
         )
     )
+    if cancelled_signal is not None:
+        return 128 + cancelled_signal
     if timed_out or startup_timed_out:
         return 124
     return 2 if current["status"] == "failed" and process.returncode == 0 else process.returncode
