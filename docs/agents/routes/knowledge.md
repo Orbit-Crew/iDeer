@@ -16,7 +16,7 @@ scope: KnowledgeBase and Knowledge Center list/create, visibility, identity, and
 
 **条件决策：** 发布、可见性或 fork 涉及资源生命周期时读[Resource Governance V2](../../decisions/2026-08-14-resource-governance-v2.md)；`docs/testing/` 的验收报告仅供追溯历史。
 
-**代码入口：** `backend/app/gateway/routers/resources.py::list_resources` 调用 `ResourceService.list_visible`；Gateway seam 为 `backend/app/agentplatform/resource_service.py`，可见性过滤实现在 `backend/app/agentplatform/resources/service.py::ResourceService._visible_query/list_visible`。管理检查入口为 `backend/app/gateway/routers/admin_knowledge.py`。
+**代码入口：** 列表从 `backend/app/gateway/routers/resources.py::list_resources` 进入，调用 `backend/app/agentplatform/resources/service.py::ResourceService.list_visible`；用户范围在同文件 `ResourceService._visible_query` 组装。检查 `/api/resources` 返回时从这个调用链开始。管理检查入口为 `backend/app/gateway/routers/admin_knowledge.py`。
 
 **首验证：** 先跑 [`test_resources_api.py`](../../../backend/tests/unit/gateway/test_resources_api.py) 核验 `/api/resources`；之后匹配 backend standard lane 与 `pr-standard`。
 
