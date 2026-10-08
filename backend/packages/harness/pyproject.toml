@@ -38,6 +38,10 @@ dependencies = [
     "packaging>=24.2",
     "python-docx>=1.1.2",
     "pydantic>=2.12.5",
+    # Preferred PDF->Markdown converter (file_conversion auto mode falls back
+    # to MarkItDown when this import is missing, so absence degrades quietly);
+    # pinned here so offline images ship it and tests exercise the real path.
+    "pymupdf4llm>=0.0.17,<2",
     "pyyaml>=6.0.3",
     "readabilipy>=0.3.0",
     "tavily-python>=0.7.17",
