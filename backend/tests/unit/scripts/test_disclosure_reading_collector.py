@@ -618,6 +618,11 @@ def test_manifest_hashes_but_never_exposes_scoring_or_benchmark_material(tmp_pat
         "docs/specs/evaluation-prompt.md": "private scoring anchor marker\n",
         "docs/zero_agent_eval_cases/case_04/prompt.md": "private scoring anchor marker\n",
         "docs/governance/disclosure-reading-collector-2026-10-07.md": "private scoring anchor marker\n",
+        "docs/governance/disclosure-dual-track-protocol-v2-2026-10-08.md": "private scoring anchor marker\n",
+        "docs/governance/disclosure-dual-track-calibration-2026-10-08.md": "private scoring anchor marker\n",
+        "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket09.md": "private scoring anchor marker\n",
+        "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket10.md": "private scoring anchor marker\n",
+        "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md": "private scoring anchor marker\n",
     }
     for rel, text in hidden.items():
         path = root / rel
@@ -841,6 +846,13 @@ def test_runner_config_identity_ignores_candidate_and_record_paths(tmp_path):
             "list_mcp_resources",
             "list_mcp_resource_templates",
             "read_mcp_resource",
+        ]
+        assert configs[-1]["config"]["mcp_tools"] == [
+            "read_candidate",
+            "list_candidate_headings",
+            "search_candidate",
+            "submit_answer",
+            "report_session_event",
         ]
         assert configs[-1]["config"]["model_metadata_tools"] == {
             "send_user_message_async": [

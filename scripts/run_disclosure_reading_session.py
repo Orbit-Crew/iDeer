@@ -23,6 +23,7 @@ from disclosure_reading_collector import (
 
 MCP_TOOLS = [
     "read_candidate",
+    "list_candidate_headings",
     "search_candidate",
     "submit_answer",
     "report_session_event",
@@ -47,7 +48,9 @@ STARTUP_TIMEOUT_SECONDS = 60
 
 def isolation_model_catalog(catalog, model):
     """Keep the selected catalog entry intact except for native file patch access."""
-    matches = [entry for entry in catalog.get("models", []) if entry.get("slug") == model]
+    matches = [
+        entry for entry in catalog.get("models", []) if entry.get("slug") == model
+    ]
     if len(matches) != 1:
         raise ValueError(f"expected one model catalog entry for {model!r}")
     isolated = dict(matches[0])
@@ -91,7 +94,12 @@ def load_isolation_model_catalog(codex, model, catalog_file=None):
 
 
 def classify_runner_failure(trace_path):
-    quota_indicators = ("usage limit", "quota exhausted", "quota exceeded", "hit your limit")
+    quota_indicators = (
+        "usage limit",
+        "quota exhausted",
+        "quota exceeded",
+        "hit your limit",
+    )
     workspace_indicators = (
         "workspace requirements",
         "failed to load workspace",
@@ -223,7 +231,9 @@ def main():
     )
     parser.add_argument("--prompt-file", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
-    parser.add_argument("--stage", choices=("non-scored", "formal"), default="non-scored")
+    parser.add_argument(
+        "--stage", choices=("non-scored", "formal"), default="non-scored"
+    )
     parser.add_argument("--model-catalog-file", type=Path)
     parser.add_argument("--model", default="gpt-6.1-sol")
     parser.add_argument(
@@ -231,7 +241,9 @@ def main():
         choices=("low", "medium", "high", "xhigh", "max", "ultra"),
         default="medium",
     )
-    parser.add_argument("--startup-timeout-seconds", type=float, default=STARTUP_TIMEOUT_SECONDS)
+    parser.add_argument(
+        "--startup-timeout-seconds", type=float, default=STARTUP_TIMEOUT_SECONDS
+    )
     parser.add_argument("--retry-of", type=Path)
     parser.add_argument("--retry-reason", default="")
     args = parser.parse_args()
@@ -239,7 +251,9 @@ def main():
     codex = shutil.which("codex")
     if not codex:
         parser.error("codex CLI is not available on PATH")
-    args.collector = Path(__file__).with_name("disclosure_reading_collector.py").resolve()
+    args.collector = (
+        Path(__file__).with_name("disclosure_reading_collector.py").resolve()
+    )
     root = args.root.resolve(strict=True)
     manifest = args.manifest.resolve(strict=True)
     prompt = args.prompt_file.read_text(encoding="utf-8")
@@ -262,10 +276,14 @@ def main():
         )
         return 75
     try:
-        isolation_catalog, original_model, model_catalog_source_sha256 = load_isolation_model_catalog(codex, args.model, args.model_catalog_file)
+        isolation_catalog, original_model, model_catalog_source_sha256 = (
+            load_isolation_model_catalog(codex, args.model, args.model_catalog_file)
+        )
     except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as exc:
         parser.error(f"could not prepare the isolated model tool catalog: {exc}")
-    catalog_json = json.dumps(isolation_catalog, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    catalog_json = json.dumps(
+        isolation_catalog, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     catalog_sha256 = hashlib.sha256(catalog_json.encode("utf-8")).hexdigest()
     catalog_model = isolation_catalog["models"][0]
     with tempfile.NamedTemporaryFile(
@@ -286,26 +304,34 @@ def main():
     prompt_copy.write_text(prompt, encoding="utf-8")
 
     tool_config = {
-        "codex_cli": subprocess.run([codex, "--version"], text=True, capture_output=True, check=True).stdout.strip(),
+        "codex_cli": subprocess.run(
+            [codex, "--version"], text=True, capture_output=True, check=True
+        ).stdout.strip(),
         "stage": args.stage,
         "model": args.model,
         "reasoning": args.reasoning,
         "resolved_model_version": None,
         "model_version_limit": "codex exec --json exposes the requested model alias and CLI build, not the resolved backend model revision",
-        "model_catalog_source": "pinned-file" if args.model_catalog_file else "codex-debug-models",
+        "model_catalog_source": "pinned-file"
+        if args.model_catalog_file
+        else "codex-debug-models",
         "model_catalog_source_sha256": model_catalog_source_sha256,
         "model_catalog_sha256": catalog_sha256,
         "model_tool_metadata_original": {
             "tool_mode": original_model.get("tool_mode"),
             "shell_type": original_model.get("shell_type"),
             "apply_patch_tool_type": original_model.get("apply_patch_tool_type"),
-            "experimental_supported_tools": original_model.get("experimental_supported_tools", []),
+            "experimental_supported_tools": original_model.get(
+                "experimental_supported_tools", []
+            ),
         },
         "model_tool_metadata_effective": {
             "tool_mode": catalog_model.get("tool_mode"),
             "shell_type": catalog_model.get("shell_type"),
             "apply_patch_tool_type": catalog_model.get("apply_patch_tool_type"),
-            "experimental_supported_tools": catalog_model.get("experimental_supported_tools", []),
+            "experimental_supported_tools": catalog_model.get(
+                "experimental_supported_tools", []
+            ),
         },
         "task_timeout_seconds": MAX_SESSION_SECONDS,
         "startup_timeout_seconds": args.startup_timeout_seconds,
@@ -339,12 +365,14 @@ def main():
                 separators=(",", ":"),
             ).encode("utf-8")
         ),
-        "mcp_approval": "auto for the four explicitly allowlisted collector tools",
+        "mcp_approval": "auto for the five explicitly allowlisted collector tools",
         "web_search": "disabled",
         "disabled_features": DISABLED_FEATURES,
         "approval_policy": "automatic review; shell feature disabled and apply_patch metadata removed; code-mode wrappers may expose only enabled nested handlers",
     }
-    tool_config["collector_sha256"] = hashlib.sha256(args.collector.read_bytes()).hexdigest()
+    tool_config["collector_sha256"] = hashlib.sha256(
+        args.collector.read_bytes()
+    ).hexdigest()
     manifest_info = json.loads(manifest.read_text(encoding="utf-8"))
     manifest_sha256 = manifest_info["manifest_sha256"]
     exclusion_sha256 = manifest_info["exclusion_sha256"]
@@ -392,7 +420,9 @@ def main():
         "mcp_servers.disclosure_collector.default_tools_approval_mode": '"auto"',
     }
     for tool in MCP_TOOLS:
-        config_values[f"mcp_servers.disclosure_collector.tools.{tool}.approval_mode"] = '"auto"'
+        config_values[
+            f"mcp_servers.disclosure_collector.tools.{tool}.approval_mode"
+        ] = '"auto"'
     for key, value in config_values.items():
         command.extend(["-c", f"{key}={value}"])
     stage_instruction = {
@@ -407,7 +437,11 @@ def main():
         "Task:\n" + prompt
     )
     command.extend(["--json", task_prompt])
-    tool_config_sha256 = digest(json.dumps(tool_config, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+    tool_config_sha256 = digest(
+        json.dumps(
+            tool_config, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    )
     start_args = [
         "start",
         "--root",
@@ -486,7 +520,11 @@ def main():
                     terminate_process_group(process)
                     break
                 started = current.get("started_monotonic")
-                if started is None and time.monotonic() - process_started > args.startup_timeout_seconds:
+                if (
+                    started is None
+                    and time.monotonic() - process_started
+                    > args.startup_timeout_seconds
+                ):
                     terminate_process_group(process)
                     call_collector(
                         args,
@@ -500,7 +538,10 @@ def main():
                     )
                     startup_timed_out = True
                     break
-                if started is not None and time.monotonic() - started > MAX_SESSION_SECONDS:
+                if (
+                    started is not None
+                    and time.monotonic() - started > MAX_SESSION_SECONDS
+                ):
                     terminate_process_group(process)
                     call_collector(
                         args,
@@ -535,7 +576,9 @@ def main():
         )
         current = json.loads(record.read_text(encoding="utf-8"))
     if current["status"] == "started":
-        evidence_class = classify_runner_failure(trace) if process.returncode != 0 else None
+        evidence_class = (
+            classify_runner_failure(trace) if process.returncode != 0 else None
+        )
         failure_class = evidence_class or "task"
         if failure_class == "quota_exhausted":
             write_record(
@@ -572,7 +615,11 @@ def main():
         return 128 + cancelled_signal
     if timed_out or startup_timed_out:
         return 124
-    return 2 if current["status"] == "failed" and process.returncode == 0 else process.returncode
+    return (
+        2
+        if current["status"] == "failed" and process.returncode == 0
+        else process.returncode
+    )
 
 
 if __name__ == "__main__":
