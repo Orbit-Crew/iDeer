@@ -74,4 +74,8 @@ triage: execution-complete; new-acceptance-incomplete-not-passed; legacy-not-exe
 
 ## Further Notes
 
+## Implementation closeout (2026-10-10)
+
+The user ended additional ROOT model reading and directed engineering delivery closeout. Ticket 07 remains incomplete and below its frozen gates; NAV remains separately incomplete as detailed in the [engineering closeout report](../experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md). The ROOT compact-guidance implementation is delivered, but its formal reading queue was not started. No historic reading result or failed NAV slot was changed. This status records implementation and the user's decision to defer further measurement; it does not mark any effectiveness gate passed.
+
 The pre-edit engineering candidate is `5687f8b90b96de73887e91e3984ad74d0772a01b`. The old frozen baseline is `867f6709642854721f209a15e362d79a96b3b489`. Detailed diagnosis and original raw artifacts remain in the prior ignored local `dev-log/`; transfer them outside the old worktree before cleanup. Prior source report: `docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md`.

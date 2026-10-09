@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 53,
+    "count": 54,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3622,8 +3622,8 @@
         "lines": 77,
         "classification": "engineering-body-review",
         "protected": false,
-        "role": "specification for repaired disclosure tools, focused guidance, and dual-track reading acceptance",
-        "referenced_by": "docs/README.md specs directory entry"
+        "role": "specification for repaired disclosure tools, focused guidance, and dual-track reading acceptance; engineering work closed with measured acceptance incomplete",
+        "referenced_by": "docs/README.md specs directory entry; docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md"
       },
       {
         "path": "docs/governance/disclosure-dual-track-protocol-v2-2026-10-08.md",
@@ -3772,8 +3772,8 @@
         "lines": 98,
         "classification": "engineering-body-review",
         "protected": false,
-        "role": "ready-for-agent draft specification for retrospective item 5: evidence-led task-branch navigation and independent reading acceptance",
-        "referenced_by": "docs/README.md pending disclosure specifications"
+        "role": "archived specification for delivered task-branch navigation; NAV effect gates remain incomplete and optional further measurement is deferred by user decision",
+        "referenced_by": "docs/README.md disclosure specification status; docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md"
       },
       {
         "path": "docs/specs/2026-10-09-root-gitnexus-guidance-compaction-spec.md",
@@ -3782,8 +3782,8 @@
         "lines": 99,
         "classification": "engineering-body-review",
         "protected": false,
-        "role": "ready-for-agent draft specification for retrospective item 6: root GitNexus guidance compaction, obligation preservation and regeneration validation",
-        "referenced_by": "docs/README.md pending disclosure specifications"
+        "role": "archived specification for delivered compact ROOT GitNexus guidance; formal reading effectiveness remains unmeasured and reading was deferred by user decision",
+        "referenced_by": "docs/README.md disclosure specification status; docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md"
       },
       {
         "path": "docs/experiments/disclosure-branch-hotspots-2026-10-09.md",
@@ -3823,6 +3823,16 @@
         "classification": "engineering-body-review",
         "protected": false,
         "role": "reviewer-only report for frozen NAV branch-navigation reading comparison; formal correctness and reading-cost gates remain incomplete",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md",
+        "registration": "post-baseline-addition",
+        "sha256": "69bb3d77d8134004d588f95ca3eca654406435d176c6d82836f77f24b7f573be",
+        "lines": 35,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only closeout report separating delivered disclosure engineering from incomplete NAV gates and deferred ROOT model reading",
         "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
       }
     ]

@@ -1,12 +1,12 @@
 ---
 id: docs-specs-2026-10-09-root-gitnexus-guidance-compaction
 kind: plan
-status: draft
+status: archived
 owner: repository maintainers
 scope: compact always-loaded root GitNexus guidance without weakening obligations or regeneration safety
 last-verified: 2026-10-09
 verified-against: docs/disclosure-dual-track @ dbd6c2df7099b11d9bd1406ff282bf01360b079d
-triage: ready-for-agent
+triage: implementation-delivered; formal-reading-deferred-by-user; effect-unmeasured
 ---
 
 # 精简根指引中的 GitNexus 说明
@@ -90,6 +90,14 @@ coding agent 每次进入项目都会加载根指引，包括并非每个任务�
 - Altering historical scores, asserting general development speed gains, splitting implementation tickets, or running model-backed acceptance during specification publication.
 
 ## Further Notes
+
+## Implementation closeout (2026-10-10)
+
+Engineering implementation is delivered: the root guidance is 7,256 UTF-8 bytes and its managed GitNexus block is 1,164 bytes, against the recorded 10,226-byte / 4,134-byte pre-edit values (29.0436% root reduction). The force-generation and normalization path was exercised, with safety and mirror checks recorded in the ignored engineering handoff. This does not establish a measured reading effect.
+
+The ROOT formal reader queue was never started. One non-scored pilot startup failed before a process launched, and two subsequent startup requests were rejected by automatic review before process launch. The user then chose to stop ROOT model reading. These are execution facts, not reader answers or evidence that the compact guidance passed its behavioral gate. The final integration `pr-standard` remains a later delivery gate; its result must be recorded against the final candidate and must not be inferred from earlier checks. See the [engineering closeout report](../experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md).
+
+Status `archived` records that this implementation is closed for the current decision. Formal reading effectiveness remains unmeasured, and no outcome is claimed for it.
 
 - This is retrospective item 6. Reference candidate: `docs/disclosure-dual-track @ dbd6c2df7099b11d9bd1406ff282bf01360b079d`. The current [root source](../../AGENTS.md) and [mirror](../../CLAUDE.md) contain the managed block; this spec does not itself change them.
 - Existing constraints and seams: [document checker](../../scripts/check_documents.py), [guidance size checker](../../scripts/check_agent_guidance.py), [guidance mirror tool](../../scripts/sync_agent_guidance.py), [document hygiene entry](../../scripts/check_doc_hygiene.sh), and [document governance](../governance/document-governance.md). The exemption check currently requires its lead phrase inside the managed block.

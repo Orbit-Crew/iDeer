@@ -1,12 +1,12 @@
 ---
 id: docs-specs-2026-10-09-disclosure-task-branch-navigation
 kind: plan
-status: draft
+status: archived
 owner: repository maintainers
 scope: evidence-led task-branch navigation within existing engineering documentation routes
 last-verified: 2026-10-09
 verified-against: docs/disclosure-dual-track @ dbd6c2df7099b11d9bd1406ff282bf01360b079d
-triage: ready-for-agent
+triage: implementation-delivered; effect-gates-incomplete; optional-measurement-deferred-by-user
 ---
 
 # 按具体改动分支引导文档阅读
@@ -93,7 +93,13 @@ The four NAV route edits were delivered in after candidate `f10b0c525eb1438d0439
 
 The non-scored branch matrix reached all 13 named branches, one mixed task, and one ambiguous task. The formal 32-slot comparison remains incomplete: slots 11–13 ended as quota failures under the fixed protocol, after has 11 correct and 3 incorrect answers among 14 submitted, and baseline has 13 correct and 2 incorrect among 15 submitted. C adjudicated all 18 disagreements. The after routine Markdown sample has 9 of 10 valid answers, so the 30% cost threshold cannot be evaluated. The report records the independent cost recomputation, archive hashes, restoration, and evidence limits in [ticket 05's acceptance report](../experiments/disclosure-branch-navigation-acceptance-2026-10-09.md).
 
-The document edits are delivered, but the specification remains `draft` because the requested measured-effectiveness gates are incomplete. This record does not claim that NAV caused a difference between the incomplete candidate samples, or that the separate root GitNexus-guidance specification is complete.
+The document edits are delivered. The measured-effectiveness gates remain incomplete; they do not determine whether the implementation was delivered. This record does not claim that NAV caused a difference between the incomplete candidate samples, or that the separate root GitNexus-guidance specification is complete.
+
+## Implementation closeout (2026-10-10)
+
+The user ended further ROOT model reading and directed engineering closeout. NAV remains delivered with its formal-effect results incomplete: final scoring is 13/16 baseline and 11/16 after, with three permanent quota failures in the fixed denominator; reading cost is incomplete because only 9/10 after routine answers are valid. The 15 non-scored branch pilots and eight second-action probes are reachability evidence only. Because wording changed in item 05, they do not establish a causal effect. No NAV slot was retried, replaced, or removed. Details remain in the [NAV acceptance report](../experiments/disclosure-branch-navigation-acceptance-2026-10-09.md).
+
+Status `archived` means implementation work is recorded and no further experiment is scheduled by this decision. It does not mean the measured-effectiveness gates passed. Optional future measurement would require a separately authorized plan and must preserve the frozen queue and its permanent failures.
 
 ## Further Notes
 
