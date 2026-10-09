@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 52,
+    "count": 53,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3814,6 +3814,16 @@
         "protected": false,
         "role": "GitNexus commands, worktree/index checks, analysis completeness, and guidance regeneration procedure",
         "referenced_by": "root AGENTS.md GitNexus managed block"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-navigation-acceptance-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "13c6fa458296181f87eaf9b3f30b57d6d6f4f5a7bf7d5ec9a0c2f2cf67c2ad9b",
+        "lines": 101,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only report for frozen NAV branch-navigation reading comparison; formal correctness and reading-cost gates remain incomplete",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
       }
     ]
   },
