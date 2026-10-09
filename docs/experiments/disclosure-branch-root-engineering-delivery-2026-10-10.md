@@ -22,11 +22,11 @@ The local handoff records 28 focused checks and 15 G3 regressions, alongside doc
 
 The frozen NAV queue remains 32 slots. Final adjudicated scoring is baseline 13/16 and after 11/16. Slots 11–13 are permanent quota failures under the protocol; they were not retried, replaced, or removed from the denominator. Formal correctness therefore remains incomplete. The required after routine Markdown cost sample has 9 valid answers out of 10, so the cost gate is also incomplete.
 
-Fifteen non-scored branch pilots and eight second-action probes reached their expected checks. They support reachability only. The wording for item 05 changed, so these observations cannot establish that NAV caused a measured outcome. The formal report and its archived evidence remain the source for scoring, cost, and custody details: [NAV acceptance](disclosure-branch-navigation-acceptance-2026-10-09.md).
+The 15 non-scored NAV branch pilots reached their expected branch checks; this supports route reachability only. Separately, eight ROOT second-action probes reached their expected checks. Item 05 wording changed between the relevant ROOT probe conditions, so those probes do not isolate a documentation effect or establish a causal outcome. Neither set of probes completes NAV formal scoring or cost gates. The formal NAV report and its archived evidence remain the source for scoring, cost, and custody details: [NAV acceptance](disclosure-branch-navigation-acceptance-2026-10-09.md).
 
 ## ROOT measurement status
 
-The 32-session ROOT formal queue was not started. One pilot attempt failed before a process launched; two later startup attempts were rejected by automatic review before process launch. No reader submission, task answer, or ROOT effectiveness score resulted. The user then directed that ROOT model reading stop. No finding about reader behavior or formal gate status can be inferred from those startup events.
+The 32-session ROOT formal queue was not started. One pilot launched the CLI but failed during app-server initialization before any model or collector reading began; its recorded duration was 2.252 seconds, with `started_monotonic` null and no read events. Two later launch requests were rejected by automatic review before execution. No reader submission, task answer, or ROOT effectiveness score resulted. The user then directed that ROOT model reading stop. No finding about reader behavior or formal gate status can be inferred from those startup events.
 
 The earlier dual-track ticket 07 and ticket 08 records remain unchanged. Their findings are not replaced by this delivery note. The NAV and ROOT specifications record implementation completion and deferred or incomplete measurement independently.
 

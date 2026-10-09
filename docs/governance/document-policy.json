@@ -3828,7 +3828,7 @@
       {
         "path": "docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md",
         "registration": "post-baseline-addition",
-        "sha256": "69bb3d77d8134004d588f95ca3eca654406435d176c6d82836f77f24b7f573be",
+        "sha256": "c2eafe1cd23b1b0ed6f8a09db67e3308a04b61e5fe85213c8e59463f901ff0ff",
         "lines": 35,
         "classification": "engineering-body-review",
         "protected": false,
