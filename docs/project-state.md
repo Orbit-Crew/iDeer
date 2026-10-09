@@ -4,8 +4,8 @@ kind: reference
 status: current
 owner: repository maintainers
 scope: develop 线候选的七域实现/集成/验证状态摘要
-last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ ba5c37163
+last-verified: 2026-10-06
+verified-against: develop @ 002b29878 plus this worktree; document governance section only
 ---
 
 # 项目状态（候选口径）
@@ -13,13 +13,15 @@ verified-against: worktree docs/agent-doc-disclosure @ ba5c37163
 > audience: coding agents, developers, maintainers<br>
 > canonical-path: `docs/project-state.md`
 
-本页描述 **`develop` 线**的工程状态，按七个域区分实现（implementation）、集成（integration）与验证（verification）。撰写时最后核对的候选为工作树分支 `docs/agent-doc-disclosure` @ `9de1de284`（内容基线为 `develop` @ `a959b99be` 加文档治理提交）；除注明"经 git 核对"的事实外，各项状态以所引证据文件为准，本页不重复其正文。
+本页包含不同候选的领域快照。**2026-10-06 仅重核文档治理与本页第 7 节**，基于 `develop @ 002b29878` 加本次修复；第 1–6 节未重跑产品验收，沿用下述原候选记录。
+
+第 1–6 节保留 2026-10-04 文档改造期间的领域快照，原记录涉及 `9de1de284` 与后续文档候选 `ba5c37163`。这些状态尚未在当前 develop 上复核；各节所引证据只适用于其记录的候选，不能据此推断当前产品状态。第 7 节记录本次实际检查的文档治理状态。
 
 状态口径（本页固定词汇）：
 
 - **实现状态**描述能力是否存在于代码树并由跟踪文档记载；决策被接受（accepted）不等于已实现，跟踪文档无实现记录的一律写 `not recorded`。
 - **集成状态**描述该能力与其他子系统的接合方式及登记的兼容面（如 harness 补丁、provider 绑定）。
-- **验证状态**只承认**当前候选**上的跟踪验证产物；本页撰写时七个域均为 `not run at this candidate`。历史 lane/验收结果仅属于其记录时的候选，一律标注"历史"引用，不构成当前验证。
+- **验证状态**只承认**当前候选**上的跟踪验证产物；第 1–6 节的产品验收未在本次候选运行；第 7 节的实际检查见修复记录。历史 lane/验收结果仅属于其记录时的候选，一律标注"历史"引用，不构成当前验证。
 - **证据**仅引用跟踪文件；gitignored 的 `dev-log/` 与 `.scratch/` 不作为证据。
 
 未完成工作的唯一入口是 [backlog.md](backlog.md)；本页的 next work 只给指针，不在本页复制待办目录，也不在此维护能力目录之外的第二份清单。
@@ -101,9 +103,9 @@ verified-against: worktree docs/agent-doc-disclosure @ ba5c37163
 - **Candidate/branch**: 本页候选（见页首）。
 - **Implementation**: lane 执行器 `scripts/run-test-lane.sh`、测试清单 `scripts/test_inventory.py`、运行前检查 `scripts/test_preflight.py`、只读文档检查器 `scripts/check_documents.py` 在树中；lane 契约、覆盖映射与迁移账本由 [testing 文档群](testing/README.md)承载。
 - **Integration**: Make 与 GitHub Actions 作为 lane 适配器（[覆盖矩阵](testing/coverage-matrix.md)规则记载）；文档治理清单与保护文件指纹由 `docs/governance/document-policy.json` 承载，检查器按候选校验清单覆盖、链接、权威唯一性、路由与 supersession。
-- **Verification**: **not run at this candidate**（产品测试 lane 未在本候选运行）。本页撰写时在本候选运行过一次 `python3 scripts/check_documents.py --repo-root . --json`：299 项 findings，全部为先存发现（metadata-shape 250、broken-anchor 31、broken-link 16、inventory-coverage 2）。[覆盖矩阵](testing/coverage-matrix.md) `last-verified: 2026-07-15`，早于 v2.1.0 合并。
+- **Verification**: `develop @ 002b29878` 的文档检查为 0 findings、28 对指引一致、67 个保护指纹匹配。检查器当时仍漏查 supplements 正文与任务路由；本次修复以 CLI 回归测试补齐检查。产品 lane 结果与阅读复测结果见[本次修复记录](governance/disclosure-review-fixes-2026-10-06.md)，不得沿用旧候选的验收结果。
 - **Limitations**: 覆盖矩阵的行为→测试层映射未在本候选复核，且按规格不得以批量刷新验证日期代替内容审查；[覆盖矩阵](testing/coverage-matrix.md)记载 PR standard lane "先 shadow 两周后转 blocking"，其转换是否已发生未在本候选复核。
 - **Evidence**: [测试入口](testing/README.md)、[lane 运行手册](testing/test-lane-runbook.md)、[覆盖矩阵](testing/coverage-matrix.md)、[迁移账本](testing/test-migration-ledger.md)、`scripts/check_documents.py`、`docs/governance/document-policy.json`。
 - **Current contract**: [测试入口](testing/README.md) + [lane 运行手册](testing/test-lane-runbook.md) + 根 `AGENTS.md` 测试指引节。
-- **Next work**: 覆盖矩阵内容复核（对照当前候选与 v2.1.0 后的测试面，不得只刷日期）；文档治理票据推进中收敛 inventory-coverage 先存发现。
+- **Next work**: 覆盖矩阵内容复核（对照当前候选与 v2.1.0 后的测试面，不得只刷日期）；文档治理原 59 票已完成并合入，后续补强也已合入；本次审查缺口及验收状态见修复记录。
 - **Owner**: test maintainers（据 testing 文档 owner 列）。

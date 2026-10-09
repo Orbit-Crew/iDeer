@@ -28,15 +28,15 @@ Rule IDs (stable):
   protected-fingerprint-mismatch  protected file content fingerprints
   gitnexus-exemption-missing    AGENTS.md GitNexus block keeps the doc-only exemption line
 
-Optional policy key ``task_routes``: a list of
-``{"route": path, "targets": [path, ...], "validation": path}`` entries.
-Every named path must exist in the candidate. When the key is absent the
-route check reports nothing.
+Required ``task_domains`` names the task domains; ``task_routes`` contains one
+``{"domain": name, "route": path, "targets": [path, ...], "validation": path}``
+entry per domain. Targets and validation are mandatory, and every named path
+must exist in the candidate. Missing configuration is a route-incomplete finding.
 
-Optional policy key ``supplements``: registered inventory-only paths outside
-the seed. Every supplement path counts as covered and must exist in the
-candidate; its recorded sha256/lines stay point-in-time registration records,
-not enforced fingerprints.
+Optional ``supplements`` registers paths outside the frozen seed. These paths
+participate in body checks with the same classification rules as inventory.
+Their recorded sha256/lines remain point-in-time registration records, not
+protected fingerprints.
 
 Path conventions: Markdown link/image targets resolve relative to the
 containing document (leading ``/`` resolves from the repository root);
@@ -269,7 +269,9 @@ def _supplement_paths(policy: dict) -> set[PurePosixPath]:
     supplements = policy.get("supplements")
     if supplements is None:
         return set()
-    if not isinstance(supplements, dict) or not isinstance(supplements.get("files"), list):
+    if not isinstance(supplements, dict) or not isinstance(
+        supplements.get("files"), list
+    ):
         raise OperationalError("policy supplements.files must be a list")
     return {PurePosixPath(str(row["path"])) for row in supplements["files"]}
 
@@ -828,6 +830,43 @@ def check_task_routes(policy: dict, tracked: set[PurePosixPath]) -> list[Finding
     routes = policy.get("task_routes", [])
     if not isinstance(routes, list):
         raise OperationalError("policy task_routes must be a list")
+    if not routes:
+        findings.append(
+            Finding(
+                RULE_ROUTE_INCOMPLETE,
+                "error",
+                POLICY_RELATIVE,
+                "",
+                "task_routes must contain the task routing configuration",
+            )
+        )
+    domains = policy.get("task_domains", [])
+    if (
+        not isinstance(domains, list)
+        or not domains
+        or any(not isinstance(domain, str) or not domain.strip() for domain in domains)
+    ):
+        findings.append(
+            Finding(
+                RULE_ROUTE_INCOMPLETE,
+                "error",
+                POLICY_RELATIVE,
+                "",
+                "task_domains must declare the required task domains",
+            )
+        )
+        domains = []
+    if len(domains) != len(set(domains)):
+        findings.append(
+            Finding(
+                RULE_ROUTE_INCOMPLETE,
+                "error",
+                POLICY_RELATIVE,
+                "",
+                "task_domains must contain unique domain names",
+            )
+        )
+    seen_domains: set[str] = set()
     for entry in routes:
         if not isinstance(entry, dict) or "route" not in entry:
             findings.append(
@@ -840,6 +879,54 @@ def check_task_routes(policy: dict, tracked: set[PurePosixPath]) -> list[Finding
                 )
             )
             continue
+        domain = entry.get("domain")
+        if (
+            not isinstance(domain, str)
+            or domain not in domains
+            or domain in seen_domains
+        ):
+            findings.append(
+                Finding(
+                    RULE_ROUTE_INCOMPLETE,
+                    "error",
+                    POLICY_RELATIVE,
+                    "",
+                    f"route domain {domain!r} must be declared and unique",
+                )
+            )
+        else:
+            seen_domains.add(domain)
+        targets = entry.get("targets")
+        if (
+            not isinstance(targets, list)
+            or not targets
+            or any(
+                not isinstance(target, str) or not target.strip() for target in targets
+            )
+        ):
+            findings.append(
+                Finding(
+                    RULE_ROUTE_INCOMPLETE,
+                    "error",
+                    POLICY_RELATIVE,
+                    "",
+                    f"route {domain!r} requires nonempty targets",
+                )
+            )
+            targets = []
+        if (
+            not isinstance(entry.get("validation"), str)
+            or not entry["validation"].strip()
+        ):
+            findings.append(
+                Finding(
+                    RULE_ROUTE_INCOMPLETE,
+                    "error",
+                    POLICY_RELATIVE,
+                    "",
+                    f"route {domain!r} requires a validation pointer",
+                )
+            )
         route = PurePosixPath(str(entry["route"]))
         if route not in tracked:
             findings.append(
@@ -851,7 +938,7 @@ def check_task_routes(policy: dict, tracked: set[PurePosixPath]) -> list[Finding
                     "route document does not exist in the candidate",
                 )
             )
-        for target in entry.get("targets", []) or []:
+        for target in targets:
             target_path = PurePosixPath(str(target))
             if target_path not in tracked:
                 findings.append(
@@ -864,7 +951,7 @@ def check_task_routes(policy: dict, tracked: set[PurePosixPath]) -> list[Finding
                     )
                 )
         validation = entry.get("validation")
-        if validation:
+        if isinstance(validation, str) and validation.strip():
             validation_path = PurePosixPath(str(validation))
             if validation_path not in tracked:
                 findings.append(
@@ -876,6 +963,16 @@ def check_task_routes(policy: dict, tracked: set[PurePosixPath]) -> list[Finding
                         f"route validation pointer {validation_path.as_posix()} does not exist in the candidate",
                     )
                 )
+    for domain in sorted(set(domains) - seen_domains):
+        findings.append(
+            Finding(
+                RULE_ROUTE_INCOMPLETE,
+                "error",
+                POLICY_RELATIVE,
+                "",
+                f"missing route for task domain {domain!r}",
+            )
+        )
     return findings
 
 
@@ -1080,7 +1177,14 @@ def check_stale_package_paths(
 # it uses lowercase keys ("> audience:", "> status:", "> canonical-path:") and
 # never matches. Documents without frontmatter are exempt: the blockquote is
 # then their only metadata carrier.
-_BLOCKQUOTE_RESIDUE_KEYS = ("状态", "当前状态", "日期", "制定日期", "创建日期", "生成日期")
+_BLOCKQUOTE_RESIDUE_KEYS = (
+    "状态",
+    "当前状态",
+    "日期",
+    "制定日期",
+    "创建日期",
+    "生成日期",
+)
 _BLOCKQUOTE_RESIDUE_RE = re.compile(
     r"^[ \t]*>[ \t]*\*\*(" + "|".join(_BLOCKQUOTE_RESIDUE_KEYS) + r")\*\*[ \t]*[:：]"
 )
@@ -1178,8 +1282,7 @@ def check_gitnexus_exemption(
             len(lines),
         )
         if any(
-            _GITNEXUS_EXEMPTION_LEAD in lines[index]
-            for index in range(start + 1, end)
+            _GITNEXUS_EXEMPTION_LEAD in lines[index] for index in range(start + 1, end)
         ):
             continue
         findings.append(
@@ -1199,6 +1302,16 @@ def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings: list[Finding] = []
     findings.extend(check_inventory_coverage(policy, source))
     findings.extend(check_protected_fingerprints(policy, source))
+    # Baseline registration stays immutable; all registered bodies share the
+    # same validation rules, including documents added after the baseline.
+    policy = {
+        **policy,
+        "inventory": {
+            **policy["inventory"],
+            "files": policy["inventory"]["files"]
+            + (policy.get("supplements") or {}).get("files", []),
+        },
+    }
     tracked = source.tracked_paths()
     texts = _document_texts(policy, source, tracked)
     findings.extend(check_metadata(policy, texts))

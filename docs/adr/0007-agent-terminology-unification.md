@@ -24,7 +24,7 @@ The unification is a one-time migration of roughly 30-60 files (expert routes, c
 
 ## Implementation status (2026-10-04)
 
-Landed and verified in the candidate: `/workspace/agents` routes and `agent-*` components are canonical (`agent-card`, `agent-settings-dialog` helpers restored), pre-unification `/workspace/capabilities/experts/*` paths are permanent redirects, no `ExpertList` or expert-prefixed components remain in `frontend/src`, and 专家 appears only in the `zh-CN` locale strings.
+在历史工作树 `docs/agent-doc-disclosure @ 02af2a4e8` 的抽查中，`/workspace/agents` 路由和 `agent-*` 组件已成为 canonical（恢复了 `agent-card`、`agent-settings-dialog` helpers），迁移前的 `/workspace/capabilities/experts/*` 路径已永久重定向，`frontend/src` 中不再有 `ExpertList` 或 expert 前缀组件，专家一词只出现在 `zh-CN` locale 文案中。这些事实只描述该历史工作树，不证明当前候选的实现或验证状态；当前候选状态见 [项目状态页](../project-state.md)。
 
 ## Re-evaluation triggers
 

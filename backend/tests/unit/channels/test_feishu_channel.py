@@ -1820,22 +1820,30 @@ class TestRunWs:
         assert captured_loop is not None
         captured_loop.close()
 
-    def test_run_ws_exception(self):
+    def test_run_ws_exception(self, caplog):
         ch = _make_channel()
         ch._running = True
 
-        with patch.dict("sys.modules", {"lark_oapi": MagicMock()}):
-            with patch("builtins.__import__", side_effect=RuntimeError("ws fail")):
-                # Should not raise, just log
-                ch._run_ws("app_id", "app_secret", "https://open.feishu.cn")
+        mock_lark = MagicMock()
+        mock_lark.ws.Client.return_value.start.side_effect = RuntimeError("ws fail")
+        with patch.dict("sys.modules", {"lark_oapi": mock_lark, "lark_oapi.ws.client": MagicMock()}):
+            ch._run_ws("app_id", "app_secret", "https://open.feishu.cn")
 
-    def test_run_ws_exception_when_not_running(self):
+        assert "Feishu WebSocket error" in caplog.text
+        assert "RuntimeError: ws fail" in caplog.text
+        assert ch._running is False
+
+    def test_run_ws_exception_when_not_running(self, caplog):
         ch = _make_channel()
         ch._running = False
-        # Should not log the exception
-        with patch.dict("sys.modules", {"lark_oapi": MagicMock()}):
-            with patch("builtins.__import__", side_effect=RuntimeError("ws fail")):
-                ch._run_ws("app_id", "app_secret", "https://open.feishu.cn")
+
+        mock_lark = MagicMock()
+        mock_lark.ws.Client.return_value.start.side_effect = RuntimeError("ws fail")
+        with patch.dict("sys.modules", {"lark_oapi": mock_lark, "lark_oapi.ws.client": MagicMock()}):
+            ch._run_ws("app_id", "app_secret", "https://open.feishu.cn")
+
+        assert "Feishu WebSocket error" not in caplog.text
+        assert ch._running is False
 
 
 # ---------------------------------------------------------------------------

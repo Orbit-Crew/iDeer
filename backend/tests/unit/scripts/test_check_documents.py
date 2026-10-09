@@ -100,6 +100,8 @@ def _base_policy(files: dict[str, bytes]) -> dict:
     return {
         "schema_version": 1,
         "policy_id": "checker-test-policy",
+        "task_domains": ["test-domain"],
+        "task_routes": [{"domain": "test-domain", "route": "docs/clean.md", "targets": ["docs/other.md"], "validation": "docs/other.md"}],
         "baseline": {"commit": "f" * 40, "baseline_delta": []},
         "inventory": {
             "count": len(inventory),
@@ -559,6 +561,7 @@ def test_route_entries_must_reach_existing_targets(tmp_path: Path, capsys) -> No
     policy = json.loads((tmp_path / POLICY_PATH).read_text(encoding="utf-8"))
     policy["task_routes"] = [
         {
+            "domain": "test-domain",
             "route": "docs/clean.md",
             "targets": ["docs/other.md", "docs/ghost.md"],
             "validation": "docs/testing-lane.md",
@@ -577,7 +580,7 @@ def test_route_entries_must_reach_existing_targets(tmp_path: Path, capsys) -> No
 def test_complete_route_entries_report_nothing(tmp_path: Path, capsys) -> None:
     _materialize_base(tmp_path)
     policy = json.loads((tmp_path / POLICY_PATH).read_text(encoding="utf-8"))
-    policy["task_routes"] = [{"route": "docs/clean.md", "targets": ["docs/other.md"], "validation": "docs/other.md"}]
+    policy["task_routes"] = [{"domain": "test-domain", "route": "docs/clean.md", "targets": ["docs/other.md"], "validation": "docs/other.md"}]
     _materialize_policy_only(tmp_path, policy)
     code, payload, _ = _invoke_json(capsys, tmp_path)
     assert code == 0
@@ -799,3 +802,62 @@ def test_candidate_without_gitnexus_block_reports_nothing(tmp_path: Path, capsys
     code, payload, _ = _invoke_json(capsys, tmp_path)
     assert code == 0
     assert _findings_by_rule(payload, "gitnexus-exemption-missing") == []
+
+
+def test_supplement_body_is_checked_in_selected_candidate(tmp_path: Path, capsys) -> None:
+    files = _base_files()
+    files["docs/supplement.md"] = OTHER_MD.replace("id: other-doc", "id: supplement").encode()
+    policy = _base_policy(files)
+    policy["supplements"] = {"files": [_row("docs/supplement.md", "engineering-body-review", files["docs/supplement.md"])]}
+    _materialize(tmp_path, files, policy)
+    (tmp_path / "docs/supplement.md").write_text("---\nid: supplement\nkind: reference\nstatus: current\nscope: tests\n---\n# Supplement\n[broken](missing.md)\n", encoding="utf-8")
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    assert {"metadata-shape", "broken-link", "evidence-missing"} <= {finding["rule"] for finding in payload["findings"] if finding["file"] == "docs/supplement.md"}
+    code, payload, _ = _invoke_json(capsys, tmp_path, "--revision", "HEAD")
+    assert code == 0, payload
+    assert payload["findings"] == []
+
+
+def test_missing_route_configuration_fails_cli(tmp_path: Path, capsys) -> None:
+    files = _base_files()
+    policy = _base_policy(files)
+    policy.pop("task_routes", None)
+    _materialize(tmp_path, files, policy)
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    assert _findings_by_rule(payload, "route-incomplete")
+
+
+def test_route_requires_every_domain_and_its_pointers(tmp_path: Path, capsys) -> None:
+    files = _base_files()
+    policy = _base_policy(files)
+    policy["task_domains"] = ["ui", "chat"]
+    policy["task_routes"] = [{"domain": "ui", "route": "docs/clean.md"}]
+    _materialize(tmp_path, files, policy)
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    reasons = " ".join(hit["reason"] for hit in _findings_by_rule(payload, "route-incomplete"))
+    assert "chat" in reasons
+    assert "targets" in reasons
+    assert "validation" in reasons
+
+
+def test_null_supplements_preserve_clean_candidate(tmp_path: Path, capsys) -> None:
+    files = _base_files()
+    policy = _base_policy(files)
+    policy["supplements"] = None
+    _materialize(tmp_path, files, policy)
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 0, payload
+    assert payload["findings"] == []
+
+
+def test_duplicate_task_domain_declarations_fail_cli(tmp_path: Path, capsys) -> None:
+    files = _base_files()
+    policy = _base_policy(files)
+    policy["task_domains"] = ["test-domain", "test-domain"]
+    _materialize(tmp_path, files, policy)
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    assert _findings_by_rule(payload, "route-incomplete")
