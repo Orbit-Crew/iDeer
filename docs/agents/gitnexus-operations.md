@@ -46,14 +46,14 @@ detect_changes({scope: "all"})
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 ```
 
-Partial or truncated output is incomplete. Rerun it and retain the full result. A zero means the graph did not map a change; it does not establish that nothing was affected. Use compare mode for regression review:
+Partial or truncated output is incomplete. A zero means the graph did not map a change; it does not establish that nothing was affected. For candidates outside the Markdown-only partial exception below, rerun incomplete or zero analysis until complete and retain the full result. Use compare mode for regression review:
 
 ```text
 detect_changes({scope: "compare", base_ref: "product/offline-1.x"})
 node .gitnexus/run.cjs detect-changes --scope compare --base-ref "product/offline-1.x" --repo .
 ```
 
-The sole partial exception is a commit where every changed path ends in `.md`. Record the partial result in the commit message; no re-index is required for that Markdown-only candidate. A script, test, configuration, workflow, or other non-Markdown path requires complete analysis.
+The sole partial exception is a commit where every changed path ends in `.md` and the output is partial but not truncated. Record the partial result in the commit message; no re-index is required for that Markdown-only candidate. Truncated output never qualifies. A script, test, configuration, workflow, or other non-Markdown path requires complete analysis.
 
 ### Worktree and index
 

@@ -43,7 +43,7 @@ Use Conventional Commits (`fix(scope): imperative summary`). PRs list behavior, 
 
 Before editing a symbol, run upstream impact and report callers, processes, and risk. Use MCP `impact(...)` or the CLI. HIGH or CRITICAL requires warning the user before edits. UNKNOWN remains unresolved; confirm callers in source before treating an empty result as safe. Search supplements graph analysis, never replaces it.
 
-Before committing, run complete `detect_changes({scope: "all"})`. Partial or truncated output is unresolved, and zero means unseen, not unaffected. Rerun the analysis. **Doc-only commits are exempt from re-indexing.** This applies only when every changed path ends in `.md`; record the partial result in the commit message. Every other change requires complete analysis.
+Before committing, run complete `detect_changes({scope: "all"})`. Partial or truncated output is unresolved, and zero means unseen, not unaffected. **Doc-only commits are exempt from re-indexing.** This exception applies only when every changed path ends in `.md` and the output is partial but not truncated; record that partial result in the commit message. For every other candidate, rerun incomplete or zero analysis until complete.
 
 For unfamiliar code, use `query(...)`; use `context(...)` for symbol callers, callees, and flows. Rename through GitNexus. For security review, `explain(...)` requires a prior `analyze --pdg`. See [GitNexus operations](docs/agents/gitnexus-operations.md#operations) for commands, resources, index identity, and recovery.
 <!-- gitnexus:end -->

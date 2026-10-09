@@ -29,6 +29,9 @@ RECOGNIZED_TEMPLATE_SHA256 = frozenset(
         "418f3c34a06d687b1a986fd7d632d61fd299b8b9d8e0b0644d420440f760dff3",
     }
 )
+PREVIOUS_COMPACT_BLOCK_SHA256 = (
+    "7a5dd0624185a293ba8c6ef2a075eb1cae57681c48448eb7b0d5bd65863cbaa4"
+)
 _PROJECT_IDENTITY = re.compile(
     rb"(?m)^(This project is indexed by GitNexus as \*\*)[A-Za-z0-9._-]+"
     rb"(\*\*)(?: \([0-9,]+ symbols, [0-9,]+ relationships, [0-9,]+ execution flows\))?\.$"
@@ -40,7 +43,7 @@ COMPACT_BLOCK = """<!-- gitnexus:start -->
 
 Before editing a symbol, run upstream impact and report callers, processes, and risk. Use MCP `impact(...)` or the CLI. HIGH or CRITICAL requires warning the user before edits. UNKNOWN remains unresolved; confirm callers in source before treating an empty result as safe. Search supplements graph analysis, never replaces it.
 
-Before committing, run complete `detect_changes({scope: \"all\"})`. Partial or truncated output is unresolved, and zero means unseen, not unaffected. Rerun the analysis. **Doc-only commits are exempt from re-indexing.** This applies only when every changed path ends in `.md`; record the partial result in the commit message. Every other change requires complete analysis.
+Before committing, run complete `detect_changes({scope: \"all\"})`. Partial or truncated output is unresolved, and zero means unseen, not unaffected. **Doc-only commits are exempt from re-indexing.** This exception applies only when every changed path ends in `.md` and the output is partial but not truncated; record that partial result in the commit message. For every other candidate, rerun incomplete or zero analysis until complete.
 
 For unfamiliar code, use `query(...)`; use `context(...)` for symbol callers, callees, and flows. Rename through GitNexus. For security review, `explain(...)` requires a prior `analyze --pdg`. See [GitNexus operations](docs/agents/gitnexus-operations.md#operations) for commands, resources, index identity, and recovery.
 <!-- gitnexus:end -->""".encode()
@@ -56,6 +59,8 @@ REQUIRED = (
     b"Partial or truncated",
     b"Doc-only commits are exempt from re-indexing.",
     b"every changed path ends in `.md`",
+    b"partial but not truncated",
+    b"rerun incomplete or zero analysis until complete",
     b"partial result in the commit message",
     b"query(",
     b"context(",
@@ -94,6 +99,8 @@ def _replace_block(data: bytes) -> bytes:
     current = data[start:end]
     if current == COMPACT_BLOCK:
         return data
+    if hashlib.sha256(current).hexdigest() == PREVIOUS_COMPACT_BLOCK_SHA256:
+        return data[:start] + COMPACT_BLOCK + data[end:]
     if not _is_generated_template(current):
         raise GuidanceError(
             "unrecognized generated GitNexus block; no files were changed"

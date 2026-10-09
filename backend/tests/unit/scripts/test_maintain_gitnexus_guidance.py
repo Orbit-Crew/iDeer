@@ -8,6 +8,7 @@ SCRIPT = Path(__file__).resolve().parents[4] / "scripts" / "maintain_gitnexus_gu
 REPO_ROOT = SCRIPT.parent.parent
 GENERATED_TEMPLATE = Path(__file__).with_name("fixtures") / "gitnexus-generated-1.6.10.txt"
 MANUAL_TEMPLATE = Path(__file__).with_name("fixtures") / "gitnexus-manual-before-compaction.txt"
+PREVIOUS_COMPACT = Path(__file__).with_name("fixtures") / "gitnexus-compact-before-g3-fix.txt"
 
 
 def _candidate(tmp_path: Path) -> None:
@@ -103,6 +104,27 @@ def test_public_normalizer_accepts_the_frozen_project_template(tmp_path: Path) -
 
     assert result.returncode == 0
     assert b"**Doc-only commits are exempt from re-indexing.**" in source.read_bytes()
+
+
+def test_public_normalizer_migrates_only_the_previous_compact_block(tmp_path: Path) -> None:
+    outside_before = b"Root rules before.\n"
+    outside_after = b"\nRoot rules after.\n"
+    source = tmp_path / "AGENTS.md"
+    previous = PREVIOUS_COMPACT.read_bytes()
+    original = outside_before + previous + outside_after
+    source.write_bytes(original)
+
+    result = _run("--normalize", root=tmp_path)
+
+    normalized = source.read_bytes()
+    assert result.returncode == 0
+    assert normalized != original
+    assert normalized.startswith(outside_before)
+    assert normalized.endswith(outside_after)
+    assert b"partial but not truncated" in normalized
+    assert b"rerun incomplete or zero analysis until complete" in normalized
+    assert _run("--normalize", root=tmp_path).returncode == 0
+    assert source.read_bytes() == normalized
 
 
 def test_public_normalizer_rejects_unknown_template_without_partial_write(tmp_path: Path) -> None:
