@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 49,
+    "count": 51,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3784,6 +3784,26 @@
         "protected": false,
         "role": "ready-for-agent draft specification for retrospective item 6: root GitNexus guidance compaction, obligation preservation and regeneration validation",
         "referenced_by": "docs/README.md pending disclosure specifications"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-hotspots-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "04de76d52c767cf9c3a41c99ed41a17807709d89a61a571a2dd442cd8bcb4ca2",
+        "lines": 86,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only evidence report for frozen task-level reading hotspots; excluded from reader prompts, candidates, and routes",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-review-matrix-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "dd324e7e1f0b5ef59b6cd3857120ac585da69eddd186d22f9f61ed24c3c05437",
+        "lines": 49,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only expected applicability matrix for independent review; excluded from reader prompts, candidates, and routes",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
       }
     ]
   },
