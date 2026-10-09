@@ -41,46 +41,9 @@ Use Conventional Commits (`fix(scope): imperative summary`). PRs list behavior, 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **AgentPlatform** (47479 symbols, 96181 relationships, 886 execution flows).
+Before editing a symbol, run upstream impact and report callers, processes, and risk. Use MCP `impact(...)` or the CLI. HIGH or CRITICAL requires warning the user before edits. UNKNOWN remains unresolved; confirm callers in source before treating an empty result as safe. Search supplements graph analysis, never replaces it.
 
-> Index stale? Run `node .gitnexus/run.cjs analyze --index-only` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? Bootstrap with `npx`, `bunx`, or `pnpm dlx` — e.g. `bunx gitnexus@latest analyze` (npm 11 npx crash; #1939).
+Before committing, run complete `detect_changes({scope: "all"})`. Partial or truncated output is unresolved, and zero means unseen, not unaffected. Rerun the analysis. **Doc-only commits are exempt from re-indexing.** This applies only when every changed path ends in `.md`; record the partial result in the commit message. Every other change requires complete analysis.
 
-## Always Do
-
-- **MUST run impact analysis before editing.** Use `impact({target: "symbolName", direction: "upstream"})` (MCP) or `node .gitnexus/run.cjs impact "symbolName" --direction upstream --repo .` (CLI fallback); report callers, processes, and risk. Never substitute grep for graph analysis.
-- **MUST analyze graph changes before committing.** Use `detect_changes({scope: "all"})` (MCP) or `node .gitnexus/run.cjs detect-changes --scope all --repo .` (CLI fallback). `partial: true` or `truncated: true` is not a clean check — a zero means unseen, not unaffected; re-run it. For regression review: `detect_changes({scope: "compare", base_ref: "product/offline-1.x"})` or `node .gitnexus/run.cjs detect-changes --scope compare --base-ref "product/offline-1.x" --repo .`.
-- **Doc-only commits are exempt from re-indexing.** A commit that touches only Markdown documentation files (every changed path ends in `.md` — e.g. `docs/`, `README.md`, `AGENTS.md` — with no code, config, workflow, script, or test changes) satisfies detect-changes by recording its `partial` result in the commit message — no re-index (`--index-only`) is required, and this is the only case where a `partial` result is acceptable. Every other commit must still follow the full MUST above.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- **MUST treat `risk: UNKNOWN` as unresolved, not as low.** An empty caller set is not evidence the symbol is unused — it can also mean the callers are not resolvable by the index (plain-object property access, dynamic dispatch, cross-language calls). `impact` pairs `UNKNOWN` with a `riskNote` saying so. Confirm with a text search before treating the symbol as safe to change or delete; do not proceed on the strength of a zero.
-- When exploring unfamiliar code, use `query({search_query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
-- For security review, `explain({target: "fileOrSymbol"})` lists taint findings (source→sink flows; needs `analyze --pdg`).
-
-## Never Do
-
-- NEVER edit a function, class, or method before MCP/CLI impact analysis.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis, and never read `UNKNOWN` as an all-clear — it means the walk could not answer, which is the one verdict that requires confirming by other means.
-- NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
-- NEVER commit before MCP/CLI graph change analysis.
-
-## Resources
-
-| Resource | Use for |
-| --- | --- |
-| `gitnexus://repo/AgentPlatform/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/AgentPlatform/clusters` | All functional areas |
-| `gitnexus://repo/AgentPlatform/processes` | All execution flows |
-| `gitnexus://repo/AgentPlatform/process/{name}` | Step-by-step execution trace |
-
-## CLI
-
-| Task | Read this skill file |
-| --- | --- |
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus-cli/SKILL.md` |
-
+For unfamiliar code, use `query(...)`; use `context(...)` for symbol callers, callees, and flows. Rename through GitNexus. For security review, `explain(...)` requires a prior `analyze --pdg`. See [GitNexus operations](docs/agents/gitnexus-operations.md#operations) for commands, resources, index identity, and recovery.
 <!-- gitnexus:end -->

@@ -127,7 +127,9 @@ def analyze(
     for path in sorted(agents):
         actual = normalized_utf8_size(head_files[path])
         soft, hard = agent_budget(path)
-        base_actual = normalized_utf8_size(base_files[path]) if path in base_files else None
+        base_actual = (
+            normalized_utf8_size(base_files[path]) if path in base_files else None
+        )
         file_finding = _budget_finding(
             code="AG001",
             path=path,
@@ -188,7 +190,9 @@ def _parse_paths(output: bytes) -> set[PurePosixPath]:
 
 def _worktree_paths(repo_root: Path) -> set[PurePosixPath]:
     return _parse_paths(
-        _run_git(repo_root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"])
+        _run_git(
+            repo_root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]
+        )
     )
 
 
@@ -231,7 +235,9 @@ def _changed_paths(
                 _run_git(repo_root, ["diff", "--name-only", "-z", revision_range, "--"])
             )
         )
-    tracked = _parse_paths(_run_git(repo_root, ["diff", "--name-only", "-z", "HEAD", "--"]))
+    tracked = _parse_paths(
+        _run_git(repo_root, ["diff", "--name-only", "-z", "HEAD", "--"])
+    )
     untracked = _parse_paths(
         _run_git(repo_root, ["ls-files", "--others", "--exclude-standard", "-z"])
     )
@@ -241,7 +247,9 @@ def _changed_paths(
 def _print_finding(finding: Finding, github_annotations: bool) -> None:
     if github_annotations:
         level = "error" if finding.severity == "error" else "warning"
-        print(f"::{level} file={finding.path.as_posix()},line=1,title={finding.code}::{finding.message}")
+        print(
+            f"::{level} file={finding.path.as_posix()},line=1,title={finding.code}::{finding.message}"
+        )
     print(
         f"{finding.severity.upper()} {finding.code} {finding.path.as_posix()}:1 — {finding.message}"
     )
@@ -249,13 +257,20 @@ def _print_finding(finding: Finding, github_annotations: bool) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--repo-root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
     parser.add_argument("--base-ref")
     parser.add_argument("--head-ref")
     parser.add_argument("--before")
     parser.add_argument("--after")
     parser.add_argument("--github-annotations", action="store_true")
     parser.add_argument("--strict-warnings", action="store_true")
+    parser.add_argument(
+        "--check-gitnexus",
+        action="store_true",
+        help="check root GitNexus budgets, obligations, reference, and mirror",
+    )
     return parser
 
 
@@ -298,7 +313,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_finding(finding, args.github_annotations)
     errors = sum(finding.severity == "error" for finding in findings)
     warnings = sum(finding.severity == "warning" for finding in findings)
-    print(f"Agent guidance check: {len(head_files)} AGENTS.md, {errors} errors, {warnings} warnings.")
+    if args.check_gitnexus:
+        command = [
+            sys.executable,
+            str(Path(__file__).with_name("maintain_gitnexus_guidance.py")),
+            "--check",
+            "--repo-root",
+            str(repo_root),
+        ]
+        if head_ref:
+            command.extend(["--revision", head_ref])
+        result = subprocess.run(
+            command, cwd=repo_root, capture_output=True, text=True, check=False
+        )
+        print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, file=sys.stderr, end="")
+        if result.returncode:
+            errors += 1
+    print(
+        f"Agent guidance check: {len(head_files)} AGENTS.md, {errors} errors, {warnings} warnings."
+    )
     return 1 if errors or (warnings and args.strict_warnings) else 0
 
 

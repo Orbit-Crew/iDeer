@@ -101,7 +101,7 @@ check:
 	@$(PYTHON) ./scripts/check.py
 
 check-agent-guidance:
-	@$(PYTHON) ./scripts/check_agent_guidance.py
+	@$(PYTHON) ./scripts/check_agent_guidance.py --check-gitnexus
 
 # Install all dependencies
 install:

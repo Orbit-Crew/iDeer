@@ -66,7 +66,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
-        run: python3 scripts/check_agent_guidance.py --before "$BASE_SHA" --after "$HEAD_SHA"
+        run: python3 scripts/check_agent_guidance.py --before "$BASE_SHA" --after "$HEAD_SHA" --check-gitnexus
       - name: Verify guidance mirrors at the candidate revision
         env:
           HEAD_SHA: ${{ github.sha }}
