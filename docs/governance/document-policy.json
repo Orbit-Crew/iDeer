@@ -3292,7 +3292,7 @@
     }
   ],
   "supplements": {
-    "count": 51,
+    "count": 52,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3804,6 +3804,16 @@
         "protected": false,
         "role": "reviewer-only expected applicability matrix for independent review; excluded from reader prompts, candidates, and routes",
         "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
+      },
+      {
+        "path": "docs/agents/gitnexus-operations.md",
+        "registration": "post-baseline-addition",
+        "sha256": "eb939529809a6beafd82f2ed702f7f9cd23f14ce542893bd5263f7c8c9834333",
+        "lines": 100,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "GitNexus commands, worktree/index checks, analysis completeness, and guidance regeneration procedure",
+        "referenced_by": "root AGENTS.md GitNexus managed block"
       }
     ]
   },

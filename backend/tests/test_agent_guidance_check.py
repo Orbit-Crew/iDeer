@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path, PurePosixPath
 
 import pytest
@@ -50,6 +52,61 @@ def _load_checker():
 
 
 checker = _load_checker()
+
+
+def test_public_guidance_cli_checks_compact_gitnexus_rules() -> None:
+    result = subprocess.run(
+        [sys.executable, str(CHECKER_PATH), "--check-gitnexus", "--repo-root", str(REPO_ROOT)],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "GitNexus root guidance check passed (working tree)." in result.stdout
+
+
+def test_public_guidance_cli_checks_the_selected_candidate_revision(tmp_path: Path) -> None:
+    for relative in ("AGENTS.md", "CLAUDE.md", "docs/agents/gitnexus-operations.md"):
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((REPO_ROOT / relative).read_bytes())
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "AGENTS.md", "CLAUDE.md", "docs/agents/gitnexus-operations.md"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=tmp_path, check=True)
+    base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True, text=True).stdout.strip()
+    agents = tmp_path / "AGENTS.md"
+    updated = agents.read_bytes() + b"\nCandidate-only note.\n"
+    agents.write_bytes(updated)
+    (tmp_path / "CLAUDE.md").write_bytes(updated)
+    subprocess.run(["git", "add", "AGENTS.md", "CLAUDE.md"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "candidate"], cwd=tmp_path, check=True)
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True, text=True).stdout.strip()
+    (tmp_path / "CLAUDE.md").write_text("working tree drift\n")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(CHECKER_PATH),
+            "--repo-root",
+            str(tmp_path),
+            "--before",
+            base,
+            "--after",
+            head,
+            "--check-gitnexus",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"GitNexus root guidance check passed (revision {head})." in result.stdout
 
 
 def _files(**overrides: str) -> dict[PurePosixPath, str]:
