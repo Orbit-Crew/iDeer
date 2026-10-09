@@ -87,6 +87,14 @@ triage: ready-for-agent
 - Adding a new practical coding acceptance exercise; the maintainer confirmed existing CLI checks plus reading acceptance as the validation boundary.
 - Splitting tickets, running the feature, or starting model-backed acceptance as part of specification publication.
 
+## Implementation status record (2026-10-09)
+
+The four NAV route edits were delivered in after candidate `f10b0c525eb1438d043951a30d19a99986761286`. The immutable comparison baseline is `73a2a168fa08cf1854d60d1ceff41c4b572f63a6`; the reader-visible candidate difference is limited to the Chat, KnowledgeBase, Permissions, and Tests route pages. The existing task-routing index remains within its 4 KiB budget, and all four route pages remain within their 6 KiB budgets.
+
+The non-scored branch matrix reached all 13 named branches, one mixed task, and one ambiguous task. The formal 32-slot comparison remains incomplete: slots 11–13 ended as quota failures under the fixed protocol, after has 11 correct and 3 incorrect answers among 14 submitted, and baseline has 13 correct and 2 incorrect among 15 submitted. C adjudicated all 18 disagreements. The after routine Markdown sample has 9 of 10 valid answers, so the 30% cost threshold cannot be evaluated. The report records the independent cost recomputation, archive hashes, restoration, and evidence limits in [ticket 05's acceptance report](../experiments/disclosure-branch-navigation-acceptance-2026-10-09.md).
+
+The document edits are delivered, but the specification remains `draft` because the requested measured-effectiveness gates are incomplete. This record does not claim that NAV caused a difference between the incomplete candidate samples, or that the separate root GitNexus-guidance specification is complete.
+
 ## Further Notes
 
 - This is retrospective item 5. The baseline reference is `docs/disclosure-dual-track @ dbd6c2df7099b11d9bd1406ff282bf01360b079d`; it identifies the completed prior candidate, not a passed reading-effectiveness result.
