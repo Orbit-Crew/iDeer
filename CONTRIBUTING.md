@@ -332,9 +332,9 @@ Every pull request triggers the following CI workflows:
 
 ## Need Help?
 
-- Check existing [Issues](https://github.com/bytedance/ideer/issues)
+- Check existing [Issues](https://github.com/Orbit-Crew/iDeer/issues)
 - Read the [Documentation](backend/docs/)
-- Ask questions in [Discussions](https://github.com/bytedance/ideer/discussions)
+- Ask questions by opening a [question-type issue](https://github.com/Orbit-Crew/iDeer/issues/new/choose) after checking the docs (this repository has Discussions disabled)
 
 Backend live-test commands are documented with `make test-live` and the `DEER_FLOW_RUN_LIVE_TESTS` opt-in.
 

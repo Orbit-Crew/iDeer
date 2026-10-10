@@ -84,7 +84,7 @@ body:
       label: How are you running iDeer?
       options:
         - Local (make dev)
-        - Docker (make docker-dev)
+        - Docker (make docker-start)
         - CI
         - Other
     validations:

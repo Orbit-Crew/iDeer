@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & usage help
+    url: https://gitea.com/TechCode/iDeer/src/branch/develop/docs/README.md
+    about: "Check the docs index first. If that does not answer it, open a question-type issue."
+  - name: 🔒 Report a security vulnerability
+    url: https://gitea.com/TechCode/iDeer/src/branch/develop/SECURITY.md
+    about: Do not open a public issue for security problems. Follow the security policy instead.

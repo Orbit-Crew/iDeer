@@ -113,6 +113,20 @@ labels:
     color: 5319e7
     description: A maintainer is reviewing this PR
 
+  # ── Triage (manual — see docs/agents/triage-labels.md) ────────────────────
+  - name: needs-info
+    color: 1d76db
+    description: Waiting on reporter for more information
+  - name: ready-for-agent
+    color: 0e8a16
+    description: Fully specified, ready for an AFK agent
+  - name: ready-for-human
+    color: 6f42c1
+    description: Requires human implementation
+  - name: wontfix
+    color: ffffff
+    description: Will not be actioned
+
   # ── Contributor ───────────────────────────────────────────────────────────
   - name: first-time-contributor
     color: c2e0c6

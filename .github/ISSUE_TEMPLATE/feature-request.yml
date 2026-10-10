@@ -6,16 +6,19 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the suggestion. For non-trivial features, please open a
-        [Discussion](https://github.com/bytedance/deer-flow/discussions/categories/ideas)
-        first to align on scope before writing code.
+        Thanks for the suggestion. Before writing code, please search the
+        [existing issues](https://github.com/Orbit-Crew/iDeer/issues) (including
+        closed ones) to confirm this is not a duplicate, and describe the
+        affected scope clearly below so the request can be triaged in one pass.
+        (Note: this repository has Discussions disabled — the issue itself is
+        the place to align on scope.)
 
   - type: checkboxes
     id: preflight
     attributes:
       label: Before you start
       options:
-        - label: I searched [existing issues](https://github.com/bytedance/deer-flow/issues?q=is%3Aissue) and this is not a duplicate.
+        - label: I searched [existing issues](https://github.com/Orbit-Crew/iDeer/issues) and this is not a duplicate.
           required: true
 
   - type: textarea
@@ -39,17 +42,16 @@ body:
     id: areas
     attributes:
       label: Affected area(s)
-      description: Which part of DeerFlow would this touch? Select all that apply.
+      description: Which part of iDeer would this touch? Select all that apply. The hint maps each area to its triage label.
       multiple: true
       options:
-        - Frontend (UI / Next.js)
-        - Backend API (gateway / endpoints / SSE)
-        - Agents / LangGraph (graph, prompts, langgraph.json)
-        - Sandbox / Docker
-        - Skills
-        - MCP
-        - Config / setup
-        - Docs
+        - Frontend (UI / Next.js) → area:frontend
+        - Backend API (gateway / endpoints / SSE) → area:backend
+        - Agents / LangGraph (graph, prompts, langgraph.json) → area:agents
+        - Sandbox / Docker → area:sandbox
+        - Skills → area:skills
+        - MCP → area:mcp
+        - Docs → area:docs
         - Not sure
     validations:
       required: true
