@@ -24,7 +24,7 @@ import mimetypes
 import os
 import shutil
 import uuid
-from collections.abc import Generator, Iterator, Mapping, Sequence
+from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -138,6 +138,24 @@ def _run_async_from_sync(coro):
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             return executor.submit(asyncio.run, coro).result()
     return asyncio.run(coro)
+
+
+def _accumulate_last_ai_text(events: Iterable[Any]) -> str:
+    """Accumulate delta ``messages-tuple`` AI events; return the last id's text.
+
+    Per-id delta lists joined once at the end — avoids the O(n²) cost of
+    repeated ``str + str`` on a growing buffer for long responses.
+    """
+    chunks: dict[str, list[str]] = {}
+    last_id: str = ""
+    for event in events:
+        if event.type == "messages-tuple" and event.data.get("type") == "ai":
+            msg_id = event.data.get("id") or ""
+            delta = event.data.get("content", "")
+            if delta:
+                chunks.setdefault(msg_id, []).append(delta)
+                last_id = msg_id
+    return "".join(chunks.get(last_id, ()))
 
 
 StreamEventType = Literal["values", "messages-tuple", "custom", "end"]
@@ -1231,18 +1249,7 @@ class DeerFlowClient:
             The accumulated text of the last AI message, or empty string
             if no AI text was produced.
         """
-        # Per-id delta lists joined once at the end — avoids the O(n²) cost
-        # of repeated ``str + str`` on a growing buffer for long responses.
-        chunks: dict[str, list[str]] = {}
-        last_id: str = ""
-        for event in self.stream(message, thread_id=thread_id, **kwargs):
-            if event.type == "messages-tuple" and event.data.get("type") == "ai":
-                msg_id = event.data.get("id") or ""
-                delta = event.data.get("content", "")
-                if delta:
-                    chunks.setdefault(msg_id, []).append(delta)
-                    last_id = msg_id
-        return "".join(chunks.get(last_id, ()))
+        return _accumulate_last_ai_text(self.stream(message, thread_id=thread_id, **kwargs))
 
     # ------------------------------------------------------------------
     # Public API — configuration queries
