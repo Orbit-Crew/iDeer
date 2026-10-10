@@ -28,6 +28,7 @@ patches keep binding to the one pipeline both callers use.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from collections.abc import AsyncIterator
@@ -293,8 +294,21 @@ class ThreadUploadIngestionService:
         # every sandbox configuration can read the uploaded content.
         await run_file_io(uploads._make_uploaded_paths_sandbox_readable, self._written_paths)
         if self._sync_to_sandbox and self._sandbox is not None:
-            for file_path, virtual_path in self._sync_targets:
-                await run_file_io(uploads._sync_upload_to_sandbox, self._sandbox, file_path, virtual_path)
+            # Bound concurrent sandbox round-trips so a many-file session
+            # overlaps per-file latency without saturating the transport.
+            semaphore = asyncio.Semaphore(uploads.SANDBOX_SYNC_CONCURRENCY)
+
+            async def _sync_one(file_path: Path, virtual_path: str) -> None:
+                async with semaphore:
+                    await run_file_io(uploads._sync_upload_to_sandbox, self._sandbox, file_path, virtual_path)
+
+            sync_results = await asyncio.gather(
+                *(_sync_one(file_path, virtual_path) for file_path, virtual_path in self._sync_targets),
+                return_exceptions=True,
+            )
+            for result in sync_results:
+                if isinstance(result, BaseException):
+                    raise result
 
     async def cleanup_written(self) -> None:
         """Remove every file this session wrote (ordinary rejected-request cleanup)."""
