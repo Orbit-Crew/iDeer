@@ -4,7 +4,7 @@ kind: index
 status: current
 owner: repository maintainers
 scope: entry index of engineering documentation: reader routes, current-authority table, and archive pointers
-last-verified: 2026-10-06
+last-verified: 2026-10-10
 verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 ---
 # 工程文档入口
@@ -45,7 +45,20 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
 | 上游兼容基线与补丁 | [上游锁定记录](upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)、[根上游补丁账本](../UPSTREAM_PATCH_LEDGER.md)、[本地运行时补丁账本](local-runtime/PATCH_LEDGER.md) |
 | 技能树治理与上游技能升级 | [skill-tree-governance.md](governance/skill-tree-governance.md)（权威关系、锁定 SHA 登记与升级流程；技能包内容本身不属本入口治理范围） |
+| 披露阅读会话收集器 | [disclosure-reading-collector-2026-10-07.md](governance/disclosure-reading-collector-2026-10-07.md)（隔离读取、六字段提交与尝试审计） |
+| 披露阅读实验最终裁决 | [ticket11 汇总](governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md)（32个槽的评分、门槛与限制） |
+| 双轨披露阅读票07结果 | [正式结果与审计](experiments/disclosure-dual-track-ticket07-results-2026-10-08.md)（v2评分、物理成本、恢复复算与未通过门槛） |
+| 双轨披露实作票08与票09裁决 | [正式结果与条件裁决](experiments/disclosure-dual-track-ticket08-results-2026-10-09.md)（六次隔离实作；因新版门槛未满足，旧轨未执行） |
+| 双轨披露票10最终状态 | [四轨状态与最终裁决](experiments/disclosure-dual-track-ticket10-final-verdict-2026-10-09.md)（工程交付、文档卫生、新版未通过、旧轨未执行及恢复证据） |
+| 披露分支热点、reviewer 矩阵与验收 | [热点证据](experiments/disclosure-branch-hotspots-2026-10-09.md)、[reviewer-only 适用性矩阵](experiments/disclosure-branch-review-matrix-2026-10-09.md)、[票05 导航验收报告](experiments/disclosure-branch-navigation-acceptance-2026-10-09.md)（仅供评审与评估；不得进入 reader prompts、冻结候选或任务路由） |
+| 披露分支与 ROOT 工程交付结项 | [工程交付与测量状态](experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md)（实现已交付；NAV 门禁 incomplete；ROOT 正式阅读未启动并由用户决定延期） |
 | 当前工程待办 | [backlog.md](backlog.md) |
+
+## 披露改进规格状态
+
+- [具体改动分支导航](specs/2026-10-09-disclosure-task-branch-navigation-spec.md)与[ROOT GitNexus 指引精简](specs/2026-10-09-root-gitnexus-guidance-compaction-spec.md)的工程实现均已交付并归档。NAV 正式正确性、阅读成本仍 incomplete；ROOT 正式阅读没有启动。用户已决定停止 ROOT 阅读实验。详见[工程交付结项](experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md)及[NAV 验收报告](experiments/disclosure-branch-navigation-acceptance-2026-10-09.md)。
+
+这两份规格分开记录实现与效果。归档状态表示当前工程收尾已记录，不代表任何效果门禁通过；NAV 和 ROOT 的效果状态分别按各自证据报告。
 
 ## 历史证据
 

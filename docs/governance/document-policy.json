@@ -2980,7 +2980,7 @@
     "bytes": [
       {
         "path": "AGENTS.md",
-        "bytes": 16363
+        "bytes": 10226
       },
       {
         "path": "backend/AGENTS.md",
@@ -3292,8 +3292,8 @@
     }
   ],
   "supplements": {
-    "count": 27,
-    "purpose": "tracked Markdown outside the 360-path seed, registered as inventory-only so coverage is explicit and the seed count stays stable at 360: 7 reference-closure documents reachable from inventoried current documents, plus 18 documents created after the baseline was captured (registration: post-baseline-addition; the next baseline capture decides whether they enter the seed) — the 4 governance-rollout pages and the 14 first test-system batch records (batch merged at e33a103f1, registered at merge 5d10796ab)",
+    "count": 54,
+    "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
         "path": "UPSTREAM_PATCH_LEDGER.md",
@@ -3338,18 +3338,18 @@
       {
         "path": "docs/agents/task-routing.md",
         "registration": "post-baseline-addition",
-        "sha256": "95cf0e70cb8f2c7e8ffdb234546f73b0677030b49794f4e52f83edb31cd812f4",
-        "lines": 88,
+        "sha256": "6e9529ce321d344626d0ee08b245af37f374706ba5a6e6d343eb001540af22c9",
+        "lines": 37,
         "classification": "engineering-body-review",
         "protected": false,
-        "role": "task-domain routing page referenced by the root AGENTS.md task map and docs/README.md current-source table",
-        "referenced_by": "AGENTS.md, docs/README.md, docs/project-state.md"
+        "role": "nine-domain route index and single definition of source-verification stop conditions",
+        "referenced_by": "AGENTS.md"
       },
       {
         "path": "docs/governance/document-governance.md",
         "registration": "post-baseline-addition",
-        "sha256": "10652bcde40d5cf2234a7f484daa4f95adaf862edb1783c971e1907e7133a749",
-        "lines": 58,
+        "sha256": "1f5b938b330f1d2d87bd2ad3692fb43a3d001903b264f3e1bca6d8e5c763a382",
+        "lines": 71,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "policy schema, consumption, and reproduction contract for this policy file (created 2026-10-04 with the governance rollout)",
@@ -3358,8 +3358,8 @@
       {
         "path": "docs/project-state.md",
         "registration": "post-baseline-addition",
-        "sha256": "22912431179c7c8385dc26f08f6692d41932280672de4a7fc1dd674d6e8dd472",
-        "lines": 109,
+        "sha256": "a1d11a13aefa810a4c67f4afb40daba5217062ce5df1ede166db19702cc20b74",
+        "lines": 122,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "candidate-scoped seven-domain implementation/integration/verification state summary referenced by the decisions index and domain guides",
@@ -3564,6 +3564,276 @@
         "protected": false,
         "role": "specification for five progressive disclosure reading-effect follow-up improvements",
         "referenced_by": "docs/README.md specs directory entry"
+      },
+      {
+        "path": "docs/governance/disclosure-scoring-rubric-2026-10-07.md",
+        "registration": "post-baseline-addition",
+        "sha256": "bb40af129e64da013885c4b74cb51169bf047ae5139f4f3deee16af0cb9fc171",
+        "lines": 125,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only human scoring rubric; excluded from timed reader access",
+        "referenced_by": "docs/governance/document-governance.md"
+      },
+      {
+        "path": "docs/governance/disclosure-reading-collector-2026-10-07.md",
+        "registration": "post-baseline-addition",
+        "sha256": "4b286bb42a0e157ceab57299b4fad7f30d42b3b9b56adb0e0b616c96dd61b3a0",
+        "lines": 232,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "candidate-pinned reading session collector contract and reader-isolation record",
+        "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "95ff068cf993472183d1f96e02487fd993c7a535c0db9efe9c1dbf59706bdd58",
+        "lines": 85,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only record of the first 20 routine-task slots in the frozen progressive-disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
+        "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket10.md",
+        "registration": "post-baseline-addition",
+        "sha256": "72306f9d198af8d1f09a0d4bccfdb4e0c2391f6408cdeb834826f80e2a472750",
+        "lines": 76,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only record of frozen special-task slots 21–32, grading, retries, and audit limitations; created after candidate freeze and absent from timed-reader candidate roots",
+        "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-readability-experiment-pdr-2026-10-07-ticket11.md",
+        "registration": "post-baseline-addition",
+        "sha256": "7551ba8b4b53ab2ef0e6e34fe0e8b87e83f63b95038378f3998c9daaa0c8bfeb",
+        "lines": 136,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only integrated verdict for the frozen 32-slot progressive disclosure experiment; created after candidate freeze and absent from timed-reader candidate roots",
+        "referenced_by": "docs/governance/README.md, docs/project-state.md"
+      },
+      {
+        "path": "docs/specs/2026-10-08-disclosure-dual-track-recovery-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "46da9ee7335be87f570895ac4b80162a86a674c013ececeb7589a282dada440f",
+        "lines": 77,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "specification for repaired disclosure tools, focused guidance, and dual-track reading acceptance; engineering work closed with measured acceptance incomplete",
+        "referenced_by": "docs/README.md specs directory entry; docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md"
+      },
+      {
+        "path": "docs/governance/disclosure-dual-track-protocol-v2-2026-10-08.md",
+        "registration": "post-baseline-addition",
+        "sha256": "5f92c9f97941449236186da3a84cef99aea883851832a54a00f7afc0491a7e21",
+        "lines": 83,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "current versioned protocol, task-domain scoring anchors, and dual-track rules for the disclosure reading acceptance",
+        "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/governance/disclosure-dual-track-calibration-2026-10-08.md",
+        "registration": "post-baseline-addition",
+        "sha256": "25da17276fa697bf73ab887d436da3f09996f6f32c026cde6d9792b44ff9b4c7",
+        "lines": 37,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "independent A/B/third-party calibration procedure and decision record template for disclosure-reading-v2",
+        "referenced_by": "docs/governance/README.md"
+      },
+      {
+        "path": "docs/agents/routes/ui.md",
+        "registration": "post-baseline-addition",
+        "sha256": "fe3db8ec2cf34090c3938aff6731fd47833256182c0dab0ab551e8108c8716b7",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused ui task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/chat.md",
+        "registration": "post-baseline-addition",
+        "sha256": "76c32aabfba8867dd95311566b57ccd19a6d86ceb7d2bc87ec6158cbc293bcb2",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused chat task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/permissions.md",
+        "registration": "post-baseline-addition",
+        "sha256": "d415e190ff3a3b504f33bbfb7065a4c40b14d1193482077dbfd69a02d15b1dde",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused permissions task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/knowledge.md",
+        "registration": "post-baseline-addition",
+        "sha256": "e2bbe46f2d670bdd528c0275ac772435698d520942b1b0eae7a04bf512b326b6",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused knowledge task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/capabilities.md",
+        "registration": "post-baseline-addition",
+        "sha256": "78b299990f9f17eea21421edfbfbc9faa8726250369dc65a384073370a4d5568",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused capabilities task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/local-runtime.md",
+        "registration": "post-baseline-addition",
+        "sha256": "4e11884b75afc7edd902374567be3ac718613305ad90ec663fd229fa086cda64",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused local-runtime task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/deployment.md",
+        "registration": "post-baseline-addition",
+        "sha256": "b148924197e8272143a73068e57ba0ecae700bba73edf36abe07139b6764e191",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused deployment task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/tests.md",
+        "registration": "post-baseline-addition",
+        "sha256": "6459b447a0e706e4ebb7d648875e779463d0dad15d32ac826a09bb8ab3b0fe72",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused tests task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/agents/routes/upstream.md",
+        "registration": "post-baseline-addition",
+        "sha256": "0bddac1abf9ac3236f62d7c43295e5aae27be0cd39447b02c3ead66bd1bfe173",
+        "lines": 23,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "focused upstream task route with applicable contract, conditional references, code entry and first validation",
+        "referenced_by": "docs/agents/task-routing.md, document-policy task_routes"
+      },
+      {
+        "path": "docs/experiments/disclosure-dual-track-ticket07-results-2026-10-08.md",
+        "registration": "post-baseline-addition",
+        "sha256": "30578e5706e959b0e8dae2e4225df10d6a1d083d8d24d73d7978f4924b78523d",
+        "lines": 42,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only formal ticket 07 result, v2 score, physical cost audit, and clean-restore evidence; created after candidate freeze and absent from timed-reader candidates",
+        "referenced_by": "docs/README.md current-source table"
+      },
+      {
+        "path": "docs/experiments/disclosure-dual-track-ticket08-results-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "6fa0294cddf4867e02918b95e0dc3565034b13f6a100c42f95a2ed484ba1fea6",
+        "lines": 52,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only formal ticket 08 practical results, six isolated exercises, fixture validation, and clean-restore evidence; created after candidate freeze and absent from timed-reader candidates",
+        "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
+      },
+      {
+        "path": "docs/experiments/disclosure-dual-track-ticket10-final-verdict-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "7383abe3b8c42f884b811b06dfa706e834f74e4a9eee59369b9b0c7323df23b8",
+        "lines": 60,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "coordinator-only final four-state ticket 10 verdict, gate evidence pointers, archive restoration checks, and measured comparability limits; created after frozen reader candidates and absent from timed-reader inputs",
+        "referenced_by": "docs/README.md current-source table, docs/governance/README.md"
+      },
+      {
+        "path": "docs/specs/2026-10-09-disclosure-task-branch-navigation-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "e8dc273608d3da3c2b9ff71238b6042f479d6482d803f710cff286b38fe09a85",
+        "lines": 98,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "archived specification for delivered task-branch navigation; NAV effect gates remain incomplete and optional further measurement is deferred by user decision",
+        "referenced_by": "docs/README.md disclosure specification status; docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md"
+      },
+      {
+        "path": "docs/specs/2026-10-09-root-gitnexus-guidance-compaction-spec.md",
+        "registration": "post-baseline-addition",
+        "sha256": "113175e8a85ed30fbc35fbd68faff770cccf970e2b32af79f4e15caabd3034ec",
+        "lines": 99,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "archived specification for delivered compact ROOT GitNexus guidance; formal reading effectiveness remains unmeasured and reading was deferred by user decision",
+        "referenced_by": "docs/README.md disclosure specification status; docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-hotspots-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "04de76d52c767cf9c3a41c99ed41a17807709d89a61a571a2dd442cd8bcb4ca2",
+        "lines": 86,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only evidence report for frozen task-level reading hotspots; excluded from reader prompts, candidates, and routes",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-review-matrix-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "dd324e7e1f0b5ef59b6cd3857120ac585da69eddd186d22f9f61ed24c3c05437",
+        "lines": 49,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only expected applicability matrix for independent review; excluded from reader prompts, candidates, and routes",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
+      },
+      {
+        "path": "docs/agents/gitnexus-operations.md",
+        "registration": "post-baseline-addition",
+        "sha256": "eb939529809a6beafd82f2ed702f7f9cd23f14ce542893bd5263f7c8c9834333",
+        "lines": 100,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "GitNexus commands, worktree/index checks, analysis completeness, and guidance regeneration procedure",
+        "referenced_by": "root AGENTS.md GitNexus managed block"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-navigation-acceptance-2026-10-09.md",
+        "registration": "post-baseline-addition",
+        "sha256": "13c6fa458296181f87eaf9b3f30b57d6d6f4f5a7bf7d5ec9a0c2f2cf67c2ad9b",
+        "lines": 101,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only report for frozen NAV branch-navigation reading comparison; formal correctness and reading-cost gates remain incomplete",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
+      },
+      {
+        "path": "docs/experiments/disclosure-branch-root-engineering-delivery-2026-10-10.md",
+        "registration": "post-baseline-addition",
+        "sha256": "c2eafe1cd23b1b0ed6f8a09db67e3308a04b61e5fe85213c8e59463f901ff0ff",
+        "lines": 35,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "reviewer-only closeout report separating delivered disclosure engineering from incomplete NAV gates and deferred ROOT model reading",
+        "referenced_by": "docs/README.md reviewer-only disclosure artifact index"
       }
     ]
   },
@@ -3624,7 +3894,7 @@
   "task_routes": [
     {
       "domain": "ui",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/ui.md",
       "targets": [
         "frontend/AGENTS.md",
         "frontend/src/components/ui/terminal.tsx"
@@ -3633,7 +3903,7 @@
     },
     {
       "domain": "chat",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/chat.md",
       "targets": [
         "backend/docs/STREAMING.md",
         "backend/app/gateway/routers/runs.py",
@@ -3645,7 +3915,7 @@
     },
     {
       "domain": "permissions",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/permissions.md",
       "targets": [
         "docs/permission-matrix.md",
         "backend/app/agentplatform/resource_service.py"
@@ -3654,7 +3924,7 @@
     },
     {
       "domain": "knowledge",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/knowledge.md",
       "targets": [
         "docs/decisions/2026-09-08-knowledge-dual-source-of-truth.md",
         "backend/app/gateway/routers/resources.py"
@@ -3663,7 +3933,7 @@
     },
     {
       "domain": "capabilities",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/capabilities.md",
       "targets": [
         "CONTEXT.md",
         "backend/app/gateway/routers/resources.py"
@@ -3672,7 +3942,7 @@
     },
     {
       "domain": "local-runtime",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/local-runtime.md",
       "targets": [
         "docs/local-runtime/SECURITY_MODEL.md",
         "backend/app/gateway/routers/devices.py"
@@ -3681,7 +3951,7 @@
     },
     {
       "domain": "deployment",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/deployment.md",
       "targets": [
         "docs/operations/README.md",
         "config.example.yaml",
@@ -3691,7 +3961,7 @@
     },
     {
       "domain": "tests",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/tests.md",
       "targets": [
         "docs/testing/README.md",
         "scripts/run-test-lane.sh"
@@ -3700,7 +3970,7 @@
     },
     {
       "domain": "upstream",
-      "route": "docs/agents/task-routing.md",
+      "route": "docs/agents/routes/upstream.md",
       "targets": [
         "UPSTREAM_PATCH_LEDGER.md",
         "backend/packages/harness/deerflow/runtime/runs/manager.py"

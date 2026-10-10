@@ -1,0 +1,31 @@
+{
+  "format": 1,
+  "status": "frozen pending independent review; no formal slot dispatched",
+  "created_utc": "2026-10-08T11:19:30.129370Z",
+  "freeze_inputs": {
+    "freeze_json_sha256": "ea026c32d960f589a33f27b3327824ec004d0b4f29dab7f838329ef175436b95",
+    "candidate_manifests": {
+      "baseline": "cf9b1355dab672db16d1083411483a5cec038bfed0528a34fe2cf7fd89d50a76",
+      "after": "2f94ad92187dc7bed6d02cea73de31d436c2543a6b5e996a5f3636d39600a4eb"
+    },
+    "prompts": {
+      "ui": "b0a844a1309a146c9d57334ee6c2e7b97a76ea674e277cdcdf20dedafc574a3a",
+      "chat": "9f44b46cbda1c303aa27ae93508de7803dd2ba3bd754ebbdfdaa0097af735540",
+      "knowledge": "eee0c7f5e612ad1f065e8e330e678317a4ae7c1efdc655aaf693374dacdcd7ec",
+      "permissions": "f273a68e01a5b005d46c0596b9391e547fb7984951f1d82fc6469bd61f81b16c",
+      "tests": "fbdfd780122541bb77494b50a310dfe342df8476f4d4fc378bce573d76902de3",
+      "runtime": "c6df129f5adb9c26c937d14036c46643fd7367a179e32e9fb00379870cc5b998",
+      "upstream": "bd2b953af4b22674ff40a212810b1e9a140bd02fccda762cfde09885d74a926d",
+      "history": "bd68ac03175c9d81af9f641cd49d93a2528661537e51fd9cbbd408bf777d9ee4"
+    },
+    "model_catalog_sha256": "80b4f7fb6f97c2238b26e679f2a80c9e95a3b6619b41dc09140ffd02e3840caf",
+    "tool_config_sha256": "fd611785e0dd0c5a416ec349aeeff64fe6c5051ec7e2d81c48a217a651bfc479",
+    "role_map_sha256": "62ec507aa62a9b356962fa83ea76c97b3014128c0f523c09cba6446b002ff80b",
+    "protocol_sha256": "5f92c9f97941449236186da3a84cef99aea883851832a54a00f7afc0491a7e21"
+  },
+  "freeze_inputs_canonical_sha256": "1d6c577b5781819c0b009edb9e1201001a8e76bd0735b679149bbe1513f790a6",
+  "generator": "scripts/disclosure_formal_queue.py",
+  "generator_sha256": "043cb1aa3cc88a27905526abddf818bec3de6ff628e453eb4befb83c8823a183",
+  "queue_file": "formal-queue.json",
+  "queue_sha256": "592943c1e87ecec69a89a5548f870f13927a61ba2503e7ed3c4209af67f35d4c"
+}

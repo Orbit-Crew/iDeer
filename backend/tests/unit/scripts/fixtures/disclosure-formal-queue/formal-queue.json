@@ -1,0 +1,269 @@
+{
+  "format": 1,
+  "protocol_id": "disclosure-reading-v2",
+  "experiment_id": "disclosure-dual-track-ticket07-formal",
+  "freeze": "freeze-v2",
+  "max_parallel": 3,
+  "seed": "d834fe04dd6c7021cb9ab797f56f7421b6c497ceaf916793c82c62c9bfaa0e55",
+  "seed_rule": "sha256(\"disclosure-reading-v2-formal-queue\\0\" + canonical JSON of frozen inputs)",
+  "ordering_rule": "shuffle 16 task×replicate pairs with seeded Python Random; replicate 1 is baseline→after and replicate 2 is after→baseline for each task",
+  "slots": [
+    {
+      "slot": 1,
+      "candidate": "after",
+      "task": "ui",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 2,
+      "candidate": "baseline",
+      "task": "ui",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 3,
+      "candidate": "after",
+      "task": "chat",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 4,
+      "candidate": "baseline",
+      "task": "chat",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 5,
+      "candidate": "after",
+      "task": "knowledge",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 6,
+      "candidate": "baseline",
+      "task": "knowledge",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 7,
+      "candidate": "after",
+      "task": "history",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 8,
+      "candidate": "baseline",
+      "task": "history",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 9,
+      "candidate": "baseline",
+      "task": "knowledge",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 10,
+      "candidate": "after",
+      "task": "knowledge",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 11,
+      "candidate": "baseline",
+      "task": "tests",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 12,
+      "candidate": "after",
+      "task": "tests",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 13,
+      "candidate": "baseline",
+      "task": "upstream",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 14,
+      "candidate": "after",
+      "task": "upstream",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 15,
+      "candidate": "baseline",
+      "task": "chat",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 16,
+      "candidate": "after",
+      "task": "chat",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 17,
+      "candidate": "after",
+      "task": "upstream",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 18,
+      "candidate": "baseline",
+      "task": "upstream",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 19,
+      "candidate": "after",
+      "task": "permissions",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 20,
+      "candidate": "baseline",
+      "task": "permissions",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 21,
+      "candidate": "after",
+      "task": "tests",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 22,
+      "candidate": "baseline",
+      "task": "tests",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 23,
+      "candidate": "baseline",
+      "task": "ui",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 24,
+      "candidate": "after",
+      "task": "ui",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 25,
+      "candidate": "after",
+      "task": "runtime",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 26,
+      "candidate": "baseline",
+      "task": "runtime",
+      "replicate": 2,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 27,
+      "candidate": "baseline",
+      "task": "history",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 28,
+      "candidate": "after",
+      "task": "history",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 29,
+      "candidate": "baseline",
+      "task": "permissions",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 30,
+      "candidate": "after",
+      "task": "permissions",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 31,
+      "candidate": "baseline",
+      "task": "runtime",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    },
+    {
+      "slot": 32,
+      "candidate": "after",
+      "task": "runtime",
+      "replicate": 1,
+      "stage": "formal",
+      "freeze": "freeze-v2"
+    }
+  ],
+  "queue_sha256": "592943c1e87ecec69a89a5548f870f13927a61ba2503e7ed3c4209af67f35d4c"
+}

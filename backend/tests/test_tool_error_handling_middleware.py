@@ -106,10 +106,22 @@ def _stub_runtime_middleware_imports(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_build_subagent_runtime_middlewares_threads_app_config_to_llm_middleware(monkeypatch: pytest.MonkeyPatch):
     captured: dict[str, object] = {}
 
-    class FakeMiddleware:
+    class FakeInputSanitizationMiddleware:
         def __init__(self, *args, **kwargs):
             self.args = args
             self.kwargs = kwargs
+
+    class FakeThreadDataMiddleware(FakeInputSanitizationMiddleware):
+        pass
+
+    class FakeSandboxMiddleware(FakeInputSanitizationMiddleware):
+        pass
+
+    class FakeDanglingToolCallMiddleware(FakeInputSanitizationMiddleware):
+        pass
+
+    class FakeSandboxAuditMiddleware(FakeInputSanitizationMiddleware):
+        pass
 
     class FakeLLMErrorHandlingMiddleware:
         def __init__(self, *, app_config):
@@ -128,29 +140,29 @@ def test_build_subagent_runtime_middlewares_threads_app_config_to_llm_middleware
     monkeypatch.setitem(
         sys.modules,
         "deerflow.agents.middlewares.thread_data_middleware",
-        _module("deerflow.agents.middlewares.thread_data_middleware", ThreadDataMiddleware=FakeMiddleware),
+        _module("deerflow.agents.middlewares.thread_data_middleware", ThreadDataMiddleware=FakeThreadDataMiddleware),
     )
     monkeypatch.setitem(
         sys.modules,
         "deerflow.sandbox.middleware",
-        _module("deerflow.sandbox.middleware", SandboxMiddleware=FakeMiddleware),
+        _module("deerflow.sandbox.middleware", SandboxMiddleware=FakeSandboxMiddleware),
     )
     monkeypatch.setitem(
         sys.modules,
         "deerflow.agents.middlewares.dangling_tool_call_middleware",
-        _module("deerflow.agents.middlewares.dangling_tool_call_middleware", DanglingToolCallMiddleware=FakeMiddleware),
+        _module("deerflow.agents.middlewares.dangling_tool_call_middleware", DanglingToolCallMiddleware=FakeDanglingToolCallMiddleware),
     )
     monkeypatch.setitem(
         sys.modules,
         "deerflow.agents.middlewares.sandbox_audit_middleware",
-        _module("deerflow.agents.middlewares.sandbox_audit_middleware", SandboxAuditMiddleware=FakeMiddleware),
+        _module("deerflow.agents.middlewares.sandbox_audit_middleware", SandboxAuditMiddleware=FakeSandboxAuditMiddleware),
     )
     monkeypatch.setitem(
         sys.modules,
         "deerflow.agents.middlewares.input_sanitization_middleware",
         _module(
             "deerflow.agents.middlewares.input_sanitization_middleware",
-            InputSanitizationMiddleware=FakeMiddleware,
+            InputSanitizationMiddleware=FakeInputSanitizationMiddleware,
             neutralize_untrusted_tags=lambda value: value,
         ),
     )
@@ -179,7 +191,7 @@ def test_build_subagent_runtime_middlewares_threads_app_config_to_llm_middleware
     from deerflow.agents.middlewares.tool_receipt_middleware import ToolReceiptMiddleware
 
     assert len(middlewares) == 19
-    assert isinstance(middlewares[0], FakeMiddleware)  # InputSanitizationMiddleware stub
+    assert isinstance(middlewares[0], FakeInputSanitizationMiddleware)
     assert isinstance(middlewares[1], ToolOutputBudgetMiddleware)
     assert any(isinstance(m, ToolErrorHandlingMiddleware) for m in middlewares)
     # The receipt layer wraps ToolErrorHandlingMiddleware so receipts read the

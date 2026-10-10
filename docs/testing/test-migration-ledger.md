@@ -20,6 +20,24 @@ This ledger is the deletion and move gate for the test-suite reorganization.
 Do not delete an old test file unless this file records an equal or stronger
 replacement assertion and the validation command for that batch.
 
+## 迁移方法
+
+1. Locate the test's behavior owner and the destination that matches its layer
+   and execution owner; check imports, test configuration, markers, fixtures,
+   and path-sensitive behavior before treating another copy as equivalent.
+2. Compare the removed assertions with the keeper. Preserve every behavior
+   check, or add an equal or stronger replacement before deleting the old test.
+3. Run the paired baseline and keeper commands needed to establish equivalence;
+   after a move, run `python3 scripts/test_inventory.py` and update the
+   inventory when ownership or collection changes.
+4. Record the removed and retained paths, assertion mapping, relevant runner
+   configuration, validation commands and actual results under a dated batch.
+   A deletion without this evidence is not authorized by the ledger.
+
+The batch entries below are historical examples. Use only the entry relevant
+to the test being moved; they do not replace validation on the current
+candidate.
+
 ## Batch 2026-10-03: Thread initialization ordering duplicate
 
 Removed `frontend/tests/e2e/workflows/chat-thread-init-ordering.spec.ts` and
