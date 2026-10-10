@@ -156,3 +156,40 @@ def test_resolution_stays_deferred_until_first_use():
     assert result.returncode == 0, result.stderr
     assert "after_import []" in result.stdout, "importing extensions.ordering must not load the middleware layer"
     assert "after_call ['deerflow.agents.middlewares.tool_error_handling_middleware', 'deerflow.agents.middlewares.tool_progress_middleware']" in result.stdout
+
+
+def test_core_constraints_resolve_fresh_after_sys_modules_stub(monkeypatch):
+    """Resolutions must not be cached across sys.modules stubs.
+
+    Middleware builder tests stub modules through sys.modules; a cached first
+    resolution would pin whichever classes — real or stub — ran first and
+    poison later assertions (the ToolReceipt/FakeMiddleware CI failure).
+    """
+    import sys
+    from types import ModuleType
+
+    from deerflow.agents.middlewares.sandbox_audit_middleware import (
+        SandboxAuditMiddleware as RealSandboxAuditMiddleware,
+    )
+    from deerflow.extensions import ordering
+
+    first = ordering.core_ordering_constraints()
+    assert any(c.inner is RealSandboxAuditMiddleware for c in first)
+
+    class StubSandboxAuditMiddleware:
+        pass
+
+    stub_module = ModuleType("deerflow.agents.middlewares.sandbox_audit_middleware")
+    stub_module.SandboxAuditMiddleware = StubSandboxAuditMiddleware
+    monkeypatch.setitem(
+        sys.modules,
+        "deerflow.agents.middlewares.sandbox_audit_middleware",
+        stub_module,
+    )
+
+    second = ordering.core_ordering_constraints()
+    assert any(c.inner is StubSandboxAuditMiddleware for c in second)
+
+    monkeypatch.undo()
+    third = ordering.core_ordering_constraints()
+    assert any(c.inner is RealSandboxAuditMiddleware for c in third)

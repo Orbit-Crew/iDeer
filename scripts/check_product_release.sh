@@ -22,13 +22,22 @@ if [[ ! -f $release_record ]] || ! git ls-files --error-unmatch "$release_record
   echo "Missing committed release version record: $release_record" >&2
   exit 1
 fi
+# ripgrep is preferred in CI, but fall back to grep when it is unavailable
+# (e.g. minimal runner images) so the gate still validates record content.
+if command -v rg >/dev/null 2>&1; then
+  _release_grep() { rg -q "$@"; }
+  _release_grep_i() { rg -qi "$@"; }
+else
+  _release_grep() { grep -Eq "$@"; }
+  _release_grep_i() { grep -Eqi "$@"; }
+fi
 for required_field in upstream_baseline product_branch verification_command verification_result; do
-  if ! rg -q "^${required_field}: .+" "$release_record"; then
+  if ! _release_grep "^${required_field}: .+" "$release_record"; then
     echo "Release record missing field: $required_field" >&2
     exit 1
   fi
 done
-if ! rg -q '^verification_result: passed$' "$release_record" || rg -qi '^verification_command: (none|historical|not run)' "$release_record"; then
+if ! _release_grep '^verification_result: passed$' "$release_record" || _release_grep_i '^verification_command: (none|historical|not run)' "$release_record"; then
   echo 'Release record requires a current successful verification command and result.' >&2
   exit 1
 fi

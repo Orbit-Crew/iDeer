@@ -217,15 +217,35 @@ export async function expectMemoryStorageToContain(
     [],
     "super admin user id",
   );
-  const configuredStoragePath = execFileSync(
-    "python3",
-    [
-      "-c",
-      "import sys, yaml; config = yaml.safe_load(open(sys.argv[1], encoding='utf-8')) or {}; memory = config.get('memory') or {}; backend = memory.get('backend_config') or {}; print(backend.get('storage_path') or '')",
-      manifest().config_path,
-    ],
-    { encoding: "utf8" },
-  ).trim();
+  // System python3 on CI runners has no PyYAML; the backend venv does
+  // (transitive dependency). Prefer `uv run --project backend` and fall back
+  // to system python3 for local setups without uv.
+  const configScript =
+    "import sys, yaml; config = yaml.safe_load(open(sys.argv[1], encoding='utf-8')) or {}; memory = config.get('memory') or {}; backend = memory.get('backend_config') or {}; print(backend.get('storage_path') or '')";
+  const backendDir = resolve(process.cwd(), "..", "backend");
+  let configuredStoragePath: string;
+  try {
+    configuredStoragePath = execFileSync(
+      "uv",
+      [
+        "run",
+        "--project",
+        backendDir,
+        "--no-sync",
+        "python",
+        "-c",
+        configScript,
+        manifest().config_path,
+      ],
+      { encoding: "utf8" },
+    ).trim();
+  } catch {
+    configuredStoragePath = execFileSync(
+      "python3",
+      ["-c", configScript, manifest().config_path],
+      { encoding: "utf8" },
+    ).trim();
+  }
   const memoryStorageRoot = configuredStoragePath
     ? resolve(manifest().ideer_home, configuredStoragePath)
     : manifest().ideer_home;

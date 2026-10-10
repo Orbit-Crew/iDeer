@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from functools import cache
 
 from deerflow.extensions.isolation import IsolatedMiddleware
 
@@ -57,7 +56,6 @@ def assert_ordering(
         )
 
 
-@cache
 def core_ordering_constraints() -> tuple[OrderingConstraint, ...]:
     """The host's ordering invariants, resolved on first use.
 
@@ -68,6 +66,13 @@ def core_ordering_constraints() -> tuple[OrderingConstraint, ...]:
     imports something under ``extensions/`` at module level. Resolution instead
     happens at ``assert_ordering`` time, which already runs inside the
     middleware builder — a forward reference within one layer.
+
+    Deliberately uncached: tests stub middleware modules through ``sys.modules``
+    (see ``_stub_runtime_middleware_imports``), and a cached first resolution
+    would pin whatever classes — real or stub — happened to run first,
+    poisoning every later assertion in the process (including across
+    ``pytest-xdist`` workers sharing nothing but execution order). The
+    resolution cost is negligible next to agent construction.
 
     Returns a plain tuple. The predecessor deferred by way of a ``tuple``
     subclass overriding only ``__iter__``; because a tuple cannot populate its

@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -31,6 +32,65 @@ describe("production typography contract", () => {
     const { execFile } = await import("node:child_process");
     const { promisify } = await import("node:util");
     const run = promisify(execFile);
+
+    // Fallback when ripgrep is unavailable on the runner (e.g. minimal CI
+    // images): walk src with plain Node fs so the contract still validates
+    // instead of failing with `spawn rg ENOENT`.
+    function walkFiles(dir: string, out: string[]): void {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        const stat = statSync(full);
+        if (stat.isDirectory()) {
+          if (full.includes(`${join("src", "app", "prototype")}`)) continue;
+          walkFiles(full, out);
+        } else if (stat.isFile()) {
+          out.push(full);
+        }
+      }
+    }
+
+    function fallbackScan(kind: "class" | "css"): string {
+      const root = join(process.cwd(), "src");
+      const files: string[] = [];
+      walkFiles(root, files);
+      const classRe =
+        /text-(xs|sm|lg|xl|2xl|3xl|4xl|5xl|6xl)|text-\[(8px|10px|11px)\]/;
+      const cssRe = /font-size\s*:\s*(8|9|10|11|12|13|14|15)px/;
+      const hits: string[] = [];
+      for (const file of files) {
+        const rel = file.slice(process.cwd().length + 1);
+        if (rel.includes("src/app/prototype/")) continue;
+        if (kind === "class") {
+          if (!/\.tsx?$/.test(file)) continue;
+          if (/\.test\.[^.]+$/.test(file)) continue;
+          if (rel === join("src", "components", "landing", "hero.tsx"))
+            continue;
+          const content = readFileSync(file, "utf8");
+          if (classRe.test(content)) hits.push(rel);
+        } else {
+          if (!file.endsWith(".css")) continue;
+          const content = readFileSync(file, "utf8");
+          if (cssRe.test(content)) hits.push(rel);
+        }
+      }
+      return hits.join("\n");
+    }
+
+    async function runScan(
+      args: string[],
+      kind: "class" | "css",
+    ): Promise<string> {
+      try {
+        const { stdout } = await run("rg", args, { cwd: process.cwd() });
+        return stdout;
+      } catch (error: unknown) {
+        const code = (error as { code?: unknown }).code;
+        if (code === 1) return "";
+        if (code === "ENOENT") return fallbackScan(kind);
+        throw error;
+      }
+    }
+
     const classArgs = [
       "-n",
       "--glob",
@@ -56,18 +116,8 @@ describe("production typography contract", () => {
       "src",
     ];
 
-    const { stdout: classOutput } = await run("rg", classArgs, {
-      cwd: process.cwd(),
-    }).catch((error) => {
-      if (error.code === 1) return { stdout: "" };
-      throw error;
-    });
-    const { stdout: cssOutput } = await run("rg", cssArgs, {
-      cwd: process.cwd(),
-    }).catch((error) => {
-      if (error.code === 1) return { stdout: "" };
-      throw error;
-    });
+    const classOutput = await runScan(classArgs, "class");
+    const cssOutput = await runScan(cssArgs, "css");
 
     expect(classOutput).toBe("");
     expect(cssOutput).toBe("");

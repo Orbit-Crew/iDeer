@@ -4,10 +4,16 @@ set -euo pipefail
 # The convergence is complete: control-plane code must use the DeerFlow
 # runtime. Reject any reintroduction of direct legacy runtime imports.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-mapfile -t imports < <(rg -l '^[[:space:]]*(from ideer|import ideer)' "$repo_root/backend/app" -g '*.py' | sort)
+if command -v rg >/dev/null 2>&1; then
+  mapfile -t imports < <(rg -l '^[[:space:]]*(from ideer|import ideer)' "$repo_root/backend/app" -g '*.py' | sort || true)
+else
+  mapfile -t imports < <(grep -Rl -E '^[[:space:]]*(from ideer|import ideer)' "$repo_root/backend/app" --include='*.py' | sort || true)
+fi
 
 printf 'backend/app direct ideer import files: %s\n' "${#imports[@]}"
-printf '%s\n' "${imports[@]}"
+if (( ${#imports[@]} )); then
+  printf '%s\n' "${imports[@]}"
+fi
 
 baseline="${RUNTIME_BOUNDARY_MAX_IMPORT_FILES:-0}"
 if (( ${#imports[@]} > baseline )); then
