@@ -438,6 +438,25 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
     return route.fallback();
   });
 
+  // User preferences sync (GET on mount, PATCH on change). Every field is
+  // optional in the backend Preferences model, so an empty object is a valid
+  // response; without this route the workspace shell polls the Next.js
+  // /api proxy, which 500s against the absent backend and keeps the
+  // preferences retry loop (and dependent composer state) unsettled.
+  void page.route("**/api/v1/auth/preferences", (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+    }
+    if (route.request().method() === "PATCH") {
+      return route.fulfill({ status: 204 });
+    }
+    return route.fallback();
+  });
+
   // Shell APIs used by workspace layouts are ordinary Gateway endpoints rather
   // than LangGraph routes. Keep the mock lane self-contained so an absent
   // backend cannot turn harmless polling into retries against port 8001.
