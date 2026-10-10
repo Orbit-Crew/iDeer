@@ -433,27 +433,30 @@ async def test_timeout_does_not_wait_for_saturated_executor(monkeypatch, read_po
         release.wait(timeout=2)
         finished.set()
 
+    # uvloop keeps _default_executor as a Cython-private attribute, so
+    # substitute the default executor through the public setter.
+    loop.set_default_executor(executor)
     try:
-        with mock.patch.object(loop, "_default_executor", executor):
-            if already_saturated:
-                executor.submit(occupy_worker)
-                while not entered.is_set():
-                    await asyncio.sleep(0)
-            with (
-                mock.patch.object(mw, "_inject", side_effect=occupy_worker) as inject,
-                mock.patch("deerflow.agents.middlewares.dynamic_context_middleware._INJECT_TIMEOUT_SECONDS", 0.01),
-            ):
-                call = mw.abefore_agent({"messages": [HumanMessage(content="hi", id="m1")]}, SimpleNamespace(context={}))
-                if read_policy == "raise":
-                    with pytest.raises(MemoryReadError) as exc_info:
-                        await asyncio.wait_for(call, 0.25)
-                    assert isinstance(exc_info.value.__cause__, TimeoutError)
-                else:
-                    assert await asyncio.wait_for(call, 0.25) is None
-                assert not finished.is_set()  # the request returned before its worker
-                assert inject.call_count == (0 if already_saturated else 1)
+        if already_saturated:
+            executor.submit(occupy_worker)
+            while not entered.is_set():
+                await asyncio.sleep(0)
+        with (
+            mock.patch.object(mw, "_inject", side_effect=occupy_worker) as inject,
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware._INJECT_TIMEOUT_SECONDS", 0.01),
+        ):
+            call = mw.abefore_agent({"messages": [HumanMessage(content="hi", id="m1")]}, SimpleNamespace(context={}))
+            if read_policy == "raise":
+                with pytest.raises(MemoryReadError) as exc_info:
+                    await asyncio.wait_for(call, 0.25)
+                assert isinstance(exc_info.value.__cause__, TimeoutError)
+            else:
+                assert await asyncio.wait_for(call, 0.25) is None
+            assert not finished.is_set()  # the request returned before its worker
+            assert inject.call_count == (0 if already_saturated else 1)
     finally:
         release.set()
+        loop.set_default_executor(None)
         await asyncio.to_thread(executor.shutdown, wait=True, cancel_futures=True)
 
 
@@ -464,9 +467,10 @@ async def test_legacy_backend_timeout_preserves_read_policy(read_policy):
     backend = _LegacyBackend.from_config(cfg.backend_config)
     mw = DynamicContextMiddleware(app_config=SimpleNamespace(memory=cfg))
     executor = ThreadPoolExecutor(max_workers=1)
+    loop = asyncio.get_running_loop()
+    loop.set_default_executor(executor)
     try:
         with (
-            mock.patch.object(asyncio.get_running_loop(), "_default_executor", executor),
             mock.patch("deerflow.agents.memory.get_memory_manager", return_value=backend),
             mock.patch("deerflow.agents.middlewares.dynamic_context_middleware._INJECT_TIMEOUT_SECONDS", 0.01),
         ):
@@ -480,6 +484,7 @@ async def test_legacy_backend_timeout_preserves_read_policy(read_policy):
             assert not backend._finished.is_set()
     finally:
         backend._release.set()
+        loop.set_default_executor(None)
         await asyncio.to_thread(executor.shutdown, wait=True, cancel_futures=True)
     assert backend._finished.is_set()
 
@@ -542,9 +547,10 @@ async def test_cold_saturated_timeout_never_starts_discovery(monkeypatch, disabl
     mw = DynamicContextMiddleware(app_config=SimpleNamespace(memory=cfg))
     executor = ThreadPoolExecutor(max_workers=1)
     release = threading.Event()
+    loop = asyncio.get_running_loop()
+    loop.set_default_executor(executor)
     try:
         with (
-            mock.patch.object(asyncio.get_running_loop(), "_default_executor", executor),
             mock.patch("deerflow.agents.memory.manager._scan_backends") as scan,
             mock.patch("deerflow.config.memory_config.get_memory_config") as reload_config,
             mock.patch.object(mw, "_inject") as inject,
@@ -563,4 +569,5 @@ async def test_cold_saturated_timeout_never_starts_discovery(monkeypatch, disabl
             inject.assert_not_called()
     finally:
         release.set()
+        loop.set_default_executor(None)
         await asyncio.to_thread(executor.shutdown, wait=True, cancel_futures=True)
