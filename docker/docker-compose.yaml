@@ -80,7 +80,7 @@ services:
     # the same worker that owns the active run.
     command: sh -c "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-1}"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8001/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; response = urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=5); raise SystemExit(0 if response.status == 200 else 1)"]
       interval: 10s
       timeout: 5s
       retries: 6
