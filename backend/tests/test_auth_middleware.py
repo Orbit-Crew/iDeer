@@ -414,6 +414,21 @@ def test_auth_disabled_is_ignored_in_explicit_production_env(monkeypatch):
     assert res.status_code == 401
 
 
+def test_auth_disabled_is_ignored_in_legacy_production_env(monkeypatch):
+    """01-M6: the legacy ``IDEER_ENVIRONMENT`` name belongs to the same
+    production caliber as ``DEER_FLOW_ENV`` — setting it must equally lock
+    out the auth-disabled bypass."""
+    monkeypatch.setenv("DEER_FLOW_AUTH_DISABLED", "1")
+    monkeypatch.setenv("IDEER_ENVIRONMENT", "production")
+    monkeypatch.delenv("DEER_FLOW_ENV", raising=False)
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    client = TestClient(_make_app())
+
+    res = client.get("/api/models")
+
+    assert res.status_code == 401
+
+
 def test_auth_disabled_startup_warning_when_effective(monkeypatch, caplog):
     from app.gateway.auth_disabled import warn_if_auth_disabled_enabled
 

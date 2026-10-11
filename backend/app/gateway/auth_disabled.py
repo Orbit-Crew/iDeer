@@ -17,7 +17,13 @@ AUTH_SOURCE_INTERNAL = "internal"
 AUTH_SOURCE_PAT = "pat"
 AUTH_SOURCE_AUTH_DISABLED = "auth_disabled"
 
-_PRODUCTION_ENV_VARS: tuple[str, ...] = ("DEER_FLOW_ENV", "ENVIRONMENT")
+# Single production caliber for every environment safeguard (JWT secret
+# enforcement, auth-disabled lockout): ``DEER_FLOW_ENV`` is the canonical
+# variable; ``ENVIRONMENT`` and the legacy enterprise ``IDEER_ENVIRONMENT``
+# are compat aliases. Any of them set to a production value puts the process
+# into the explicit-production posture — a deployment must not be able to
+# dodge a safeguard by choosing the other variable.
+_PRODUCTION_ENV_VARS: tuple[str, ...] = ("DEER_FLOW_ENV", "ENVIRONMENT", "IDEER_ENVIRONMENT")
 _PRODUCTION_ENV_VALUES: frozenset[str] = frozenset({"prod", "production"})
 
 logger = logging.getLogger(__name__)

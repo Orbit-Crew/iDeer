@@ -86,23 +86,53 @@ _SHUTDOWN_HOOK_TIMEOUT_SECONDS = 5.0
 
 
 def _extension_principal(request: Request) -> ExtensionPrincipal | None:
-    """Project the authenticated Gateway caller into the extension contract."""
+    """Project the authenticated Gateway caller into the extension contract.
+
+    ``users_ext`` is the only authorization source: the platform role is read
+    from the identity the auth middleware already resolved onto this request
+    (``authz.cached_platform_role``). The legacy ``users.system_role`` column
+    is never consulted for real callers, so a caller the platform downgraded
+    or never profiled cannot be re-elevated by a stale legacy row. PAT
+    callers never carry admin capability; internal callers project through
+    ``is_internal`` without a platform role; the auth-disabled synthetic
+    admin keeps the documented local dev/E2E bypass (same contract as
+    ``deps.is_admin_user``).
+    """
     state = getattr(request, "state", None)
     user = getattr(state, "user", None)
     if user is None:
         return None
 
-    from app.gateway.auth_disabled import AUTH_SOURCE_INTERNAL, AUTH_SOURCE_PAT
+    from app.agentplatform.rbac_models import UserRole
+    from app.gateway.auth_disabled import (
+        AUTH_SOURCE_AUTH_DISABLED,
+        AUTH_SOURCE_INTERNAL,
+        AUTH_SOURCE_PAT,
+    )
+    from app.gateway.authz import cached_platform_role
+
+    # Admin-bearing platform roles. ``admin`` is kept alongside the UserRole
+    # value for parity with ``deps.is_admin_user``.
+    admin_roles = {"admin", UserRole.SUPER_ADMIN.value}
 
     source = getattr(state, "auth_source", None)
-    role = getattr(user, "system_role", None)
-    roles = (str(role),) if role else ()
     is_pat = source == AUTH_SOURCE_PAT
+
+    if source == AUTH_SOURCE_AUTH_DISABLED:
+        # Trusted local dev/E2E bypass: the synthetic user has no users_ext
+        # profile and its fixed synthetic role preserves the bypass.
+        role = UserRole.SUPER_ADMIN.value if getattr(user, "system_role", None) in admin_roles else None
+    else:
+        role = cached_platform_role(request, str(getattr(user, "id", "")))
+
+    roles = (str(role),) if role else ()
+    if is_pat:
+        roles = tuple(projected for projected in roles if projected not in admin_roles)
     return ExtensionPrincipal(
         user_id=str(getattr(user, "id", "")),
-        is_admin=bool(role == "admin" and not is_pat),
+        is_admin=bool(role in admin_roles and not is_pat),
         is_internal=bool(source == AUTH_SOURCE_INTERNAL),
-        roles=() if is_pat and role == "admin" else roles,
+        roles=roles,
     )
 
 
