@@ -464,7 +464,10 @@
 pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆盖对照基线下的全部
 差异文件；base→head 有 diff 的补丁（含新登记行）必须 `verification_status: current`
 并携带 `current_verification` 证据，未变补丁 `historical` 即可。修改本表时同步
-更新 `budget_basis` 并在巡检记录留痕。
+更新 `budget_basis` 并在巡检记录留痕。预算 basis 语义：`code_files` 增长与
+`previous_code_files` 偏离 base 注册表分配均须携带非空 `amendment` 修正案方为
+合法；`document_files` 的任何变化须携带修正案，且 `previous_document_files`
+必须与 base 注册表分配一致。
 
 <!-- upstream-registry:start -->
 ```json
