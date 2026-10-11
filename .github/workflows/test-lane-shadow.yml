@@ -80,7 +80,10 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
-        run: python3 scripts/check_upstream_patches.py --base "$BASE_SHA" --head "$HEAD_SHA" --upstream-baseline 0f7d8709d3bbf0be26460b6277fbad9329302243
+        # Baseline must match the ledger registry's upstream_baseline pin
+        # (v2.1.0 = 345f08be0, the canonical anchor since the 2026-10-05
+        # inspection ruling; see UPSTREAM_PATCH_LEDGER.md 巡检记录).
+        run: python3 scripts/check_upstream_patches.py --base "$BASE_SHA" --head "$HEAD_SHA" --upstream-baseline 345f08be00c8a9495079b732a39b46aa9af1584e
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -172,6 +175,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      # Test-only install: the lane imports `core` through PYTHONPATH
+      # (scripts/run-test-lane.sh), and `pip install -e .` currently fails
+      # because the flat core/ layout matches no hatchling wheel target —
+      # see the broken Install step in local-runtime-windows.yml.
+      - name: Install local-runtime test dependencies
+        run: python -m pip install pytest pytest-asyncio pytest-timeout "cryptography>=43" "websockets>=13,<14"
       - name: Run local-runtime tests
         run: bash scripts/run-test-lane.sh local-runtime
 
