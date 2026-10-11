@@ -38,7 +38,9 @@ Options:
 Environment:
   IDEER_BUNDLE_ROOT, IDEER_VERSION, IDEER_NO_LOAD
   IDEER_ADMIN_EMAIL, IDEER_ADMIN_PASSWORD override the auto-created super admin
-    credentials (default: super_admin@test.com / super_admin@test.com)
+    credentials (email defaults to super_admin@test.com; when
+    IDEER_ADMIN_PASSWORD is unset, a random password is generated, shown once
+    during initialization, and saved to runtime/data/.super-admin-password)
   IDEER_BUNDLED_CONFLICT=keep|override same as --bundled-conflict
 EOF
 }
@@ -778,11 +780,26 @@ except urllib.error.HTTPError as exc:
 
 # Create the first super admin account once the gateway is healthy.  The
 # /initialize endpoint refuses with 409 when an admin already exists, so this
-# is idempotent across re-runs.  Credentials default to the standard test
-# account and can be overridden with IDEER_ADMIN_EMAIL / IDEER_ADMIN_PASSWORD.
+# is idempotent across re-runs.  The email defaults to super_admin@test.com;
+# without IDEER_ADMIN_PASSWORD a random password is generated, shown once on
+# creation, and persisted (chmod 600) to $RUNTIME_DIR/data/.super-admin-password
+# so re-runs reuse the same credential.  IDEER_ADMIN_EMAIL / IDEER_ADMIN_PASSWORD
+# override both.
 initialize_super_admin() {
     local email="${IDEER_ADMIN_EMAIL:-super_admin@test.com}"
-    local password="${IDEER_ADMIN_PASSWORD:-super_admin@test.com}"
+    local password="${IDEER_ADMIN_PASSWORD:-}"
+    local password_file="$RUNTIME_DIR/data/.super-admin-password"
+    local generated=0
+
+    if [ -z "$password" ]; then
+        if [ -f "$password_file" ]; then
+            password="$(tr -d '\r\n' < "$password_file")"
+        fi
+        if [ -z "$password" ]; then
+            password="$(generate_secret)"
+            generated=1
+        fi
+    fi
 
     # shellcheck disable=SC1090
     . "$ENV_FILE"
@@ -794,7 +811,17 @@ initialize_super_admin() {
         "http://127.0.0.1:${port}/api/v1/auth/initialize" \
         "{\"email\":\"${email}\",\"password\":\"${password}\"}")" || die "failed to reach the gateway for admin initialization"
     case "$status" in
-        201) log "super admin account created" ;;
+        201)
+            log "super admin account created"
+            if [ "$generated" -eq 1 ]; then
+                if printf '%s\n' "$password" > "$password_file"; then
+                    chmod 600 "$password_file"
+                    log "generated super admin password (one-time display, also saved to $password_file): $password"
+                else
+                    log "generated super admin password (one-time display, could not write $password_file): $password"
+                fi
+            fi
+            ;;
         409) log "super admin already exists; skipping" ;;
         *)
             die "admin initialization failed (HTTP $status)"

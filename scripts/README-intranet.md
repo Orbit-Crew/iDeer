@@ -120,7 +120,11 @@ This will:
 2. Load Docker images
 3. Start all services
 4. Run health checks
-5. Auto-create the super admin account (`super_admin@test.com` / `super_admin@test.com` by default; override with `IDEER_ADMIN_EMAIL` / `IDEER_ADMIN_PASSWORD`; skipped when an admin already exists)
+5. Auto-create the super admin account (email defaults to `super_admin@test.com`;
+   when `IDEER_ADMIN_PASSWORD` is unset, a random password is generated, shown
+   once during initialization, and saved to `runtime/data/.super-admin-password`;
+   override with `IDEER_ADMIN_EMAIL` / `IDEER_ADMIN_PASSWORD`; skipped when an
+   admin already exists)
 6. Seed the complete bundled resource manifest (`bundled-resources.json`) —
    bundled skills, agents (`fault-zeroing`, `srs-writing`, and others), and the
    `fault-zeroing` workflow — as **public canonical resources owned by the

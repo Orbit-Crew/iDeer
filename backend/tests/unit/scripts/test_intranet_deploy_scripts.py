@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import stat
 import subprocess
 import tarfile
@@ -373,7 +374,7 @@ def test_deploy_script_wires_admin_bootstrap_and_bundled_resource_steps():
     assert "initialize_super_admin" in script
     assert "/api/v1/auth/initialize" in script
     assert "IDEER_ADMIN_EMAIL:-super_admin@test.com" in script
-    assert "IDEER_ADMIN_PASSWORD:-super_admin@test.com" in script
+    assert "IDEER_ADMIN_PASSWORD:-super_admin@test.com" not in script
     assert "install_admin_bundled_resources" in script
     assert "seed_bundled_resources.py" in script
     assert "bundled-resources.json" in script
@@ -385,6 +386,132 @@ def test_deploy_script_wires_admin_bootstrap_and_bundled_resource_steps():
     assert "find_super_admin_id" in script
     assert "install_bundled_agents" not in script
     assert "prepare_bundle 0" not in script
+
+
+def _usage_text(script: str) -> str:
+    """Return the usage() heredoc body (the first heredoc after usage() {)."""
+    usage_start = script.index("usage() {")
+    start = script.index("cat <<'EOF'", usage_start)
+    end = script.index("\nEOF\n", start)
+    return script[start:end]
+
+
+def test_deploy_script_ships_no_plaintext_default_admin_password():
+    """08-H3: usage and script body must not carry a plaintext default admin
+    password; without IDEER_ADMIN_PASSWORD the password is generated randomly."""
+    script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
+    usage = _usage_text(script)
+
+    assert "default: super_admin@test.com" not in usage
+    assert "super_admin@test.com /" not in usage
+    assert "super_admin@test.com / super_admin@test.com" not in script
+    assert "IDEER_ADMIN_PASSWORD:-super_admin@test.com" not in script
+    # the admin password falls back to a generated random secret
+    assert "IDEER_ADMIN_PASSWORD:-" in script
+    assert "generate_secret" in script
+
+
+def _install_fake_curl(env: dict[str, str], tmp_path: Path, status_code: str) -> Path:
+    """Add a fake curl to the fake-docker bin dir.  Health checks succeed; the
+    /initialize POST body is appended to a log file and `status_code` is
+    reported as the HTTP status."""
+    bin_dir = Path(env["PATH"].split(":", 1)[0])
+    log_path = tmp_path / "curl-calls.log"
+    env["FAKE_CURL_LOG"] = str(log_path)
+    env["FAKE_CURL_STATUS"] = status_code
+    _write_executable(
+        bin_dir / "curl",
+        r"""#!/usr/bin/env sh
+set -eu
+body=""
+print_code=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -o) shift 2 ;;
+    -w) print_code=1; shift 2 ;;
+    -X) shift 2 ;;
+    -H) shift 2 ;;
+    --data) body="$2"; shift 2 ;;
+    -*) shift ;;
+    *) shift ;;
+  esac
+done
+if [ -n "$body" ]; then
+  printf '%s\n' "$body" >> "${FAKE_CURL_LOG:?}"
+fi
+if [ "$print_code" -eq 1 ]; then
+  printf '%s' "${FAKE_CURL_STATUS:-201}"
+fi
+exit 0
+""",
+    )
+    return log_path
+
+
+def _posted_initialize_bodies(log_path: Path) -> list[dict]:
+    return [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def test_up_generates_random_admin_password_shown_once(tmp_path: Path):
+    """08-H3: a fresh deployment creates the super admin with a random password,
+    displayed exactly once and persisted only to a chmod-600 runtime file."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    log_path = _install_fake_curl(env, tmp_path, status_code="201")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    # Bundled-resource seeding cannot run against the fake docker daemon and
+    # aborts after admin initialization; assert the initialize contract itself.
+    assert "initializing super admin account (super_admin@test.com)..." in proc.stdout
+    assert "super admin account created" in proc.stdout
+    posted = _posted_initialize_bodies(log_path)
+    assert len(posted) == 1
+    assert posted[0]["email"] == "super_admin@test.com"
+    password = posted[0]["password"]
+    assert password != "super_admin@test.com"
+    assert re.fullmatch(r"[0-9a-f]{64}", password), password
+
+    password_file = bundle_root / "runtime" / "data" / ".super-admin-password"
+    assert password_file.is_file()
+    assert password_file.read_text(encoding="utf-8").strip() == password
+    assert password_file.stat().st_mode & 0o777 == 0o600
+
+    # one-time display: the generated password appears exactly once on stdout,
+    # so the routine per-run log lines never carry it
+    assert proc.stdout.count(password) == 1
+
+
+def test_up_does_not_persist_or_display_password_when_admin_exists(tmp_path: Path):
+    """08-H3: re-runs against an initialized system (HTTP 409) must not display
+    a password nor create a password file that does not match the real one."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    _install_fake_curl(env, tmp_path, status_code="409")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert "super admin already exists; skipping" in proc.stdout
+    assert "generated super admin password" not in proc.stdout
+    assert not (bundle_root / "runtime" / "data" / ".super-admin-password").exists()
+
+
+def test_up_uses_explicit_admin_password_without_persisting_or_displaying(tmp_path: Path):
+    """An operator-supplied IDEER_ADMIN_PASSWORD is used as-is: no password file
+    is written and the value never shows up in the deployment output."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    env["IDEER_ADMIN_PASSWORD"] = "operator-supplied-strong-pass"
+    log_path = _install_fake_curl(env, tmp_path, status_code="201")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert "super admin account created" in proc.stdout
+    posted = _posted_initialize_bodies(log_path)
+    assert len(posted) == 1
+    assert posted[0]["password"] == "operator-supplied-strong-pass"
+    assert not (bundle_root / "runtime" / "data" / ".super-admin-password").exists()
+    assert "operator-supplied-strong-pass" not in proc.stdout
 
 
 def test_prepare_reuses_persisted_auth_secrets_when_env_file_is_recreated(tmp_path: Path):
