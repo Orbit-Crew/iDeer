@@ -101,6 +101,7 @@ def main() -> int:
         failed |= not check(
             "local-runtime/pyproject.toml", (LOCAL_RUNTIME / "pyproject.toml").is_file()
         )
+        failed |= not check("local-runtime wheel packaging", *_local_runtime_wheel_packaging())
         failed |= not check(
             "local-runtime pytest",
             _module_import_ok("pytest"),
@@ -259,6 +260,87 @@ def _module_import_ok(module: str) -> bool:
         check=False,
     )
     return result.returncode == 0
+
+
+def _local_runtime_wheel_packaging() -> tuple[bool, str]:
+    """Verify hatchling can select wheel files for the flat ``core/`` layout.
+
+    The project name (ideer-local-runtime) matches no directory in
+    local-runtime/, so wheel builds and editable installs only work with an
+    explicit ``[tool.hatch.build.targets.wheel]`` packages target. The probe
+    checks that declaration against the tree and, when the build backend is
+    importable, builds a real wheel offline (no network, no build
+    isolation), so packaging regressions turn red at every lane run instead
+    of surfacing only at install time.
+    """
+
+    # tomllib is Python >= 3.11; below that only the real build can judge.
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        data = None
+    else:
+        try:
+            data = tomllib.loads((LOCAL_RUNTIME / "pyproject.toml").read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            return False, f"cannot read local-runtime/pyproject.toml: {exc}"
+        target: object = data
+        for key in ("tool", "hatch", "build", "targets", "wheel"):
+            target = target.get(key, {}) if isinstance(target, dict) else {}
+        packages = target.get("packages") if isinstance(target, dict) else None
+        if isinstance(packages, str):
+            packages = [packages]
+        if not isinstance(packages, list) or not packages:
+            return False, "declare [tool.hatch.build.targets.wheel] packages so hatchling can select wheel files"
+        for package in packages:
+            if not isinstance(package, str) or not (LOCAL_RUNTIME / package).is_dir():
+                return False, f"wheel package {package!r} does not exist under local-runtime/"
+
+    state, detail = _hatchling_wheel_build()
+    if state == "failed":
+        return False, detail
+    if data is None:
+        # No static verdict; without an importable backend there is nothing to judge.
+        return True, f"skipped: {detail}" if state == "absent" else detail
+    return True, f"{', '.join(packages)}; {detail}"
+
+
+def _hatchling_wheel_build() -> tuple[str, str]:
+    """Best-effort offline wheel build; state is absent, built, or failed."""
+
+    try:
+        import_result = subprocess.run(
+            [sys.executable, "-c", "import hatchling"],
+            capture_output=True,
+            check=False,
+        )
+        if import_result.returncode:
+            return "absent", "hatchling not importable; only the declared target was checked"
+        with tempfile.TemporaryDirectory() as scratch:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "wheel",
+                    "--no-deps",
+                    "--no-build-isolation",
+                    "-w",
+                    scratch,
+                    ".",
+                ],
+                cwd=LOCAL_RUNTIME,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return "failed", f"hatchling wheel build could not run: {exc}"
+    if result.returncode:
+        tail = (result.stderr or result.stdout).strip()[-300:]
+        return "failed", f"hatchling wheel build failed: {tail}"
+    return "built", "wheel built with the installed hatchling"
 
 
 def _pnpm_version_ok(command: list[str]) -> bool:
