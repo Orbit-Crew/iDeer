@@ -100,8 +100,12 @@ class DeviceControlService:
         policy_hash: str | None,
     ) -> DeviceClaim:
         pairing = (await self.session.execute(select(PairingSessionModel).where(PairingSessionModel.code_digest == hash_secret(pairing_code)).with_for_update())).scalar_one_or_none()
+        # A rejected bootstrap credential is an authentication failure: the
+        # pairing code is the only thing standing between an anonymous caller
+        # and device registration, so every code rejection on this path is a
+        # 401 (the owner-side confirm endpoint keeps its own 400/409 mapping).
         if pairing is None:
-            raise DeviceControlError("PAIRING_INVALID", "pairing code invalid", 400)
+            raise DeviceControlError("PAIRING_INVALID", "pairing code invalid", 401)
         try:
             consume_pairing_code(
                 pairing.code_digest,
@@ -111,7 +115,7 @@ class DeviceControlService:
             )
         except PairingError as exc:
             code = "PAIRING_EXPIRED" if "expired" in str(exc) else "PAIRING_ALREADY_USED" if "already used" in str(exc) else "PAIRING_INVALID"
-            raise DeviceControlError(code, str(exc), 409 if code != "PAIRING_INVALID" else 400) from exc
+            raise DeviceControlError(code, str(exc), 401) from exc
 
         device = DeviceModel(
             id=str(uuid4()),
@@ -168,7 +172,14 @@ class DeviceControlService:
 
     async def complete_registration(self, *, device_id: str, public_key: str, claim_token: str) -> RegisteredDevice:
         pairing = (await self.session.execute(select(PairingSessionModel).where(PairingSessionModel.device_id == device_id).with_for_update())).scalar_one_or_none()
-        if pairing is None or pairing.status != PairingStatus.CONFIRMED:
+        # An unknown device_id presents no verifiable claim: answer with the
+        # same credential rejection as a wrong token so probes cannot
+        # distinguish "no such device" from "bad claim" (401). A known pairing
+        # that is not confirmed yet is a mid-flow state conflict, not an
+        # authentication failure (409).
+        if pairing is None:
+            raise DeviceControlError("PAIRING_CLAIM_INVALID", "device claim token is invalid", 401)
+        if pairing.status != PairingStatus.CONFIRMED:
             raise DeviceControlError(
                 "PAIRING_NOT_CONFIRMED",
                 "owner confirmation is required before registration",
