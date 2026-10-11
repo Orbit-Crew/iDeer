@@ -252,7 +252,14 @@ case "$LANE" in
     (cd "$ROOT_DIR/backend" && make test-blocking-io)
     ;;
   frontend-visual)
-    (cd "$ROOT_DIR/frontend" && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" test:e2e:visual)
+    # TEST_VISUAL_UPDATE_SNAPSHOTS=1 regenerates baselines instead of
+    # asserting them (CI baseline-refresh dispatch); without it the lane
+    # asserts against the checked-in snapshots as usual.
+    visual_args=()
+    if [ "${TEST_VISUAL_UPDATE_SNAPSHOTS:-0}" = "1" ]; then
+      visual_args+=(--update-snapshots)
+    fi
+    (cd "$ROOT_DIR/frontend" && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" test:e2e:visual "${visual_args[@]}")
     ;;
   frontend-a11y)
     (cd "$ROOT_DIR/frontend" && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" test:e2e:a11y)

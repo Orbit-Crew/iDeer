@@ -773,10 +773,15 @@ class StdioMCPConnection:
         self._next_id = 0
         self._reader_task: asyncio.Task[None] | None = None
         self._stderr_task: asyncio.Task[None] | None = None
-        self._write_lock = asyncio.Lock()
+        self._write_lock: asyncio.Lock | None = None
         self._closing = False
 
     async def start(self) -> None:
+        if self._write_lock is None:
+            # asyncio.Lock binds its loop at construction on Python 3.9 and
+            # older; connections are built outside any running loop, so the
+            # lock belongs to start()'s running loop.
+            self._write_lock = asyncio.Lock()
         try:
             self.process = await asyncio.create_subprocess_exec(
                 *self.command,
@@ -826,7 +831,9 @@ class StdioMCPConnection:
                 )
                 await self.process.stdin.drain()
             return await asyncio.wait_for(future, timeout)
-        except TimeoutError:
+        except asyncio.TimeoutError:
+            # asyncio.wait_for raises asyncio.TimeoutError, only an alias of
+            # the builtin from Python 3.11 on.
             self._pending.pop(message["id"], None)
             raise MCPError("MCP_TIMEOUT", f"{method} timed out") from None
         except (OSError, ValueError, json.JSONDecodeError) as exc:
@@ -1003,7 +1010,7 @@ class HTTPMCPConnection:
             )
             if session_id:
                 self._session_id = session_id
-        except TimeoutError:
+        except asyncio.TimeoutError:
             raise MCPError("MCP_TIMEOUT", f"{method} timed out") from None
         except (OSError, ValueError) as exc:
             raise MCPError(
@@ -1056,7 +1063,7 @@ class HTTPMCPConnection:
             _, _, _, session_id = await asyncio.wait_for(self._post(body), timeout=10)
             if session_id:
                 self._session_id = session_id
-        except (TimeoutError, MCPError, OSError):
+        except (asyncio.TimeoutError, MCPError, OSError):
             pass
 
     async def close(self) -> None:

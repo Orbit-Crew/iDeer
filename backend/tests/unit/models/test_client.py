@@ -7,6 +7,7 @@ import tempfile
 import zipfile
 from enum import Enum
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -755,21 +756,55 @@ class TestStream:
         introduced in commit 1.  This test guards against a future
         refactor accidentally restoring the quadratic path.
 
-        Threshold rationale (10,000 single-char chunks, 1 second):
-            * Current O(n) implementation: ~50-200 ms total, including
-              all mock + event yield overhead.
-            * O(n²) regression at n=10,000: chat accumulation alone
-              becomes ~500 ms-2 s (50 M character copies), reliably
-              over the bound on any reasonable CI.
+        Seam: the accumulation loop now lives in
+        ``_accumulate_last_ai_text``; this test drives it with synthetic
+        events so the measurement isolates the accumulation strategy.
+        The end-to-end seam is unusable for this guard: ``stream()``'s
+        incremental chunk merging is itself size-dependent (measured
+        26x for a 4x chunk increase on the linear implementation), so
+        any chat()-level timing buries the accumulation signal.
 
-        If this test ever flakes on slow CI, do NOT raise the threshold
-        blindly — first confirm the implementation still uses
-        ``"".join``, then consider whether the test should move to a
-        benchmark suite that excludes mock overhead.
+        Threshold rationale (paired 4x-scaling runs, ratio < 8):
+            * O(n) accumulation: quadrupling the event count quadruples
+              the runtime, so the ratio converges to ~4.
+            * O(n²) accumulation (``buffer = buffer + delta`` re-copies
+              the whole buffer per event): the same step multiplies the
+              runtime by ~16, far past the bound.
+            * Each side is the minimum of three runs (preemption only
+              ever adds time, so the minimum tracks true cost), which
+              keeps the ratio stable on loaded coverage-instrumented
+              CI runners.
+
+        2026-10-10: the original absolute budget (10,000 end-to-end
+        chunks < 1 s) failed on loaded scheduled CI while the push lane
+        stayed green; the implementation was verified to still use
+        ``"".join``, so the guard moved to the accumulation seam and a
+        scaling ratio per the original docstring's own guidance.
         """
         import time
 
-        n = 10_000
+        from deerflow.client import _accumulate_last_ai_text
+
+        def _events(n: int):
+            for _ in range(n):
+                yield SimpleNamespace(type="messages-tuple", data={"type": "ai", "id": "ai-1", "content": "x"})
+            yield SimpleNamespace(type="end", data={})
+
+        def _run(n: int) -> float:
+            start = time.monotonic()
+            text = _accumulate_last_ai_text(_events(n))
+            elapsed = time.monotonic() - start
+            assert text == "x" * n
+            return elapsed
+
+        baseline = min(_run(100_000) for _ in range(3))
+        scaled = min(_run(400_000) for _ in range(3))
+
+        assert scaled < baseline * 8, f"accumulation runtime scaled {scaled / baseline:.2f}x for a 4x event increase ({baseline:.3f}s -> {scaled:.3f}s) — possible O(n^2) regression (see PR #1974 commit 2 for the original fix)"
+
+        # Wiring smoke: chat() must still route its stream through the
+        # accumulating helper (correctness only — no timing, no flakes).
+        n = 200
         chunks: list = [("messages", (AIMessageChunk(content="x", id="ai-1"), {})) for _ in range(n)]
         chunks.append(
             (
@@ -784,17 +819,11 @@ class TestStream:
         )
         agent = MagicMock()
         agent.stream.return_value = iter(chunks)
-
         with (
             patch.object(client, "_ensure_agent"),
             patch.object(client, "_agent", agent),
         ):
-            start = time.monotonic()
-            result = client.chat("go", thread_id="t-perf")
-            elapsed = time.monotonic() - start
-
-        assert result == "x" * n
-        assert elapsed < 1.0, f"chat() took {elapsed:.3f}s for {n} chunks — possible O(n^2) regression (see PR #1974 commit 2 for the original fix)"
+            assert client.chat("go", thread_id="t-perf") == "x" * n
 
     def test_none_id_chunks_produce_duplicates_known_limitation(self, client):
         """Documents a known dedup limitation: ``messages`` chunks with ``id=None``.

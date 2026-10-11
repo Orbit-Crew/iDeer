@@ -14,7 +14,7 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional
 
 if TYPE_CHECKING:
     from .audit import LocalAuditLog
@@ -44,7 +44,9 @@ CONSENT_TIMEOUT_SECONDS = 300.0
 #: Asks the local user about one pending request and resolves to their answer
 #: (``{"approved": bool, "actor_id": str, "always": bool}``) or ``None`` when
 #: nobody can answer it. Implemented by the tray; the transport never renders.
-ConsentPrompt = Callable[[PendingConsent], Awaitable[dict[str, Any] | None]]
+# A runtime type alias: ``dict[...]``/``X | None`` spellings evaluate here on
+# every import, so it keeps the typing-module forms the 3.8 line supports.
+ConsentPrompt = Callable[[PendingConsent], Awaitable[Optional[Dict[str, Any]]]]
 
 
 @dataclass

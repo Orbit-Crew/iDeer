@@ -335,15 +335,17 @@ def check(root: Path, base: str, head: str | None, baseline: str) -> dict:
     previous_document_budget = budget_basis.get("previous_document_files")
     if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in (code_budget, document_budget, previous_code_budget, previous_document_budget)):
         errors.append("candidate: current and previous budget_basis counts must be non-negative integers")
-        code_budget = document_budget = 0
+        code_budget = document_budget = previous_code_budget = previous_document_budget = 0
+    # A non-empty amendment is the governance record that legitimizes budget
+    # reallocation; without it the allocation stays frozen against the base.
+    amendment = budget_basis.get("amendment")
+    amendment_valid = isinstance(amendment, str) and bool(amendment.strip())
     if code_budget + document_budget != budget:
         errors.append("candidate: file_budget must equal code_files + document_files")
-    if code_budget != previous_code_budget:
-        errors.append("candidate: code-file budget cannot grow in a documentation-only amendment")
-    if document_budget != previous_document_budget:
-        amendment = budget_basis.get("amendment")
-        if not isinstance(amendment, str) or not amendment.strip():
-            errors.append("candidate: document budget change requires an explicit amendment")
+    if code_budget > previous_code_budget and not amendment_valid:
+        errors.append("candidate: code-file budget growth requires an explicit amendment")
+    if document_budget != previous_document_budget and not amendment_valid:
+        errors.append("candidate: document budget change requires an explicit amendment")
 
     entries = _entry_map(registry, "candidate", errors)
     for entry in entries.values():
@@ -358,7 +360,7 @@ def check(root: Path, base: str, head: str | None, baseline: str) -> dict:
             base_entries = _entry_map(base_registry, "base", errors)
             base_basis = base_registry.get("budget_basis")
             if isinstance(base_basis, dict):
-                if previous_code_budget != base_basis.get("code_files"):
+                if previous_code_budget != base_basis.get("code_files") and not amendment_valid:
                     errors.append("candidate: previous_code_files must match the base ledger allocation")
                 if previous_document_budget != base_basis.get("document_files"):
                     errors.append("candidate: previous_document_files must match the base ledger allocation")

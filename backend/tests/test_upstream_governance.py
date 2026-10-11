@@ -27,14 +27,16 @@ def make_repo(tmp_path):
     return path, run(tmp_path, "rev-parse", "HEAD")
 
 
-def ledger(root, entries, budget=44):
+def ledger(root, entries, budget=44, basis=None):
     code_budget = min(budget, 43)
     document_budget = budget - code_budget
+    if basis is None:
+        basis = {"code_files": code_budget, "document_files": document_budget, "previous_code_files": code_budget, "previous_document_files": document_budget, "amendment": "Test fixture budget allocation."}
     registry = {
         "schema_version": 1,
         "upstream_baseline": run(root, "rev-parse", "HEAD"),
         "file_budget": budget,
-        "budget_basis": {"code_files": code_budget, "document_files": document_budget, "previous_code_files": code_budget, "previous_document_files": document_budget, "amendment": "Test fixture budget allocation."},
+        "budget_basis": basis,
         "patches": entries,
     }
     sources = []
@@ -205,6 +207,68 @@ def test_document_budget_amendment_cannot_raise_code_file_budget(tmp_path):
     report = gate.check(tmp_path, baseline, None, baseline)
 
     assert any("code patch budget exceeded" in error for error in report["errors"])
+
+
+def commit_base_allocation(tmp_path, budget=1):
+    ledger(tmp_path, [], budget=budget)
+    run(tmp_path, "add", "-A")
+    run(tmp_path, "commit", "-m", "base allocation")
+    return run(tmp_path, "rev-parse", "HEAD")
+
+
+def new_patch_entry():
+    """Section-parsed fixture entry (PATCH-016+) for a patch absent from the base."""
+    amended = entry()
+    amended["id"] = "PATCH-016"
+    return amended
+
+
+def growth_candidate(tmp_path):
+    """Base allocation capping code at 1, plus one changed code file to register."""
+    path, _ = make_repo(tmp_path)
+    base = commit_base_allocation(tmp_path)
+    path.write_text("changed\n")
+    return base
+
+
+def growth_basis(**overrides):
+    basis = {"code_files": 2, "document_files": 0, "previous_code_files": 1, "previous_document_files": 0, "amendment": "Amendment: the newly registered code patch needs one more file."}
+    basis.update(overrides)
+    return basis
+
+
+def test_code_budget_growth_with_amendment_passes(tmp_path):
+    base = growth_candidate(tmp_path)
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis())
+
+    report = gate.check(tmp_path, base, None, base)
+
+    assert report["status"] == "pass"
+
+
+def test_code_budget_growth_requires_amendment(tmp_path):
+    base = growth_candidate(tmp_path)
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(amendment=""))
+
+    report = gate.check(tmp_path, base, None, base)
+
+    assert report["status"] == "fail"
+    assert any("code-file budget growth requires an explicit amendment" in error for error in report["errors"])
+
+
+def test_amendment_exempts_previous_code_files_from_base_allocation(tmp_path):
+    base = growth_candidate(tmp_path)
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(previous_code_files=2))
+
+    report = gate.check(tmp_path, base, None, base)
+
+    assert report["status"] == "pass"
+
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(previous_code_files=2, amendment=""))
+
+    errors = gate.check(tmp_path, base, None, base)["errors"]
+
+    assert any("previous_code_files must match the base ledger allocation" in error for error in errors)
 
 
 def test_readability_patch_references_retained_root_test_file():
