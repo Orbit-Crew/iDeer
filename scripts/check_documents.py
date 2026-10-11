@@ -1304,12 +1304,22 @@ def _collect_findings(policy: dict, source: DocumentSource) -> list[Finding]:
     findings.extend(check_protected_fingerprints(policy, source))
     # Baseline registration stays immutable; all registered bodies share the
     # same validation rules, including documents added after the baseline.
+    # Supplements may overlap the inventory; the merge is deduplicated by path
+    # (inventory row wins) so an overlap registration is validated once and
+    # never produces paired duplicate findings.
+    merged_rows: list[dict] = []
+    seen_paths: set[str] = set()
+    for row in [*policy["inventory"]["files"], *(policy.get("supplements") or {}).get("files", [])]:
+        path = str(row.get("path", ""))
+        if path in seen_paths:
+            continue
+        seen_paths.add(path)
+        merged_rows.append(row)
     policy = {
         **policy,
         "inventory": {
             **policy["inventory"],
-            "files": policy["inventory"]["files"]
-            + (policy.get("supplements") or {}).get("files", []),
+            "files": merged_rows,
         },
     }
     tracked = source.tracked_paths()

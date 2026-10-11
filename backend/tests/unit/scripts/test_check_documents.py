@@ -853,6 +853,56 @@ def test_null_supplements_preserve_clean_candidate(tmp_path: Path, capsys) -> No
     assert payload["findings"] == []
 
 
+def _overlap_policy(files: dict[str, bytes]) -> dict:
+    # The same path registered under both inventory and supplements: the merge
+    # must keep one row per path instead of validating the file twice.
+    policy = _base_policy(files)
+    policy["inventory"]["files"].append(_row("docs/overlap.md", "engineering-body-review", files["docs/overlap.md"]))
+    policy["inventory"]["count"] = 5
+    policy["inventory"]["classification_counts"]["engineering-body-review"] = 3
+    policy["supplements"] = {"files": [_row("docs/overlap.md", "engineering-body-review", files["docs/overlap.md"])]}
+    return policy
+
+
+OVERLAP_MD = """---
+id: overlap-doc
+kind: reference
+status: draft
+owner: maintainers
+scope: checker-tests
+---
+
+# Overlap doc
+
+Body text.
+"""
+
+
+def test_path_registered_in_inventory_and_supplements_is_checked_once(tmp_path: Path, capsys) -> None:
+    # Overlapping registration of a clean document must stay clean: the merged
+    # row list is deduplicated by path, so no check runs twice on one file.
+    files = _base_files()
+    files["docs/overlap.md"] = OVERLAP_MD.encode("utf-8")
+    _materialize(tmp_path, files, _overlap_policy(files))
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 0, payload
+    assert payload["findings"] == []
+
+
+def test_finding_on_overlapping_registration_is_reported_once(tmp_path: Path, capsys) -> None:
+    # A real violation on an overlap-registered path yields one finding, not a
+    # paired duplicate from the second registration row.
+    files = _base_files()
+    files["docs/overlap.md"] = OVERLAP_MD.replace("owner: maintainers\n", "").encode("utf-8")
+    _materialize(tmp_path, files, _overlap_policy(files))
+    code, payload, _ = _invoke_json(capsys, tmp_path)
+    assert code == 1
+    hits = [finding for finding in payload["findings"] if finding["file"] == "docs/overlap.md"]
+    assert len(hits) == 1, payload["findings"]
+    assert hits[0]["rule"] == "metadata-shape"
+    assert "owner" in hits[0]["reason"]
+
+
 def test_duplicate_task_domain_declarations_fail_cli(tmp_path: Path, capsys) -> None:
     files = _base_files()
     policy = _base_policy(files)
