@@ -87,3 +87,61 @@ async def test_worker_aborts_execution_when_lease_is_lost() -> None:
 
     assert cancelled.is_set()
     store.finish_task.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_run_forever_survives_db_errors_with_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-OperationalError DB exception in the claim path must not kill the
+    worker coroutine: the loop logs, backs off and keeps polling."""
+    from app.agentplatform.workflows.v2 import worker as worker_module
+
+    monkeypatch.setattr(worker_module, "ERROR_BACKOFF_BASE_SECONDS", 0.01)
+    monkeypatch.setattr(worker_module, "ERROR_BACKOFF_MAX_SECONDS", 0.02)
+
+    store = MagicMock()
+    claims = 0
+
+    async def claim_next_task(*_args, **_kwargs):
+        nonlocal claims
+        claims += 1
+        if claims <= 2:
+            raise RuntimeError("database connection lost")
+        return None
+
+    store.claim_next_task = claim_next_task
+
+    worker = WorkflowWorker(store, AsyncMock(), worker_id="worker-1", heartbeat_seconds=0.01)
+    loop = asyncio.create_task(worker.run_forever(poll_seconds=0.01))
+    for _ in range(200):
+        await asyncio.sleep(0.01)
+        if claims >= 3:
+            break
+
+    assert claims >= 3, "worker stopped polling after DB exceptions"
+    assert not loop.done(), "worker coroutine died on a DB exception"
+    loop.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await loop
+
+
+@pytest.mark.asyncio
+async def test_run_forever_propagates_cancellation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cancellation must still terminate the loop (process shutdown)."""
+    from app.agentplatform.workflows.v2 import worker as worker_module
+
+    monkeypatch.setattr(worker_module, "ERROR_BACKOFF_BASE_SECONDS", 0.01)
+
+    store = MagicMock()
+
+    async def claim_next_task(*_args, **_kwargs):
+        await asyncio.sleep(3600)
+
+    store.claim_next_task = claim_next_task
+
+    worker = WorkflowWorker(store, AsyncMock(), worker_id="worker-1", heartbeat_seconds=0.01)
+    loop = asyncio.create_task(worker.run_forever(poll_seconds=0.01))
+    await asyncio.sleep(0.05)
+    assert not loop.done()
+    loop.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await loop

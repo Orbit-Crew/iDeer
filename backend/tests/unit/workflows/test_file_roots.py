@@ -6,6 +6,7 @@ import pytest
 
 from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
 from app.agentplatform.workflows.v2 import file_roots
+from app.agentplatform.workflows.v2.errors import WorkflowTemplateRenderError
 from app.agentplatform.workflows.v2.file_roots import (
     collect_artifacts,
     make_host_resolver,
@@ -16,6 +17,7 @@ from app.agentplatform.workflows.v2.file_roots import (
     unparsable_json_artifacts,
     validate_read_roots,
     validate_roots,
+    validate_workflow_roots,
     workflow_state_path,
     workflow_state_root,
 )
@@ -66,6 +68,33 @@ class TestRenderTemplate:
         state = {"inputs": {"upload_dir": None}}
         assert render_template("{{inputs.upload_dir}}/a.json", state) == "{{inputs.upload_dir}}/a.json"
 
+    def test_self_referencing_input_raises_structured_error(self) -> None:
+        """A user input shaped like the template referencing it must fail
+        with the structured render error instead of looping forever."""
+        with pytest.raises(WorkflowTemplateRenderError) as exc_info:
+            render_template("{{inputs.x}}", {"inputs": {"x": "{{inputs.x}}"}})
+        assert exc_info.value.code == "template_render_failed"
+
+    def test_mutually_referencing_inputs_raise_iteration_cap(self) -> None:
+        """Linear-growth reference cycles are caught by the iteration cap."""
+        state = {"inputs": {"a": "see {{inputs.b}}", "b": "see {{inputs.a}}"}}
+        with pytest.raises(WorkflowTemplateRenderError):
+            render_template("{{inputs.a}}", state)
+
+    def test_expanding_input_raises_length_guard(self, monkeypatch) -> None:
+        """A value whose every expansion grows the render far beyond the
+        length guard must stop there, not exhaust the iteration cap with a
+        multi-megabyte string."""
+        monkeypatch.setattr(file_roots, "_TEMPLATE_RENDER_MAX_LENGTH", 1_000)
+        state = {"inputs": {"x": "{{inputs.big}}{{inputs.x}}", "big": "A" * 2_000}}
+        with pytest.raises(WorkflowTemplateRenderError):
+            render_template("{{inputs.x}}", state)
+
+    def test_unbalanced_braces_are_left_verbatim(self) -> None:
+        """Unbalanced braces in user data are text, not templates."""
+        assert render_template("hello {{inputs.name", {"inputs": {"name": "x"}}) == "hello {{inputs.name"
+        assert render_template("{{inputs.x}} and {{oops", {"inputs": {"x": "1"}}) == "1 and {{oops"
+
 
 class TestRenderRoots:
     def test_empty_server_assigned_root_is_not_authorized(self) -> None:
@@ -84,6 +113,24 @@ class TestRenderRoots:
 
     def test_none_file_access_returns_none(self) -> None:
         assert render_roots(None, {}) is None
+
+    def test_unbalanced_input_value_keeps_root_verbatim(self) -> None:
+        """An input value with unbalanced braces degrades to a verbatim root
+        (later skipped by validate_roots) instead of raising a bare ValueError."""
+        rendered = render_roots(
+            {"read": ["{{inputs.dir}}/a.json"], "write": []},
+            {"inputs": {"dir": "weird {{ value"}},
+        )
+        assert rendered == {"read": ["weird {{ value/a.json"], "write": []}
+
+    def test_self_referencing_input_propagates_structured_error(self) -> None:
+        """The structured render error must escape render_roots so run
+        pre-flight rejects a self-referencing input instead of passing it."""
+        with pytest.raises(WorkflowTemplateRenderError):
+            render_roots(
+                {"read": ["{{inputs.dir}}/a.json"], "write": []},
+                {"inputs": {"dir": "{{inputs.dir}}"}},
+            )
 
 
 class TestValidateRoots:
@@ -291,6 +338,17 @@ class TestValidateReadRoots:
     def test_unresolvable_template_is_skipped(self, custom_mounts) -> None:
         resolver = make_host_resolver("run-1", "user-1")
         assert validate_read_roots([_Node("collect", ["{{state.late}}/x"])], {}, resolver) == []
+
+
+class TestValidateWorkflowRootsPreflight:
+    def test_self_referencing_input_is_rejected_with_structured_error(self, custom_mounts) -> None:
+        """The seam shared by the Run creation path and the worker pre-flight
+        must reject a self-referencing input with the structured render error
+        instead of hanging or leaking a bare ValueError."""
+        node = _Node("render", ["{{inputs.upload_dir}}/data.json"])
+        with pytest.raises(WorkflowTemplateRenderError) as exc_info:
+            validate_workflow_roots([node], {"upload_dir": "{{inputs.upload_dir}}"})
+        assert exc_info.value.code == "template_render_failed"
 
 
 class TestWorkflowStateFiles:

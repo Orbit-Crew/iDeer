@@ -14,6 +14,13 @@ from .store import WorkflowV2Store
 
 logger = logging.getLogger(__name__)
 
+# Top-level loop guard: a non-transient store failure (e.g. a DB error other
+# than OperationalError) used to escape run_once and silently kill the worker
+# coroutine, leaving the process idle until an external restart. The loop now
+# logs, backs off exponentially and keeps polling.
+ERROR_BACKOFF_BASE_SECONDS = 1.0
+ERROR_BACKOFF_MAX_SECONDS = 30.0
+
 
 class WorkflowPaused(Exception):
     """Raised by graph execution after a durable interrupt checkpoint."""
@@ -118,6 +125,16 @@ class WorkflowWorker:
         return True
 
     async def run_forever(self, poll_seconds: float = 1.0) -> None:
+        backoff = ERROR_BACKOFF_BASE_SECONDS
         while True:
-            if not await self.run_once():
-                await asyncio.sleep(poll_seconds)
+            try:
+                if not await self.run_once():
+                    await asyncio.sleep(poll_seconds)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("workflow worker loop failed; backing off %.1fs", backoff)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, ERROR_BACKOFF_MAX_SECONDS)
+            else:
+                backoff = ERROR_BACKOFF_BASE_SECONDS

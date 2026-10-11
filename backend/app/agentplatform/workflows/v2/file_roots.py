@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from app.agentplatform.resources.canonical_sandbox import canonical_run_skill_view_host_path, parse_canonical_sandbox_scope
+from app.agentplatform.workflows.v2.errors import WorkflowTemplateRenderError
 from deerflow.config.paths import VIRTUAL_PATH_PREFIX, get_paths
 from deerflow.sandbox.tools import (
     _get_custom_mounts,
@@ -38,6 +39,17 @@ _STATE_DIR_REL = ".workflow/state"
 _LOG_DIR_REL = ".workflow/logs"
 
 _PLACEHOLDER_MARKERS = ("file_missing", "占位", "placeholder")
+
+# Template rendering is synchronous code shared by the Run creation path and
+# the worker event loop, so it must always terminate.  The expansion loop is
+# therefore bounded twice: by the number of placeholder expansions per string
+# (a self-referencing input like ``inputs.x == "{{inputs.x}}"`` used to loop
+# forever) and by the rendered length (an expanding value like
+# ``"{{inputs.x}}{{inputs.x}}"`` used to grow without bound even with an
+# iteration cap).  Exceeding either bound raises the structured
+# ``WorkflowTemplateRenderError`` instead of hanging the process.
+_TEMPLATE_RENDER_MAX_ITERATIONS = 64
+_TEMPLATE_RENDER_MAX_LENGTH = 1_000_000
 
 
 def workflow_state_root() -> str:
@@ -83,7 +95,16 @@ def materialize_state(key: str, value: Any, resolver: Callable[[str], str | None
 
 
 def render_template(value: Any, state: dict[str, Any]) -> Any:
-    """Render ``{{...}}`` template references against the graph state."""
+    """Render ``{{...}}`` template references against the graph state.
+
+    Replacement results are re-scanned so nested template values (state
+    written by earlier nodes) resolve too, but the expansion is bounded: more
+    than ``_TEMPLATE_RENDER_MAX_ITERATIONS`` expansions for one string or a
+    rendered value beyond ``_TEMPLATE_RENDER_MAX_LENGTH`` characters raises
+    :class:`WorkflowTemplateRenderError` instead of hanging the event loop.
+    Unbalanced braces (possible in user-provided data) leave the rest of the
+    string verbatim.
+    """
     if isinstance(value, dict):
         return {key: render_template(item, state) for key, item in value.items()}
     if isinstance(value, list):
@@ -91,17 +112,25 @@ def render_template(value: Any, state: dict[str, Any]) -> Any:
     if not isinstance(value, str) or "{{" not in value:
         return value
     result = value
-    while "{{" in result:
+    for _ in range(_TEMPLATE_RENDER_MAX_ITERATIONS):
+        if "{{" not in result:
+            return result
         start = result.index("{{")
-        end = result.index("}}", start)
+        end = result.find("}}", start)
+        if end < 0:
+            # Unbalanced braces: user data is text, not a template — keep it
+            # verbatim instead of raising a bare ValueError.
+            return result
         path = result[start + 2 : end].strip()
         replacement = lookup_path(path, state)
         if replacement is None:
             # Unpopulated state leaves the template verbatim so callers can
             # skip it (e.g. start-up validation) instead of rendering "None".
-            break
+            return result
         result = result[:start] + str(replacement) + result[end + 2 :]
-    return result
+        if len(result) > _TEMPLATE_RENDER_MAX_LENGTH:
+            raise WorkflowTemplateRenderError(f"rendered template exceeds {_TEMPLATE_RENDER_MAX_LENGTH} characters: {value[:200]!r}")
+    raise WorkflowTemplateRenderError(f"template expansion exceeded {_TEMPLATE_RENDER_MAX_ITERATIONS} iterations (self-referencing input?): {value[:200]!r}")
 
 
 def lookup_path(path: str, state: dict[str, Any]) -> Any:
@@ -130,7 +159,10 @@ def render_roots(file_access: dict[str, list[str]] | None, state: dict[str, Any]
                 rendered_root = render_template(root, state)
                 if rendered_root:
                     roots.append(rendered_root)
-            except (KeyError, IndexError, TypeError):
+            except (KeyError, IndexError, TypeError, ValueError):
+                # WorkflowTemplateRenderError (render budget exceeded) is
+                # deliberately NOT swallowed here: a self-referencing input
+                # must fail the run's pre-flight instead of passing through.
                 roots.append(root)
         rendered[key] = roots
     return rendered
