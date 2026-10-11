@@ -37,6 +37,7 @@ from app.gateway.routers import (
     devices,
     features,
     feedback,
+    github_webhooks,
     input_polish,
     integrations,
     knowledge_tests,
@@ -1163,6 +1164,16 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
+
+    # GitHub webhook receiver is mounted at /api/webhooks/github, feeding
+    # inbound deliveries into the channel bus above. Fail-closed: the route is
+    # only included when GITHUB_WEBHOOK_SECRET is set (or the explicit dev
+    # opt-in DEER_FLOW_ALLOW_UNVERIFIED_GITHUB_WEBHOOKS=1 is present) — without
+    # either the route stays absent (404) so a deployment with no secret cannot
+    # accept forged deliveries. Authenticity itself is enforced per-request by
+    # the router's HMAC verification.
+    if github_webhooks.is_route_enabled():
+        app.include_router(github_webhooks.router)
 
     # Device control-plane API is mounted at /api/devices.
     app.include_router(devices.router)
