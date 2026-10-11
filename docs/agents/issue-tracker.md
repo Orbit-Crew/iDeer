@@ -27,6 +27,15 @@ Local specifications use a date-prefixed descriptive filename and YAML frontmatt
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone. For this repo prefer `--repo Orbit-Crew/iDeer` as noted above.
 
+## Gitea sync
+
+Every issue created on GitHub gets a matching issue on Gitea (`TechCode/iDeer`, intranet) with identical content:
+
+- Tool: `tea` (the default login is already `gitea.com` / Neowyh). Create: `tea issues create --repo TechCode/iDeer --title "..." --description-file <file> --labels "enhancement,needs-triage" --assignees <user>`; verify: `tea issues list --repo TechCode/iDeer --fields "index,title,state,assignees,labels"`.
+- Use the Gitea `feature-request.yml` template: the preflight link points at `https://gitea.com/TechCode/iDeer/issues`; all other fields are verbatim copies of the GitHub body.
+- Redaction: frame-format document names, sample `.dat` files, and anything else sensitive never appear on either platform; implementers fetch them on the intranet.
+- Keep labels and assignee consistent with the GitHub side (default `enhancement` + `needs-triage` + assign to a person).
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
