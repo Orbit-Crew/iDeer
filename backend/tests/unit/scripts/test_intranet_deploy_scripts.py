@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import os
 import stat
 import subprocess
@@ -486,6 +487,8 @@ def test_package_source_archive_includes_runtime_seed_templates(tmp_path: Path):
     assert "extensions_config.example.json" in names
     assert "frontend/.env.example" in names
     assert "frontend/.env" not in names
+    assert "docker/ragflow/.env" not in names
+    assert "docker/ragflow/.env.example" in names
     assert "resources/workflows/fault-zeroing.yaml" in names
     assert "bundled-resources.json" in names
     assert "scripts/seed_bundled_resources.py" in names
@@ -880,6 +883,41 @@ def test_package_incremental_bundle_saves_only_gateway_and_frontend(tmp_path: Pa
     assert "Incremental from: v1" in manifest
     assert "not included" in manifest
     assert "Incremental bundles are for upgrading an existing deployment only" in manifest
+
+    manifest_data = json.loads((output_dir / "bundle-manifest.json").read_text(encoding="utf-8"))
+    assert "docker/ragflow/.env" not in manifest_data["source_files"]
+
+
+def test_manifest_helper_excludes_local_env_files(tmp_path: Path):
+    """Incremental manifests never record a machine-local ".env" file wherever
+    it lives (docker/ragflow/.env may hold real credentials on a build machine);
+    tracked *.env.example seed templates stay bundled."""
+    root = tmp_path / "root"
+    (root / "docker" / "ragflow").mkdir(parents=True)
+    (root / "frontend").mkdir(parents=True)
+    (root / "docker" / "ragflow" / ".env").write_text("MYSQL_ROOT_PASSWORD=secret\n", encoding="utf-8")
+    (root / "docker" / ".env").write_text("COMPOSE_PROJECT_NAME=ideer\n", encoding="utf-8")
+    (root / "frontend" / ".env").write_text("VITE_API_BASE=http://localhost\n", encoding="utf-8")
+    (root / "frontend" / ".env.example").write_text("# template\n", encoding="utf-8")
+    (root / "docker" / "ragflow" / ".env.example").write_text("# template\n", encoding="utf-8")
+    (root / "docker" / "keep.txt").write_text("keep\n", encoding="utf-8")
+
+    output = tmp_path / "manifest.json"
+    proc = subprocess.run(
+        ["python3", str(MANIFEST_SCRIPT), "snapshot", "--root", str(root), "--output", str(output)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    source_files = json.loads(output.read_text(encoding="utf-8"))["source_files"]
+    assert "docker/ragflow/.env" not in source_files
+    assert "docker/.env" not in source_files
+    assert "frontend/.env" not in source_files
+    assert "docker/ragflow/.env.example" in source_files
+    assert "frontend/.env.example" in source_files
+    assert "docker/keep.txt" in source_files
 
 
 def test_package_full_bundle_manifest_marks_bundle_type_full(tmp_path: Path):

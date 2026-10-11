@@ -497,6 +497,8 @@ if [ "$INCREMENTAL" -eq 1 ]; then
         --root "$REPO_ROOT" --base "$BASE_MANIFEST" --manifest "$BUNDLE_MANIFEST_FILE" \
         --archive "$SOURCE_TAR" --deleted "$SOURCE_DELETED_FILE" "${SOURCE_INCLUDE_ARGS[@]}" "${MANIFEST_SKILL_ARGS[@]}"
 else
+# Any machine-local ".env" (docker/ragflow/.env, frontend/.env, ...) may hold
+# real credentials; only tracked *.env.example templates ship in the bundle.
 tar \
     -C "$REPO_ROOT" \
     --exclude='.git' \
@@ -513,6 +515,8 @@ tar \
     --exclude='frontend/.next' \
     --exclude='frontend/.cache' \
     --exclude='frontend/.env' \
+    --exclude='docker/ragflow/.env' \
+    --exclude='.env' \
     --exclude='frontend/test-results' \
     --exclude='frontend/playwright-report' \
     --exclude='frontend/tsconfig.tsbuildinfo' \
