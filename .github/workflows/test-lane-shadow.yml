@@ -175,6 +175,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      # Test-only install: the lane imports `core` through PYTHONPATH
+      # (scripts/run-test-lane.sh), and `pip install -e .` currently fails
+      # because the flat core/ layout matches no hatchling wheel target —
+      # see the broken Install step in local-runtime-windows.yml.
+      - name: Install local-runtime test dependencies
+        run: python -m pip install pytest pytest-asyncio pytest-timeout "cryptography>=43" "websockets>=13,<14"
       - name: Run local-runtime tests
         run: bash scripts/run-test-lane.sh local-runtime
 
