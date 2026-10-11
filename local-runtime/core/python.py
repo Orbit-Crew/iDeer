@@ -239,6 +239,9 @@ class _StreamingRedactor:
 
     def feed(self, text: str, *, final: bool = False) -> str:
         self._pending += text
+        # Windows children translate \n to \r\n for redirected streams; the
+        # held-back tail means a \r\n split across two chunks still joins.
+        self._pending = self._pending.replace("\r\n", "\n")
         redacted = self._secrets.redact(
             self._pattern.sub(r"\1\2[REDACTED]", self._pending)
         )
@@ -634,11 +637,27 @@ class PythonExecutor:
     def _summarize_log(self, path: str, secrets: SecretRedactor) -> tuple[str, str]:
         digest = hashlib.sha256()
         preview = bytearray()
+        pending_cr = b""
         with open(path, "rb") as output_file:
             while chunk := output_file.read(64 * 1024):
-                digest.update(chunk)
+                # Windows children translate \n to \r\n for redirected
+                # stdout/stderr; canonicalize before hashing so the receipt
+                # hash is platform-independent. A \r is carried across the
+                # read boundary when the \r\n pair straddles it, and a lone
+                # \r (e.g. a progress bar) is left untouched.
+                chunk = pending_cr + chunk
+                pending_cr = b""
+                if chunk.endswith(b"\r"):
+                    pending_cr = b"\r"
+                    chunk = chunk[:-1]
+                canonical = chunk.replace(b"\r\n", b"\n")
+                digest.update(canonical)
                 if len(preview) < self.max_output_bytes:
-                    preview.extend(chunk[: self.max_output_bytes - len(preview)])
+                    preview.extend(canonical[: self.max_output_bytes - len(preview)])
+        if pending_cr:
+            digest.update(pending_cr)
+            if len(preview) < self.max_output_bytes:
+                preview.extend(pending_cr[: self.max_output_bytes - len(preview)])
         return secrets.redact(
             self._redact(bytes(preview).decode("utf-8", errors="replace"))
         ), digest.hexdigest()

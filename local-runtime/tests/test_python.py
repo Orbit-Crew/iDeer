@@ -18,7 +18,13 @@ from core.artifacts import (
 from core.consent import ConsentStore, request_hash
 from core.files import LocalFileStore, RootConfig
 from core.policy import LocalPolicy, PolicyDecision
-from core.python import LocalPythonService, PythonExecutor, PythonTaskStatus
+from core.python import (
+    LocalPythonService,
+    PythonExecutor,
+    PythonTaskStatus,
+    _StreamingRedactor,
+)
+from core.secrets import SecretRedactor
 
 
 def test_python_executor_success_and_bounded_output(tmp_path: Path) -> None:
@@ -72,6 +78,26 @@ def test_windows_process_options_suspend_the_child_for_job_assignment(
     assert flags & 0x4  # CREATE_SUSPENDED
     assert flags & 0x200  # CREATE_NEW_PROCESS_GROUP
     assert result.status is PythonTaskStatus.COMPLETED
+
+
+def test_windows_line_endings_are_canonicalized_in_reported_output(
+    tmp_path: Path,
+) -> None:
+    """Windows children translate \\n to \\r\\n for redirected streams; the
+    reported text, streamed chunks, and the receipt hash stay platform-
+    canonical while a lone \\r (e.g. a progress bar) survives."""
+    log = tmp_path / "out.log"
+    log.write_bytes(b"progress\r100%\r\ndone\r\n")
+    text, digest = PythonExecutor()._summarize_log(str(log), SecretRedactor(()))
+    assert text == "progress\r100%\ndone\n"
+    assert digest == hashlib.sha256(b"progress\r100%\ndone\n").hexdigest()
+
+
+def test_streaming_redactor_joins_line_endings_split_across_chunks() -> None:
+    redactor = _StreamingRedactor(SecretRedactor(()))
+    assert redactor.feed("hello\r") + redactor.feed("\n", final=True) == "hello\n"
+    assert redactor.feed("abc\r\n", final=True) == "abc\n"
+    assert redactor.feed("abc\r", final=True) == "abc\r"
 
 
 def test_python_executor_timeout(tmp_path: Path) -> None:
