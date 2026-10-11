@@ -47,7 +47,7 @@ archived-reason: implemented — scanner_status/scanners_unavailable live in bac
 ## Implementation Decisions
 
 - 工具注册遵循工单 04 建立的 config.example.yaml 声明先例；新 `code` 组。
-- 扫描库修复：cppcheck stdout(XML)/stderr(进度) 分离解析；每个扫描器记录 scanner_status（available/version/exit_code/timed_out）；超时按源文件数分档（≤200 文件 120s，否则 600s）；捕获 OSError；`compilation_configuration_verified=false` 时跳过 clang-tidy 只跑 cppcheck 并记录跳过原因。
+- 扫描库修复：原生 cppcheck stderr(XML)/stdout(进度) 分离解析，并兼容包装器将 XML 输出到 stdout；每个扫描器记录 scanner_status（available/version/exit_code/timed_out）；超时按源文件数分档（≤200 文件 120s，否则 600s）；捕获 OSError；`compilation_configuration_verified=false` 时跳过 clang-tidy 只跑 cppcheck 并记录跳过原因。
 - 产物落 `<package>/analysis/`（inventory.json + findings.json + scanner_status.json）；工具内部自带包根约束，不经 FilesystemScopeMiddleware。
 - read_file/grep 编码嗅探顺序 UTF-8 → UTF-8 BOM → GB18030；GB 命中输出加 `[encoding: GB18030]` 前缀。
 - code_evidence 管道二进制后缀改白名单放行（单文件 ≤10MB，manifest 记录），`read_binary_hex` 大小与路径双守卫。

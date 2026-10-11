@@ -1834,3 +1834,28 @@ def test_file_operation_lock_memory_cleanup() -> None:
 
     # 检查特定 key 是否被清理（而不是检查总长度）
     assert lock_key not in _FILE_OPERATION_LOCKS
+
+
+def test_local_code_evidence_is_readable_but_not_writable(tmp_path: Path, monkeypatch) -> None:
+    from deerflow.sandbox.tools import ls_tool, read_file_tool
+
+    root = tmp_path / "threads" / "t1" / "user-data"
+    thread_data = {f"{name}_path": str(root / name) for name in ("workspace", "uploads", "outputs")}
+    for directory in thread_data.values():
+        Path(directory).mkdir(parents=True)
+    report = root / "code-evidence" / "pkg-active" / "analysis" / "findings.json"
+    report.parent.mkdir(parents=True)
+    report.write_text('{"findings": []}')
+    outside = tmp_path / "other-thread.json"
+    outside.write_text("private")
+    (report.parent / "escape.json").symlink_to(outside)
+    sandbox = LocalSandbox(id="local", path_mappings=[PathMapping(container_path=VIRTUAL_PATH_PREFIX, local_path=str(root))])
+    runtime = SimpleNamespace(state={"sandbox": {"sandbox_id": "local"}, "thread_data": thread_data}, context={"thread_id": "t1"}, config={})
+    monkeypatch.setattr("deerflow.sandbox.tools.ensure_sandbox_initialized", lambda runtime: sandbox)
+    path = "/mnt/user-data/code-evidence/pkg-active/analysis/findings.json"
+
+    assert read_file_tool.func(runtime=runtime, path=path) == '{"findings": []}'
+    assert "findings.json" in ls_tool.func(runtime=runtime, path=path.rsplit("/", 1)[0])
+    assert "Permission denied" in read_file_tool.func(runtime=runtime, path=path.replace("findings.json", "escape.json"))
+    assert "Permission denied" in write_file_tool.func(runtime=runtime, path=path, content="changed")
+    assert report.read_text() == '{"findings": []}'

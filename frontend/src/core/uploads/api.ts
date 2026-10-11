@@ -23,9 +23,15 @@ export interface UploadedFileInfo {
 export interface UploadResponse {
   success: boolean;
   files: UploadedFileInfo[];
+  code_packages?: CodeEvidencePackage[];
   message: string;
   skipped_files: string[];
   trace_id?: string;
+}
+
+export interface CodeEvidencePackage {
+  package_id: string;
+  source_virtual_path: string;
 }
 
 export interface ListFilesResponse {

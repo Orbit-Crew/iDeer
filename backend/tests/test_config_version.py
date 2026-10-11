@@ -322,3 +322,30 @@ def test_config_upgrade_migrates_legacy_runtime_paths_at_current_schema_version(
     assert upgraded["sandbox"]["use"].startswith("deerflow.sandbox.")
     assert upgraded["tools"][0]["use"].startswith("deerflow.community.ddg_search.")
     assert upgraded["custom"]["use"].startswith("app.agentplatform.community.doc_reader.")
+
+
+def test_config_upgrade_registers_code_evidence_tool_in_existing_tool_lists(tmp_path):
+    """Current config schemas still receive code tool registration when arrays exist."""
+    import subprocess
+
+    repo_root = Path(__file__).resolve().parents[2]
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        yaml.safe_dump({"config_version": 40, "tool_groups": [{"name": "file:read"}], "tools": [{"name": "read_file", "group": "file:read"}]}),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        ["bash", str(repo_root / "scripts" / "config-upgrade.sh")],
+        env={**os.environ, "DEER_FLOW_CONFIG_PATH": str(config_path)},
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    assert result.returncode == 0, result.stderr
+    upgraded = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert {group["name"] for group in upgraded["tool_groups"]} >= {"file:read", "code"}
+    analyze = next(tool for tool in upgraded["tools"] if tool["name"] == "analyze_code_evidence")
+    assert analyze["group"] == "code"
+    assert analyze["use"] == "app.agentplatform.tools.analyze_code_evidence_tool:analyze_code_evidence_tool"

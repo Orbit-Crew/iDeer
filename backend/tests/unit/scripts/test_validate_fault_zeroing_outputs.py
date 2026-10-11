@@ -323,6 +323,17 @@ def test_material_coverage_matrix_must_cover_required_categories(tmp_path: Path)
     assert_invalid(write_outputs(tmp_path, report=report), "资料覆盖矩阵缺少：历史或复核记录")
 
 
+def test_material_coverage_matrix_allows_introductory_prose_before_table(tmp_path: Path) -> None:
+    report = valid_report().replace(
+        "### 资料覆盖矩阵\n\n",
+        "### 资料覆盖矩阵\n\n以下逐项记录收到的资料类别和缺失影响。\n\n",
+    )
+
+    result = load_validator().validate_outputs(write_outputs(tmp_path, report=report))
+
+    assert result.ok, result.errors
+
+
 def test_material_coverage_matrix_ignores_other_input_tables(tmp_path: Path) -> None:
     report = valid_report().replace("| 历史或复核记录 | 已覆盖 | 05_review_record.md | 无 |\n", "")
     report = report.replace(
@@ -421,6 +432,16 @@ def test_report_must_contain_each_pending_verification_id(tmp_path: Path) -> Non
     report = valid_report().replace("| VP-01 |", "| VP-99 |")
 
     assert_invalid(write_outputs(tmp_path, report=report), "report missing pending verification item VP-01")
+
+
+def test_report_accepts_pending_verification_ids_from_the_fault_tree(tmp_path: Path) -> None:
+    fault_tree = valid_fault_tree()
+    fault_tree["verification_plan"][0]["id"] = "V1"
+    report = valid_report().replace("| VP-01 |", "| V1 |")
+
+    result = load_validator().validate_outputs(write_outputs(tmp_path, fault_tree, report))
+
+    assert result.ok, result.errors
 
 
 @pytest.mark.parametrize(

@@ -1020,7 +1020,7 @@ def _coverage_matrix_rows(report_text: str) -> list[str]:
         if not stripped.startswith("|"):
             if in_table:
                 break
-            if stripped:
+            if stripped.startswith("#"):
                 break
             continue
         in_table = True
@@ -1045,9 +1045,12 @@ def _verification_plan_ids(report_text: str) -> list[str]:
         cells = [cell.strip() for cell in line.split("|")[1:-1]]
         if not cells:
             continue
-        match = re.fullmatch(r"VP-[A-Za-z0-9_-]+", cells[0])
+        candidate = cells[0]
+        if candidate.casefold() in {"id", "编号", "验证项", "验证编号"}:
+            continue
+        match = re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", candidate)
         if match:
-            ids.append(match.group(0))
+            ids.append(candidate)
     return ids
 
 

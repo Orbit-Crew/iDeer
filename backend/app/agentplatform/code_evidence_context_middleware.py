@@ -58,7 +58,10 @@ class CodeEvidenceContextMiddleware(AgentMiddleware):
                 "read_file、grep 在全路径自动识别 UTF-8、UTF-8 BOM 和 GB18030（兼容 GBK）；原始 ZIP 仅作为不可直接读取的证据容器。",
                 f"原始文件名：{original_filename}",
                 f"已接收文件：{accepted} 个；已排除：{excluded} 项；已拒绝：{rejected} 项。",
-                "C/C++ 可递归阅读并调用 analyze_code_evidence；Python 及其他文本源码仅做只读结构/逻辑审查，不执行代码、不安装依赖，也不声称完成 Python 静态扫描。",
+                "C/C++ 可递归阅读并调用 analyze_code_evidence（clang-tidy、cppcheck）；"
+                "Python 可调用同一工具运行固定 Ruff、Bandit 扫描；混合包同时运行两类扫描器。"
+                "不得执行源码、安装依赖或传入自定义命令/参数；依据工具返回的 languages、"
+                "scanner_status 披露覆盖范围、跳过项和不可用项，不能把未扫描说成无告警。",
                 "</code-evidence-package>",
             ]
         )

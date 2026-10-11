@@ -38,6 +38,20 @@ Follow the [task route](docs/agents/task-routing.md) for contract, decisions, co
 
 Use Conventional Commits (`fix(scope): imperative summary`). PRs list behavior, checks, issues and visual evidence. Never commit secrets; use untracked local config and run `make doctor` for environment issues ([local ops](docs/agents/local-ops-notes.md#security--configuration)). Nginx loopback is public entry; bind new ports explicitly ([deployment](docs/agents/local-ops-notes.md#deployment)). Keep session artifacts in ignored `dev-log/`, never repo root; never force-add them ([session files](docs/agents/local-ops-notes.md#session--working-files-dev-log)). Test-account passwords equal their email; see [account table](docs/agents/test-accounts.md).
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub (`Orbit-Crew/iDeer`) and are synced to Gitea (`TechCode/iDeer`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

@@ -49,6 +49,7 @@ from app.agentplatform.fault_zeroing.kernel import (
     RunNotFoundError,
 )
 from app.agentplatform.resources.actors import role_permissions
+from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
 from app.agentplatform.resources.service import (
     ResourceActor,
     ResourceError,
@@ -211,7 +212,7 @@ def _materialize_uploads(thread_id: str, user_id: str, upload_paths: list[str], 
 
     paths = get_paths()
     thread_uploads_dir = paths.sandbox_uploads_dir(thread_id, user_id=user_id)
-    run_uploads_dir = paths.sandbox_uploads_dir(run_id, user_id=user_id)
+    run_uploads_dir = paths.sandbox_uploads_dir(canonical_sandbox_scope(run_id, run_id), user_id=user_id)
     run_uploads_dir.mkdir(parents=True, exist_ok=True)
     seen: set[str] = set()
     for declared in upload_paths:
@@ -234,7 +235,7 @@ def _materialize_code_package(thread_id: str, user_id: str, code_package_id: str
     if not isinstance(source_manifest, dict):
         raise _MaterializationError("code_package_not_found", f"本会话不存在该代码证据包: {code_package_id}")
     new_package_id = uuid.uuid4().hex
-    target_root = package_root(run_id, new_package_id, user_id=user_id)
+    target_root = package_root(canonical_sandbox_scope(run_id, run_id), new_package_id, user_id=user_id)
     target_root.mkdir(parents=True, exist_ok=True)
     shutil.copytree(package_root(thread_id, code_package_id, user_id=user_id) / "source", target_root / "source")
     manifest = PackageManifest(
@@ -255,7 +256,7 @@ def _discard_run_user_data(run_id: str, user_id: str) -> None:
     became a Run.  A leftover directory must never mask the original failure,
     but it is logged for observability instead of failing silently."""
 
-    user_data = get_paths().thread_dir(run_id, user_id=user_id) / "user-data"
+    user_data = get_paths().thread_dir(canonical_sandbox_scope(run_id, run_id), user_id=user_id) / "user-data"
     shutil.rmtree(user_data, ignore_errors=True)
     if user_data.exists():
         logger.warning("failed to discard user data for uncreated run %s (user %s)", run_id, user_id)
@@ -546,7 +547,8 @@ async def check_zeroing_run_tool(
     # Terminal: bridge the artifacts into the chat thread (契约违规同样可取).
     # Blocking copy I/O runs off the event loop (repo convention).
     paths = get_paths()
-    run_outputs_dir = paths.sandbox_outputs_dir(run_id, user_id=str(run.created_by))
+    output_scope = canonical_sandbox_scope(run_id, run_id) if run.workflow_resource_id else run_id
+    run_outputs_dir = paths.sandbox_outputs_dir(output_scope, user_id=str(run.created_by))
     thread_outputs_dir = paths.sandbox_outputs_dir(thread_id, user_id=user_id)
 
     def _copy_presentable_outputs() -> list[str]:

@@ -77,13 +77,10 @@ class RunWorkspacePathsMiddleware(AgentMiddleware[AgentState]):
     """Pin ``thread_data`` to the run workspace while the sandbox is scoped.
 
     The bridge scopes the sandbox thread so the provider can recognize the
-    frozen run (``canonical_sandbox_scope``), but the upstream thread-data
-    middleware derives ``/mnt/user-data`` host paths from that scoped identity,
-    while the workflow file-roots contract — and the artifact gate — key the
-    run workspace on the raw run id (``thread_id == run_id``). Appended after
-    the upstream middleware, this override re-points the workspace, uploads and
-    outputs mappings at the run workspace so tool writes land where the gate
-    verifies them.
+    frozen run (``canonical_sandbox_scope``). Appended after the upstream
+    thread-data middleware, this override derives the workspace, uploads and
+    outputs mappings from the workflow file-roots resolver, so tool reads and
+    writes use the same scoped workspace as intake and the artifact gate.
     """
 
     def __init__(self, *, run_id: str, sandbox_scope: str | None = None) -> None:

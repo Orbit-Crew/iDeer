@@ -15,9 +15,11 @@ from typing import Literal
 EvidenceMode = Literal["document", "code", "hybrid"]
 FindingConfidence = Literal["confirmed", "high_risk_candidate", "pending_verification"]
 
-_SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".cxx"}
+_SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".cxx", ".hh", ".hpp", ".hxx"}
+_HEADER_SUFFIXES = {".h", ".hh", ".hpp", ".hxx"}
 _PYTHON_SUFFIXES = {".py"}
 _LOG_SUFFIXES = {".log", ".txt", ".md"}
+_SCANNER_SUCCESS_EXIT_CODES = {"clang-tidy": {0}, "cppcheck": {0}, "ruff": {0, 1}, "bandit": {0, 1}}
 
 Language = Literal["c_cpp", "python"]
 SCANNER_TIMEOUT_GRADE_THRESHOLD = 200
@@ -109,7 +111,7 @@ def inventory_package(package_root: Path) -> dict:
                 source_files.append(relative)
             if suffix in _PYTHON_SUFFIXES:
                 python_files.append(relative)
-            if suffix == ".h":
+            if suffix in _HEADER_SUFFIXES:
                 headers.append(relative)
             if suffix in _LOG_SUFFIXES or path.name.lower() in {"fault.log", "error.log"}:
                 logs.append(relative)
@@ -127,13 +129,22 @@ def inventory_package(package_root: Path) -> dict:
 
 
 def detect_language(inventory: dict) -> Language | None:
-    """Pick the package's scan language: C/C++ sources win; Python-only
-    packages get the Python scanners; ``None`` means no supported sources."""
+    """Return the preferred single language for legacy callers."""
     if inventory.get("source_files"):
         return "c_cpp"
     if inventory.get("python_files"):
         return "python"
     return None
+
+
+def detect_languages(inventory: dict) -> list[Language]:
+    """Return every supported source language present in the package."""
+    languages: list[Language] = []
+    if inventory.get("source_files"):
+        languages.append("c_cpp")
+    if inventory.get("python_files"):
+        languages.append("python")
+    return languages
 
 
 def confidence_for_finding(*, has_correlated_context: bool, is_static_alert: bool = True) -> FindingConfidence:
@@ -206,7 +217,7 @@ def overall_scanner_status(statuses: list[ScannerStatus]) -> Literal["completed"
     - ``scanners_unavailable``: every scanner's binary is missing from the
       environment — the run must disclose that nothing could be scanned.
     - ``partial``: something ran but the environment or an execution failed
-      (missing scanner among several, timeout, start failure).
+      (missing scanner among several, timeout, start failure, abnormal exit).
     - ``completed``: every scanner that applied was available and finished
       (documented policy skips — e.g. clang-tidy without a compilation
       database — do not degrade the run).
@@ -215,7 +226,12 @@ def overall_scanner_status(statuses: list[ScannerStatus]) -> Literal["completed"
         return "completed"
     if all(not status.available for status in statuses):
         return "scanners_unavailable"
-    failed = [status for status in statuses if status.available and (status.timed_out or status.failed_to_start)]
+    failed = [
+        status
+        for status in statuses
+        if status.available
+        and (status.timed_out or status.failed_to_start or (status.exit_code is not None and status.exit_code not in _SCANNER_SUCCESS_EXIT_CODES.get(status.name, {0})) or (status.exit_code is None and not status.skipped_reason))
+    ]
     if failed:
         return "partial"
     ran = [status for status in statuses if status.available and not status.skipped_reason and status.exit_code is not None]
@@ -229,28 +245,32 @@ def overall_scanner_status(statuses: list[ScannerStatus]) -> Literal["completed"
 def run_static_analysis(package_root: Path) -> StaticAnalysisResult:
     """Run the fixed read-only scanner set for one package's language.
 
-    Dispatch: C/C++ sources get clang-tidy and cppcheck; Python-only sources
-    get ruff and bandit, both strictly read-only. clang-tidy is skipped with a
+    Dispatch: C/C++ sources get clang-tidy and cppcheck; Python sources
+    get ruff and bandit, including mixed packages, all strictly read-only. clang-tidy is skipped with a
     recorded reason when the package carries no compilation database. Every
     scanner ends up in the status list — unavailable binaries and skipped
     runs are disclosed, never dropped.
     """
     inventory = inventory_package(package_root)
-    language = detect_language(inventory)
-    if language is None:
+    languages = detect_languages(inventory)
+    if not languages:
         return StaticAnalysisResult(package_id=package_root.name, inventory=inventory, findings=[], statuses=[])
     source = package_root / "source"
-    if language == "c_cpp":
-        plan: list[tuple[str, Callable[[], list[str]]]] = [
-            ("clang-tidy", lambda: _clang_tidy_command(package_root)),
-            ("cppcheck", lambda: _cppcheck_command(source)),
-        ]
-        needs_compilation_database = {"clang-tidy"}
-        file_count = len(inventory["source_files"])
-    else:
-        plan = [("ruff", lambda: _ruff_command(source)), ("bandit", lambda: _bandit_command(source))]
-        needs_compilation_database = set()
-        file_count = len(inventory["python_files"])
+    plan: list[tuple[str, Callable[[], list[str]]]] = []
+    needs_compilation_database: set[str] = set()
+    file_count = 0
+    if "c_cpp" in languages:
+        plan.extend(
+            [
+                ("clang-tidy", lambda: _clang_tidy_command(package_root)),
+                ("cppcheck", lambda: _cppcheck_command(source)),
+            ]
+        )
+        needs_compilation_database.add("clang-tidy")
+        file_count += len(inventory["source_files"])
+    if "python" in languages:
+        plan.extend([("ruff", lambda: _ruff_command(source)), ("bandit", lambda: _bandit_command(source))])
+        file_count += len(inventory["python_files"])
     timeout = scanner_timeout_seconds(file_count)
     statuses: list[ScannerStatus] = []
     findings: list[StaticFinding] = []
@@ -263,6 +283,11 @@ def run_static_analysis(package_root: Path) -> StaticAnalysisResult:
             statuses.append(ScannerStatus(name, available=True, version=version, skipped_reason="missing compile_commands.json; clang-tidy requires a compilation database"))
             continue
         outcome = run_fixed_scanner(build_command(), cwd=package_root, output_dir=package_root / "analysis", timeout=timeout)
+        failure_reason = None
+        if outcome.start_error:
+            failure_reason = f"failed to start: {outcome.start_error}"
+        elif not outcome.timed_out and outcome.exit_code not in _SCANNER_SUCCESS_EXIT_CODES[name]:
+            failure_reason = f"scanner execution failed (exit code {outcome.exit_code})"
         statuses.append(
             ScannerStatus(
                 name,
@@ -271,11 +296,15 @@ def run_static_analysis(package_root: Path) -> StaticAnalysisResult:
                 exit_code=outcome.exit_code,
                 timed_out=outcome.timed_out,
                 failed_to_start=outcome.start_error is not None,
-                skipped_reason=f"failed to start: {outcome.start_error}" if outcome.start_error else None,
+                skipped_reason=failure_reason,
             )
         )
         raw = outcome.stdout
-        if name not in {"cppcheck", "ruff", "bandit"}:
+        if name == "cppcheck" and outcome.stderr.lstrip().startswith("<"):
+            # Native cppcheck emits XML on stderr and progress on stdout.
+            # Retain stdout XML compatibility for scanner wrappers.
+            raw = outcome.stderr
+        elif name not in {"cppcheck", "ruff", "bandit"}:
             # clang-style text diagnostics may land on either stream; only the
             # XML producers must keep their results stream isolated.
             raw = f"{outcome.stdout}\n{outcome.stderr}"
@@ -287,7 +316,7 @@ def run_static_analysis(package_root: Path) -> StaticAnalysisResult:
 class ScannerRunResult:
     """Captured outcome of one scanner execution, stdout and stderr apart.
 
-    cppcheck writes its results XML to stdout and progress to stderr, so the
+    cppcheck writes its results XML to stderr and progress to stdout, so the
     two streams must never be concatenated before parsing.
     """
 
