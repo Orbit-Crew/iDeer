@@ -240,6 +240,9 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
                 device_id=str(result["device"]["id"]),
                 device_name=args.name,
                 claim_token_ref=claim_ref,
+                # The register response distributes the broker public key over
+                # the pairing channel; bind it before any ws:// connection.
+                server_public_key=str(result.get("server_public_key", "")),
                 config_path=str(args.config),
             )
             key_ref = f"ideer-device-key-{settings.device_id}"
@@ -307,6 +310,10 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
             return 1
         device = result.get("device", {})
         token = str(result.get("session_token", ""))
+        # Keep the key captured at pair_start unless the complete response
+        # distributes one; the pinned key must survive this rebuild of the
+        # settings object.
+        previous_broker_key = settings.server_public_key
         try:
             token_ref = f"ideer-device-session-{args.device_id}"
             secure.set(token_ref, token)
@@ -321,6 +328,9 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
             device_name=str(device.get("name", settings.device_name)),
             runtime_version=str(device.get("runtime_version", "0.1.0")),
             device_key_ref=key_ref,
+            server_public_key=(
+                str(result.get("server_public_key", "")) or previous_broker_key
+            ),
             config_path=str(args.config),
         )
         settings.save(args.config)

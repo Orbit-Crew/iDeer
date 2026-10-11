@@ -95,6 +95,17 @@ def test_saved_settings_never_contain_session_token(tmp_path) -> None:
     assert "bearer-secret" not in path.read_text(encoding="utf-8")
 
 
+def test_unpinned_broker_key_fallback_defaults_off_and_round_trips(tmp_path) -> None:
+    """First-connection trust is a deliberate opt-in, never a default."""
+    path = tmp_path / "runtime.json"
+
+    RuntimeSettings().save(path)
+    assert load_settings(path).allow_unpinned_broker_key is False
+
+    RuntimeSettings(allow_unpinned_broker_key=True).save(path)
+    assert load_settings(path).allow_unpinned_broker_key is True
+
+
 def test_unlisted_dangerous_capability_defaults_to_level_two() -> None:
     policy = LocalPolicy()
 

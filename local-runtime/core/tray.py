@@ -362,8 +362,10 @@ class TrayController:
     private_key: Ed25519PrivateKey
     audit: LocalAuditLog | None = None
     consent_store_path: str | Path | None = None
-    #: Server key captured at pairing. When set, the device verifies the broker
-    #: against it instead of accepting the one offered in the HELLO reply.
+    #: Broker key bound by the pairing flow (``pair_start`` / ``pair_complete``).
+    #: Every connection verifies the broker against it; an unset key means no
+    #: pairing has completed and the client refuses to connect unless the
+    #: settings enable the explicit first-connection fallback.
     server_public_key: str | None = None
 
     def __post_init__(self) -> None:
@@ -391,6 +393,7 @@ class TrayController:
             session_token=self.settings.session_token,
             private_key=self.private_key,
             server_public_key=self.server_public_key,
+            allow_unpinned_broker_key=self.settings.allow_unpinned_broker_key,
             runtime_version=self.settings.runtime_version,
             policy=self.settings.policy(),
             policy_hash=self.settings.policy_hash(),
@@ -695,6 +698,13 @@ class TrayController:
         self.settings.claim_token_ref = claim_ref
         self.settings.session_id = ""
         self.settings.session_token = ""
+        # The register response distributes the broker public key over the
+        # pairing channel; bind it now so no ws:// connection ever has to.
+        broker_key = str(result.get("server_public_key", ""))
+        if broker_key:
+            self.settings.server_public_key = broker_key
+            self.server_public_key = broker_key
+            self.client.server_public_key = broker_key
         self.settings.save(self.settings.config_path)
         self.audit.record(
             AuditKind.CONFIG,
@@ -742,6 +752,15 @@ class TrayController:
         self.settings.session_token_ref = token_ref
         self.settings.claim_token_ref = ""
         self.settings.device_name = str(device.get("name", self.settings.device_name))
+        # Re-bind the broker key the complete response distributes (or keep
+        # the one already captured at pair_start); the pinned key is what the
+        # client verifies every subsequent connection against.
+        broker_key = str(result.get("server_public_key", "")) or (
+            self.settings.server_public_key
+        )
+        if broker_key:
+            self.settings.server_public_key = broker_key
+            self.server_public_key = broker_key
         self.settings.save(self.settings.config_path)
         self.client.server_url = self.settings.websocket_url()
         self.client.device_id = self.settings.device_id

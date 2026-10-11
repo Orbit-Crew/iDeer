@@ -61,6 +61,9 @@ class DeviceRegisterResponse(BaseModel):
     pairing_id: str
     claim_token: str
     claim_expires_at: datetime
+    # The broker signing key, distributed over the pairing channel so the
+    # device can pin it instead of trusting the first ws:// HELLO (05-H1).
+    server_public_key: str
 
 
 class DeviceRegistrationCompleteRequest(BaseModel):
@@ -78,6 +81,9 @@ class DeviceSessionResponse(BaseModel):
     session_id: str
     session_token: str
     session_expires_at: datetime
+    # Re-distributed at completion for the same reason: the device binds this
+    # key at pairing and verifies every later connection against it.
+    server_public_key: str
 
 
 class DeviceHeartbeatRequest(BaseModel):
@@ -216,6 +222,7 @@ async def register_device(payload: DeviceRegisterRequest) -> DeviceRegisterRespo
         pairing_id=claim.pairing_id,
         claim_token=claim.claim_token,
         claim_expires_at=claim.claim_expires_at,
+        server_public_key=get_device_broker().server_public_key,
     )
 
 
@@ -239,6 +246,7 @@ async def complete_registration(
         session_id=registered.session_id,
         session_token=registered.session_token,
         session_expires_at=registered.session_expires_at,
+        server_public_key=get_device_broker().server_public_key,
     )
 
 

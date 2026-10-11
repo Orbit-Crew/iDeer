@@ -173,6 +173,63 @@ def test_tray_pairing_methods_bind_claim_and_session(
     assert controller.client.session_token == "session-token-value"
 
 
+def test_pairing_pins_the_broker_public_key_from_the_pairing_responses(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Pairing distributes the broker key; the tray binds it before any ws://.
+
+    05-H1: the pairing flow never captured the broker public key, so the first
+    connection had to trust whatever key the peer offered. The register and
+    register/complete responses now carry it, and both pairing steps pin it.
+    """
+    store = InMemorySecretStore()
+    broker_key = (
+        "pq1GpXaS1wF8W3aP9r5wJcDl0V5x7Yq2zK0mN4bC6dE8fGhIjKlMnOpQrStUvWx"  # noqa: S105 - fake key text
+    )
+    responses = iter(
+        (
+            {
+                "device": {"id": "device-paired"},
+                "pairing_id": "pairing-1",
+                "claim_token": "claim-token-value",
+                "claim_expires_at": "later",
+                "server_public_key": broker_key,
+            },
+            {
+                "device": {"id": "device-paired", "name": "Desk"},
+                "session_id": "session-1",
+                "session_token": "session-token-value",
+                "server_public_key": broker_key,
+            },
+        )
+    )
+    monkeypatch.setattr("core.tray.create_default_secret_store", lambda: store)
+    monkeypatch.setattr(
+        TrayController,
+        "_pairing_post",
+        staticmethod(lambda endpoint, payload: next(responses)),
+    )
+    config_path = tmp_path / "runtime.json"
+    controller = TrayController(
+        settings=RuntimeSettings(config_path=str(config_path)),
+        private_key=Ed25519PrivateKey.generate(),
+        consent_store_path=tmp_path / "consent.db",
+    )
+
+    controller.pair_start(
+        server_url="http://server",
+        pairing_code="ABCDEFGH",
+        device_name="Desk",
+    )
+    assert controller.settings.server_public_key == broker_key
+    assert controller.client.server_public_key == broker_key
+
+    controller.pair_complete()
+    assert controller.settings.server_public_key == broker_key
+    assert controller.client.server_public_key == broker_key
+    assert load_settings(config_path).server_public_key == broker_key
+
+
 @pytest.mark.asyncio
 async def test_session_rejection_stops_supervisor_instead_of_reconnecting(
     tmp_path: Path,

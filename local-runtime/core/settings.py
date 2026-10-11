@@ -43,8 +43,14 @@ class RuntimeSettings:
     device_id: str = ""
     #: Server-issued session identity; it must survive reconnects.
     session_id: str = ""
-    #: Pinned broker public key captured during the first authenticated session.
+    #: Pinned broker public key, distributed by the pairing flow and bound at
+    #: ``pair_start`` / ``pair_complete``; every connection verifies against it.
     server_public_key: str = ""
+    #: Deliberate opt-in to the legacy first-connection trust: when no key is
+    #: pinned yet, accept and pin the key offered in the HELLO reply. Off by
+    #: default, so an unbound device refuses to connect instead of trusting a
+    #: possibly substituted broker.
+    allow_unpinned_broker_key: bool = False
     #: Secure-store reference for the device signing key.
     device_key_ref: str = ""
     runtime_version: str = "0.1.0"

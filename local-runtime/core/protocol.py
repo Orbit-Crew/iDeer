@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
@@ -121,9 +122,16 @@ def verify_envelope(
 
         unsigned = dict(message)
         unsigned.pop("signature", None)
-        Ed25519PublicKey.from_public_bytes(public_key).verify(
-            signature, _canonical(unsigned)
-        )
+        try:
+            Ed25519PublicKey.from_public_bytes(public_key).verify(
+                signature, _canonical(unsigned)
+            )
+        except InvalidSignature as exc:
+            # The frame is well formed but not signed by the key this device
+            # trusts. Callers key their failure handling off ProtocolError, so
+            # a replaced broker key must surface as one, not as a raw
+            # cryptography exception.
+            raise ProtocolError("SIGNATURE_INVALID") from exc
         return VerifiedEnvelope(
             MessageType(message["type"]),
             expected_device_id,
