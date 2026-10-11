@@ -102,25 +102,98 @@ wait_url() {
     echo "OK $name"
 }
 
+_local_port_listener_pids() {
+    local port=$1 pid line
+    local found=""
+
+    if command -v lsof >/dev/null 2>&1; then
+        while IFS= read -r pid; do
+            [[ "$pid" =~ ^[0-9]+$ ]] || continue
+            case " $found " in *" $pid "*) ;; *) found="$found $pid"; printf '%s\n' "$pid" ;; esac
+        done < <(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    fi
+
+    if command -v ss >/dev/null 2>&1; then
+        while IFS= read -r line; do
+            while [[ "$line" =~ pid=([0-9]+) ]]; do
+                pid=${BASH_REMATCH[1]}
+                line=${line#*pid=$pid}
+                case " $found " in *" $pid "*) ;; *) found="$found $pid"; printf '%s\n' "$pid" ;; esac
+            done
+        done < <(ss -H -ltnp "( sport = :$port )" 2>/dev/null || ss -ltnp "( sport = :$port )" 2>/dev/null | tail -n +2 || true)
+    fi
+}
+
+_local_port_is_listening() {
+    local port=$1
+    if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1; then
+        return 0
+    fi
+    if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :$port )" 2>/dev/null | tail -n +2 | grep -q .; then
+        return 0
+    fi
+    if command -v netstat >/dev/null 2>&1 && netstat -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "(^|[.:])${port}$"; then
+        return 0
+    fi
+    return 1
+}
+
+_local_nginx_pid_owned() {
+    local pid=$1 command args cwd
+    command=$(ps -p "$pid" -o comm= 2>/dev/null) || return 1
+    case "$command" in nginx|*/nginx|nginx:*) ;; *) return 1 ;; esac
+
+    args=$(ps -p "$pid" -o args= 2>/dev/null || true)
+    case "$args" in *"$NGINX_CONF"*) return 0 ;; esac
+
+    cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null || true)
+    case "$cwd" in "$REPO_ROOT"|"$REPO_ROOT"/*) return 0 ;; esac
+    return 1
+}
+
+_report_local_nginx_port() {
+    local pid command found=false
+    for pid in $(_local_port_listener_pids 2026); do
+        command=$(ps -p "$pid" -o comm= 2>/dev/null || true)
+        echo "✗ Port 2026 is still listening (PID $pid${command:+, $command})."
+        found=true
+    done
+    if ! $found; then
+        echo "✗ Port 2026 is still listening; its process could not be identified."
+    fi
+}
+
 stop_nginx() {
+    local pid stopped=false
     nginx -c "$NGINX_CONF" -p "$REPO_ROOT" -s quit >/dev/null 2>&1 || true
     sleep 1
-    if command -v lsof >/dev/null 2>&1; then
-        local pids
-        pids="$(lsof -ti :2026 2>/dev/null || true)"
-        if [ -n "$pids" ]; then
-            kill $pids >/dev/null 2>&1 || true
-        fi
+    for pid in $(_local_port_listener_pids 2026); do
+        _local_nginx_pid_owned "$pid" || continue
+        kill "$pid" >/dev/null 2>&1 || true
+        stopped=true
+    done
+    if $stopped; then
+        sleep 1
+    fi
+    if _local_port_is_listening 2026; then
+        _report_local_nginx_port
+        return 1
     fi
 }
 
 stop_services() {
+    local status=0
     echo "Stopping iDeer local services..."
-    stop_nginx
+    stop_nginx || status=1
     tmux kill-session -t "$GATEWAY_SESSION" >/dev/null 2>&1 || true
     tmux kill-session -t "$WORKFLOW_WORKER_SESSION" >/dev/null 2>&1 || true
     tmux kill-session -t "$FRONTEND_SESSION" >/dev/null 2>&1 || true
-    echo "Stopped."
+    if [ "$status" -eq 0 ]; then
+        echo "Stopped."
+    else
+        echo "Stopped with errors; one or more local services remain."
+    fi
+    return "$status"
 }
 
 start_services() {
