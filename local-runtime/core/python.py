@@ -32,6 +32,14 @@ from .secrets import (
 )
 
 
+# Windows creationflags for the constrained child: start in a new process
+# group (0x200) and suspended (0x4). subprocess exports the former only on
+# Windows and has never exported the latter, so both are pinned here like the
+# other raw Windows constants in this package.
+_CREATE_NEW_PROCESS_GROUP = 0x200
+_CREATE_SUSPENDED = 0x4
+
+
 class _WindowsBasicLimit(ctypes.Structure):
     _fields_ = [
         ("per_process_user_time", ctypes.c_ulonglong),
@@ -123,6 +131,72 @@ class _WindowsJob:
         if getattr(self, "_handle", None):
             self._kernel32.CloseHandle(self._handle)
             self._handle = None
+
+
+class _WindowsThreadEntry(ctypes.Structure):
+    """ABI-compatible THREADENTRY32."""
+
+    _fields_ = [
+        ("dwSize", ctypes.c_uint32),
+        ("cntUsage", ctypes.c_uint32),
+        ("th32ThreadID", ctypes.c_uint32),
+        ("th32OwnerProcessID", ctypes.c_uint32),
+        ("tpBasePri", ctypes.c_long),
+        ("tpDeltaPri", ctypes.c_long),
+        ("dwFlags", ctypes.c_uint32),
+    ]
+
+
+def _resume_initial_thread(pid: int) -> None:
+    """Resume the main thread that Popen left suspended on Windows.
+
+    ResumeThread needs a thread handle, which :class:`subprocess.Popen` does
+    not expose, so the initial thread is found through the tool-help snapshot:
+    a process created with CREATE_SUSPENDED still has exactly one thread, and
+    a suspended main thread cannot have spawned any more.
+    """
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateToolhelp32Snapshot.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+    kernel32.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
+    kernel32.Thread32First.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(_WindowsThreadEntry),
+    ]
+    kernel32.Thread32First.restype = ctypes.c_int
+    kernel32.Thread32Next.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(_WindowsThreadEntry),
+    ]
+    kernel32.Thread32Next.restype = ctypes.c_int
+    kernel32.OpenThread.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+    kernel32.OpenThread.restype = ctypes.c_void_p
+    kernel32.ResumeThread.argtypes = [ctypes.c_void_p]
+    kernel32.ResumeThread.restype = ctypes.c_uint32
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_int
+    # TH32CS_SNAPTHREAD = 0x4; THREAD_SUSPEND_RESUME = 0x0002.
+    snapshot = kernel32.CreateToolhelp32Snapshot(0x4, 0)
+    if not snapshot or snapshot == ctypes.c_void_p(-1).value:
+        raise OSError(ctypes.get_last_error(), "CreateToolhelp32Snapshot failed")
+    try:
+        entry = _WindowsThreadEntry()
+        entry.dwSize = ctypes.sizeof(_WindowsThreadEntry)
+        found = kernel32.Thread32First(snapshot, ctypes.byref(entry))
+        while found:
+            if entry.th32OwnerProcessID == pid:
+                thread = kernel32.OpenThread(0x0002, 0, entry.th32ThreadID)
+                if not thread:
+                    raise OSError(ctypes.get_last_error(), "OpenThread failed")
+                try:
+                    if kernel32.ResumeThread(thread) == 0xFFFFFFFF:
+                        raise OSError(ctypes.get_last_error(), "ResumeThread failed")
+                finally:
+                    kernel32.CloseHandle(thread)
+                return
+            found = kernel32.Thread32Next(snapshot, ctypes.byref(entry))
+    finally:
+        kernel32.CloseHandle(snapshot)
+    raise OSError("suspended main thread not found")
 
 
 class PythonTaskStatus(StrEnum):
@@ -396,7 +470,7 @@ class PythonExecutor:
             # Keep the child suspended until the Job Object owns it; this closes
             # the window in which a script could create an unmanaged descendant.
             process_options["creationflags"] = (
-                subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_SUSPENDED
+                _CREATE_NEW_PROCESS_GROUP | _CREATE_SUSPENDED
             )
         else:
             process_options["start_new_session"] = True
@@ -423,11 +497,7 @@ class PythonExecutor:
             if os.name == "nt":
                 try:
                     job = _WindowsJob(process.pid, process_handle=process._handle)
-                    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-                    kernel32.ResumeThread.argtypes = [ctypes.c_void_p]
-                    kernel32.ResumeThread.restype = ctypes.c_uint32
-                    if kernel32.ResumeThread(process._handle) == 0xFFFFFFFF:
-                        raise OSError(ctypes.get_last_error(), "ResumeThread failed")
+                    _resume_initial_thread(process.pid)
                 except Exception:  # noqa: BLE001 - any setup failure must clean up
                     self._terminate(process)
                     await self._wait_until_exited(process)

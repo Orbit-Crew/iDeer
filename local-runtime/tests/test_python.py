@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import asyncio
 import hashlib
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
 
+import core.python as core_python
 from core.artifacts import (
     ArtifactUploadError,
     FileArtifactUploader,
@@ -25,6 +30,48 @@ def test_python_executor_success_and_bounded_output(tmp_path: Path) -> None:
     assert result.status is PythonTaskStatus.COMPLETED
     assert result.exit_code == 0
     assert result.stdout == "hello\n"
+
+
+def test_windows_process_options_suspend_the_child_for_job_assignment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Windows branch builds creationflags from attributes subprocess
+    actually exports, and keeps the suspended bit so the Job Object owns the
+    child before any script runs (regression: CPython never exports
+    subprocess.CREATE_SUSPENDED, which used to raise AttributeError there)."""
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 4242
+        _handle = 9999
+        returncode = 0
+
+        def poll(self) -> int:
+            return 0
+
+    class FakeJob:
+        def close(self) -> None:
+            pass
+
+    def fake_popen(args: list[str], **kwargs: object) -> FakeProcess:
+        captured.update(kwargs)
+        return FakeProcess()
+
+    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(
+        core_python, "_WindowsJob", lambda pid, process_handle=None: FakeJob()
+    )
+    monkeypatch.setattr(core_python, "_resume_initial_thread", lambda pid: None)
+
+    result = asyncio.run(
+        PythonExecutor().run("pass", working_root=tmp_path, timeout=30)
+    )
+
+    flags = captured["creationflags"]
+    assert flags & 0x4  # CREATE_SUSPENDED
+    assert flags & 0x200  # CREATE_NEW_PROCESS_GROUP
+    assert result.status is PythonTaskStatus.COMPLETED
 
 
 def test_python_executor_timeout(tmp_path: Path) -> None:

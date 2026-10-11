@@ -15,6 +15,10 @@ jobs:
   windows:
     runs-on: windows-latest
     strategy:
+      # Both interpreter lines report on their own: 3.8 and 3.12 expose
+      # different platform behavior, and one leg's failure must not cancel
+      # the other's results.
+      fail-fast: false
       matrix:
         # CPython 3.8 is the supported interpreter line for Windows 7;
         # 3.12 covers current Windows installations.
