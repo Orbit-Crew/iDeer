@@ -36,12 +36,13 @@ def test_inventory_finds_cross_file_sources_and_build_metadata(tmp_path: Path):
     (source / "include").mkdir()
     (source / "src/main.c").write_text("int main(void) { return 0; }")
     (source / "include/main.h").write_text("#pragma once")
+    (source / "include/widget.hpp").write_text("#pragma once")
     (source / "compile_commands.json").write_text("[]")
 
     result = inventory_package(tmp_path)
 
-    assert result["source_files"] == ["include/main.h", "src/main.c"]
-    assert result["headers"] == ["include/main.h"]
+    assert result["source_files"] == ["include/main.h", "include/widget.hpp", "src/main.c"]
+    assert result["headers"] == ["include/main.h", "include/widget.hpp"]
     assert result["build_metadata"] == ["compile_commands.json"]
     assert result["compilation_configuration_verified"] is True
 
@@ -102,8 +103,8 @@ def test_scanner_timeout_is_recorded_and_bounded(tmp_path: Path, monkeypatch):
 
 
 def test_cppcheck_results_xml_on_stdout_and_progress_on_stderr_parse_separately(tmp_path: Path, monkeypatch):
-    """Defect 1 regression: cppcheck writes its results XML to stdout and its
-    progress lines to stderr; concatenating the two streams breaks the XML
+    """Wrapper compatibility: XML is on stdout and progress is on stderr;
+    concatenating the two streams breaks the XML
     parse and silently drops every finding."""
     source = tmp_path / "source"
     source.mkdir()
@@ -154,6 +155,34 @@ def _make_package(tmp_path: Path, *, with_compile_db: bool = True) -> Path:
     return package_root
 
 
+@pytest.mark.parametrize("result_stream", ["stderr", "stdout"])
+def test_static_analysis_collects_cppcheck_xml_without_progress_noise(tmp_path, monkeypatch, result_stream):
+    package_root = _make_package(tmp_path, with_compile_db=False)
+    source = package_root / "source"
+    xml = f'<results version="2"><errors><error id="nullPointer" msg="Null pointer dereference: p"><location file="{source / "main.c"}" line="1"/></error></errors></results>'
+    progress_stream = "stdout" if result_stream == "stderr" else "stderr"
+    _write_fake_binary(
+        tmp_path / "bin",
+        "cppcheck",
+        f"""
+        #!/usr/bin/env python3
+        import sys
+        if "--version" in sys.argv:
+            print("Cppcheck 2.13.0")
+        else:
+            sys.{result_stream}.write({xml!r})
+            sys.{progress_stream}.write("Checking main.c...\\n")
+        """,
+    )
+    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}:{os.environ['PATH']}")
+
+    result = run_static_analysis(package_root)
+
+    assert [(finding.scanner, finding.rule_id, finding.path, finding.line) for finding in result.findings] == [
+        ("cppcheck", "nullPointer", "main.c", 1),
+    ]
+
+
 def test_scanner_status_contract_fields():
     status = ScannerStatus("cppcheck", available=True, version="2.10", exit_code=1, timed_out=False, skipped_reason=None)
     assert status.as_dict() == {
@@ -192,6 +221,36 @@ def test_overall_rollup_discloses_unavailable_partial_and_completed():
     assert overall_scanner_status(timed_out) == "partial"
 
     assert overall_scanner_status([]) == "completed"
+
+
+@pytest.mark.parametrize("scanner", ["ruff", "bandit", "clang-tidy", "cppcheck"])
+def test_scanner_execution_error_is_disclosed_in_returned_and_saved_status(tmp_path: Path, monkeypatch, scanner):
+    (tmp_path / "source").mkdir()
+    (tmp_path / "source/main.py").write_text("print('hello')\n")
+    (tmp_path / "source/main.c").write_text("int main(void) { return 0; }\n")
+    (tmp_path / "source/compile_commands.json").write_text("[]")
+    monkeypatch.setattr("deerflow.uploads.code_analysis.detect_scanner", lambda name: (True, "1.0"))
+    monkeypatch.setattr(
+        "deerflow.uploads.code_analysis.run_fixed_scanner",
+        lambda command, **kwargs: SimpleNamespace(
+            exit_code=2 if command[0] == scanner else 0,
+            stdout="[]" if command[0] == "ruff" else '{"results": []}',
+            stderr="invalid configuration",
+            timed_out=False,
+            start_error=None,
+        ),
+    )
+
+    result = run_static_analysis(tmp_path)
+    write_analysis_summary(tmp_path / "analysis", result)
+
+    assert result.overall == "partial"
+    status = next(status for status in result.statuses if status.name == scanner)
+    assert status.exit_code == 2
+    assert status.skipped_reason == "scanner execution failed (exit code 2)"
+    saved = json.loads((tmp_path / "analysis/scanner_status.json").read_text())
+    assert saved["overall"] == "partial"
+    assert next(item for item in saved["scanners"] if item["name"] == scanner)["skipped_reason"] == status.skipped_reason
 
 
 def test_missing_scanner_binaries_are_disclosed_not_dropped(tmp_path: Path, monkeypatch):
@@ -475,6 +534,18 @@ def test_mixed_package_prefers_c_cpp_dispatch(tmp_path):
     (source / "tool.py").write_text("print(1)\n")
 
     assert detect_language(inventory_package(tmp_path / "pkg-mixed")) == "c_cpp"
+
+
+def test_mixed_package_runs_both_language_scanner_sets(tmp_path, monkeypatch):
+    source = tmp_path / "pkg-mixed" / "source"
+    source.mkdir(parents=True)
+    (source / "main.c").write_text("int main(void) { return 0; }")
+    (source / "tool.py").write_text("print(1)\n")
+    monkeypatch.setattr("deerflow.uploads.code_analysis.detect_scanner", lambda name: (False, None))
+
+    result = run_static_analysis(tmp_path / "pkg-mixed")
+
+    assert [status.name for status in result.statuses] == ["clang-tidy", "cppcheck", "ruff", "bandit"]
 
 
 def test_package_without_supported_sources_skips_scanners(tmp_path, monkeypatch):

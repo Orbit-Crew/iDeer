@@ -779,6 +779,11 @@ def test_strip_reserved_metadata_strips_all_reserved_keys():
     assert out == {"keep": "me"}
 
 
+def test_strip_reserved_metadata_rejects_client_code_package_activation():
+    out = threads._strip_reserved_metadata({"deerflow_code_package_id": "forged", "title": "keep"})
+    assert out == {"title": "keep"}
+
+
 # ---------------------------------------------------------------------------
 # ISO 8601 timestamp contract (issue #2594)
 # ---------------------------------------------------------------------------

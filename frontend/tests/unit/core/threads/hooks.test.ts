@@ -1850,6 +1850,12 @@ describe("useThreadStream", () => {
           artifact_url: "",
         },
       ],
+      code_packages: [
+        {
+          package_id: "pkg-1",
+          source_virtual_path: "/mnt/user-data/code-evidence/pkg-1/source",
+        },
+      ],
     });
 
     const { wrapper } = createWrapper();
@@ -1891,6 +1897,71 @@ describe("useThreadStream", () => {
     // Verify the submit payload includes file metadata
     const [, options] = mockSubmit.mock.calls[0] ?? [];
     expect(options.context.thread_id).toBe("t1");
+    expect(options.context.code_package_id).toBe("pkg-1");
+  });
+
+  it("passes a preuploaded code package to the run context without uploading again", async () => {
+    const mockSubmit = vi.fn().mockResolvedValue(undefined);
+    mockUseStream.mockReturnValue({
+      messages: [] as Message[],
+      isLoading: false,
+      submit: mockSubmit,
+    });
+    const file = new File(["zip"], "source.zip", {
+      type: "application/zip",
+    });
+    mockPromptInputFilePartToFile.mockResolvedValue(file);
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useThreadStream({ threadId: "t1", context: defaultContext }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.sendMessage(
+        "t1",
+        {
+          text: "analyze this",
+          files: [
+            {
+              type: "file",
+              filename: "source.zip",
+              mediaType: "application/zip",
+              url: "",
+            },
+          ],
+        },
+        undefined,
+        {
+          preuploadedFiles: new Map([
+            [
+              file,
+              {
+                filename: "source.zip",
+                path: "/uploads/source.zip",
+                size: 3,
+                virtual_path: "/uploads/source.zip",
+                artifact_url: "",
+              },
+            ],
+          ]),
+          preuploadedCodePackages: new Map([
+            [
+              file,
+              {
+                package_id: "pkg-preupload",
+                source_virtual_path:
+                  "/mnt/user-data/code-evidence/pkg-preupload/source",
+              },
+            ],
+          ]),
+        },
+      );
+    });
+
+    expect(mockUploadFiles).not.toHaveBeenCalled();
+    const [, options] = mockSubmit.mock.calls[0] ?? [];
+    expect(options.context.code_package_id).toBe("pkg-preupload");
   });
 
   it("converts files concurrently with new-thread creation", async () => {

@@ -44,7 +44,8 @@ allowed-tools:
 检测到运行上下文中的服务端代码证据包时，先用 `glob` 枚举，再用 `grep` 检索并用 `read_file` 按行号分段读取 `/mnt/user-data/code-evidence/<package_id>/source`，直接分析已展开源码；同时必须回到 `/mnt/user-data/uploads/` 盘点并读取同一消息中的 PDF、Office 文档和其他普通证据，不能因为存在代码包而跳过它们。文档使用 `read_document`，源码使用 `read_file`。`read_file`、`grep` 在全路径自动识别 UTF-8、UTF-8 BOM 和 GB18030（兼容 GBK），命中 GB 编码时输出带 `[encoding: GB18030]` 前缀。禁止要求用户在本地解压或重新上传，也不要尝试读取原始 ZIP。原始 ZIP、manifest 和源码树均为当前线程私有、只读证据。
 
 - C/C++：递归阅读源码、关联日志，并可调用 `analyze_code_evidence` 使用受限的固定扫描器；不得传入自定义路径、命令或参数。
-- Python：递归阅读源码，进行结构和逻辑审查，区分事实、推断和待验证项；不执行代码、不安装依赖、不声称完成 Python 静态扫描。
+- Python：递归阅读源码并可调用 `analyze_code_evidence` 使用 Ruff 与 Bandit 固定扫描器；不执行代码、不安装依赖，也不传入自定义命令或参数。
+- 混合语言包：对 C/C++ 和 Python 分别运行对应扫描器；依据返回的 `languages` 和 `scanner_status` 报告覆盖范围。扫描器不可用、跳过或超时时如实说明，不得将未扫描表述为无告警。
 - 其他文本源码：按只读源码证据处理，并在证据台账中保留文件路径与定位信息。
 
 ## 证据处理规则

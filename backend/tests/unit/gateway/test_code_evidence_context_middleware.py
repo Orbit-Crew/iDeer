@@ -57,6 +57,8 @@ def test_injects_trusted_summary_reminder_on_first_turn():
     assert "src.zip" in content
     assert "已接收文件：3 个；已排除：2 项；已拒绝：1 项" in content
     assert "不要要求用户本地解压" in content
+    assert "Ruff" in content and "Bandit" in content
+    assert "混合包" in content and "scanner_status" in content
 
 
 def test_skips_when_no_package_in_context():

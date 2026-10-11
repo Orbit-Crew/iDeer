@@ -408,6 +408,31 @@
 - **Owner**: tools 域维护者
 - **移除条件**: 上游 readability 封装提供等价回退并被采纳时。
 
+### PATCH-033: 归零代码包混合语言扫描与本地报告只读访问
+
+- **状态**: open，GitHub issue #22，`fix/22-fault-zeroing-static-analysis`。
+- **文件**: `backend/packages/harness/deerflow/uploads/code_analysis.py`、
+  `backend/packages/harness/deerflow/sandbox/tools.py`。
+- **原因与修改**: 混合 C/C++、Python 包必须运行两组固定扫描器；Cppcheck
+  原生 XML 来自 stderr，不能把 stdout 进度当报告解析。本地文件工具补充
+  当前线程 `code-evidence` 树的只读访问，使模型能读取源码和扫描报告。
+  执行错误按扫描器的正常退出码区分，汇总为 `partial` 并落盘失败原因；
+  Ruff/Bandit 的告警退出码 1 保持正常扫描状态。
+- **替代方案**: 工具注册、授权与 Run 包选择保留在 app/extension；仅返回
+  扫描摘要无法满足模型读取报告与源码的契约。复制报告到 workspace 会引入
+  第二套路径和同步状态，因此复用既有线程映射与读取工具。
+- **影响**: `read_file`、`ls`、`glob`、`grep` 可读取线程内代码证据；不扩大写入
+  路径，真实路径校验拒绝逃出证据树的符号链接，Run 创建核验包归属并记录选择快照。
+- **验证**: Cppcheck 输出流回归先失败后通过，相关分析测试 33 passed；本地
+  证据报告读取回归先失败后通过，沙箱相关测试 184 passed，Ruff 通过。
+  真实 Agnes 浏览器 Run 已成功扫描混合包并读取两个报告；最终 `pr-standard`
+  和正式工作流验收尚待完成，不以本记录声明整个 issue 已关闭。
+  本次续验补充四扫描器异常退出和模型可见失败提示回归，分析相关测试
+  38 passed，Ruff 通过；完整标准门禁结果另记在本次验收记录。
+- **Owner**: fault-zeroing 域维护者。
+- **移除条件**: 上游或可注册的 provider 读取策略提供等价的线程代码证据只读
+  契约，固定分析器提供等价混合语言与 Cppcheck 输出流处理，并被本仓库采纳。
+
 ## Enforcement
 
 每次收敛提交前重跑对照命令并更新本台账；存在未登记差异即门禁失败。

@@ -626,6 +626,54 @@ describe("turn-submit pre-uploads", () => {
     expect(request?.options?.traceId).toBe("trace-1");
   });
 
+  it("keeps a code package returned by preupload through dispatch", async () => {
+    const file = new File(["zip"], "source.zip", { type: "application/zip" });
+    const upload = vi.fn().mockResolvedValue({
+      files: [
+        {
+          filename: file.name,
+          size: file.size,
+          virtual_path: "/uploads/source.zip",
+          artifact_url: "",
+        },
+      ],
+      code_packages: [
+        {
+          package_id: "pkg-preupload",
+          source_virtual_path:
+            "/mnt/user-data/code-evidence/pkg-preupload/source",
+        },
+      ],
+    });
+    const { send, controller } = makeController({
+      upload: upload as unknown as (
+        threadId: string,
+        files: File[],
+        traceId?: string,
+      ) => Promise<UploadResponse>,
+    });
+
+    await controller.submit(
+      makeRequest({ message: { text: "analyze", files: [{ file } as never] } }),
+    );
+
+    const request = (send as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0] as TurnDispatchRequest;
+    expect(request.options?.preuploadedFiles?.has(file)).toBe(true);
+    expect(request.options).toMatchObject({
+      preuploadedCodePackages: new Map([
+        [
+          file,
+          {
+            package_id: "pkg-preupload",
+            source_virtual_path:
+              "/mnt/user-data/code-evidence/pkg-preupload/source",
+          },
+        ],
+      ]),
+    });
+  });
+
   it("deduplicates concurrent preuploads of the same file", async () => {
     const file = new File(["data"], "report.pdf");
     const upload = makeUploadOk();

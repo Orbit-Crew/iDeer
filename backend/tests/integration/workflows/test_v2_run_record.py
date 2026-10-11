@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -44,8 +45,8 @@ def _resolver(base_dir: Path):
     import app.agentplatform.workflows.v2.file_roots as file_roots
     from deerflow.config.paths import Paths
 
-    file_roots.get_paths = lambda: Paths(str(base_dir))
-    return make_host_resolver("run-1", "user-1")
+    with patch.object(file_roots, "get_paths", lambda: Paths(str(base_dir))):
+        return make_host_resolver("run-1", "user-1")
 
 
 @pytest.mark.asyncio

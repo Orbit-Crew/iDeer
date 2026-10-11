@@ -106,11 +106,10 @@ def test_local_provider_scopes_mount_to_exact_run_view(monkeypatch: pytest.Monke
     mapping = next(value for value in sandbox.path_mappings if value.container_path == CANONICAL_SKILLS_CONTAINER_PATH)
     assert mapping.local_path == str(view)
     assert mapping.read_only is True
-    # User-data directories key on the run workspace — the same
-    # ``thread_dir(run_id)`` layout the workflow file-roots resolver and the
-    # artifact gate verify against.
+    # User-data directories share the scoped workspace with the workflow
+    # file-roots resolver and artifact gate.
     user_data = next(value for value in sandbox.path_mappings if value.container_path == "/mnt/user-data")
-    assert run_id in user_data.local_path
+    assert scope in user_data.local_path
 
 
 def test_local_provider_fails_closed_when_run_skill_view_is_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -147,3 +146,29 @@ def test_lazy_tool_acquisition_uses_run_scoped_sandbox_identity(monkeypatch: pyt
 
     assert ensure_sandbox_initialized(runtime) is sandbox
     assert provider.acquire.call_args.args[0] == scoped
+
+
+def test_canonical_sandbox_and_artifact_resolver_share_the_run_workspace(monkeypatch, tmp_path: Path) -> None:
+    from app.agentplatform.resources import canonical_sandbox
+    from app.agentplatform.workflows.v2 import file_roots
+    from deerflow.config import paths as config_paths
+    from deerflow.sandbox.local import local_sandbox_provider
+
+    run_id = str(uuid.uuid4())
+    scope = canonical_sandbox_scope(run_id, run_id)
+    monkeypatch.setenv("DEER_FLOW_HOME", str(tmp_path))
+    monkeypatch.setenv("IDEER_HOST_BASE_DIR", str(tmp_path))
+    paths = config_paths.Paths(str(tmp_path))
+    monkeypatch.setattr(config_paths, "get_paths", lambda: paths)
+    monkeypatch.setattr(file_roots, "get_paths", lambda: paths)
+    (tmp_path / "resources" / "run-skill-views" / run_id).mkdir(parents=True)
+    monkeypatch.setattr(local_sandbox_provider, "RUN_SKILL_VIEW_RESOLVER", canonical_sandbox._resolve_run_skill_view)
+    monkeypatch.setattr(LocalSandboxProvider, "_setup_path_mappings", lambda self: [])
+    provider = LocalSandboxProvider()
+    sandbox = provider.get(provider.acquire(scope, user_id="user-1"))
+    resolver = file_roots.make_host_resolver(run_id, "user-1", sandbox_scope=scope)
+    virtual = "/mnt/user-data/outputs/scanner_status.json"
+
+    sandbox.write_file(virtual, '{"scanners": []}')
+
+    assert Path(resolver(virtual)).read_text() == '{"scanners": []}'

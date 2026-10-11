@@ -32,7 +32,7 @@ import { isSidecarThread, SIDECAR_METADATA_KEY } from "../sidecar/thread";
 import { useSubtaskContext, useUpdateSubtask } from "../tasks/context";
 import { taskEventToSubtaskUpdate } from "../tasks/lifecycle";
 import { messageToStep } from "../tasks/steps";
-import type { UploadedFileInfo } from "../uploads";
+import type { CodeEvidencePackage, UploadedFileInfo } from "../uploads";
 import { promptInputFilePartToFile, uploadFiles } from "../uploads";
 import { uuid } from "../utils/uuid";
 
@@ -112,6 +112,7 @@ type SendMessageOptions = {
   additionalKwargs?: Record<string, unknown>;
   additionalInputMessages?: Message[];
   preuploadedFiles?: ReadonlyMap<File, UploadedFileInfo>;
+  preuploadedCodePackages?: ReadonlyMap<File, CodeEvidencePackage>;
   traceId?: string;
   /**
    * Thread IDs of conversations the user attached for this run. They ride in
@@ -2421,7 +2422,7 @@ export function useThreadStream({
 
         const prepared = await preparePromise;
         const submitThreadId = prepared.threadId;
-        const preparedContext: Record<string, unknown> = prepared.context ?? {};
+        let preparedContext: Record<string, unknown> = prepared.context ?? {};
         if (shouldPrepare) {
           listeners.current.onThreadCreated?.(submitThreadId);
         }
@@ -2453,10 +2454,16 @@ export function useThreadStream({
               const canReusePreuploads =
                 preuploadedFiles &&
                 files.every((file) => preuploadedFiles.has(file));
+              let codePackages: CodeEvidencePackage[] = [];
               if (canReusePreuploads) {
                 uploadedFileInfo = files.map(
                   (file) => preuploadedFiles.get(file)!,
                 );
+                codePackages = files.flatMap((file) => {
+                  const codePackage =
+                    options?.preuploadedCodePackages?.get(file);
+                  return codePackage ? [codePackage] : [];
+                });
               } else {
                 const uploadResponse = await uploadFiles(
                   submitThreadId,
@@ -2464,6 +2471,16 @@ export function useThreadStream({
                   traceId,
                 );
                 uploadedFileInfo = uploadResponse.files;
+                codePackages = uploadResponse.code_packages ?? [];
+              }
+              if (codePackages.length > 1) {
+                throw new Error("Upload one code ZIP per message.");
+              }
+              if (codePackages[0]) {
+                preparedContext = {
+                  ...preparedContext,
+                  code_package_id: codePackages[0].package_id,
+                };
               }
 
               // Update optimistic human message with uploaded status + paths

@@ -150,6 +150,7 @@ async def prepare_run(
     request: Request,
     *,
     trace_id: str | None = None,
+    active_code_package_id: str | None = None,
 ) -> PreparedRun:
     """Prepare a Run, parallelising independent IO.
 
@@ -167,7 +168,7 @@ async def prepare_run(
     # ``evidence_mode`` is discarded here, never honored.
     body_context: dict[str, Any] = dict(getattr(body, "context", None) or {})
     code_package_id = validate_evidence_selection(
-        getattr(body, "code_package_id", None) or body_context.get("code_package_id"),
+        getattr(body, "code_package_id", None) or body_context.get("code_package_id") or active_code_package_id,
     )
     body_context = {**body_context, "evidence_mode": DERIVED_EVIDENCE_MODE}
     if code_package_id:
@@ -265,6 +266,9 @@ async def prepare_run(
     # 5. Build run metadata (depends on snapshot).
     knowledge_started = time.perf_counter()
     run_metadata: dict[str, Any] = dict(getattr(body, "metadata", None) or {})
+    # Package selection is a validated request/context field or server-owned
+    # thread state; arbitrary run metadata must never activate a package.
+    run_metadata.pop("code_package_id", None)
     run_metadata["evidence_mode"] = DERIVED_EVIDENCE_MODE
     if code_package_id:
         run_metadata["code_package_id"] = str(code_package_id)
