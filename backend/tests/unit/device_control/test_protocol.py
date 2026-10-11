@@ -1,3 +1,4 @@
+import base64
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -53,3 +54,46 @@ def test_signed_envelope_rejects_tamper_replay_expiry_and_session_mismatch() -> 
     )
     with pytest.raises(ProtocolError, match="expired"):
         expired.verify(public_key=private_key.public_key(), expected_device_id="device-1", expected_session_id="session-1")
+
+
+def test_signature_failure_does_not_burn_message_id_for_a_valid_retry() -> None:
+    """03-M1: the message id enters the replay set only after signature verification."""
+    private_key = Ed25519PrivateKey.generate()
+    envelope = sign_envelope(
+        private_key=private_key,
+        message_type=MessageType.TASK,
+        device_id="device-1",
+        session_id="session-1",
+        task_id="task-1",
+        payload={"operation": "echo", "value": "safe"},
+    )
+    seen_messages: set[str] = set()
+    corrupted = envelope.model_copy(update={"signature": base64.urlsafe_b64encode(b"\x00" * 64).decode("ascii")})
+
+    with pytest.raises(ProtocolError) as invalid_signature:
+        corrupted.verify(
+            public_key=private_key.public_key(),
+            expected_device_id="device-1",
+            expected_session_id="session-1",
+            seen_message_ids=seen_messages,
+        )
+    assert invalid_signature.value.code == "SIGNATURE_INVALID"
+    assert seen_messages == set()
+
+    # The legitimate retry with the same message id must not be rejected as a
+    # replay: the failed verification never registered the id.
+    envelope.verify(
+        public_key=private_key.public_key(),
+        expected_device_id="device-1",
+        expected_session_id="session-1",
+        seen_message_ids=seen_messages,
+    )
+    assert seen_messages == {envelope.message_id}
+
+    with pytest.raises(ProtocolError, match="already been received"):
+        envelope.verify(
+            public_key=private_key.public_key(),
+            expected_device_id="device-1",
+            expected_session_id="session-1",
+            seen_message_ids=seen_messages,
+        )

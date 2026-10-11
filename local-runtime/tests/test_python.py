@@ -1,5 +1,8 @@
 import asyncio
+import glob
 import hashlib
+import os
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -34,6 +37,53 @@ def test_python_executor_timeout(tmp_path: Path) -> None:
         )
     )
     assert result.status is PythonTaskStatus.TIMED_OUT
+
+
+def test_python_executor_removes_output_log_temp_files_after_the_task(
+    tmp_path: Path,
+) -> None:
+    """05-H2: subprocess stdout/stderr temp logs must not outlive the task."""
+    observed_during_run: list[str] = []
+
+    def _snapshot_temp_logs() -> None:
+        observed_during_run.extend(
+            path
+            for path in glob.glob(os.path.join(tempfile.gettempdir(), "local-python-*"))
+            if path not in observed_during_run
+        )
+
+    async def on_output(_stream: str, _chunk: str) -> None:
+        _snapshot_temp_logs()
+
+    result = asyncio.run(
+        PythonExecutor().run(
+            "print('hello')", working_root=tmp_path, on_output=on_output
+        )
+    )
+
+    assert result.stdout_log_path is not None
+    assert result.stderr_log_path is not None
+    # The logs lived on disk while the subprocess ran (streaming and hashing
+    # read them back by name), so the recorded path is the executor's temp file.
+    assert result.stdout_log_path in observed_during_run
+    assert not Path(result.stdout_log_path).exists()
+    assert not Path(result.stderr_log_path).exists()
+
+
+def test_python_executor_timeout_removes_output_log_temp_files(
+    tmp_path: Path,
+) -> None:
+    result = asyncio.run(
+        PythonExecutor().run(
+            "import time; time.sleep(10)", working_root=tmp_path, timeout=0.05
+        )
+    )
+
+    assert result.status is PythonTaskStatus.TIMED_OUT
+    assert result.stdout_log_path is not None
+    assert not Path(result.stdout_log_path).exists()
+    assert result.stderr_log_path is not None
+    assert not Path(result.stderr_log_path).exists()
 
 
 def test_python_executor_nonzero_exit_is_failed_with_exit_code(tmp_path: Path) -> None:
@@ -98,12 +148,15 @@ def test_local_python_requires_hash_bound_consent_and_returns_receipt(
     assert result.receipt.started_at is not None
     assert result.receipt.finished_at is not None
     assert result.receipt.stdout_log_path is not None
-    assert Path(result.receipt.stdout_log_path).read_text() == "hello\n"
-    stderr_log_path = result.receipt.stderr_log_path
+    assert result.receipt.stderr_log_path is not None
+    # The executor removes its temp logs when the task ends (05-H2); the
+    # receipt keeps the paths only as a record, and cleanup stays a safe
+    # no-op afterwards.
+    assert not Path(result.receipt.stdout_log_path).exists()
+    assert not Path(result.receipt.stderr_log_path).exists()
     result.receipt.cleanup_local_logs()
     assert not Path(result.receipt.stdout_log_path).exists()
-    assert stderr_log_path is not None
-    assert not Path(stderr_log_path).exists()
+    assert not Path(result.receipt.stderr_log_path).exists()
 
 
 def test_local_python_uploads_only_explicit_expected_outputs(tmp_path: Path) -> None:
