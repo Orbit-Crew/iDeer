@@ -112,6 +112,20 @@ class TelegramChannel(Channel):
     def supports_streaming(self) -> bool:
         return True
 
+    @property
+    def is_running(self) -> bool:
+        """Running means the polling thread is still alive, not just started.
+
+        ``_run_polling`` exits when the Bot API rejects the token or
+        ``initialize()`` fails while ``_running`` stays True, so the base flag
+        alone would keep reporting a healthy channel forever and
+        ``ChannelService.ensure_channel_ready`` would never restart it.
+        Mirrors ``FeishuChannel.is_running`` / ``DiscordChannel.is_running``.
+        """
+        if not self._running:
+            return False
+        return self._thread is not None and self._thread.is_alive()
+
     async def start(self) -> None:
         if self._running:
             return
@@ -733,6 +747,10 @@ class TelegramChannel(Channel):
         except Exception:
             if self._running:
                 logger.exception("Telegram polling error")
+            # The polling thread is gone: clear the flag so ``is_running``
+            # (which also checks thread liveness) reports the channel down and
+            # the readiness loop can rebuild it instead of fake-alive forever.
+            self._running = False
         finally:
             # Graceful shutdown
             try:

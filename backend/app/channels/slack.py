@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import html
 import logging
 import re
+from concurrent.futures import Future
 from typing import Any
 
 from markdown_to_mrkdwn import SlackMarkdownConverter
@@ -95,6 +97,10 @@ class SlackChannel(Channel):
         self._socket_client = None
         self._web_client = None
         self._loop: asyncio.AbstractEventLoop | None = None
+        # Executor future running SocketModeClient.connect(); retained so the
+        # failure callback below is the single place that reports a broken
+        # connection instead of the exception vanishing unobserved.
+        self._connect_future: Future[None] | None = None
         self._allowed_users = _normalize_allowed_users(config.get("allowed_users", []))
         self._web_client_factory = config.get("web_client_factory")
         self._connection_web_clients: dict[str, tuple[str, Any]] = {}
@@ -141,9 +147,32 @@ class SlackChannel(Channel):
         self._running = True
         self.bus.subscribe_outbound(self._on_outbound)
 
-        # Start socket mode in background thread
-        asyncio.get_event_loop().run_in_executor(None, self._socket_client.connect)
+        # Start socket mode in background thread. The future is retained and
+        # observed: a fire-and-forget connect() would swallow an invalid
+        # app_token or unreachable network and leave the channel reporting
+        # healthy while receiving nothing (see _on_socket_connect_done).
+        self._connect_future = asyncio.get_event_loop().run_in_executor(None, self._socket_client.connect)
+        self._connect_future.add_done_callback(self._on_socket_connect_done)
         logger.info("Slack channel started")
+
+    def _on_socket_connect_done(self, future: Future[None]) -> None:
+        """Surface a failed Socket Mode connection instead of swallowing it.
+
+        ``connect()`` runs on an executor thread. Without this callback an
+        invalid ``app_token`` or network failure would land in an
+        unobserved future while ``is_running`` kept reporting a healthy
+        channel; clearing ``_running`` lets the readiness loop treat the
+        channel as down and retry. Runs on the completing executor thread,
+        so it only touches the plain ``_running`` flag.
+        """
+        try:
+            exc = future.exception()
+        except concurrent.futures.CancelledError:
+            return
+        if exc is None:
+            return
+        logger.error("[Slack] Socket Mode connection failed: %s", exc)
+        self._running = False
 
     async def stop(self) -> None:
         self._running = False
@@ -152,6 +181,9 @@ class SlackChannel(Channel):
         if self._socket_client:
             self._socket_client.close()
             self._socket_client = None
+        # A still-in-flight connect() will fail into its done callback
+        # (_running is already False there); drop our reference.
+        self._connect_future = None
         logger.info("Slack channel stopped")
 
     async def send(self, msg: OutboundMessage, *, _max_retries: int = 3) -> None:
