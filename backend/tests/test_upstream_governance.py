@@ -27,14 +27,16 @@ def make_repo(tmp_path):
     return path, run(tmp_path, "rev-parse", "HEAD")
 
 
-def ledger(root, entries, budget=44):
+def ledger(root, entries, budget=44, basis=None):
     code_budget = min(budget, 43)
     document_budget = budget - code_budget
+    if basis is None:
+        basis = {"code_files": code_budget, "document_files": document_budget, "previous_code_files": code_budget, "previous_document_files": document_budget, "amendment": "Test fixture budget allocation."}
     registry = {
         "schema_version": 1,
         "upstream_baseline": run(root, "rev-parse", "HEAD"),
         "file_budget": budget,
-        "budget_basis": {"code_files": code_budget, "document_files": document_budget, "previous_code_files": code_budget, "previous_document_files": document_budget, "amendment": "Test fixture budget allocation."},
+        "budget_basis": basis,
         "patches": entries,
     }
     sources = []
@@ -207,6 +209,68 @@ def test_document_budget_amendment_cannot_raise_code_file_budget(tmp_path):
     assert any("code patch budget exceeded" in error for error in report["errors"])
 
 
+def commit_base_allocation(tmp_path, budget=1):
+    ledger(tmp_path, [], budget=budget)
+    run(tmp_path, "add", "-A")
+    run(tmp_path, "commit", "-m", "base allocation")
+    return run(tmp_path, "rev-parse", "HEAD")
+
+
+def new_patch_entry():
+    """Section-parsed fixture entry (PATCH-016+) for a patch absent from the base."""
+    amended = entry()
+    amended["id"] = "PATCH-016"
+    return amended
+
+
+def growth_candidate(tmp_path):
+    """Base allocation capping code at 1, plus one changed code file to register."""
+    path, _ = make_repo(tmp_path)
+    base = commit_base_allocation(tmp_path)
+    path.write_text("changed\n")
+    return base
+
+
+def growth_basis(**overrides):
+    basis = {"code_files": 2, "document_files": 0, "previous_code_files": 1, "previous_document_files": 0, "amendment": "Amendment: the newly registered code patch needs one more file."}
+    basis.update(overrides)
+    return basis
+
+
+def test_code_budget_growth_with_amendment_passes(tmp_path):
+    base = growth_candidate(tmp_path)
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis())
+
+    report = gate.check(tmp_path, base, None, base)
+
+    assert report["status"] == "pass"
+
+
+def test_code_budget_growth_requires_amendment(tmp_path):
+    base = growth_candidate(tmp_path)
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(amendment=""))
+
+    report = gate.check(tmp_path, base, None, base)
+
+    assert report["status"] == "fail"
+    assert any("code-file budget growth requires an explicit amendment" in error for error in report["errors"])
+
+
+def test_amendment_exempts_previous_code_files_from_base_allocation(tmp_path):
+    base = growth_candidate(tmp_path)
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(previous_code_files=2))
+
+    report = gate.check(tmp_path, base, None, base)
+
+    assert report["status"] == "pass"
+
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(previous_code_files=2, amendment=""))
+
+    errors = gate.check(tmp_path, base, None, base)["errors"]
+
+    assert any("previous_code_files must match the base ledger allocation" in error for error in errors)
+
+
 def test_readability_patch_references_retained_root_test_file():
     ledger_text = (ROOT / "UPSTREAM_PATCH_LEDGER.md").read_text()
 
@@ -218,9 +282,11 @@ def test_harness_pyproject_dependency_patch_is_registered():
     # Ticket 49 (04-M7): the harness pyproject diff (python-docx, pymupdf4llm)
     # sits outside the deerflow/ prefix of the structured registry, so its
     # registration lives in the ledger sections and must stay present.
+    # Registered as PATCH-036 on the ticket branch; renumbered PATCH-037 in
+    # the merge because develop's fault-zeroing ledger (issue #22) took 036.
     ledger_text = (ROOT / "UPSTREAM_PATCH_LEDGER.md").read_text()
 
-    assert "### PATCH-036: harness pyproject" in ledger_text
+    assert "### PATCH-037: harness pyproject" in ledger_text
     assert "`backend/packages/harness/pyproject.toml`" in ledger_text
     assert "python-docx>=1.1.2" in ledger_text
     assert "pymupdf4llm>=0.0.17,<2" in ledger_text

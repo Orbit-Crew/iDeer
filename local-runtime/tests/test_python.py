@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import asyncio
 import glob
 import hashlib
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
 import pytest
 
+import core.python as core_python
 from core.artifacts import (
     ArtifactUploadError,
     FileArtifactUploader,
@@ -16,7 +20,13 @@ from core.artifacts import (
 from core.consent import ConsentStore, request_hash
 from core.files import LocalFileStore, RootConfig
 from core.policy import LocalPolicy, PolicyDecision
-from core.python import LocalPythonService, PythonExecutor, PythonTaskStatus
+from core.python import (
+    LocalPythonService,
+    PythonExecutor,
+    PythonTaskStatus,
+    _StreamingRedactor,
+)
+from core.secrets import SecretRedactor
 
 
 def test_python_executor_success_and_bounded_output(tmp_path: Path) -> None:
@@ -28,6 +38,68 @@ def test_python_executor_success_and_bounded_output(tmp_path: Path) -> None:
     assert result.status is PythonTaskStatus.COMPLETED
     assert result.exit_code == 0
     assert result.stdout == "hello\n"
+
+
+def test_windows_process_options_suspend_the_child_for_job_assignment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Windows branch builds creationflags from attributes subprocess
+    actually exports, and keeps the suspended bit so the Job Object owns the
+    child before any script runs (regression: CPython never exports
+    subprocess.CREATE_SUSPENDED, which used to raise AttributeError there)."""
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 4242
+        _handle = 9999
+        returncode = 0
+
+        def poll(self) -> int:
+            return 0
+
+    class FakeJob:
+        def close(self) -> None:
+            pass
+
+    def fake_popen(args: list[str], **kwargs: object) -> FakeProcess:
+        captured.update(kwargs)
+        return FakeProcess()
+
+    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(
+        core_python, "_WindowsJob", lambda pid, process_handle=None: FakeJob()
+    )
+    monkeypatch.setattr(core_python, "_resume_initial_thread", lambda pid: None)
+
+    result = asyncio.run(
+        PythonExecutor().run("pass", working_root=tmp_path, timeout=30)
+    )
+
+    flags = captured["creationflags"]
+    assert flags & 0x4  # CREATE_SUSPENDED
+    assert flags & 0x200  # CREATE_NEW_PROCESS_GROUP
+    assert result.status is PythonTaskStatus.COMPLETED
+
+
+def test_windows_line_endings_are_canonicalized_in_reported_output(
+    tmp_path: Path,
+) -> None:
+    """Windows children translate \\n to \\r\\n for redirected streams; the
+    reported text, streamed chunks, and the receipt hash stay platform-
+    canonical while a lone \\r (e.g. a progress bar) survives."""
+    log = tmp_path / "out.log"
+    log.write_bytes(b"progress\r100%\r\ndone\r\n")
+    text, digest = PythonExecutor()._summarize_log(str(log), SecretRedactor(()))
+    assert text == "progress\r100%\ndone\n"
+    assert digest == hashlib.sha256(b"progress\r100%\ndone\n").hexdigest()
+
+
+def test_streaming_redactor_joins_line_endings_split_across_chunks() -> None:
+    redactor = _StreamingRedactor(SecretRedactor(()))
+    assert redactor.feed("hello\r") + redactor.feed("\n", final=True) == "hello\n"
+    assert redactor.feed("abc\r\n", final=True) == "abc\n"
+    assert redactor.feed("abc\r", final=True) == "abc\r"
 
 
 def test_python_executor_timeout(tmp_path: Path) -> None:

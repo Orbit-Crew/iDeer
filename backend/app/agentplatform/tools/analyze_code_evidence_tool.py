@@ -32,6 +32,7 @@ from app.agentplatform.tools.code_evidence_access import (
 from deerflow.tools.types import Runtime
 from deerflow.uploads.code_analysis import (
     detect_language,
+    detect_languages,
     run_static_analysis,
     write_analysis_summary,
 )
@@ -46,6 +47,8 @@ def _next_action(result_overall: str, language: str | None) -> str:
         return "包内未发现受支持的源码文件（C/C++ 或 Python），未运行扫描器；请用 glob/grep/read_file 直接阅读包内文本证据。"
     if result_overall == "scanners_unavailable":
         return "扫描器二进制在当前环境不可用：本次没有机器扫描告警，请如实向用户披露 scanners_unavailable（见 scanner_status.json），并改用 read_file/grep 人工阅读源码与日志；不要把“没扫”说成“扫过无发现”。"
+    if result_overall == "partial":
+        return "本次扫描不完整：请读取 analysis/scanner_status.json，披露完成、失败、超时和跳过的扫描器及原因，不得声称已完整扫描或无告警。已取得的 findings 仅为 high_risk_candidate，不能单独确认为现场根因。"
     return "findings 是静态告警证据，confidence 恒为 high_risk_candidate（静态告警单独永不 confirmed）；请结合日志与人工阅读交叉验证后再升级或降级，不得直接写成 confirmed 根因。完整清单见 analysis/findings.json。"
 
 
@@ -74,9 +77,11 @@ def _analyze_code_evidence_sync(runtime: Runtime, declared_root: str) -> str:
 
     inventory = result.inventory
     language = detect_language(inventory)
+    languages = detect_languages(inventory)
     payload: dict[str, Any] = {
         "package_id": package_id,
         "language": language,
+        "languages": languages,
         "analysis_dir": f"{CODE_EVIDENCE_VIRTUAL_ROOT}/{package_id}/analysis",
         "inventory_summary": {
             "total_files": len(inventory["files"]),

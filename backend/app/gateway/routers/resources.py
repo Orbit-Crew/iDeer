@@ -266,7 +266,8 @@ class EvalCaseUpdateRequest(BaseModel):
 
 def _cleanup_run_user_data(run_id: str, user_id: str) -> None:
     """Remove data written before a Run was persisted."""
-    shutil.rmtree(get_paths().thread_dir(run_id, user_id=user_id) / "user-data", ignore_errors=True)
+    scope = canonical_sandbox_scope(run_id, run_id)
+    shutil.rmtree(get_paths().thread_dir(scope, user_id=user_id) / "user-data", ignore_errors=True)
 
 
 async def _store_workflow_run_files(*, run_id: str, user_id: str, files: list[UploadFile]) -> tuple[PackageManifest | None, list[str]]:
@@ -275,7 +276,8 @@ async def _store_workflow_run_files(*, run_id: str, user_id: str, files: list[Up
     if len(source_files) > 1:
         raise HTTPException(400, "Only one source ZIP may be attached to a workflow Run")
 
-    uploads_dir = get_paths().sandbox_uploads_dir(run_id, user_id=user_id)
+    scope = canonical_sandbox_scope(run_id, run_id)
+    uploads_dir = get_paths().sandbox_uploads_dir(scope, user_id=user_id)
     uploads_dir.mkdir(parents=True, exist_ok=True)
     stored_names: list[str] = []
     total_size = 0
@@ -292,7 +294,7 @@ async def _store_workflow_run_files(*, run_id: str, user_id: str, files: list[Up
                     source_manifest, _ = await asyncio.to_thread(
                         accept_package,
                         file.file,
-                        thread_id=run_id,
+                        thread_id=scope,
                         original_filename=original_name,
                         max_compressed_size=limits.upload_max_file_size,
                     )

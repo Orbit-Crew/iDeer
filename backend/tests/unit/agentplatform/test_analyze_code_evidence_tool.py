@@ -103,6 +103,30 @@ async def _call(runtime, package_root: str) -> dict:
 
 
 @pytest.mark.asyncio
+async def test_execution_failure_returns_partial_status_and_disclosure_guidance(env) -> None:
+    root = _seed_python_package(env)
+    env.monkeypatch.setattr("deerflow.uploads.code_analysis.detect_scanner", lambda name: (True, "1.0"))
+    env.monkeypatch.setattr(
+        "deerflow.uploads.code_analysis.run_fixed_scanner",
+        lambda command, **kwargs: SimpleNamespace(
+            exit_code=2,
+            stdout="",
+            stderr="invalid configuration",
+            timed_out=False,
+            start_error=None,
+        ),
+    )
+
+    payload = await _call(_runtime(), "/mnt/user-data/code-evidence/pkg-1")
+
+    assert payload["overall"] == "partial"
+    assert all(status["skipped_reason"] == "scanner execution failed (exit code 2)" for status in payload["scanner_status"])
+    assert "本次扫描不完整" in payload["next_action"]
+    assert "scanner_status.json" in payload["next_action"]
+    assert json.loads((root / "analysis/scanner_status.json").read_text())["overall"] == "partial"
+
+
+@pytest.mark.asyncio
 async def test_paths_outside_the_package_root_are_structurally_rejected(env) -> None:
     _seed_c_cpp_package(env)
 
@@ -218,6 +242,22 @@ async def test_python_package_gets_ruff_and_bandit_and_alerts_never_confirmed(en
     assert payload["findings_count"] == 2
     assert all(finding["confidence"] == "high_risk_candidate" for finding in payload["findings_preview"])
     assert all(finding["confidence"] != "confirmed" for finding in payload["findings_preview"])
+
+
+@pytest.mark.asyncio
+async def test_mixed_package_reports_and_dispatches_both_languages(env) -> None:
+    package_dir = _seed_c_cpp_package(env)
+    (package_dir / "source" / "pkgmod").mkdir()
+    (package_dir / "source" / "pkgmod" / "app.py").write_text("print(1)\n")
+    empty = env.tmp_path / "empty-bin"
+    empty.mkdir()
+    env.monkeypatch.setenv("PATH", str(empty))
+
+    payload = await _call(_runtime(), "/mnt/user-data/code-evidence/pkg-1")
+
+    assert payload["languages"] == ["c_cpp", "python"]
+    assert [status["name"] for status in payload["scanner_status"]] == ["clang-tidy", "cppcheck", "ruff", "bandit"]
+    assert payload["overall"] == "scanners_unavailable"
 
 
 @pytest.mark.asyncio

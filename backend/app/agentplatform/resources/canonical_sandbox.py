@@ -72,17 +72,17 @@ def canonical_run_skill_view_host_path(run_id: str) -> str:
 def _resolve_run_skill_view(sandbox_identity: str) -> tuple[str, Path] | None:
     """Resolver hook for DeerFlow's local sandbox provider.
 
-    Returns ``(run_id, run_skill_view)`` for canonical run identities so the
+    Returns ``(sandbox_identity, run_skill_view)`` for canonical identities so the
     provider maps ``/mnt/skills`` to the frozen read-only view and keys
-    user-data directories on the run workspace — the same ``thread_dir(run_id)``
-    layout the workflow file-roots resolver and the artifact gate use.
+    user-data directories on the scoped workspace used by the workflow
+    file-roots resolver and artifact gate.
     ``None`` for ordinary identities (the managed skills projection applies).
     """
     scope = parse_canonical_sandbox_scope(sandbox_identity)
     if scope is None:
         return None
     _thread_key, run_id = scope
-    return run_id, canonical_run_skill_view_path(run_id)
+    return sandbox_identity, canonical_run_skill_view_path(run_id)
 
 
 def install_run_skill_view_resolver() -> None:

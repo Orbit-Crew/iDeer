@@ -745,6 +745,7 @@ async def create_run(
         body,
         thread_id,
         request,
+        require_existing_thread=True,
         idempotency_key=_scope_http_run_idempotency_key(request, thread_id, idempotency_key),
     )
     return _record_to_response(record)
@@ -770,6 +771,7 @@ async def stream_run(
         body,
         thread_id,
         request,
+        require_existing_thread=True,
         idempotency_key=_scope_http_run_idempotency_key(request, thread_id, idempotency_key),
     )
 
@@ -825,6 +827,7 @@ async def wait_run(
         body,
         thread_id,
         request,
+        require_existing_thread=True,
         idempotency_key=_scope_http_run_idempotency_key(request, thread_id, idempotency_key),
     )
     # Capture before waiting: create_or_reject mutates the shared cached

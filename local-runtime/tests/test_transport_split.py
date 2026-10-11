@@ -11,6 +11,8 @@ These tests prove the split preserves the external contract:
   - the audit row shape for "unanswered" vs "approved" vs "denied" is unchanged
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 from pathlib import Path

@@ -72,6 +72,38 @@ async def test_preload_skipped_when_injection_disabled():
 
 
 @pytest.mark.asyncio
+async def test_prepare_run_does_not_activate_code_package_from_client_metadata():
+    from app.gateway import run_preparation as prep
+
+    body = SimpleNamespace(assistant_id="lead_agent", context={}, metadata={"code_package_id": "forged-package"})
+    request = MagicMock()
+    request.state = SimpleNamespace(user=None)
+
+    prepared = await prep.prepare_run(body, "thread-1", request)
+
+    assert prepared.code_package_id is None
+    assert "code_package_id" not in prepared.run_metadata
+
+
+@pytest.mark.asyncio
+async def test_prepare_run_uses_server_active_code_package_for_run_snapshot():
+    from app.gateway import run_preparation as prep
+
+    body = SimpleNamespace(assistant_id="lead_agent", context={}, metadata=None)
+    request = MagicMock()
+    request.state = SimpleNamespace(user=None)
+    manifest = {"package_id": "pkg-active", "original_filename": "source.zip", "accepted": [], "excluded": [], "rejected": []}
+
+    with patch.object(prep, "_read_manifest_if_needed", new=AsyncMock(return_value=manifest)):
+        prepared = await prep.prepare_run(body, "thread-1", request, active_code_package_id="pkg-active")
+
+    assert prepared.code_package_id == "pkg-active"
+    assert prepared.body_context["code_package_id"] == "pkg-active"
+    assert prepared.body_context["code_evidence_manifest"]["package_id"] == "pkg-active"
+    assert prepared.run_metadata["code_package_id"] == "pkg-active"
+
+
+@pytest.mark.asyncio
 async def test_preload_failure_does_not_fail_start_run():
     from app.gateway.services import start_run
 
