@@ -14,7 +14,6 @@ from deerflow_extension_api import (
     RunEvidenceEnvelope,
     TaskInfo,
     TaskOutcome,
-    set_runtime_evidence_hooks,
 )
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -240,7 +239,13 @@ def current_run_evidence() -> RunEvidenceBinding | None:
 
 
 class RuntimeEvidenceHooks:
-    """Adapt AgentPlatform evidence functions to the DeerFlow host contract."""
+    """Adapt AgentPlatform evidence functions to the DeerFlow host contract.
+
+    Instantiated only by ``install()`` and registered through
+    ``ExtensionRegistry.runtime_evidence(...)``: importing this package never
+    installs process-global hooks, so the hooks take effect exactly when the
+    host enables the extension.
+    """
 
     def current_run_evidence(self) -> RunEvidenceBinding | None:
         return current_run_evidence()
@@ -271,9 +276,6 @@ class RuntimeEvidenceHooks:
             child_task_id=child_task_id,
             child_agent_id=child_agent_id,
         )
-
-
-set_runtime_evidence_hooks(RuntimeEvidenceHooks())
 
 
 def _append_evidence_item(field: str, item: Mapping[str, Any]) -> None:

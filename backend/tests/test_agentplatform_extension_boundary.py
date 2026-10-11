@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 from agentplatform_extension import install
 from agentplatform_extension.evidence import (
@@ -17,7 +21,10 @@ from agentplatform_extension.evidence import (
 from agentplatform_extension.network_policy import NetworkPolicy
 from deerflow_extension_api import ExtensionData, RunEvidenceEnvelope, TaskInfo, TaskOutcome
 
+from deerflow.extensions import get_loaded_extensions, resolve_runtime_evidence_hooks, set_loaded_extensions
 from deerflow.extensions.registry import ExtensionRegistry
+
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def test_run_evidence_envelope_freezes_resource_identity_and_caller_boundary() -> None:
@@ -266,3 +273,102 @@ async def test_dynamic_install_uses_the_run_bound_snapshot_and_caller_context() 
     assert envelope.resource_snapshots[0]["version"] == 7
     assert envelope.authorization_context["caller_user_id"] == "caller"
     assert envelope.runtime_assembly_fingerprint == "assembly-7"
+
+
+# --- Single-track evidence hook registration (04-M6) ------------------------
+
+
+def _run_probe(source: str) -> subprocess.CompletedProcess[str]:
+    """Run ``source`` in a fresh interpreter so import order cannot mask side effects."""
+    return subprocess.run(
+        [sys.executable, "-c", source],
+        capture_output=True,
+        text=True,
+        cwd=_BACKEND_DIR,
+        timeout=120,
+    )
+
+
+def test_importing_extension_package_has_no_process_global_side_effect() -> None:
+    """Importing the package must not install process-global evidence hooks.
+
+    The documented contract (``install()`` docstring) is that the extension is
+    registered only when the host explicitly enables it; a module-top-level
+    ``set_runtime_evidence_hooks(...)`` would let mere import order flip host
+    behaviour.
+    """
+    probe = "\n".join(
+        [
+            "import agentplatform_extension",
+            "import agentplatform_extension.evidence",
+            "from deerflow_extension_api import get_runtime_evidence_hooks",
+            "hooks = get_runtime_evidence_hooks()",
+            "assert hooks is None, f'import installed process-global evidence hooks: {hooks!r}'",
+        ]
+    )
+    result = _run_probe(probe)
+    assert result.returncode == 0, result.stderr
+
+
+def test_host_without_enabled_extension_keeps_runtime_evidence_hooks_dormant() -> None:
+    """A process that never enabled the extension must resolve no evidence hooks.
+
+    The fresh interpreter imports the extension the way any consumer would, then
+    resolves hooks against the process default loaded set (no extensions enabled).
+    """
+    probe = "\n".join(
+        [
+            "import agentplatform_extension",
+            "from deerflow.extensions import get_loaded_extensions, resolve_runtime_evidence_hooks",
+            "hooks = resolve_runtime_evidence_hooks(get_loaded_extensions())",
+            "assert hooks is None, f'hooks active although the host enabled no extension: {hooks!r}'",
+        ]
+    )
+    result = _run_probe(probe)
+    assert result.returncode == 0, result.stderr
+
+
+def test_registry_registered_hooks_resolve_and_behave_for_a_run() -> None:
+    """Host enabled the extension: the registry track serves runtime dispatch.
+
+    Behavioural equivalence control for the single-track migration: hooks handed
+    out from ``LoadedExtensions`` must project receipts exactly like the direct
+    extension functions do.
+    """
+    registry = ExtensionRegistry()
+    with registry.attributed_to("agentplatform:install"):
+        install(registry, {"dynamic_context": True})
+
+    hooks = resolve_runtime_evidence_hooks(registry.build())
+    assert hooks is not None
+
+    binding = RunEvidenceBinding(snapshots=(), authorization=AuthorizationContext("caller", "agent", "policy"))
+    with bind_run_evidence(binding):
+        hooks.record_tool_receipt({"tool_call_id": "call-1", "tool_name": "bash", "status": "success"})
+        hooks.record_subagent_verification({"task_id": "child-1", "status": "PASSED"})
+        stored = current_run_evidence()
+
+    assert stored is not None
+    assert [receipt["tool_call_id"] for receipt in stored.tool_receipts] == ["call-1"]
+    assert [verification["task_id"] for verification in stored.subagent_verification] == ["child-1"]
+
+
+def test_run_without_snapshot_resolves_the_host_registry_track() -> None:
+    """Hook resolution without a run snapshot falls back to the host's loaded set.
+
+    ``task_tool`` resolves hooks with ``resolve_run_extensions(context)`` which is
+    ``None`` in host processes that never embed a snapshot (workflow worker);
+    resolution must then follow the same ``get_loaded_extensions()`` fallback the
+    executor and run worker already apply, so the registry track stays effective.
+    """
+    registry = ExtensionRegistry()
+    with registry.attributed_to("agentplatform:install"):
+        install(registry, {"dynamic_context": True})
+
+    previous = get_loaded_extensions()
+    set_loaded_extensions(registry.build())
+    try:
+        assert resolve_runtime_evidence_hooks(None) is not None
+        assert resolve_runtime_evidence_hooks(None) is resolve_runtime_evidence_hooks(get_loaded_extensions())
+    finally:
+        set_loaded_extensions(previous)
