@@ -4,8 +4,8 @@ kind: reference
 status: current
 owner: repository maintainers
 scope: full skill-routing flow for coding agents (precedence over skills, main flow, on-ramps, phase boundaries, communication agreement); root AGENTS.md carries the compact table
-last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+last-verified: 2026-10-11
+verified-against: maintainer decision 2026-10-11 — specs and tickets publish to GitHub (Orbit-Crew/iDeer), mirrored to Gitea (TechCode/iDeer)
 ---
 
 # Skill Routing
@@ -22,13 +22,13 @@ How coding agents route work through the installed ask-matt skill set, adapted t
 
 1. **Sharpen the idea with `grill-with-docs`** — a stateful interview that reads `CONTEXT.md` and `docs/adr/` first (see [domain.md](domain.md)) and leaves a glossary/ADR paper trail. Small, well-specified changes skip the interview and go straight to the TDD slice discipline in `AGENTS.md`.
 2. **Runnable design question** (state model, UI feel, business logic you must see run) — `/handoff` out to a fresh session, `/prototype` the answer as throwaway code on a `prototype/<name>` branch out of main, then `/handoff` back what was learned. The prototype stays as a primary source, pointed at from the implementation issue.
-3. **Multi-session build** — `/to-spec` writes the spec to `docs/specs/` with `triage:` frontmatter, then `/to-tickets` splits it into tracer-bullet tickets under `.scratch/<feature-slug>/issues/`, each declaring its blocking edges (see [issue-tracker.md](issue-tracker.md)). Work the tickets through **`orchestrate-worktrees`** — one self-contained subagent per ticket in a dedicated git worktree. This is this repo's rule and replaces `/implement-spec`'s single-integration-branch mode; do not run `/implement-spec` across long-span work here.
+3. **Multi-session build** — `/to-spec` publishes the spec as a GitHub issue, then `/to-tickets` splits it into tracer-bullet ticket issues on GitHub with blocking edges (see [issue-tracker.md](issue-tracker.md)). Work the tickets through **`orchestrate-worktrees`** — one self-contained subagent per ticket in a dedicated git worktree. This is this repo's rule and replaces `/implement-spec`'s single-integration-branch mode; do not run `/implement-spec` across long-span work here.
 4. **Each ticket drives `tdd`** — one red-green slice at a time, focused test per slice, static check per slice, standard lane once at implementation completion. Close the diff with **`code-review`** (Standards + Spec axes) before handing off, and shape the PR body per the root Commit & Pull Request guidelines.
 5. **`retro` closes the loop.** After a completed build — especially one that went sideways — propose a retro and run it when accepted. It looks back over the session and proposes changes to the agent's environment: automated checks, coding standards, steering docs, navigation pointers. Land accepted proposals through the guidance-maintenance convention (edit `AGENTS.md` as sole source, sync the mirror).
 
 ## On-ramps
 
-- **Bugs and requests piling up → `triage`.** For raw incoming issues you did not create (already-agent-ready tickets from `/to-tickets` are not re-triaged). Use the canonical labels in [triage-labels.md](triage-labels.md); publish specifications to `docs/specs/` and tickets to `.scratch/`, not GitHub issues.
+- **Bugs and requests piling up → `triage`.** For raw incoming issues you did not create (already-agent-ready tickets from `/to-tickets` are not re-triaged). Use the canonical labels in [triage-labels.md](triage-labels.md); publish specifications and tickets as GitHub issues per [issue-tracker.md](issue-tracker.md).
 - **Something's broken and resists a first glance → `diagnosing-bugs`.** Refuse to theorize until there is a tight feedback loop: one command that already goes red on this bug. Fix behind a regression test. When the real finding is that no seam exists to lock the bug down, hand off to `improve-codebase-architecture`.
 - **Huge, foggy effort → `wayfinder`.** For greenfield or too-big-for-one-session efforts where the way is not visible yet: chart a shared map of decision tickets (GitHub map + child issues per [issue-tracker.md](issue-tracker.md) "Wayfinding operations") and resolve them one at a time — decisions, not deliverables. When the map clears, merge into `/to-spec`; do not loop the map straight into implementation.
 

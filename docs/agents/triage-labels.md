@@ -3,9 +3,9 @@ id: docs-agents-triage-labels
 kind: reference
 status: current
 owner: repository maintainers
-scope: canonical triage vocabulary mapped to label strings for the local issue tracker and local spec/ticket frontmatter
-last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+scope: canonical triage vocabulary mapped to label strings for the repo issue tracker (GitHub, mirrored to Gitea)
+last-verified: 2026-10-11
+verified-against: maintainer decision 2026-10-11 — specs and tickets publish to GitHub (Orbit-Crew/iDeer), mirrored to Gitea (TechCode/iDeer)
 ---
 
 # Triage Labels
@@ -22,6 +22,6 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
-For locally published specifications, record the value in YAML frontmatter as `triage: ready-for-agent`. For local work tickets, record it as `**Status:** ready-for-agent`. Neither requires a GitHub label.
+Specifications and work tickets are published as GitHub issues: apply the label string directly on the issue and keep it consistent on the Gitea mirror.
 
 Edit the right-hand column to match whatever vocabulary you actually use.
