@@ -106,7 +106,12 @@ def verify_envelope(
     ):
         raise ProtocolError("SESSION_MISMATCH")
     try:
-        expires_at = datetime.fromisoformat(str(message["expires_at"]))
+        expires_at_text = str(message["expires_at"])
+        if expires_at_text.endswith(("Z", "z")):
+            # The wire format signs timestamps with a trailing Z, which
+            # datetime.fromisoformat only accepts from Python 3.11 on.
+            expires_at_text = expires_at_text[:-1] + "+00:00"
+        expires_at = datetime.fromisoformat(expires_at_text)
         expires_at = (
             expires_at.replace(tzinfo=UTC) if expires_at.tzinfo is None else expires_at
         )
