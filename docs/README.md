@@ -38,6 +38,7 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 权限模型与矩阵 | [permission-model-redesign.md](permission-model-redesign.md)、[permission-matrix.md](permission-matrix.md) |
 | 离线产品线治理 | [offline-product-line-governance-plan.md](offline-product-line-governance-plan.md) |
 | 离线部署作业 | [禁公网内网离线部署作业指导书](deployment/禁公网内网离线部署作业指导书.md) |
+| 容器暴露面与非 root 基线 | [container-non-root-evaluation.md](deployment/container-non-root-evaluation.md)（Docker socket 仅经 opt-in DooD overlay 挂载；非 root 运行评估结论） |
 | 架构基线 | [架构索引](architecture/README.md)、[项目架构概览](architecture/overview.md)、[后端架构](../backend/docs/README.md) |
 | 领域词汇 | [工程术语权威 CONTEXT.md](../CONTEXT.md)、[领域建模指南](agents/domain.md)；[UI 术语对照表](plans/2026-08-26-term-glossary.md) 仅覆盖界面显示语言 |
 | Agent 工作流 | [技能路由](agents/skill-routing.md)、[规格与工单发布](agents/issue-tracker.md) |

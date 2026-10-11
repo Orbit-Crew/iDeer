@@ -1163,3 +1163,65 @@ def test_manifest_helper_keeps_root_unchanged_when_verification_fails(tmp_path: 
     proc = subprocess.run(["python3", str(MANIFEST_SCRIPT), "apply", "--root", str(root), "--archive", str(archive), "--deleted", str(deleted), "--manifest", str(manifest)], capture_output=True, text=True)
     assert proc.returncode != 0
     assert (root / "old.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_compose_invocation_appends_dood_overlay_only_for_aio_sandbox_mode(tmp_path: Path):
+    """The base intranet compose carries no Docker socket; the opt-in DooD overlay must be appended only when the runtime config selects the AIO provider (issue 08-H2)."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    bin_dir = Path(env["PATH"].split(":", 1)[0])
+    compose_log = tmp_path / "compose-invocations.log"
+    _write_executable(
+        bin_dir / "docker",
+        f"""#!/usr/bin/env sh
+set -eu
+if [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
+  echo "Docker version 24.0.0, build fake"
+  exit 0
+fi
+if [ "$1" = "compose" ] && [ "${{2:-}}" = "version" ]; then
+  exit 0
+fi
+if [ "$1" = "compose" ]; then
+  shift
+  printf '%s\\n' "$*" >> "{compose_log}"
+  exit 0
+fi
+if [ "$1" = "info" ]; then
+  exit 0
+fi
+if [ "$1" = "image" ]; then
+  shift
+  case "$1" in
+    inspect) exit 1 ;;
+    *) exit 0 ;;
+  esac
+fi
+echo "unexpected docker invocation: $*" >&2
+exit 99
+""",
+    )
+
+    # Default seeded runtime config uses the local sandbox provider.
+    proc = _run_deploy(bundle_root, "status", env=env)
+    assert proc.returncode == 0, proc.stderr
+    local_invocations = compose_log.read_text(encoding="utf-8")
+    assert "docker-compose.intranet.yaml" in local_invocations
+    assert "docker-compose.dood.yaml" not in local_invocations
+
+    # Opt into the AIO sandbox provider in the runtime config.
+    config = bundle_root / "runtime" / "config.yaml"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace(
+            "deerflow.sandbox.local.local_sandbox_provider:LocalSandboxProvider",
+            "deerflow.community.aio_sandbox:AioSandboxProvider",
+        ),
+        encoding="utf-8",
+    )
+    compose_log.unlink()
+    proc = _run_deploy(bundle_root, "status", env=env)
+    assert proc.returncode == 0, proc.stderr
+    aio_invocations = compose_log.read_text(encoding="utf-8")
+    assert "docker-compose.intranet.yaml" in aio_invocations
+    assert "docker-compose.dood.yaml" in aio_invocations
+    assert "sandbox mode: aio" in proc.stdout

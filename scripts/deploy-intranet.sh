@@ -608,7 +608,10 @@ IDEER_CONFIG_PATH=$RUNTIME_DIR/config.yaml
 IDEER_EXTENSIONS_CONFIG_PATH=$RUNTIME_DIR/extensions_config.json
 IDEER_ENV_FILE=$RUNTIME_DIR/.env
 IDEER_FRONTEND_ENV_FILE=$RUNTIME_DIR/frontend.env
-IDEER_DOCKER_SOCKET=/var/run/docker.sock
+# Host Docker socket for the opt-in DooD overlay (docker-compose.dood.yaml),
+# which deploy-intranet.sh appends only when the runtime config selects the
+# AIO sandbox provider. The base intranet compose mounts no socket.
+DEER_FLOW_DOCKER_SOCKET=/var/run/docker.sock
 BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET_VALUE
 IDEER_INTERNAL_AUTH_TOKEN=$IDEER_INTERNAL_AUTH_TOKEN_VALUE
 IDEER_GATEWAY_IMAGE=ideer-gateway:$VERSION
@@ -727,8 +730,53 @@ prune_old_images() {
     fi
 }
 
+# Mirror scripts/deploy.sh detect_sandbox_mode: the runtime config decides
+# whether the opt-in DooD overlay is appended to compose invocations.
+detect_sandbox_mode() {
+    local config_path="${IDEER_CONFIG_PATH:-$RUNTIME_DIR/config.yaml}"
+    local sandbox_use=""
+    local provisioner_url=""
+
+    [ -f "$config_path" ] || { echo "local"; return; }
+
+    sandbox_use=$(awk '
+        /^[[:space:]]*sandbox:[[:space:]]*$/ { in_sandbox=1; next }
+        in_sandbox && /^[^[:space:]#]/ { in_sandbox=0 }
+        in_sandbox && /^[[:space:]]*use:[[:space:]]*/ {
+            line=$0; sub(/^[[:space:]]*use:[[:space:]]*/, "", line); print line; exit
+        }
+    ' "$config_path")
+
+    provisioner_url=$(awk '
+        /^[[:space:]]*sandbox:[[:space:]]*$/ { in_sandbox=1; next }
+        in_sandbox && /^[^[:space:]#]/ { in_sandbox=0 }
+        in_sandbox && /^[[:space:]]*provisioner_url:[[:space:]]*/ {
+            line=$0; sub(/^[[:space:]]*provisioner_url:[[:space:]]*/, "", line); print line; exit
+        }
+    ' "$config_path")
+
+    if [[ "$sandbox_use" == *"deerflow.community.aio_sandbox:AioSandboxProvider"* ]]; then
+        if [ -n "$provisioner_url" ]; then
+            echo "provisioner"
+        else
+            echo "aio"
+        fi
+    else
+        echo "local"
+    fi
+}
+
 compose_cmd() {
-    run_cmd docker compose -p ideer -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+    local compose_files=(-f "$COMPOSE_FILE")
+    if [ "$(detect_sandbox_mode)" = "aio" ]; then
+        # Opt-in DooD overlay: the only path that exposes the host Docker
+        # socket (root-equivalent host control). config.intranet.yaml defaults
+        # to aio, so intranet deployments keep sandbox capability without the
+        # base compose carrying an unconditional socket mount.
+        compose_files+=(-f "$SOURCE_DIR/docker/docker-compose.dood.yaml")
+        log "sandbox mode: aio — mounting host Docker socket via docker-compose.dood.yaml (DooD = host root-equivalent)"
+    fi
+    run_cmd docker compose -p ideer "${compose_files[@]}" --env-file "$ENV_FILE" "$@"
 }
 
 compose_update_args() {

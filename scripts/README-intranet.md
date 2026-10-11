@@ -286,8 +286,12 @@ The intranet deployment runs five containers:
 - **gateway** -- Python backend API on port 8001 (internal)
 - **workflow-worker** -- Workflow execution worker, reusing the gateway image
   (internal)
-- **sandbox** (on demand) -- AIO sandbox containers started by the gateway
-  through the host Docker socket, using the bundled `ideer-sandbox:<version>`
-  image
+- **sandbox** (on demand) -- AIO sandbox containers started by the gateway and
+  workflow-worker through the host Docker socket, using the bundled
+  `ideer-sandbox:<version>` image. The socket is NOT mounted by default: when
+  the runtime config selects the AIO sandbox provider (the
+  `config.intranet.yaml` default), `deploy-intranet.sh` appends the opt-in
+  `docker-compose.dood.yaml` overlay to its compose invocations; other sandbox
+  providers never receive it.
 
 All containers communicate over an internal Docker bridge network (`ideer`).

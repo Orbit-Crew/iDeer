@@ -1,26 +1,34 @@
-# DeerFlow — Docker-out-of-Docker (DooD) overlay (OPT-IN, NOT loaded by default)
+# iDeer — Docker-out-of-Docker (DooD) overlay (OPT-IN, NOT loaded by default)
 #
-# Mounts the host Docker socket into the gateway container so that
-# AioSandboxProvider running in pure-Docker mode — config.yaml:
+# Mounts the host Docker socket into the gateway and workflow-worker containers
+# so that AioSandboxProvider running in pure-Docker mode — config.yaml:
 #   sandbox.use: deerflow.community.aio_sandbox:AioSandboxProvider
 # with NO provisioner_url — can start per-thread sandbox containers via the
-# host Docker daemon.
+# host Docker daemon. Both services execute agent runs and therefore both may
+# provision sandboxes in aio mode; the default LocalSandboxProvider and the
+# provisioner/Kubernetes mode need neither mount.
 #
-# SECURITY: the host Docker socket grants the gateway container
-# root-equivalent control of the host. Only load this overlay when you have
-# explicitly chosen aio (DooD) sandbox mode and accept that trade-off. The
-# default LocalSandboxProvider and the provisioner/Kubernetes mode do NOT need
-# it and never load this file. See backend/docs/CONFIGURATION.md Security Note 
+# SECURITY: the host Docker socket grants these containers root-equivalent
+# control of the host. Only load this overlay when you have explicitly chosen
+# aio (DooD) sandbox mode and accept that trade-off. The default
+# LocalSandboxProvider and the provisioner/Kubernetes mode do NOT need it and
+# never load this file. See backend/docs/CONFIGURATION.md Security Note
 # section for the full threat model.
 #
 # scripts/deploy.sh and scripts/docker.sh append this overlay automatically
-# only when detect_sandbox_mode() returns "aio". Manual use:
+# only when detect_sandbox_mode() returns "aio"; scripts/deploy-intranet.sh
+# does the same for the intranet compose (whose runtime config defaults to
+# aio). Manual use:
 #   docker compose -f docker-compose.yaml -f docker-compose.dood.yaml up -d
 #
-# Compatible with both docker-compose.yaml (prod) and docker-compose-dev.yaml
-# (dev): both define a `gateway` service, and Compose merges this volume entry
-# onto it. DEER_FLOW_DOCKER_SOCKET defaults to /var/run/docker.sock.
+# Compatible with docker-compose.yaml (prod), docker-compose-dev.yaml (dev)
+# and docker-compose.intranet.yaml (intranet): all three define `gateway` and
+# `workflow-worker` services, and Compose merges these volume entries onto
+# them. DEER_FLOW_DOCKER_SOCKET defaults to /var/run/docker.sock.
 services:
   gateway:
+    volumes:
+      - ${DEER_FLOW_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+  workflow-worker:
     volumes:
       - ${DEER_FLOW_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock

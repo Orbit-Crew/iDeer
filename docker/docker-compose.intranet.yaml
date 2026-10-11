@@ -56,7 +56,10 @@ services:
       - ../docs:/app/docs:ro
       - ../workflows:/app/workflows:ro
       - ${IDEER_HOME}:/app/backend/.deer-flow
-      - ${IDEER_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      # DooD: the host Docker socket is NOT mounted by default. It is added only
+      # for aio (pure-DooD) sandbox mode via the opt-in docker-compose.dood.yaml
+      # overlay (appended by deploy-intranet.sh when the runtime config selects
+      # the AIO sandbox provider). Mounting the socket = host root-equivalent.
     working_dir: /app
     environment:
       - CI=true
@@ -104,7 +107,8 @@ services:
       - ../docs:/app/docs:ro
       - ../workflows:/app/workflows:ro
       - ${IDEER_HOME}:/app/backend/.deer-flow
-      - ${IDEER_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      # DooD: same as gateway — the host Docker socket joins this service only
+      # through the opt-in docker-compose.dood.yaml overlay in aio sandbox mode.
     working_dir: /app
     environment:
       - CI=true
