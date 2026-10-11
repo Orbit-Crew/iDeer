@@ -492,10 +492,12 @@ class TestSyncSingletonThreadSafety:
             futures_started = ThreadPoolExecutor(max_workers=1)
             try:
                 result_future = futures_started.submit(_call_getter_concurrently, get_checkpointer)
-                assert factory.entered.wait(timeout=3)
+                # 15s: on saturated coverage-instrumented CI runners the worker
+                # thread's start can be delayed far past 3s (run 38041565262).
+                assert factory.entered.wait(timeout=15)
                 factory.release.wait(timeout=0.05)
                 factory.release.set()
-                results = result_future.result(timeout=3)
+                results = result_future.result(timeout=15)
             finally:
                 futures_started.shutdown(wait=True)
 
@@ -510,10 +512,10 @@ class TestSyncSingletonThreadSafety:
             futures_started = ThreadPoolExecutor(max_workers=1)
             try:
                 result_future = futures_started.submit(_call_getter_concurrently, get_store)
-                assert factory.entered.wait(timeout=3)
+                assert factory.entered.wait(timeout=15)
                 factory.release.wait(timeout=0.05)
                 factory.release.set()
-                results = result_future.result(timeout=3)
+                results = result_future.result(timeout=15)
             finally:
                 futures_started.shutdown(wait=True)
 

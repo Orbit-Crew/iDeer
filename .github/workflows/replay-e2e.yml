@@ -65,7 +65,7 @@ jobs:
         run: uv sync --group dev
       - name: Replay golden (backend SSE contract)
         working-directory: backend
-        run: PYTHONPATH=. uv run pytest tests/test_replay_golden.py -v
+        run: PYTHONPATH=.:tests uv run pytest tests/test_replay_golden.py -v
 
   fullstack-replay-render:
     name: Layer 2 — full-stack render (no API key)

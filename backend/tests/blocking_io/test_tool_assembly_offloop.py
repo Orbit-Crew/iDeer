@@ -259,6 +259,7 @@ async def test_run_agent_assembles_off_loop(monkeypatch, tmp_path):
         id="sentinel-extensions",
         needs_task_store=False,
         has_task_lifecycle=False,
+        runtime_evidence_hooks=None,
     )
     observed_extensions: list = []
 

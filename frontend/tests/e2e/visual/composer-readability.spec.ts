@@ -197,7 +197,15 @@ test("new chat composer is readable on desktop and narrow screens", async ({
   await page.getByTestId("model-selector-trigger").click();
   const modelDialog = page.getByRole("dialog");
   await expect(modelDialog).toBeVisible();
-  await modelDialog.getByRole("option", { name: /Alternate model/ }).click();
+  // The model picker renders each model as a button inside a grouped list
+  // (no listbox/option roles); the favorite star is a sibling button whose
+  // name also contains the model name, so match the option's exact label.
+  await modelDialog
+    .getByRole("button", {
+      name: "Alternate model (alternate-model)",
+      exact: true,
+    })
+    .click();
   await expect(modelDialog).toBeHidden();
   await expect(page.getByTestId("model-selector-trigger")).toContainText(
     "Alternate model",

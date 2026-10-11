@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+    inputs:
+      update_visual_baselines:
+        description: "Regenerate the frontend-visual snapshot baselines in this CI environment instead of asserting them"
+        type: boolean
+        default: false
   push:
     branches: [develop, "product/offline-*"]
 
@@ -102,6 +107,15 @@ jobs:
           TEST_PREFLIGHT_STRICT: "1"
           NODE_VERSION: "22"
           PNPM_VERSION: "10.26.2"
+          TEST_VISUAL_UPDATE_SNAPSHOTS: ${{ inputs.update_visual_baselines == true && '1' || '' }}
+
+      - name: Upload refreshed visual baselines
+        uses: actions/upload-artifact@v4
+        if: ${{ inputs.update_visual_baselines == true }}
+        with:
+          name: visual-baselines-refreshed
+          path: frontend/tests/e2e/visual/**/*.png
+          retention-days: 7
 
       - name: Upload visual regression report
         uses: actions/upload-artifact@v4

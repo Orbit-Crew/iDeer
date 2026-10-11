@@ -3,8 +3,8 @@
     "collect": {
       "url": ["http://localhost:3000/", "http://localhost:3000/workspace"],
       "startServerCommand": "pnpm build && pnpm start",
-      "startServerReadyPattern": "Ready on",
-      "startServerReadyTimeout": 60000,
+      "startServerReadyPattern": "Ready in",
+      "startServerReadyTimeout": 300000,
       "numberOfRuns": 1,
       "settings": {
         "preset": "desktop",

@@ -77,6 +77,10 @@ UPLOAD_CHUNK_SIZE = 8192
 DEFAULT_MAX_FILES = 10
 DEFAULT_MAX_FILE_SIZE = 50 * 1024 * 1024
 DEFAULT_MAX_TOTAL_SIZE = 100 * 1024 * 1024
+# Upper bound on concurrent sandbox.update_file round-trips while syncing one
+# upload session's files; keeps a many-file upload from saturating the sandbox
+# transport while still overlapping per-file latency.
+SANDBOX_SYNC_CONCURRENCY = 4
 
 
 @dataclass(slots=True)
