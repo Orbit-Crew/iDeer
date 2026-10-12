@@ -9,6 +9,23 @@ from deerflow.runtime.checkpointer.cached_saver import CachedHistorySaver
 from deerflow.runtime.checkpointer.provider import checkpointer_context, reset_checkpointer
 
 
+@pytest.fixture(autouse=True)
+def _restore_checkpoint_process_globals():
+    """Every test here writes the real process globals (app config singleton,
+    frozen checkpoint mode, sync checkpointer singleton). Left behind, they
+    poison whichever unrelated tests the xdist worker runs next — observed on
+    CI as the langfuse client tests hitting this file's redis+delta config.
+    """
+    from deerflow.config.app_config import reset_app_config
+    from deerflow.runtime import checkpoint_mode
+
+    yield
+    reset_app_config()
+    reset_checkpointer()
+    checkpoint_mode._frozen_checkpoint_channel_mode = None
+    checkpoint_mode._frozen_checkpoint_snapshot_frequency = None
+
+
 # AppConfig requires the sandbox section (no default); the rest of the config
 # is optional. Mirrors test_checkpoint_cache_redis.py's construction pattern.
 def _app_config(mode: str, cache: dict | None = None) -> AppConfig:
