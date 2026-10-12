@@ -36,9 +36,9 @@
     "delta_rule": "verify hashes at the baseline commit, or recompute at a new candidate and record the delta here before relying on the inventory; never overwrite rows silently"
   },
   "inventory": {
-    "count": 360,
+    "count": 363,
     "classification_counts": {
-      "engineering-body-review": 246,
+      "engineering-body-review": 249,
       "agent-guidance": 56,
       "fixture-or-manual-inventory-only": 37,
       "protected-baseline": 21
@@ -1326,6 +1326,13 @@
         "lines": 846
       },
       {
+        "path": "docs/deployment/container-non-root-evaluation.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "8261ba0aa9b0cd9a5b8fcb2a787209851f06701ef2d2089d192304c9f322fd46",
+        "lines": 62
+      },
+      {
         "path": "docs/deployment/禁公网内网离线部署作业指导书.md",
         "classification": "engineering-body-review",
         "protected": false,
@@ -2346,6 +2353,20 @@
         "protected": true,
         "sha256": "0c58f156c3ebe3190dbccba9f91eb88c92bd13d5bf778b873f2b0afffbeb07be",
         "lines": 8
+      },
+      {
+        "path": "docs/upgrades/upstream-pr-candidates/channel-lifecycle-loop-affinity.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b55a5f47050b779aea9484f54225f37dda4fb65d9cb384dedfdd945a7a315b07",
+        "lines": 146
+      },
+      {
+        "path": "docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "d6aa9fa9e2c6f857ada9ec050f969bca74a2f160a916eababb2834a6357f9dcd",
+        "lines": 134
       },
       {
         "path": "docs/workflow-langgraph-runtime-v2-implementation-plan.md",

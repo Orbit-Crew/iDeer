@@ -1,3 +1,13 @@
+---
+id: docs-upgrades-upstream-pr-candidates-channel-lifecycle-loop-affinity
+kind: plan
+status: current
+owner: convergence maintainers
+scope: 上游 PR 候选(03-H1/H2/M3/M4/M6+M5,整改票 #61):bytedance/deer-flow 渠道适配器的三个通用缺陷模式(轮询线程死亡状态收敛、stop 真断开、事件派发回宿主主循环)的修复草稿;随下轮收敛轨与既有候选并列 reassess,不作为本仓库长期门禁
+last-verified: 2026-10-11
+verified-against: 上游 v2.1.0(345f08be0)适配器同病位置核对;本地回归 tests/unit/channels/test_channel_lifecycle_contracts.py
+---
+
 # 上游 PR 候选:渠道生命周期状态收敛与事件循环亲和(03-H1/H2/M3/M4/M6+M5,票 61)
 
 - 状态:候选(待下轮收敛轨随 P003/P011/P014/P032 及 memory-proxy 候选一并 reassess;提交流程见

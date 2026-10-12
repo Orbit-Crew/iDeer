@@ -13,6 +13,8 @@ LEVEL_0 file data without any local consent. These tests pin the new contract:
   - LEVEL_0 file capabilities are denied while no broker key is bound.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 from pathlib import Path
@@ -166,7 +168,9 @@ def test_the_explicit_fallback_still_pins_the_first_observed_key() -> None:
     """The legacy first-connection trust is available only when configured."""
     broker_key = Ed25519PrivateKey.generate()
     observed: list[str] = []
-    client = _client(allow_unpinned_broker_key=True, on_server_public_key=observed.append)
+    client = _client(
+        allow_unpinned_broker_key=True, on_server_public_key=observed.append
+    )
     client.connection = FakeConnection((_broker_hello(broker_key),))
 
     asyncio.run(client.run())
@@ -188,7 +192,9 @@ def test_unbound_client_denies_level_0_file_listing(tmp_path: Path) -> None:
     asyncio.run(client._handle_task(task))
 
     frames = [json.loads(raw) for raw in client.connection.sent]
-    outcomes = [frame["type"] for frame in frames if frame["type"] != MessageType.TASK_ACK]
+    outcomes = [
+        frame["type"] for frame in frames if frame["type"] != MessageType.TASK_ACK
+    ]
     assert outcomes == [MessageType.ERROR]
     assert frames[-1]["payload"]["error_code"] == "LOCAL_POLICY_DENIED"
     assert frames[-1]["payload"]["receipt"]["policy_decision"] == "deny"
@@ -206,7 +212,9 @@ def test_unbound_client_denies_level_0_file_read(tmp_path: Path) -> None:
     asyncio.run(client._handle_task(task))
 
     frames = [json.loads(raw) for raw in client.connection.sent]
-    outcomes = [frame["type"] for frame in frames if frame["type"] != MessageType.TASK_ACK]
+    outcomes = [
+        frame["type"] for frame in frames if frame["type"] != MessageType.TASK_ACK
+    ]
     assert outcomes == [MessageType.ERROR]
     assert frames[-1]["payload"]["error_code"] == "LOCAL_POLICY_DENIED"
     assert "local-only" not in json.dumps(frames)

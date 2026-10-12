@@ -1,3 +1,13 @@
+---
+id: docs-upgrades-upstream-pr-candidates-memory-proxy-path-traversal
+kind: plan
+status: current
+owner: convergence maintainers
+scope: 上游 PR 候选(07-H1,整改票 #59):bytedance/deer-flow 的 frontend memory 代理 catch-all 路由路径穿越校验修复草稿,含可直接套用的 diff;随下轮收敛轨与 P003/P011/P014/P032 并列 reassess,不作为本仓库长期门禁
+last-verified: 2026-10-11
+verified-against: 上游 v2.1.0(345f08be0)同名文件比对;本地回归 tests/unit/app/api/memory 路由测试
+---
+
 # 上游 PR 候选:memory 代理路径穿越校验(07-H1,票 59)
 
 - 状态:候选(待下轮收敛轨随 P003/P011/P014/P032 一并 reassess;提交流程见

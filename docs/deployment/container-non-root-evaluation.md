@@ -1,3 +1,13 @@
+---
+id: docs-deployment-container-non-root-evaluation
+kind: decision
+status: current
+owner: operations maintainers
+scope: 容器非 root 运行评估结论(08-H2 整改票 #60 的非 root 评估项):本轮明确不改,backend 镜像继续以 root 运行;记录现状证据、三项阻碍(离线 bundle 的宿主 docker GID 确定性、宿主 bind mount 属主迁移、CLI 凭据挂载路径)与后续改造的前置条件
+last-verified: 2026-10-11
+verified-against: 票 #60 容器 smoke 与 backend/Dockerfile、docker-compose 实测
+---
+
 # 容器非 root 运行评估(08-M5,Issue #60)
 
 状态:**本轮明确不改** — backend 镜像(`backend/Dockerfile`)继续以 root 运行;宿主 Docker socket 的
