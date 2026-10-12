@@ -344,7 +344,7 @@ start() {
                 exit 1
             fi
         fi
-        echo -e "${YELLOW}Mounting host Docker socket into gateway (DooD = host root-equivalent). See SECURITY.md.${NC}"
+        echo -e "${YELLOW}Mounting host Docker socket into gateway and workflow-worker (DooD = host root-equivalent). See SECURITY.md.${NC}"
         COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.dood.yaml"
     fi
 

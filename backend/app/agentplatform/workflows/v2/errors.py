@@ -18,6 +18,7 @@ MISSING_INPUT_ROOTS = "missing_input_roots"
 AGENT_FAILED = "agent_failed"
 TOOL_FAILED = "tool_failed"
 SCHEMA_VIOLATION = "schema_violation"
+TEMPLATE_RENDER_FAILED = "template_render_failed"
 PRECONDITION_FAILED = "precondition_failed"
 NODE_TIMEOUT = "node_timeout"
 ITERATION_LIMIT = "iteration_limit"
@@ -176,6 +177,24 @@ class WorkflowMissingInputRootsError(WorkflowRunError):
         )
 
 
+class WorkflowTemplateRenderError(WorkflowRunError):
+    """Raised when ``{{...}}`` template rendering exceeds its safe budget.
+
+    A self-referencing user input (e.g. ``inputs.x == "{{inputs.x}}"`` while a
+    template references it) used to loop forever inside synchronous render
+    code, hanging the worker event loop and the Run creation path.  Rendering
+    is now bounded; exceeding the bound fails the run (or its creation
+    pre-flight) with this structured error instead.
+    """
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(
+            TEMPLATE_RENDER_FAILED,
+            "模板渲染迭代超限（疑似自引用输入），已终止渲染",
+            detail=detail,
+        )
+
+
 def node_failure_payload(node_id: str | None, exc: Exception) -> dict[str, Any]:
     """Map one node-level exception to a structured ``node_failed`` payload.
 
@@ -200,6 +219,10 @@ def node_failure_payload(node_id: str | None, exc: Exception) -> dict[str, Any]:
         code = SCHEMA_VIOLATION
         summary = f"{label}输出未通过 schema 校验（{len(exc.violations)} 项违规）"
         detail = "\n".join(exc.violations)
+    elif isinstance(exc, WorkflowTemplateRenderError):
+        code = TEMPLATE_RENDER_FAILED
+        summary = f"{label}模板渲染失败：{exc.summary}"
+        detail = exc.detail
     elif isinstance(exc, WorkflowPreconditionFailed):
         code = PRECONDITION_FAILED
         summary = f"{label}前置条件不满足（{len(exc.violations)} 项）"

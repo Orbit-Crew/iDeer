@@ -11,44 +11,12 @@ import { Button } from "@/components/ui/button";
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/core/auth/AuthProvider";
+import { resolveAuthNextPath } from "@/core/auth/next-path";
 import { useI18n } from "@/core/i18n/hooks";
 
 interface AuthProvider {
   id: string;
   display_name: string;
-}
-
-/**
- * Validate next parameter
- * Prevent open redirect attacks
- * Per RFC-001: Only allow relative paths starting with /
- */
-function validateNextParam(next: string | null): string | null {
-  if (!next) {
-    return null;
-  }
-
-  // Need start with / (relative path)
-  if (!next.startsWith("/")) {
-    return null;
-  }
-
-  // Disallow protocol-relative URLs
-  if (
-    next.startsWith("//") ||
-    next.startsWith("http://") ||
-    next.startsWith("https://")
-  ) {
-    return null;
-  }
-
-  // Disallow URLs with different protocols (e.g., javascript:, data:, etc)
-  if (next.includes(":") && !next.startsWith("/")) {
-    return null;
-  }
-
-  // Valid relative path
-  return next;
 }
 
 export default function LoginPage() {
@@ -65,9 +33,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [ssoProviders, setSsoProviders] = useState<AuthProvider[]>([]);
 
-  // Get next parameter for validated redirect
+  // Get next parameter for validated redirect (shared next-path implementation)
   const nextParam = searchParams.get("next");
-  const redirectPath = validateNextParam(nextParam) ?? "/workspace";
+  const redirectPath = resolveAuthNextPath(nextParam);
   const ssoError = searchParams.get("error");
 
   useEffect(() => {

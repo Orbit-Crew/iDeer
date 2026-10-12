@@ -446,7 +446,7 @@ describe("LoginPage", () => {
     expect(screen.getByPlaceholderText("•••••••")).toBeInTheDocument();
   });
 
-  // --- validateNextParam edge cases ---
+  // --- next param validation (shared implementation) ---
 
   test("validateNextParam returns null for null input", () => {
     mockGetParam.mockReturnValue(null);
@@ -475,13 +475,31 @@ describe("LoginPage", () => {
     expect(mockAssign).toHaveBeenCalledWith("/workspace");
   });
 
-  test("validateNextParam accepts valid path with colon", () => {
+  test("does not redirect to backslash protocol-relative variant", () => {
+    mockGetParam.mockReturnValue("/\\evil.com");
+    mockUseAuth.mockReturnValue({ isAuthenticated: true });
+
+    render(<LoginPage />);
+
+    expect(mockAssign).toHaveBeenCalledWith("/workspace");
+  });
+
+  test("does not redirect to mid-path backslash variant", () => {
+    mockGetParam.mockReturnValue("/foo\\bar");
+    mockUseAuth.mockReturnValue({ isAuthenticated: true });
+
+    render(<LoginPage />);
+
+    expect(mockAssign).toHaveBeenCalledWith("/workspace");
+  });
+
+  test("does not redirect to colon-bearing path (shared next-path semantics)", () => {
     mockGetParam.mockReturnValue("/path:data");
     mockUseAuth.mockReturnValue({ isAuthenticated: true });
 
     render(<LoginPage />);
 
-    expect(mockAssign).toHaveBeenCalledWith("/path:data");
+    expect(mockAssign).toHaveBeenCalledWith("/workspace");
   });
 
   // --- setup-status fetch ---
@@ -862,6 +880,35 @@ describe("LoginPage", () => {
 
   test("invalid next param falls back to /workspace on login success", async () => {
     mockGetParam.mockReturnValue("https://evil.com");
+    mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/v1/auth/setup-status") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ needs_setup: false }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "user@test.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password123" },
+    });
+
+    const form = screen.getByLabelText("Email").closest("form")!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(mockAssign).toHaveBeenCalledWith("/workspace");
+    });
+  });
+
+  test("backslash next param falls back to /workspace on login success", async () => {
+    mockGetParam.mockReturnValue("/\\evil.com");
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/v1/auth/setup-status") {
         return Promise.resolve({

@@ -276,3 +276,17 @@ def test_readability_patch_references_retained_root_test_file():
 
     assert "backend/tests/test_readability.py::test_extract_article_falls_back_when_readability_js_fails" in ledger_text
     assert "backend/tests/unit/tools/test_readability.py" not in ledger_text
+
+
+def test_harness_pyproject_dependency_patch_is_registered():
+    # Ticket 49 (04-M7): the harness pyproject diff (python-docx, pymupdf4llm)
+    # sits outside the deerflow/ prefix of the structured registry, so its
+    # registration lives in the ledger sections and must stay present.
+    # Registered as PATCH-036 on the ticket branch; renumbered PATCH-037 in
+    # the merge because develop's fault-zeroing ledger (issue #22) took 036.
+    ledger_text = (ROOT / "UPSTREAM_PATCH_LEDGER.md").read_text()
+
+    assert "### PATCH-037: harness pyproject" in ledger_text
+    assert "`backend/packages/harness/pyproject.toml`" in ledger_text
+    assert "python-docx>=1.1.2" in ledger_text
+    assert "pymupdf4llm>=0.0.17,<2" in ledger_text

@@ -25,6 +25,7 @@ DEFAULT_EXCLUDES = {
     "frontend/.next",
     "frontend/.cache",
     "frontend/.env",
+    "docker/ragflow/.env",
     "frontend/test-results",
     "frontend/playwright-report",
     "frontend/tsconfig.tsbuildinfo",
@@ -40,7 +41,13 @@ PRUNE_DIR_NAMES = {".git", ".venv", "__pycache__", "node_modules"}
 
 
 def _excluded(path: str) -> bool:
-    return any(path == item or path.startswith(item + "/") for item in DEFAULT_EXCLUDES)
+    # Any file literally named ".env" is machine-local and may carry real
+    # credentials (docker/ragflow/.env, frontend/.env, ...). Only tracked
+    # *.env.example templates are bundled.
+    name = path.rsplit("/", 1)[-1]
+    return any(
+        path == item or path.startswith(item + "/") for item in DEFAULT_EXCLUDES
+    ) or name == ".env"
 
 
 def _walk_source_files(root: Path, start: Path):

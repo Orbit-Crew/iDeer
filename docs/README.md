@@ -38,10 +38,11 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 权限模型与矩阵 | [permission-model-redesign.md](permission-model-redesign.md)、[permission-matrix.md](permission-matrix.md) |
 | 离线产品线治理 | [offline-product-line-governance-plan.md](offline-product-line-governance-plan.md) |
 | 离线部署作业 | [禁公网内网离线部署作业指导书](deployment/禁公网内网离线部署作业指导书.md) |
+| 容器暴露面与非 root 基线 | [container-non-root-evaluation.md](deployment/container-non-root-evaluation.md)（Docker socket 仅经 opt-in DooD overlay 挂载；非 root 运行评估结论） |
 | 架构基线 | [架构索引](architecture/README.md)、[项目架构概览](architecture/overview.md)、[后端架构](../backend/docs/README.md) |
 | 领域词汇 | [工程术语权威 CONTEXT.md](../CONTEXT.md)、[领域建模指南](agents/domain.md)；[UI 术语对照表](plans/2026-08-26-term-glossary.md) 仅覆盖界面显示语言 |
-| Agent 工作流 | [技能路由](agents/skill-routing.md)、[本地规格与工单](agents/issue-tracker.md) |
-| 待实现规格 | [specs/](specs/) 目录（`to-spec` 输出，`ready-for-agent` 状态） |
+| Agent 工作流 | [技能路由](agents/skill-routing.md)、[规格与工单发布](agents/issue-tracker.md) |
+| 待实现规格与工单 | [GitHub Issues](https://github.com/Orbit-Crew/iDeer/issues)（`to-spec`/`to-tickets` 输出，`ready-for-agent` 标签；[specs/](specs/) 目录为历史归档） |
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
 | 上游兼容基线与补丁 | [上游锁定记录](upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)、[根上游补丁账本](../UPSTREAM_PATCH_LEDGER.md)、[本地运行时补丁账本](local-runtime/PATCH_LEDGER.md) |
 | 技能树治理与上游技能升级 | [skill-tree-governance.md](governance/skill-tree-governance.md)（权威关系、锁定 SHA 登记与升级流程；技能包内容本身不属本入口治理范围） |

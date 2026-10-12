@@ -190,6 +190,10 @@ def _slim_metadata(meta: dict[str, Any]) -> dict[str, Any]:
 
 
 INBOUND_FILE_READERS: dict[str, InboundFileReader] = {}
+# Whitelist registry: a channel absent from this mapping gets no reader at all
+# (see _ingest_inbound_files) — its URL-bearing attachments are dropped instead
+# of being fetched by the generic reader. _read_http_inbound_file stays an
+# opt-in helper for registered readers (WeCom), never an implicit default.
 
 
 def register_inbound_file_reader(channel_name: str, reader: InboundFileReader) -> None:
@@ -1131,7 +1135,14 @@ async def _ingest_inbound_files(thread_id: str, msg: InboundMessage, *, user_id:
     uploads_dir, seen_names = await asyncio.to_thread(_prepare_uploads_dir)
 
     created: list[dict[str, Any]] = []
-    file_reader = INBOUND_FILE_READERS.get(msg.channel_name, _read_http_inbound_file)
+    # Whitelist default: only channels with a registered reader may have their
+    # attachments fetched from the gateway host. Every registered reader gates
+    # its own hosts (WeCom: platform suffixes + operator list; WeChat: local
+    # path only), so an unregistered channel's ``url`` — attacker-controllable
+    # input — never reaches the network here; the file is dropped with a
+    # warning instead. A channel that legitimately needs the generic HTTP
+    # reader must register it explicitly via register_inbound_file_reader.
+    file_reader = INBOUND_FILE_READERS.get(msg.channel_name)
     async with httpx.AsyncClient(timeout=httpx.Timeout(20.0)) as client:
         for idx, f in enumerate(msg.files):
             if not isinstance(f, dict):
@@ -1145,7 +1156,7 @@ async def _ingest_inbound_files(thread_id: str, msg: InboundMessage, *, user_id:
                 data = inline_content
             elif isinstance(inline_content, (bytearray, memoryview)):
                 data = bytes(inline_content)
-            else:
+            elif file_reader is not None:
                 try:
                     data = await file_reader(f, client)
                 except Exception as exc:
@@ -1159,6 +1170,13 @@ async def _ingest_inbound_files(thread_id: str, msg: InboundMessage, *, user_id:
                         _reader_error_summary(exc),
                     )
                     continue
+            else:
+                logger.warning(
+                    "[Manager] inbound file dropped: no inbound file reader registered for channel=%s, file=%s",
+                    msg.channel_name,
+                    _inbound_file_label(f, idx=idx),
+                )
+                continue
 
             if data is None:
                 logger.warning(

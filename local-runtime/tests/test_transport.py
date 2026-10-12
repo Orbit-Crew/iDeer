@@ -7,10 +7,11 @@ from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from core.audit import AuditKind
+from core.consent import request_hash
 from core.file_service import LocalFileService
 from core.files import LocalFileStore, RootConfig
 from core.protocol import MessageType, public_key_text, sign_envelope, verify_envelope
-from core.python import LocalPythonService
+from core.python import LocalPythonService, PythonResult
 from core.transport import LocalRuntimeClient
 
 
@@ -167,6 +168,66 @@ def test_python_task_round_trip_returns_bounded_result_and_receipt(
         message["payload"].get("output") == "API_KEY=[REDACTED]\n"
         for message in progress
     )
+
+
+def test_python_task_result_delivery_cleans_up_subprocess_log_files(
+    tmp_path: Path,
+) -> None:
+    """05-H2: once the TASK_RESULT frame is out, the executor's temp logs are gone."""
+    server_key = Ed25519PrivateKey.generate()
+    recorded_log_paths: list[str] = []
+
+    class _RecordingPythonService(LocalPythonService):
+        async def execute(self, payload, *, consent=False, on_output=None):
+            result = await super().execute(payload, consent=consent, on_output=on_output)
+            if isinstance(result, PythonResult):
+                recorded_log_paths.extend(
+                    path
+                    for path in (result.stdout_log_path, result.stderr_log_path)
+                    if path
+                )
+            return result
+
+    client = LocalRuntimeClient(
+        server_url="ws://unused",
+        device_id="device-1",
+        session_token="token",
+        private_key=Ed25519PrivateKey.generate(),
+        session_id="session-1",
+        python_service=_RecordingPythonService(
+            LocalFileStore([RootConfig("/projects", tmp_path)])
+        ),
+    )
+    client.connection = FakeConnection()
+    payload = {
+        "operation": "local.python",
+        "working_root": "/projects",
+        "script": "print('hello')",
+        "environment": [],
+        "run_id": "run-1",
+    }
+    client.python_service.consent.approve("local.python", request_hash(payload))
+    verified_task = verify_envelope(
+        sign_envelope(
+            private_key=server_key,
+            message_type=MessageType.TASK,
+            device_id="device-1",
+            session_id="session-1",
+            task_id="task-python-logs",
+            payload=payload,
+        ),
+        server_public_key=public_key_text(server_key),
+        expected_device_id="device-1",
+        expected_session_id="session-1",
+    )
+
+    asyncio.run(client._handle_task(verified_task))
+
+    result = json.loads(client.connection.sent[-1])
+    assert result["type"] == MessageType.TASK_RESULT
+    assert recorded_log_paths, "executor log paths were never recorded"
+    for path in recorded_log_paths:
+        assert not Path(path).exists()
 
 
 def test_cancelled_consent_cannot_be_revived_by_a_late_approval(tmp_path: Path) -> None:

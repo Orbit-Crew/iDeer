@@ -193,9 +193,27 @@ def test_delegation_only_mode_still_records_citations_from_plain_conversation():
     request = _delegation_only_request([HumanMessage(content="go")])
     response = ModelResponse(result=[AIMessage(content=f"[citation:Policy](evidence://{evidence_id})")])
 
-    with bind_run_evidence(binding):
-        middleware.wrap_model_call(request, lambda req: response)
-        recorded = current_run_evidence()
+    # Citation recording resolves the extension's hooks through the registry,
+    # so enable the extension the way a host does instead of relying on
+    # ambient process state (a conftest-loaded singleton would leak order
+    # dependence after suites that reset the singleton).
+    from agentplatform_extension import install
+
+    from deerflow.extensions import get_loaded_extensions, set_loaded_extensions
+    from deerflow.extensions.registry import ExtensionRegistry
+
+    registry = ExtensionRegistry()
+    with registry.attributed_to("agentplatform:install"):
+        install(registry, {"dynamic_context": True})
+    previous_extensions = get_loaded_extensions()
+    set_loaded_extensions(registry.build())
+
+    try:
+        with bind_run_evidence(binding):
+            middleware.wrap_model_call(request, lambda req: response)
+            recorded = current_run_evidence()
+    finally:
+        set_loaded_extensions(previous_extensions)
 
     assert recorded is not None
     assert recorded.retrieval_receipts[0]["cited_item_ids"] == [evidence_id]

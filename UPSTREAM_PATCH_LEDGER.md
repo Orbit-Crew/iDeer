@@ -21,6 +21,9 @@
 | 2026-10-01 | v2.1.0 收敛票 10（合并后复评） | 对照 `git diff v2.1.0 --name-only -- backend/packages/harness/deerflow` 实测 44 个差异文件全部映射到 PATCH 行、未映射 0（PATCH-030 的 `skills/storage/user_scoped_skill_storage.py` 因被上游 v2.1.0 等价实现吸收而退出差异集；票 06 的 `versions/20261001_rejoin_upstream_line.py` 新进入差异集，归 PATCH-015）。逐行复评 PATCH-001..032：31 行 keep、PATCH-006 维持 closed、1 项 absorbed（P030 的 user_scoped 条款，其余 5 条款仍为本地差异，行保持 open）。另在 canonical 对照命令路径之外发现 `backend/packages/harness/pyproject.toml` 携带未登记本地差异（`python-docx>=1.1.2`，引入提交 `7ae6b5907`，与 PATCH-032 同提交），不在本轮登记范围，移交后续票补登记或明确豁免。 |
 | 2026-10-05 | D6 裁决票（v2.1.0 有效锁定 SHA 登记） | owner 裁决并经代码核对确认：v2.1.0 合并后的有效上游锁定点为 `v2.1.0` 标签所指提交 `345f08be00c8a9495079b732a39b46aa9af1584e`，头部对照命令已随之更新。依据：① 2026-10-01 合并后复评即以 `git diff v2.1.0` 为 canonical 对照命令，44 个差异文件全部映射到 PATCH 行；② 合并提交 `85075252a` 的上游侧父提交为本地集成线（`51dbcc14`，其上含 tag 之后 2416 个本地提交），tag 是唯一稳定的上游锚点，中间集成头属本地历史；③ 本轮复核 scoped 差异 65 个文件，与修订预算 61（43 代码 + 18 文档）及后续候选的持续登记口径相容。`backend/packages/harness/pyproject.toml`（python-docx）仍为既有行标注的待登记项。 |
 | 2026-10-11 | PR-only CI 门禁修复（结构化注册表落地） | 按 `scripts/check_upstream_patches.py` 的结构化注册表要求完成首次登记：注册表 pin 2026-10-05 裁决的有效上游锁定点 `345f08be0`（v2.1.0），CI `test-lane-shadow` 的 `--upstream-baseline` 同步由 `0f7d8709` 更新为 `345f08be0`（旧 pin 会把上游自身演进计为"未登记差异"，产生虚假治理记录）。实测对照 `345f08be0` 差异 66 文件（45 代码 + 21 文档），全部归属：PATCH-001..032 按登记表映射（PATCH-030 的 `user_scoped_skill_storage.py` 已被上游吸收，注册表仅列其余 5 文件），新增 PATCH-033（`extensions/ordering.py`，引入提交 `fea7dc178`）、PATCH-034（`tools/builtins/update_agent_tool.py`，引入提交 `a959b99be`）、PATCH-035（20 个 harness `CLAUDE.md` 指导文档镜像，10-01 巡检行计入预算但未设登记行，本行补齐归属）。预算据此从 61（43 代码 + 18 文档）修订为 66（45 代码 + 21 文档）：代码 +2 为 PATCH-033/034 新登记文件（65→66 的增量即 10-05 之后的 `fea7dc178`），文档 +3 为镜像计数自 10-01 合并后的实际增量（17→20，合并自身带入）。 |
+| 2026-10-11 | 批次1治理票 49（04-M7 台账补登记） | 登记对照命令前缀之外的 harness 差异：`backend/packages/harness/pyproject.toml`（2026-10-01 巡检行移交的待登记项，`python-docx` 条款）补登记为 PATCH-036（合并 develop 时因 fault-zeroing 登记 issue #22 撞号，重编为 PATCH-037，内容不变），覆盖该文件全部本地差异（`python-docx>=1.1.2`，引入提交 `7ae6b5907`；`pymupdf4llm>=0.0.17,<2`，引入提交 `44498da80`）。该文件在对照命令 `-- backend/packages/harness/deerflow` 前缀之外，与结构化注册表 `paths` 同 scope，不进注册表、不占 66 文件预算；`python3 scripts/check_upstream_patches.py --base HEAD --upstream-baseline 345f08be0` 复测 pass。同票核对 04-M7 指认的内置工具消息文案一行变更归属：即 `update_agent_tool.py` 迁移脚本路径文案修正，2026-10-11 结构化注册表落地行已登记为 PATCH-034（原因/修改/测试/Owner/移除条件齐全，注册表携 current 验证证据），无重复登记。 |
+| 2026-10-11 | 批次4整改票 59（07-H1 上游 PR 候选登记） | 本地修复 `frontend/src/app/api/memory/[...path]/route.ts` catch-all 代理的路径穿越（07-H1：Next 动态段解码后拼回 pathname，`new URL` 归一化 `..`/`%2e%2e` 使 `/api/memory` 前缀失效，`GET /api/memory/..%2F..%2Fv1%2Fadmin` 可达网关任意路径）。上游 `v2.1.0`（`345f08be0`）内同名文件同病（仅 `BACKEND_BASE_URL` 环境变量回退链不同），整理为上游 PR 候选与 P003/P011/P014/P032 并列进下轮收敛 reassess：目标仓库 `bytedance/deer-flow`，diff 草稿与 PR 正文见 `docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md`（段白名单 + 重编码拼接 + 构造后 `pathname.startsWith("/api/memory/")` 断言，拒绝返回 404）。该文件属前端面（非 `backend/packages/harness/` 差异），不进结构化注册表、不占 66 文件预算；本地验证：`tests/unit/app/api/memory/[...path]/route.test.ts` 新增 6 条穿越用例先红（6/6 失败）后绿，`tests/unit/app/api/memory/route.test.ts` 与登录面共享 `next-path` 校验收敛用例全绿。 |
+| 2026-10-11 | 批次4整改票 61（03 渠道族上游 PR 候选登记） | 本地修复渠道生命周期与循环亲和五件（03-H1/H2/M3/M4/M6+M5）：Telegram/DingTalk 轮询线程死亡后清 `_running` 并覆写 `is_running` 检查线程存活（与既有 Feishu/Discord 覆写对齐）；飞书 stop() 断开 lark WS（`_disconnect` 有界提交 + 停 SDK 循环阻断无限自动重连）并置 `_stopped` 屏蔽旧实例事件；Slack connect Future 保存 + done callback 清 `_running`；Discord 身份附加并入 `_publish_reserved` 以 attach+commit 协程提交网关主循环（对齐 Slack `_publish_inbound_with_connection`）、`/connect` 绑定比照 Telegram 提交主循环；manager 默认 inbound 文件 reader 收敛为白名单式（无注册 reader 的渠道丢弃 URL 附件并告警）。上游 `v2.1.0`（`345f08be0`）内 `slack.py:145`/`feishu.py stop`/`telegram.py`/`dingtalk.py`/`discord.py:578`/`manager.py:1107` 同病，整理为上游 PR 候选进下轮收敛 reassess：目标仓库 `bytedance/deer-flow`，三模式 diff 草稿与验证证据见 `docs/upgrades/upstream-pr-candidates/channel-lifecycle-loop-affinity.md`。适配器与 manager 属 `backend/app/` 控制面（非 harness 差异），不进结构化注册表、不占 66 文件预算；本地验证：`tests/unit/channels/test_channel_lifecycle_contracts.py` 新增 10 条合同测试先红（8/8 目标用例失败）后绿，`backend/tests/unit/channels/` 1480 passed 全绿，邻接面（root tests/test_channels.py 等 6 文件）全绿。 |
 
 ### 2026-09-08 巡检逐项结论（2026-10-01 自历史档案迁入，内容保持原文）
 
@@ -476,6 +479,32 @@
 - **移除条件**: 上游或可注册的 provider 读取策略提供等价的线程代码证据只读
   契约，固定分析器提供等价混合语言与 Cppcheck 输出流处理，并被本仓库采纳。
 
+### PATCH-037: harness pyproject 依赖清单本地声明（python-docx / pymupdf4llm）
+
+- **文件**: `backend/packages/harness/pyproject.toml`（harness 包依赖清单，位于对照命令
+  `backend/packages/harness/deerflow` 前缀之外；2026-10-01 巡检行移交的待登记项，由
+  2026-10-11 票 49 行补登记。结构化注册表 `paths` 与对照命令同 scope，本文件不进
+  注册表、不占 66 文件预算，仅以本小节登记并按"修改"逐行对照）
+- **修改**: 依赖清单新增两行本地声明，其余无差异：
+  `python-docx>=1.1.2`（字母序插入 `packaging` 与 `pydantic` 之间）；
+  `pymupdf4llm>=0.0.17,<2`（含注释：file_conversion auto 模式缺该 import 时静默
+  回退 MarkItDown，缺失会安静降级，故在清单显式固定，使离线镜像携带、测试走真实路径）。
+- **原因**: `python-docx` 引入提交 `7ae6b5907`（fix(testing): make backend and smoke
+  lanes hermetic）——hermetic lane 须稳定驱动 docx 解析路径（`file_conversion` 的
+  docx 转换依赖它，缺失时降级），不能依赖 markitdown extras 的传递解析；
+  `pymupdf4llm` 引入提交 `44498da80`（build(harness): ship pymupdf4llm for the
+  pymupdf PDF conversion path，特性提交 `ddfc988be`）——离线镜像须携带首选
+  PDF→Markdown 转换器，避免 auto 模式静默回退。
+- **测试**: `backend/tests/unit/tools/test_docx_rich.py`（docx 解析路径依赖
+  python-docx）；`backend/tests/unit/tools/test_file_conversion.py`、
+  `backend/tests/unit/tools/test_file_conversion_edge_cases.py`（pymupdf4llm 转换
+  与回退路径）；`uv sync --locked` 依赖解析一致性。
+- **Owner**: 平台工程（依赖/打包）域维护者
+- **移除条件**: 上游 harness 清单原生声明同等依赖并被本仓库采纳，或对应转换路径
+  从 harness 移除时，按行移除（两行独立评估，不整体捆绑）。
+- **编号说明**: 原登记为 PATCH-036（2026-10-11 票 49），与 develop 侧 fault-zeroing
+  登记（issue #22）撞号，合并时让位重编为 PATCH-037；内容不变。
+
 ## Enforcement
 
 每次收敛提交前重跑对照命令并更新本台账；存在未登记差异即门禁失败。
@@ -531,7 +560,7 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
     {"id": "PATCH-021", "paths": ["backend/packages/harness/deerflow/community/aio_sandbox/aio_sandbox_provider.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-022", "paths": ["backend/packages/harness/deerflow/community/ragflow/tools.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-023", "paths": ["backend/packages/harness/deerflow/config/app_config.py"], "verification_status": "historical", "lifecycle_status": "open"},
-    {"id": "PATCH-024", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "historical", "lifecycle_status": "open"},
+    {"id": "PATCH-024", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && PYTHONPATH=.:tests uv run pytest tests/test_run_worker_delivery.py::test_retrieval_evidence_is_persisted_with_terminal_run tests/unit/knowledge/test_retrieval_receipts.py tests/test_agentplatform_extension_boundary.py -q", "result": "35 passed (re-verified after issue #55 single-track hook registration touched extensions/__init__.py)"}},
     {"id": "PATCH-025", "paths": ["backend/packages/harness/deerflow/models/openai_codex_provider.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-026", "paths": ["backend/packages/harness/deerflow/runtime/journal.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-027", "paths": ["backend/packages/harness/deerflow/runtime/runs/worker.py", "backend/packages/harness/deerflow/runtime/runs/manager.py"], "verification_status": "historical", "lifecycle_status": "open"},

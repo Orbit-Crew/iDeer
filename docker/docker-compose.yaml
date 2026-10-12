@@ -14,7 +14,10 @@
 #   IDEER_CONFIG_PATH            — path to config.yaml
 #   IDEER_EXTENSIONS_CONFIG_PATH — path to extensions_config.json
 #   IDEER_SKILLS_PATH            — skills dir, default $IDEER_PROJECT_ROOT/skills
-#   IDEER_DOCKER_SOCKET          — Docker socket path, default /var/run/docker.sock
+#   IDEER_DOCKER_SOCKET          — legacy alias for the Docker socket path, honored
+#                                  by scripts/deploy.sh; the opt-in DooD overlay
+#                                  (docker-compose.dood.yaml) interpolates
+#                                  DEER_FLOW_DOCKER_SOCKET (default /var/run/docker.sock)
 #   IDEER_REPO_ROOT              — repo root (used for skills host path in DooD)
 #   BETTER_AUTH_SECRET               — required for frontend auth/session security
 #   IDEER_INTERNAL_AUTH_TOKEN    — shared internal Gateway auth token for multi-worker IM channels
@@ -80,7 +83,7 @@ services:
     # the same worker that owns the active run.
     command: sh -c "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-1}"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8001/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; response = urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=5); raise SystemExit(0 if response.status == 200 else 1)"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -91,8 +94,10 @@ services:
       - ../resources/skills:/app/skills:ro
       - ../resources:/app/resources:ro
       - ${IDEER_HOME}:/app/backend/.deer-flow
-      # DooD: AioSandboxProvider starts sandbox containers via host Docker daemon
-      - ${IDEER_DOCKER_SOCKET}:/var/run/docker.sock
+      # DooD: the host Docker socket is NOT mounted by default. It is added only
+      # for aio (pure-DooD) sandbox mode via the opt-in docker-compose.dood.yaml
+      # overlay (appended by scripts/deploy.sh); local and provisioner modes
+      # never receive it. Mounting the socket = host root-equivalent control.
       # CLI auth directories for auto-auth (Claude Code + Codex CLI)
       - type: bind
         source: ${HOME:?HOME must be set}/.claude

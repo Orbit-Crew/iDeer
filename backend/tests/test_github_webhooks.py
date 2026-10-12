@@ -11,13 +11,15 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
+import yaml
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from app.channels.message_bus import MessageBus
+from app.channels.message_bus import InboundMessage, MessageBus
 from app.gateway.csrf_middleware import CSRFMiddleware
 from app.gateway.routers import github_webhooks
 
@@ -894,3 +896,217 @@ def test_summarise_event_unknown_event_falls_back() -> None:
     result = github_webhooks._summarise_event("deployment_status", {"action": "success", "repository": {"full_name": "a/b"}})
     assert "deployment_status" in result
     assert "success" in result
+
+
+# ---------------------------------------------------------------------------
+# Gateway factory mounting (real create_app integration — issue #62)
+# ---------------------------------------------------------------------------
+
+
+def _write_agent(base: Path, user_id: str, name: str, body: dict) -> None:
+    """Stage one custom agent config under the file-store layout."""
+    agent_dir = base / "users" / user_id / "agents" / name
+    agent_dir.mkdir(parents=True, exist_ok=True)
+    (agent_dir / "config.yaml").write_text(yaml.safe_dump(body), encoding="utf-8")
+
+
+@pytest.fixture
+def staged_gateway_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Stage an isolated DEER_FLOW_HOME + config for real ``create_app()`` tests.
+
+    Mirrors the root conftest ``isolated_app`` fixture's staging boundary, but
+    keeps the ``create_app()`` invocation in the test body so the webhook env
+    (``GITHUB_WEBHOOK_SECRET`` / dev opt-in) can be applied *between* staging
+    and the factory call — ``is_route_enabled()`` is evaluated at router
+    inclusion time inside ``create_app()``.
+    """
+    from tests._gateway_e2e_env import (
+        preserve_process_config_singletons,
+        reset_process_singletons,
+        stage_isolated_home,
+    )
+
+    home = stage_isolated_home(tmp_path, monkeypatch)
+    preserve_process_config_singletons(monkeypatch)
+    reset_process_singletons(monkeypatch)
+
+    from deerflow.config import app_config as app_config_module
+
+    cfg = app_config_module.get_app_config()
+    cfg.database.sqlite_dir = str(home / "db")
+    return home
+
+
+def _factory_client() -> TestClient:
+    """Build the real gateway app and a client for it.
+
+    The env deciding the webhook mount must already be set when this runs.
+    """
+    from app.gateway.app import create_app
+
+    return TestClient(create_app())
+
+
+def test_factory_mounts_webhook_when_secret_configured(staged_gateway_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """POST /api/webhooks/github is reachable through the real factory when
+    ``GITHUB_WEBHOOK_SECRET`` is set.
+
+    Issue #62 regression: the router existed with full verification, docs,
+    CSRF/auth exemptions and channel consumers, but ``app.gateway.app`` never
+    included it — every deployment answered 404 while four docs pages
+    described the route as mounted.
+    """
+    monkeypatch.setenv("GITHUB_WEBHOOK_SECRET", SECRET)
+    client = _factory_client()
+
+    body = json.dumps({"zen": "Practicality beats purity.", "hook": {"id": 1}}).encode()
+    response = client.post(
+        "/api/webhooks/github",
+        content=body,
+        headers={
+            "X-GitHub-Event": "ping",
+            "X-GitHub-Delivery": DELIVERY_ID,
+            "X-Hub-Signature-256": _signature(body),
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["ok"] is True
+
+
+def test_factory_rejects_invalid_signature_with_401(staged_gateway_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail-closed verification through the real middleware stack: a wrong
+    HMAC gets 401 — not 200 and not the 404 of an unmounted route."""
+    monkeypatch.setenv("GITHUB_WEBHOOK_SECRET", SECRET)
+    client = _factory_client()
+
+    body = b'{"zen": "forged"}'
+    response = client.post(
+        "/api/webhooks/github",
+        content=body,
+        headers={
+            "X-GitHub-Event": "ping",
+            "X-GitHub-Delivery": DELIVERY_ID,
+            "X-Hub-Signature-256": _signature(body, secret="attacker-secret"),
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_factory_mounts_webhook_with_dev_optin_without_secret(staged_gateway_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The documented dev opt-in alone mounts the route (unverified mode)."""
+    monkeypatch.delenv("GITHUB_WEBHOOK_SECRET", raising=False)
+    monkeypatch.setenv("DEER_FLOW_ALLOW_UNVERIFIED_GITHUB_WEBHOOKS", "1")
+    client = _factory_client()
+
+    body = json.dumps({"zen": "ok"}).encode()
+    response = client.post(
+        "/api/webhooks/github",
+        content=body,
+        headers={"X-GitHub-Event": "ping", "X-GitHub-Delivery": DELIVERY_ID},
+    )
+
+    assert response.status_code == 200, response.text
+
+
+def test_factory_route_absent_without_secret_or_optin(staged_gateway_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail-closed mounting contract: with neither the secret nor the explicit
+    dev opt-in, the route is NOT mounted and the path answers 404 — a fresh
+    deployment without a secret cannot serve forged deliveries."""
+    monkeypatch.delenv("GITHUB_WEBHOOK_SECRET", raising=False)
+    monkeypatch.delenv("DEER_FLOW_ALLOW_UNVERIFIED_GITHUB_WEBHOOKS", raising=False)
+    client = _factory_client()
+
+    body = json.dumps({"zen": "ok"}).encode()
+    response = client.post(
+        "/api/webhooks/github",
+        content=body,
+        headers={"X-GitHub-Event": "ping", "X-GitHub-Delivery": DELIVERY_ID},
+    )
+
+    assert response.status_code == 404
+
+
+def test_factory_verified_event_reaches_channel_bus(staged_gateway_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A verified, recognised event fans out to a channel-bound InboundMessage.
+
+    Full seam through the real factory: middleware exemptions let the delivery
+    reach the handler, the handler verifies the HMAC, the real agent registry
+    scan finds the staged binding, and the real dispatcher publishes one
+    message shaped for the GitHub channel bus. Only the physical bus publish
+    is captured (mock channel delivery) — the bus/manager consumer side is
+    covered by test_github_dispatcher.py / test_github_channel.py.
+    """
+    monkeypatch.setenv("GITHUB_WEBHOOK_SECRET", SECRET)
+    _write_agent(
+        staged_gateway_home,
+        "default",
+        "coder",
+        {
+            "name": "coder",
+            "github": {
+                "bindings": [
+                    {"repo": "a/b", "triggers": {"pull_request": {"actions": ["opened"]}}},
+                ]
+            },
+        },
+    )
+    # Registry/paths caches from earlier tests must not shadow the staged home.
+    from deerflow.config import paths as paths_module
+
+    monkeypatch.setattr(paths_module, "_paths", None, raising=False)
+    from app.gateway.github.registry import _invalidate_cache
+
+    _invalidate_cache()
+
+    captured: list[InboundMessage] = []
+
+    class _CapturingBus(MessageBus):
+        async def publish_inbound(self, msg: InboundMessage) -> None:
+            captured.append(msg)
+
+    class _StubService:
+        def __init__(self) -> None:
+            self.bus = _CapturingBus()
+
+        def is_channel_enabled(self, name: str) -> bool:
+            return True
+
+        def get_channel_config(self, name: str) -> dict | None:
+            return None
+
+    import app.channels.service as service_module
+
+    monkeypatch.setattr(service_module, "get_channel_service", lambda: _StubService())
+
+    client = _factory_client()
+    payload = {
+        "action": "opened",
+        "number": 7,
+        "pull_request": {"number": 7, "title": "t", "html_url": "https://github.com/a/b/pull/7"},
+        "repository": {"full_name": "a/b"},
+        "sender": {"login": "human"},
+    }
+    body = json.dumps(payload).encode()
+    response = client.post(
+        "/api/webhooks/github",
+        content=body,
+        headers={
+            "X-GitHub-Event": "pull_request",
+            "X-GitHub-Delivery": DELIVERY_ID,
+            "X-Hub-Signature-256": _signature(body),
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["handled"] is True
+    assert response.json()["dispatch"]["fired_agents"] == ["coder"]
+
+    assert len(captured) == 1
+    msg = captured[0]
+    assert msg.channel_name == "github"
+    assert msg.chat_id == "a/b"
+    assert msg.metadata["agent_name"] == "coder"
+    assert msg.metadata["github"]["repo"] == "a/b"
+    assert msg.metadata["github"]["event"] == "pull_request"

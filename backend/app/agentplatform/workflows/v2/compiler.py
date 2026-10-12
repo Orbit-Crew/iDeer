@@ -290,7 +290,6 @@ class WorkflowGraphCompiler:
                 model_name=state.get("model_name"),
                 knowledge_scope=_knowledge_scope_from_state(state),
             )
-            params = render_template(node.action.params, render_state)  # type: ignore[union-attr]
             await self._emit(
                 "node_started",
                 {
@@ -300,14 +299,18 @@ class WorkflowGraphCompiler:
                     "started_at": _now_iso(),
                 },
             )
-            violations = self._check_preconditions(node, render_state)
-            if violations and node.on_precondition_failure == "skip":
-                await self._emit(
-                    "node_skipped",
-                    {"node_id": node.id, "idempotency_key": context.idempotency_key, "reasons": violations, "finished_at": _now_iso()},
-                )
-                return {"outputs": {node.id: None}}
             try:
+                # Params rendering happens inside the try so a render-budget
+                # failure (e.g. a self-referencing user input) is reported as
+                # a structured node failure instead of escaping the handler.
+                params = render_template(node.action.params, render_state)  # type: ignore[union-attr]
+                violations = self._check_preconditions(node, render_state)
+                if violations and node.on_precondition_failure == "skip":
+                    await self._emit(
+                        "node_skipped",
+                        {"node_id": node.id, "idempotency_key": context.idempotency_key, "reasons": violations, "finished_at": _now_iso()},
+                    )
+                    return {"outputs": {node.id: None}}
                 if violations:
                     raise WorkflowPreconditionFailed(node.id, violations)
                 adapter = self.adapters.resolve(node.action.kind, node.action.name)  # type: ignore[union-attr]

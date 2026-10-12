@@ -35,6 +35,7 @@ from .mcp import LocalMCPService, MCPExecution
 from .policy import LocalPolicy, PolicyDecision
 from .protocol import (
     MessageType,
+    ProtocolError,
     new_session_id,
     public_key_text,
     sign_envelope,
@@ -65,6 +66,7 @@ class LocalRuntimeClient:
         capabilities: tuple[str, ...] | None = None,
         policy_hash: str | None = None,
         server_public_key: str | None = None,
+        allow_unpinned_broker_key: bool = False,
         policy: LocalPolicy | None = None,
         file_service: LocalFileService | None = None,
         python_service: LocalPythonService | None = None,
@@ -95,6 +97,10 @@ class LocalRuntimeClient:
         self.capabilities = capabilities
         self.policy_hash = policy_hash
         self.server_public_key = server_public_key
+        # First-connection trust (TOFU) is a deliberate configuration choice,
+        # never a default: pairing distributes the broker key, and a client
+        # without a bound key refuses to connect unless this fallback is on.
+        self.allow_unpinned_broker_key = allow_unpinned_broker_key
         self.policy = policy or LocalPolicy()
         self.file_service = file_service
         self.python_service = python_service
@@ -367,9 +373,25 @@ class LocalRuntimeClient:
         assert self.connection is not None
         try:
             server_hello = json.loads(await self.connection.recv())
-            configured_key = self.server_public_key or str(
+            pinned_before_hello = bool(self.server_public_key)
+            offered_key = str(
                 server_hello.get("payload", {}).get("server_public_key", "")
             )
+            if pinned_before_hello:
+                # The key captured at pairing (or pinned by an earlier
+                # explicitly-configured first connection) is the only trusted
+                # broker identity; the HELLO copy is advisory and never
+                # replaces it, so a swapped-in key fails verification below.
+                configured_key = self.server_public_key or ""
+            elif self.allow_unpinned_broker_key:
+                # Explicit opt-in fallback: trust and pin the first observed
+                # key, exactly the behaviour the default now refuses.
+                configured_key = offered_key
+            else:
+                # Same bare-code style as the protocol verification failures:
+                # the supervisor audits it and retries until pairing binds a
+                # key to the live client.
+                raise ProtocolError("BROKER_KEY_UNPINNED")
             verify_envelope(
                 server_hello,
                 server_public_key=configured_key,
@@ -377,7 +399,9 @@ class LocalRuntimeClient:
                 expected_session_id=self.session_id or "",
             )
             self.server_public_key = configured_key
-            if self.on_server_public_key is not None:
+            if not pinned_before_hello and self.on_server_public_key is not None:
+                # Only a first bind is announced: a pinned key is persisted by
+                # pairing itself and would only rewrite the same value.
                 self.on_server_public_key(configured_key)
             await self._receive_loop()
         except ConnectionClosed as exc:
@@ -487,6 +511,16 @@ class LocalRuntimeClient:
                 result = envelope.payload.get("value")
                 receipt = await self.handle_echo_task(envelope)
             elif operation in {"local.files.list", "local.files.read"}:
+                if not self.server_public_key:
+                    # No broker key is bound: pairing never completed and no
+                    # explicitly-configured fallback pinned one. LEVEL_0 file
+                    # capabilities hand local file contents to whoever holds
+                    # the session, so they stay shut rather than trust the
+                    # connection that asked.
+                    await self._denial_response(
+                        operation, task_id, envelope.payload, PolicyDecision.DENY
+                    )
+                    return
                 file_task = self.handle_file_task(operation, dict(envelope.payload))
                 if file_task.decision is not PolicyDecision.ALLOW:
                     await self._send_error(

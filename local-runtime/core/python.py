@@ -480,16 +480,32 @@ class PythonExecutor:
         secret_redactor = SecretRedactor(secret_values)
         started_at = datetime.now(UTC)
         with ExitStack() as stack:
+            # The temp logs must outlive only this task. Registered before the
+            # file contexts so LIFO unwinding runs the unlink after the handles
+            # close (Windows cannot delete an open file); missing_ok covers a
+            # setup failure before either file existed. Without this, every
+            # task leaks two files of unredacted subprocess output: the
+            # streaming reads and _summarize_log below are their last readers,
+            # and receipt.as_dict() never exposes the paths.
+            log_temp_names: list[str] = []
+
+            def _remove_log_temp_files() -> None:
+                for name in log_temp_names:
+                    Path(name).unlink(missing_ok=True)
+
+            stack.callback(_remove_log_temp_files)
             stdout_file = stack.enter_context(
                 tempfile.NamedTemporaryFile(
                     mode="w+b", prefix="local-python-stdout-", delete=False
                 )
             )
+            log_temp_names.append(stdout_file.name)
             stderr_file = stack.enter_context(
                 tempfile.NamedTemporaryFile(
                     mode="w+b", prefix="local-python-stderr-", delete=False
                 )
             )
+            log_temp_names.append(stderr_file.name)
             process_options["stdout"] = stdout_file
             process_options["stderr"] = stderr_file
             process = subprocess.Popen(  # noqa: ASYNC220

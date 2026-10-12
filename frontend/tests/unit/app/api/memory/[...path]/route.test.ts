@@ -146,6 +146,42 @@ describe("memory catch-all API route", () => {
     expect(url.toString()).toContain("/api/memory/facts/123/edit");
   });
 
+  // --- path traversal rejection ---
+
+  test.each([
+    {
+      name: "multi-segment .. segments",
+      path: ["..", "v1", "admin"],
+    },
+    {
+      name: "decoded ..%2F.. form (slashes inside one segment)",
+      path: ["../../v1/admin"],
+    },
+    {
+      name: "re-encoded %2e%2e segment",
+      path: ["%2e%2e", "v1", "admin"],
+    },
+    {
+      name: ".. nested between valid segments",
+      path: ["a", "..", ".."],
+    },
+    {
+      name: "backslash traversal segment",
+      path: ["..\\v1"],
+    },
+    {
+      name: "empty segment",
+      path: ["facts", ""],
+    },
+  ])("returns 404 for $name without proxying", async ({ path }) => {
+    const traversalParams = { params: Promise.resolve({ path }) };
+    const result = await GET(createRequest("GET"), traversalParams);
+
+    expect(result.status).toBe(404);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(await result.text()).toBe("");
+  });
+
   test("returns the backend response", async () => {
     const body = JSON.stringify({ data: "test" });
     const mockResponse = new Response(body, {

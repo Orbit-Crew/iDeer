@@ -35,14 +35,17 @@ async def test_ingest_inbound_files_does_not_block_event_loop(tmp_path: Path, mo
     monkeypatch.setattr(paths_mod, "_paths", None)
 
     # Swap the network reader for an in-memory one: no real HTTP, so the only IO
-    # left for this anchor to guard is the filesystem work.
+    # left for this anchor to guard is the filesystem work. It must be
+    # registered under the channel name — unregistered channels get no reader
+    # at all (whitelist default), so the default-reader swap of the pre-#61
+    # shape would silently ingest nothing.
     async def _fake_reader(f, client):
         return b"payload-bytes"
 
-    monkeypatch.setattr(mgr, "_read_http_inbound_file", _fake_reader)
+    monkeypatch.setitem(mgr.INBOUND_FILE_READERS, "unit-test-channel", _fake_reader)
 
     msg = InboundMessage(
-        channel_name="unit-test-channel",  # absent from INBOUND_FILE_READERS -> default reader
+        channel_name="unit-test-channel",  # registered above -> in-memory reader
         chat_id="c1",
         user_id="u1",
         text="hi",

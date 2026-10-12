@@ -525,6 +525,20 @@ def _cached_rbac_identity(request: Request, user_id: str) -> dict[str, Any] | No
     return cached
 
 
+def cached_platform_role(request: Request, user_id: str) -> str | None:
+    """Return the users_ext role already resolved on this request, if any.
+
+    Synchronous read for callers that cannot ``await`` :func:`resolve_platform_identity`
+    (e.g. the extension principal projection). Returns ``None`` when nothing
+    was resolved for *user_id* on this request — trusted sources
+    (internal/auth-disabled) and requests that never passed the auth
+    middleware have no platform role to project, and callers must fail closed
+    on that ``None`` instead of falling back to the legacy auth role.
+    """
+    identity = _cached_rbac_identity(request, user_id)
+    return str(identity["role"]) if identity is not None else None
+
+
 async def resolve_platform_identity(request: Request, user: Any) -> dict[str, Any] | None:
     """Resolve the platform identity for *user* from ``users_ext``.
 

@@ -394,6 +394,11 @@ class ResourceService:
                 )
             )
 
+    def _require_own_department_scope(self, scope_department_id: str) -> None:
+        """Department scoping may only target a department the operator belongs to."""
+        if scope_department_id != self.actor.department_id:
+            raise ResourcePermissionDenied("scope_department_id must be the operator's own department")
+
     async def change_visibility(
         self,
         resource_id: str,
@@ -409,12 +414,19 @@ class ResourceService:
             raise ValueError(f"Invalid visibility: {visibility}")
         if visibility == "department" and scope_department_id is None:
             raise ValueError("scope_department_id is required for department visibility")
-        if ranks[visibility] > ranks[resource.visibility]:
-            raise ResourceApprovalRequired("Visibility expansion requires approval")
+        if visibility == "department":
+            self._require_own_department_scope(scope_department_id)
 
         changed = resource.visibility != visibility or (visibility == "department" and resource.scope_department_id != scope_department_id)
         if not changed:
             return resource
+        if ranks[visibility] > ranks[resource.visibility]:
+            raise ResourceApprovalRequired("Visibility expansion requires approval")
+        if visibility == "department":
+            # A same-level department re-point and a public→department narrowing
+            # change who can see the resource just like an expansion does, so
+            # they go through the approval flow instead of taking effect directly.
+            raise ResourceApprovalRequired("Department scope change requires approval")
 
         previous_visibility = resource.visibility
         reduction = ranks[visibility] < ranks[resource.visibility]
@@ -640,10 +652,15 @@ class ResourceService:
         resource = await self._get_visible(resource_id)
         self.assert_modify(resource)
         ranks = {"private": 0, "department": 1, "public": 2}
-        if target_visibility not in ranks or ranks[target_visibility] <= ranks[resource.visibility]:
-            raise ValueError("Visibility application must expand access")
+        if target_visibility not in ranks:
+            raise ValueError(f"Invalid visibility: {target_visibility}")
         if target_visibility == "department" and scope_department_id is None:
             raise ValueError("scope_department_id is required for department visibility")
+        if target_visibility == "department":
+            self._require_own_department_scope(scope_department_id)
+        rescope = target_visibility == "department" and scope_department_id != resource.scope_department_id
+        if ranks[target_visibility] <= ranks[resource.visibility] and not rescope:
+            raise ValueError("Visibility application must expand access")
         published_version: ResourceVersion | None = None
         published_knowledge_revision: KnowledgeRevision | None = None
         if resource.latest_version >= 1:

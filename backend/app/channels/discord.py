@@ -575,7 +575,9 @@ class DiscordChannel(Channel):
                         },
                     )
                     inbound.topic_id = thread_id
-                    inbound = await self._attach_connection_identity(inbound, guild_id=str(guild.id) if guild else None)
+                    # Identity attach happens inside _publish_reserved on the
+                    # Gateway main loop (repo pool affinity); this loop must
+                    # not await repository calls.
                     if not self._publish_reserved(inbound, reservation):
                         return
                     reservation_transferred = True
@@ -684,8 +686,9 @@ class DiscordChannel(Channel):
                 },
             )
             inbound.topic_id = thread_id
-            inbound = await self._attach_connection_identity(inbound, guild_id=str(guild.id) if guild else None)
-
+            # Identity attach happens inside _publish_reserved on the Gateway
+            # main loop (repo pool affinity); this loop must not await
+            # repository calls.
             if not self._publish_reserved(inbound, reservation):
                 return
             reservation_transferred = True
@@ -699,8 +702,28 @@ class DiscordChannel(Channel):
                 reservation.release()
 
     def _publish_reserved(self, inbound: InboundMessage, reservation: InboundReservation) -> bool:
-        """Transfer an already-reserved message to the Gateway loop."""
+        """Transfer an already-reserved message to the Gateway loop.
+
+        With a connection repo configured, identity attachment is a repository
+        call: the async engine/pool is bound to the Gateway main loop, so the
+        attach and the commit are submitted together as one main-loop
+        coroutine instead of awaiting the repo on this client's private loop
+        (Postgres/asyncpg would fail every inbound message cross-loop). This
+        mirrors Slack's ``_publish_inbound_with_connection``; without a repo
+        there is nothing to attach and the message commits directly.
+        """
         if self._main_loop and self._main_loop.is_running():
+            if self._connection_repo is not None:
+                scheduled = self._submit_threadsafe_coroutine(
+                    self._publish_inbound_with_identity(inbound, reservation=reservation),
+                    self._main_loop,
+                    name="publish_inbound",
+                    msg_id=inbound.metadata.get("message_id"),
+                    reservation=reservation,
+                )
+                if not scheduled:
+                    logger.info("[Discord] main loop stopped before reserved inbound could be scheduled")
+                return scheduled
             try:
                 # This is called from discord.py's private event-loop thread.
                 self._main_loop.call_soon_threadsafe(self._commit_reserved_inbound, reservation, inbound)
@@ -709,6 +732,17 @@ class DiscordChannel(Channel):
                 logger.info("[Discord] main loop stopped before reserved inbound could be scheduled")
         reservation.release()
         return False
+
+    async def _publish_inbound_with_identity(self, inbound: InboundMessage, *, reservation: InboundReservation) -> None:
+        """Attach connection identity on the main loop, then commit."""
+        try:
+            # The routing guild is already in the metadata built by
+            # _handle_admitted_message; workspace fallback matches its
+            # previous inline attach call.
+            inbound = await self._attach_connection_identity(inbound, guild_id=inbound.metadata.get("guild_id"))
+            self._commit_reserved_inbound(reservation, inbound)
+        finally:
+            reservation.release()
 
     async def _attach_connection_identity(self, inbound: InboundMessage, guild_id: str | None = None) -> InboundMessage:
         return await attach_connection_identity(
@@ -720,12 +754,37 @@ class DiscordChannel(Channel):
         )
 
     async def _bind_connection_from_connect_code(self, message, code: str) -> bool:
+        """Bind flow: repo calls on the Gateway main loop, reply on this loop.
+
+        Mirrors Telegram's ``_bind_connection_from_start_token``: the
+        SQLAlchemy async engine is bound to the Gateway main loop, so a bind
+        invoked from this client's private event loop must not touch the
+        repository in place. Direct callers that never started the channel
+        (tests, tooling) run on their own loop with no Gateway loop recorded
+        and keep the legacy inline path.
+        """
         if self._connection_repo is None or not code:
             return False
 
+        main_loop = self._main_loop
+        if main_loop is not None and main_loop.is_running() and asyncio.get_running_loop() is not main_loop:
+            scheduled = self._submit_threadsafe_coroutine(
+                self._bind_connection_from_connect_code_on_main(message, code),
+                main_loop,
+                name="bind_connection",
+                msg_id=getattr(message, "id", None),
+            )
+            if not scheduled:
+                logger.info("[Discord] main loop stopped before channel connection bind could be scheduled")
+            # Scheduling counts as handled so /connect does not fall through to
+            # chat while SQL runs on the main loop.
+            return scheduled
+        return await self._bind_connection_from_connect_code_on_main(message, code)
+
+    async def _bind_connection_from_connect_code_on_main(self, message, code: str) -> bool:
         state = await self._connection_repo.consume_oauth_state(provider="discord", state=code)
         if state is None:
-            await self._send_connection_reply(message, "Discord connection code is invalid or expired.")
+            await self._reply_on_discord_loop(message, "Discord connection code is invalid or expired.")
             return True
 
         guild = getattr(message, "guild", None)
@@ -733,7 +792,7 @@ class DiscordChannel(Channel):
         author = getattr(message, "author", None)
         user_id = str(getattr(author, "id", "") or "")
         if not user_id:
-            await self._send_connection_reply(message, "Discord connection could not be completed from this message.")
+            await self._reply_on_discord_loop(message, "Discord connection could not be completed from this message.")
             return True
 
         guild_id = str(getattr(guild, "id", "") or "") or None
@@ -750,8 +809,21 @@ class DiscordChannel(Channel):
             },
             status="connected",
         )
-        await self._send_connection_reply(message, "Discord connected to DeerFlow.")
+        await self._reply_on_discord_loop(message, "Discord connected to DeerFlow.")
         return True
+
+    async def _reply_on_discord_loop(self, message, text: str) -> None:
+        """Send a connection reply over the Discord client from the main loop.
+
+        discord.py objects are bound to the client loop, so a reply emitted
+        from the Gateway main loop (after the repo calls) is routed back — the
+        same shape as Telegram's ``_run_on_telegram_loop``. Without a live
+        client loop (direct callers), the reply sends inline.
+        """
+        if self._discord_loop is not None and self._discord_loop.is_running():
+            await self._run_on_discord_loop(self._send_connection_reply(message, text))
+            return
+        await self._send_connection_reply(message, text)
 
     @staticmethod
     async def _send_connection_reply(message, text: str) -> None:

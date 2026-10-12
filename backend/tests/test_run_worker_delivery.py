@@ -557,29 +557,48 @@ async def test_delivery_is_durable_before_terminal_run_status():
 
 @pytest.mark.anyio
 async def test_retrieval_evidence_is_persisted_with_terminal_run():
-    run_store = MemoryRunStore()
-    run_manager = RunManager(store=run_store)
-    record = await run_manager.create("thread-1")
-    binding = RunEvidenceBinding([], AuthorizationContext("caller", "agent", "policy"))
+    # The worker finalizes run evidence through the registry-registered hooks,
+    # so this test enables the extension the way a host does instead of relying
+    # on ambient process state (a conftest-loaded singleton would leak order
+    # dependence after suites that reset the singleton).
+    from agentplatform_extension import install
 
-    class DummyAgent:
-        async def astream(self, graph_input, config=None, stream_mode=None, subgraphs=False):
-            record_retrieval_receipt({"receipt_kind": "retrieval", "receipt_id": "rr-1"})
-            assert current_run_evidence() is not None
-            yield {"messages": []}
+    from deerflow.extensions import get_loaded_extensions, set_loaded_extensions
+    from deerflow.extensions.registry import ExtensionRegistry
 
-    with bind_run_evidence(binding):
-        await run_agent(
-            _make_bridge(),
-            run_manager,
-            record,
-            ctx=RunContext(checkpointer=None, event_store=MemoryRunEventStore()),
-            agent_factory=lambda *, config: DummyAgent(),
-            graph_input={},
-            config={},
-        )
+    registry = ExtensionRegistry()
+    with registry.attributed_to("agentplatform:install"):
+        install(registry, {"dynamic_context": True})
+    previous_extensions = get_loaded_extensions()
+    set_loaded_extensions(registry.build())
 
-    stored = await run_store.get(record.run_id)
+    try:
+        run_store = MemoryRunStore()
+        run_manager = RunManager(store=run_store)
+        record = await run_manager.create("thread-1")
+        binding = RunEvidenceBinding([], AuthorizationContext("caller", "agent", "policy"))
+
+        class DummyAgent:
+            async def astream(self, graph_input, config=None, stream_mode=None, subgraphs=False):
+                record_retrieval_receipt({"receipt_kind": "retrieval", "receipt_id": "rr-1"})
+                assert current_run_evidence() is not None
+                yield {"messages": []}
+
+        with bind_run_evidence(binding):
+            await run_agent(
+                _make_bridge(),
+                run_manager,
+                record,
+                ctx=RunContext(checkpointer=None, event_store=MemoryRunEventStore()),
+                agent_factory=lambda *, config: DummyAgent(),
+                graph_input={},
+                config={},
+            )
+
+        stored = await run_store.get(record.run_id)
+    finally:
+        set_loaded_extensions(previous_extensions)
+
     assert stored["metadata"]["run_evidence"]["retrieval_receipts"] == [{"receipt_kind": "retrieval", "receipt_id": "rr-1"}]
     assert stored["metadata"]["run_evidence"]["archive_status"] == "archived"
 

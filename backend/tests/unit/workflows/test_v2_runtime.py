@@ -810,6 +810,51 @@ edges: [{from: first, to: second}]
 
 
 @pytest.mark.asyncio
+async def test_compiler_fails_node_on_self_referencing_template_input() -> None:
+    """A user input shaped like the template referencing it must fail the node
+    with the structured render error instead of hanging the event loop."""
+    definition = parse_workflow_v2(
+        """
+schema_version: 2
+name: selfref
+inputs:
+  topic: {type: string, default: ""}
+state: {}
+entrypoint: render
+nodes:
+  - id: render
+    type: action
+    action: {kind: tool, name: echo, params: {prompt: "topic: {{inputs.topic}}"}}
+edges: []
+"""
+    )
+    events: list[tuple[str, dict]] = []
+
+    class Adapter:
+        async def run(self, context, params):
+            return {"ok": True}
+
+    async def emit(event_type: str, payload: dict) -> None:
+        events.append((event_type, payload))
+
+    from app.agentplatform.workflows.v2.errors import WorkflowTemplateRenderError
+
+    graph = WorkflowGraphCompiler(
+        definition,
+        ActionAdapterRegistry({("tool", "echo"): Adapter()}),
+        emit_event=emit,
+    ).compile()
+
+    with pytest.raises(WorkflowTemplateRenderError):
+        await graph.ainvoke({"run_id": "run-1", "inputs": {"topic": "{{inputs.topic}}"}, "state": {}, "outputs": {}}, config={"configurable": {"thread_id": "wf:selfref"}})
+
+    failure = [payload for event_type, payload in events if event_type == "node_failed"]
+    assert len(failure) == 1
+    assert failure[0]["code"] == "template_render_failed"
+    assert failure[0]["node_id"] == "render"
+
+
+@pytest.mark.asyncio
 async def test_compiler_fails_node_when_action_exceeds_configured_timeout() -> None:
     definition = parse_workflow_v2(
         """

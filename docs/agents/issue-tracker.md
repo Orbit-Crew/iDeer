@@ -3,16 +3,16 @@ id: docs-agents-issue-tracker
 kind: reference
 status: current
 owner: repository maintainers
-scope: where local specifications and work tickets live, their triage vocabulary, and the GitHub issue/PR command conventions for this repository
-last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ 71ae798fb
+scope: where specifications and work tickets are published (GitHub issues mirrored to Gitea), their triage vocabulary, and the GitHub/Gitea issue and PR command conventions for this repository
+last-verified: 2026-10-11
+verified-against: maintainer decision 2026-10-11 — specs and tickets publish to GitHub (Orbit-Crew/iDeer), mirrored to Gitea (TechCode/iDeer)
 ---
 
-# Local specifications and work tickets
+# Specifications and work tickets
 
-Specifications for this repo live as Markdown files in `docs/specs/`. Work tickets live as one Markdown file per ticket under `.scratch/<feature-slug>/issues/`, numbered from `01` in dependency order. Each ticket records its blockers and `ready-for-agent` status. `.scratch/` is git-ignored, so local tickets stay in the working directory and are not published to GitHub or included in commits by default. GitHub Issues remain available for separate issue discussions.
+Specifications and work tickets for this repo are published on **GitHub Issues (`Orbit-Crew/iDeer`)**, each mirrored to **Gitea (`TechCode/iDeer`)** per the [Gitea sync](#gitea-sync) rules. `/to-spec` publishes one specification issue; `/to-tickets` publishes one issue per ticket in dependency order (blockers first), with blocking edges as GitHub native dependencies. The triage vocabulary is defined in [triage-labels.md](triage-labels.md).
 
-Local specifications use a date-prefixed descriptive filename and YAML frontmatter with `triage: ready-for-agent` once they are fully specified. The file itself is the published specification; do not create a GitHub issue merely to publish it. The triage vocabulary is defined in [triage-labels.md](triage-labels.md).
+Existing files under `docs/specs/` remain as archive; new specifications are not written there. `.scratch/` stays available as a git-ignored scratchpad for drafting, but it is not the tracker: a draft that has not been published as an issue is not a ticket.
 
 > 本仓库 GitHub issues 归属 **Orbit-Crew/iDeer**。执行 GitHub issue 操作时显式加 `--repo Orbit-Crew/iDeer`，避免工作树的 remote 配置影响目标仓库。
 
@@ -36,6 +36,8 @@ Every issue created on GitHub gets a matching issue on Gitea (`TechCode/iDeer`, 
 - Redaction: frame-format document names, sample `.dat` files, and anything else sensitive never appear on either platform; implementers fetch them on the intranet.
 - Keep labels and assignee consistent with the GitHub side (default `enhancement` + `needs-triage` + assign to a person).
 
+This applies to specification and ticket issues published by `/to-spec` and `/to-tickets` too: mirror each one immediately after creating it on GitHub. GitHub native dependencies remain the canonical blocking representation; the Gitea mirror carries the dependency state in the body's `Blocked by` line, so keep that line identical on both sides.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
@@ -50,15 +52,27 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 ## When a skill says "publish to the issue tracker"
 
-Write a specification to `docs/specs/` with the appropriate `triage` frontmatter. Write implementation tickets as separate numbered files under `.scratch/<feature-slug>/issues/`, using the status value from [triage-labels.md](triage-labels.md). Do not create GitHub issues solely to publish a specification or work-ticket breakdown.
+Publish to GitHub Issues (`Orbit-Crew/iDeer`), then mirror each created issue to Gitea per the [Gitea sync](#gitea-sync) rules.
+
+- **`/to-spec`** creates one specification issue from its spec template. Labels: the category role (`enhancement` or `bug`), the affected `area:*` labels, and `ready-for-agent` from [triage-labels.md](triage-labels.md).
+- **`/to-tickets`** creates one issue per ticket from its issue template, in dependency order (blockers first), each labelled like the specification issue. Each ticket body carries a `## Parent` reference to the specification issue (or the triaged source issue), and blocking edges use the GitHub native dependencies documented in [Wayfinding operations](#wayfinding-operations). Title tickets with the category prefix and sequence, e.g. `[feat] 01: <title>`.
+
+Every AI-authored issue — specification, ticket, wayfinder map, or manual — carries the category title prefix (`[bug] ` or `[feat] `) and, wherever the affected areas are known, the matching `area:*` labels. API-created issues get no form-template titles or labels automatically, so these are always applied explicitly. Before creating any AI-authored issue, run a real dedup search (`gh issue list --search ... --repo Orbit-Crew/iDeer`, open and closed) and note the result in the body; do not just tick a preflight box.
+
+**Publish-time self-check — every issue must pass every item below before `gh issue create`:**
+
+- [ ] Parent / Blocked-by references resolve to real issue numbers
+- [ ] At least two independently verifiable acceptance criteria
+- [ ] No file paths and no line numbers in the body (they go stale; describe behavioral contracts instead)
+- [ ] An explicit out-of-scope list
 
 ## When a skill says "fetch the relevant ticket"
 
-For a local work ticket, read its numbered file under `.scratch/<feature-slug>/issues/`. For an existing GitHub issue reference, run `gh issue view <number> --comments --repo Orbit-Crew/iDeer`.
+For a work ticket or any existing issue reference, run `gh issue view <number> --comments --repo Orbit-Crew/iDeer`. Files under `.scratch/` are drafts only; the published ticket is the issue.
 
 ## Wayfinding operations
 
-Legacy GitHub workflow used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets; it does not change the local publication rule above for new work-ticket breakdowns.
+GitHub workflow used by `/wayfinder`; the same sub-issue and native dependency mechanics below are how `/to-tickets` wires its ticket blocking edges. The **map** is a single issue with **child** issues as tickets.
 
 - **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map --repo Orbit-Crew/iDeer`.
 - **Child ticket**: an issue linked to the map as a GitHub sub-issue (`gh api` on the sub-issues endpoint). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.

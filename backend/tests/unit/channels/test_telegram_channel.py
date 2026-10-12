@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -1163,9 +1164,20 @@ class TestProperties:
         ch = _make_channel()
         assert ch.is_running is False
 
-    def test_is_running_true_after_set(self):
+    def test_is_running_true_when_polling_thread_alive(self):
         ch = _make_channel(running=True)
+        ch._thread = MagicMock()
+        ch._thread.is_alive.return_value = True
         assert ch.is_running is True
+
+    def test_is_running_false_when_polling_thread_dead(self):
+        """#61: a dead polling thread must not keep reporting a healthy channel."""
+        ch = _make_channel(running=True)
+        dead_thread = threading.Thread(target=lambda: None)
+        dead_thread.start()
+        dead_thread.join()
+        ch._thread = dead_thread
+        assert ch.is_running is False
 
     def test_supports_streaming_true(self):
         ch = _make_channel()

@@ -76,8 +76,16 @@ def resolve_run_extensions(context: Any | None) -> LoadedExtensions | None:
 
 
 def resolve_runtime_evidence_hooks(extensions: LoadedExtensions | None) -> Any | None:
-    """Return the latest optional evidence hook provider for a run."""
-    if extensions is not None and extensions.runtime_evidence_hooks:
+    """Return the latest optional evidence hook provider for a run.
+
+    ``None`` means the caller has no run snapshot (``resolve_run_extensions``
+    contract) and falls back to the process default loaded set, mirroring the
+    executor and run worker; only a loaded set without registered hooks falls
+    through to the optional process-global default.
+    """
+    if extensions is None:
+        extensions = get_loaded_extensions()
+    if extensions.runtime_evidence_hooks:
         return extensions.runtime_evidence_hooks[-1][1]
     from deerflow_extension_api import get_runtime_evidence_hooks
 

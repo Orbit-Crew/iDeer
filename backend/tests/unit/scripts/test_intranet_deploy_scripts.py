@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import ast
+import json
 import os
+import re
 import stat
 import subprocess
 import tarfile
@@ -372,7 +374,7 @@ def test_deploy_script_wires_admin_bootstrap_and_bundled_resource_steps():
     assert "initialize_super_admin" in script
     assert "/api/v1/auth/initialize" in script
     assert "IDEER_ADMIN_EMAIL:-super_admin@test.com" in script
-    assert "IDEER_ADMIN_PASSWORD:-super_admin@test.com" in script
+    assert "IDEER_ADMIN_PASSWORD:-super_admin@test.com" not in script
     assert "install_admin_bundled_resources" in script
     assert "seed_bundled_resources.py" in script
     assert "bundled-resources.json" in script
@@ -384,6 +386,132 @@ def test_deploy_script_wires_admin_bootstrap_and_bundled_resource_steps():
     assert "find_super_admin_id" in script
     assert "install_bundled_agents" not in script
     assert "prepare_bundle 0" not in script
+
+
+def _usage_text(script: str) -> str:
+    """Return the usage() heredoc body (the first heredoc after usage() {)."""
+    usage_start = script.index("usage() {")
+    start = script.index("cat <<'EOF'", usage_start)
+    end = script.index("\nEOF\n", start)
+    return script[start:end]
+
+
+def test_deploy_script_ships_no_plaintext_default_admin_password():
+    """08-H3: usage and script body must not carry a plaintext default admin
+    password; without IDEER_ADMIN_PASSWORD the password is generated randomly."""
+    script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
+    usage = _usage_text(script)
+
+    assert "default: super_admin@test.com" not in usage
+    assert "super_admin@test.com /" not in usage
+    assert "super_admin@test.com / super_admin@test.com" not in script
+    assert "IDEER_ADMIN_PASSWORD:-super_admin@test.com" not in script
+    # the admin password falls back to a generated random secret
+    assert "IDEER_ADMIN_PASSWORD:-" in script
+    assert "generate_secret" in script
+
+
+def _install_fake_curl(env: dict[str, str], tmp_path: Path, status_code: str) -> Path:
+    """Add a fake curl to the fake-docker bin dir.  Health checks succeed; the
+    /initialize POST body is appended to a log file and `status_code` is
+    reported as the HTTP status."""
+    bin_dir = Path(env["PATH"].split(":", 1)[0])
+    log_path = tmp_path / "curl-calls.log"
+    env["FAKE_CURL_LOG"] = str(log_path)
+    env["FAKE_CURL_STATUS"] = status_code
+    _write_executable(
+        bin_dir / "curl",
+        r"""#!/usr/bin/env sh
+set -eu
+body=""
+print_code=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -o) shift 2 ;;
+    -w) print_code=1; shift 2 ;;
+    -X) shift 2 ;;
+    -H) shift 2 ;;
+    --data) body="$2"; shift 2 ;;
+    -*) shift ;;
+    *) shift ;;
+  esac
+done
+if [ -n "$body" ]; then
+  printf '%s\n' "$body" >> "${FAKE_CURL_LOG:?}"
+fi
+if [ "$print_code" -eq 1 ]; then
+  printf '%s' "${FAKE_CURL_STATUS:-201}"
+fi
+exit 0
+""",
+    )
+    return log_path
+
+
+def _posted_initialize_bodies(log_path: Path) -> list[dict]:
+    return [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def test_up_generates_random_admin_password_shown_once(tmp_path: Path):
+    """08-H3: a fresh deployment creates the super admin with a random password,
+    displayed exactly once and persisted only to a chmod-600 runtime file."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    log_path = _install_fake_curl(env, tmp_path, status_code="201")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    # Bundled-resource seeding cannot run against the fake docker daemon and
+    # aborts after admin initialization; assert the initialize contract itself.
+    assert "initializing super admin account (super_admin@test.com)..." in proc.stdout
+    assert "super admin account created" in proc.stdout
+    posted = _posted_initialize_bodies(log_path)
+    assert len(posted) == 1
+    assert posted[0]["email"] == "super_admin@test.com"
+    password = posted[0]["password"]
+    assert password != "super_admin@test.com"
+    assert re.fullmatch(r"[0-9a-f]{64}", password), password
+
+    password_file = bundle_root / "runtime" / "data" / ".super-admin-password"
+    assert password_file.is_file()
+    assert password_file.read_text(encoding="utf-8").strip() == password
+    assert password_file.stat().st_mode & 0o777 == 0o600
+
+    # one-time display: the generated password appears exactly once on stdout,
+    # so the routine per-run log lines never carry it
+    assert proc.stdout.count(password) == 1
+
+
+def test_up_does_not_persist_or_display_password_when_admin_exists(tmp_path: Path):
+    """08-H3: re-runs against an initialized system (HTTP 409) must not display
+    a password nor create a password file that does not match the real one."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    _install_fake_curl(env, tmp_path, status_code="409")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert "super admin already exists; skipping" in proc.stdout
+    assert "generated super admin password" not in proc.stdout
+    assert not (bundle_root / "runtime" / "data" / ".super-admin-password").exists()
+
+
+def test_up_uses_explicit_admin_password_without_persisting_or_displaying(tmp_path: Path):
+    """An operator-supplied IDEER_ADMIN_PASSWORD is used as-is: no password file
+    is written and the value never shows up in the deployment output."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    env["IDEER_ADMIN_PASSWORD"] = "operator-supplied-strong-pass"
+    log_path = _install_fake_curl(env, tmp_path, status_code="201")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert "super admin account created" in proc.stdout
+    posted = _posted_initialize_bodies(log_path)
+    assert len(posted) == 1
+    assert posted[0]["password"] == "operator-supplied-strong-pass"
+    assert not (bundle_root / "runtime" / "data" / ".super-admin-password").exists()
+    assert "operator-supplied-strong-pass" not in proc.stdout
 
 
 def test_prepare_reuses_persisted_auth_secrets_when_env_file_is_recreated(tmp_path: Path):
@@ -486,6 +614,8 @@ def test_package_source_archive_includes_runtime_seed_templates(tmp_path: Path):
     assert "extensions_config.example.json" in names
     assert "frontend/.env.example" in names
     assert "frontend/.env" not in names
+    assert "docker/ragflow/.env" not in names
+    assert "docker/ragflow/.env.example" in names
     assert "resources/workflows/fault-zeroing.yaml" in names
     assert "bundled-resources.json" in names
     assert "scripts/seed_bundled_resources.py" in names
@@ -881,6 +1011,41 @@ def test_package_incremental_bundle_saves_only_gateway_and_frontend(tmp_path: Pa
     assert "not included" in manifest
     assert "Incremental bundles are for upgrading an existing deployment only" in manifest
 
+    manifest_data = json.loads((output_dir / "bundle-manifest.json").read_text(encoding="utf-8"))
+    assert "docker/ragflow/.env" not in manifest_data["source_files"]
+
+
+def test_manifest_helper_excludes_local_env_files(tmp_path: Path):
+    """Incremental manifests never record a machine-local ".env" file wherever
+    it lives (docker/ragflow/.env may hold real credentials on a build machine);
+    tracked *.env.example seed templates stay bundled."""
+    root = tmp_path / "root"
+    (root / "docker" / "ragflow").mkdir(parents=True)
+    (root / "frontend").mkdir(parents=True)
+    (root / "docker" / "ragflow" / ".env").write_text("MYSQL_ROOT_PASSWORD=secret\n", encoding="utf-8")
+    (root / "docker" / ".env").write_text("COMPOSE_PROJECT_NAME=ideer\n", encoding="utf-8")
+    (root / "frontend" / ".env").write_text("VITE_API_BASE=http://localhost\n", encoding="utf-8")
+    (root / "frontend" / ".env.example").write_text("# template\n", encoding="utf-8")
+    (root / "docker" / "ragflow" / ".env.example").write_text("# template\n", encoding="utf-8")
+    (root / "docker" / "keep.txt").write_text("keep\n", encoding="utf-8")
+
+    output = tmp_path / "manifest.json"
+    proc = subprocess.run(
+        ["python3", str(MANIFEST_SCRIPT), "snapshot", "--root", str(root), "--output", str(output)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    source_files = json.loads(output.read_text(encoding="utf-8"))["source_files"]
+    assert "docker/ragflow/.env" not in source_files
+    assert "docker/.env" not in source_files
+    assert "frontend/.env" not in source_files
+    assert "docker/ragflow/.env.example" in source_files
+    assert "frontend/.env.example" in source_files
+    assert "docker/keep.txt" in source_files
+
 
 def test_package_full_bundle_manifest_marks_bundle_type_full(tmp_path: Path):
     output_dir = tmp_path / "bundle"
@@ -998,3 +1163,65 @@ def test_manifest_helper_keeps_root_unchanged_when_verification_fails(tmp_path: 
     proc = subprocess.run(["python3", str(MANIFEST_SCRIPT), "apply", "--root", str(root), "--archive", str(archive), "--deleted", str(deleted), "--manifest", str(manifest)], capture_output=True, text=True)
     assert proc.returncode != 0
     assert (root / "old.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_compose_invocation_appends_dood_overlay_only_for_aio_sandbox_mode(tmp_path: Path):
+    """The base intranet compose carries no Docker socket; the opt-in DooD overlay must be appended only when the runtime config selects the AIO provider (issue 08-H2)."""
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    bin_dir = Path(env["PATH"].split(":", 1)[0])
+    compose_log = tmp_path / "compose-invocations.log"
+    _write_executable(
+        bin_dir / "docker",
+        f"""#!/usr/bin/env sh
+set -eu
+if [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
+  echo "Docker version 24.0.0, build fake"
+  exit 0
+fi
+if [ "$1" = "compose" ] && [ "${{2:-}}" = "version" ]; then
+  exit 0
+fi
+if [ "$1" = "compose" ]; then
+  shift
+  printf '%s\\n' "$*" >> "{compose_log}"
+  exit 0
+fi
+if [ "$1" = "info" ]; then
+  exit 0
+fi
+if [ "$1" = "image" ]; then
+  shift
+  case "$1" in
+    inspect) exit 1 ;;
+    *) exit 0 ;;
+  esac
+fi
+echo "unexpected docker invocation: $*" >&2
+exit 99
+""",
+    )
+
+    # Default seeded runtime config uses the local sandbox provider.
+    proc = _run_deploy(bundle_root, "status", env=env)
+    assert proc.returncode == 0, proc.stderr
+    local_invocations = compose_log.read_text(encoding="utf-8")
+    assert "docker-compose.intranet.yaml" in local_invocations
+    assert "docker-compose.dood.yaml" not in local_invocations
+
+    # Opt into the AIO sandbox provider in the runtime config.
+    config = bundle_root / "runtime" / "config.yaml"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace(
+            "deerflow.sandbox.local.local_sandbox_provider:LocalSandboxProvider",
+            "deerflow.community.aio_sandbox:AioSandboxProvider",
+        ),
+        encoding="utf-8",
+    )
+    compose_log.unlink()
+    proc = _run_deploy(bundle_root, "status", env=env)
+    assert proc.returncode == 0, proc.stderr
+    aio_invocations = compose_log.read_text(encoding="utf-8")
+    assert "docker-compose.intranet.yaml" in aio_invocations
+    assert "docker-compose.dood.yaml" in aio_invocations
+    assert "sandbox mode: aio" in proc.stdout

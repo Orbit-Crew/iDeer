@@ -88,3 +88,35 @@ def test_auth_config_empty_secret_file_generates_new(tmp_path):
             assert (tmp_path / ".jwt_secret").read_text().strip() == config.jwt_secret
     finally:
         cfg._auth_config = old
+
+
+@pytest.mark.parametrize(
+    ("env_name", "value"),
+    [
+        ("DEER_FLOW_ENV", "production"),
+        ("DEER_FLOW_ENV", "prod"),
+        ("ENVIRONMENT", "production"),
+        ("IDEER_ENVIRONMENT", "production"),
+    ],
+)
+def test_auth_config_requires_explicit_secret_in_production(tmp_path, env_name, value):
+    """01-M6: the JWT-secret production caliber is shared with the
+    auth-disabled gate instead of a private ``IDEER_ENVIRONMENT`` read.
+
+    Whichever environment variable carries the production value — the
+    canonical ``DEER_FLOW_ENV`` or one of its compat aliases — a missing
+    ``AUTH_JWT_SECRET`` must fail startup rather than silently generate and
+    persist a secret."""
+    from deerflow.config.paths import Paths
+
+    old = cfg._auth_config
+    cfg._auth_config = None
+    try:
+        with patch.dict(os.environ, {env_name: value}, clear=True):
+            with patch("deerflow.config.paths.get_paths", return_value=Paths(base_dir=tmp_path)):
+                with pytest.raises(RuntimeError, match="AUTH_JWT_SECRET must be set in production"):
+                    cfg.get_auth_config()
+        # Enforcement, not auto-persistence: no secret may be written.
+        assert not (tmp_path / ".jwt_secret").exists()
+    finally:
+        cfg._auth_config = old
