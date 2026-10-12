@@ -525,3 +525,29 @@ class TestTablePrefixRegistration:
     def test_omitting_the_key_remains_the_way_to_declare_no_prefix(self):
         assert ExtensionSpec(use=f"{_FIXTURE}:install_ok").table_prefix is None
         assert ExtensionSpec(use=f"{_FIXTURE}:install_ok", table_prefix=None).table_prefix is None
+
+
+@pytest.mark.parametrize(
+    "bucket",
+    ["tool_scopes", "subagent_middlewares", "builtin_tools"],
+)
+def test_second_host_seam_provider_fails_explicitly_instead_of_overriding(bucket: str):
+    """Every host seam (02-M6) is a single-provider registration: mounting the
+    provider twice must fail the second install loudly (rollback + error
+    diagnostic) rather than silently take the last registrant at resolve time."""
+    specs = [
+        ExtensionSpec(use=f"{_FIXTURE}:install_host_seam_provider", config={"bucket": bucket, "label": "first"}),
+        ExtensionSpec(use=f"{_FIXTURE}:install_host_seam_provider", config={"bucket": bucket, "label": "second"}),
+    ]
+    loaded, diagnostics = load_extensions(specs)
+
+    assert [diagnostic.level for diagnostic in diagnostics] == ["error"]
+    assert diagnostics[0].source == f"{_FIXTURE}:install_host_seam_provider"
+    assert "single-provider" in diagnostics[0].message
+    for field in ("tool_scopes", "subagent_middlewares", "builtin_tool_overrides"):
+        entries = getattr(loaded, field)
+        assert len(entries) <= 1, f"{field} must never carry two providers"
+        if entries:
+            source, provider = entries[0]
+            assert source == f"{_FIXTURE}:install_host_seam_provider"
+            assert provider.tag == f"seam:{bucket}:first", field

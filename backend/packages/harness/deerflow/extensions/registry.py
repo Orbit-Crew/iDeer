@@ -14,14 +14,17 @@ from typing import Any
 
 from deerflow_extension_api import (
     AgentAssemblyObserver,
+    BuiltinToolOverrides,
     ContextCompactionObserver,
     ExtensionData,
     ExtensionService,
     MiddlewareContributor,
     RuntimeEvidenceHooks,
+    SubagentMiddlewareSource,
     SystemModelCallObserver,
     TaskLifecycleContributor,
     ToolContributor,
+    ToolScopeAdapter,
 )
 from deerflow_extension_api import ExtensionRegistry as ExtensionRegistryContract
 
@@ -39,6 +42,13 @@ class LoadedExtensions:
     app_store: ExtensionData
     middleware_contributors: tuple[tuple[str, MiddlewareContributor], ...] = ()
     tool_contributors: tuple[tuple[str, ToolContributor], ...] = ()
+    # Single-provider host seams (02-M6): exactly one adapter/source/override
+    # set resolves per call site, so these buckets carry at most one entry —
+    # a second registration is refused by the registry (see the registration
+    # methods below).
+    tool_scopes: tuple[tuple[str, ToolScopeAdapter], ...] = ()
+    subagent_middlewares: tuple[tuple[str, SubagentMiddlewareSource], ...] = ()
+    builtin_tool_overrides: tuple[tuple[str, BuiltinToolOverrides], ...] = ()
     task_lifecycle: tuple[tuple[str, TaskLifecycleContributor], ...] = ()
     runtime_evidence_hooks: tuple[tuple[str, RuntimeEvidenceHooks], ...] = ()
     system_model_observers: tuple[tuple[str, SystemModelCallObserver], ...] = ()
@@ -76,6 +86,9 @@ class ExtensionRegistry(ExtensionRegistryContract):
     def __init__(self) -> None:
         self._middlewares: list[_Entry] = []
         self._tools: list[_Entry] = []
+        self._tool_scopes: list[_Entry] = []
+        self._subagent_middlewares: list[_Entry] = []
+        self._builtin_tool_overrides: list[_Entry] = []
         self._task_lifecycle: list[_Entry] = []
         self._runtime_evidence_hooks: list[_Entry] = []
         self._system_model_observers: list[_Entry] = []
@@ -106,18 +119,32 @@ class ExtensionRegistry(ExtensionRegistryContract):
     def tools(self, contributor: ToolContributor) -> None:
         self._tools.append((self._source(), contributor))
 
+    def _register_single(self, bucket: list[_Entry], label: str, provider: Any) -> None:
+        """Append to a single-provider bucket, refusing a second registrant.
+
+        Every single-provider seam resolves one provider per call site, so a
+        second registration must fail here — with the existing owner named —
+        instead of being silently last-wins when the snapshot is resolved.
+        """
+        source = self._source()
+        if bucket:
+            raise ValueError(f"{label} are a single-provider registration: '{bucket[0][0]}' already registered them, refusing the registration from '{source}'")
+        bucket.append((source, provider))
+
+    def tool_scopes(self, adapter: ToolScopeAdapter) -> None:
+        self._register_single(self._tool_scopes, "tool scopes", adapter)
+
+    def subagent_middlewares(self, source: SubagentMiddlewareSource) -> None:
+        self._register_single(self._subagent_middlewares, "subagent middlewares", source)
+
+    def builtin_tools(self, overrides: BuiltinToolOverrides) -> None:
+        self._register_single(self._builtin_tool_overrides, "builtin tool overrides", overrides)
+
     def task_lifecycle(self, contributor: TaskLifecycleContributor) -> None:
         self._task_lifecycle.append((self._source(), contributor))
 
     def runtime_evidence(self, hooks: RuntimeEvidenceHooks) -> None:
-        source = self._source()
-        if self._runtime_evidence_hooks:
-            # Single-provider seam, unlike the additive buckets above: every
-            # consumer resolves one hooks object, so a second registration
-            # must fail here — with the existing owner named — instead of
-            # being silently last-wins when the snapshot is resolved.
-            raise ValueError(f"runtime evidence hooks are a single-provider registration: '{self._runtime_evidence_hooks[0][0]}' already registered them, refusing the registration from '{source}'")
-        self._runtime_evidence_hooks.append((source, hooks))
+        self._register_single(self._runtime_evidence_hooks, "runtime evidence hooks", hooks)
 
     def system_model_observer(self, observer: SystemModelCallObserver) -> None:
         self._system_model_observers.append((self._source(), observer))
@@ -151,6 +178,9 @@ class ExtensionRegistry(ExtensionRegistryContract):
         for bucket in (
             self._middlewares,
             self._tools,
+            self._tool_scopes,
+            self._subagent_middlewares,
+            self._builtin_tool_overrides,
             self._task_lifecycle,
             self._runtime_evidence_hooks,
             self._system_model_observers,
@@ -161,11 +191,14 @@ class ExtensionRegistry(ExtensionRegistryContract):
         ):
             bucket[:] = [entry for entry in bucket if entry[0] != source]
 
-    def mark(self) -> tuple[int, int, int, int, int, int, int, int, int]:
+    def mark(self) -> tuple[int, int, int, int, int, int, int, int, int, int, int, int]:
         """Snapshot bucket lengths so one install() can be undone positionally."""
         return (
             len(self._middlewares),
             len(self._tools),
+            len(self._tool_scopes),
+            len(self._subagent_middlewares),
+            len(self._builtin_tool_overrides),
             len(self._task_lifecycle),
             len(self._runtime_evidence_hooks),
             len(self._system_model_observers),
@@ -175,7 +208,7 @@ class ExtensionRegistry(ExtensionRegistryContract):
             len(self._routers),
         )
 
-    def rollback_to(self, mark: tuple[int, int, int, int, int, int, int, int, int]) -> None:
+    def rollback_to(self, mark: tuple[int, int, int, int, int, int, int, int, int, int, int, int]) -> None:
         """Undo every registration made since ``mark``.
 
         Positional rather than source-keyed: two specs may legitimately share
@@ -186,6 +219,9 @@ class ExtensionRegistry(ExtensionRegistryContract):
             (
                 self._middlewares,
                 self._tools,
+                self._tool_scopes,
+                self._subagent_middlewares,
+                self._builtin_tool_overrides,
                 self._task_lifecycle,
                 self._runtime_evidence_hooks,
                 self._system_model_observers,
@@ -204,6 +240,9 @@ class ExtensionRegistry(ExtensionRegistryContract):
             app_store=ExtensionData("app"),
             middleware_contributors=tuple(self._middlewares),
             tool_contributors=tuple(self._tools),
+            tool_scopes=tuple(self._tool_scopes),
+            subagent_middlewares=tuple(self._subagent_middlewares),
+            builtin_tool_overrides=tuple(self._builtin_tool_overrides),
             task_lifecycle=tuple(self._task_lifecycle),
             runtime_evidence_hooks=tuple(self._runtime_evidence_hooks),
             system_model_observers=tuple(self._system_model_observers),

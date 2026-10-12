@@ -724,6 +724,55 @@ class TestCreateAgent:
         # (app/agentplatform/workflows/v2/executor_bridge.py, covered by
         # tests/unit/workflows/test_v2_agent_adapter.py).
 
+    def test_registry_seam_appends_pending_middlewares_after_upstream_chain(self, classes, base_config, monkeypatch):
+        """02-M6 (#64): the executor assembly consults the subagent-middleware
+        seam (registry contract); a registered provider's pending middlewares
+        append after the upstream chain, and without a provider — or with an
+        empty pending set — the chain is assembled untouched."""
+        SubagentExecutor = classes["SubagentExecutor"]
+        from deerflow.extensions import (
+            reset_default_extension_seams,
+            set_default_subagent_middlewares,
+        )
+        from deerflow.subagents import executor as executor_mod
+
+        captured = {}
+        monkeypatch.setattr(executor_mod, "create_chat_model", lambda **kw: SimpleNamespace(name=kw["name"]))
+        monkeypatch.setattr(executor_mod, "create_agent", lambda **kw: captured.update(middleware=kw["middleware"]))
+        middleware_module = sys.modules["deerflow.agents.middlewares.tool_error_handling_middleware"]
+
+        class _BridgeSource:
+            def __init__(self, pending):
+                self.pending = pending
+
+            def pending_middlewares(self):
+                return self.pending
+
+        reset_default_extension_seams()
+        monkeypatch.setattr(middleware_module, "build_subagent_runtime_middlewares", lambda **kw: [])
+        executor = SubagentExecutor(config=base_config, tools=[], app_config=SimpleNamespace(models=[SimpleNamespace(name="m")]))
+
+        # No provider registered → upstream chain untouched.
+        executor._create_agent()
+        assert captured["middleware"] == []
+
+        # Provider with an empty pending set → still untouched.
+        reset_default_extension_seams()
+        set_default_subagent_middlewares(_BridgeSource([]), owner="test:seam")
+        executor._create_agent()
+        assert captured["middleware"] == []
+
+        # Provider with pending workflow middlewares → appended after upstream.
+        upstream, pending_one, pending_two = object(), object(), object()
+        monkeypatch.setattr(middleware_module, "build_subagent_runtime_middlewares", lambda **kw: [upstream])
+        reset_default_extension_seams()
+        set_default_subagent_middlewares(_BridgeSource([pending_one, pending_two]), owner="test:seam")
+        try:
+            executor._create_agent()
+        finally:
+            reset_default_extension_seams()
+        assert captured["middleware"] == [upstream, pending_one, pending_two]
+
 
 # =========================================================================
 # _load_skills

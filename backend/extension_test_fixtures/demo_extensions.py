@@ -73,6 +73,28 @@ def install_evidence_hooks(registry: ExtensionRegistry, config: Mapping[str, Any
     registry.runtime_evidence(_Contributor(f"evidence:{config.get('label', '')}"))
 
 
+def install_host_seam_provider(registry: ExtensionRegistry, config: Mapping[str, Any]) -> None:
+    """Registers one of the single-provider host seams (02-M6).
+
+    ``config["bucket"]`` selects the seam (``tool_scopes``,
+    ``subagent_middlewares`` or ``builtin_tools``). Mounting this entry point
+    twice with the same bucket exercises the duplicate-rejection contract:
+    the second registration must fail loudly instead of silently overriding
+    the first.
+    """
+    bucket = str(config.get("bucket", ""))
+    provider = _Contributor(f"seam:{bucket}:{config.get('label', '')}")
+    INSTALLED.append(f"seam:{bucket}:{config.get('label', '')}")
+    if bucket == "tool_scopes":
+        registry.tool_scopes(provider)
+    elif bucket == "subagent_middlewares":
+        registry.subagent_middlewares(provider)
+    elif bucket == "builtin_tools":
+        registry.builtin_tools(provider)
+    else:  # pragma: no cover - fixture misuse
+        raise ValueError(f"unknown host seam bucket: {bucket!r}")
+
+
 def install_shared_use(registry: ExtensionRegistry, config: Mapping[str, Any]) -> None:
     """Registers a middleware contributor; raises afterward if configured to.
 

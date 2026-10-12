@@ -960,10 +960,18 @@ def _complete_assembly(
 
 def _assemble_lead_agent(config: RunnableConfig, *, app_config: AppConfig, frozen: FrozenAgentInputs | None = None) -> LeadAgentAssembly:
     # Lazy import to avoid circular dependency
+    from deerflow.extensions import resolve_builtin_tool_overrides
     from deerflow.tools import get_available_tools
     from deerflow.tools.builtins import setup_agent, update_agent
     from deerflow.tools.builtins.tool_search import assemble_deferred_tools, build_mcp_routing_middleware, get_mcp_routing_hints_prompt_section
     from deerflow.tools.conversation import CONVERSATION_READER_CONTEXT_KEY
+
+    # Host seam (registry contract): an enterprise composition may canonically
+    # replace a stock builtin (AgentPlatform publishes in-run agent creation
+    # through the resource catalog). Unmanaged names keep the stock tool.
+    builtin_overrides = resolve_builtin_tool_overrides(None)
+    if builtin_overrides is not None:
+        setup_agent = builtin_overrides.resolve_builtin_tool("setup_agent", setup_agent)
 
     cfg = _get_runtime_config(config)
     resolved_app_config = app_config

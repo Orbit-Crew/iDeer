@@ -1005,6 +1005,17 @@ class SubagentExecutor:
         if mcp_routing_middleware is not None:
             middleware_kwargs["mcp_routing_middleware"] = mcp_routing_middleware
         middlewares = build_subagent_runtime_middlewares(**middleware_kwargs)
+        # Host seam (registry contract): an enterprise composition may append
+        # execution-scoped middlewares (e.g. a workflow node's file-access
+        # policy) at agent assembly. No provider registered → the upstream
+        # chain is assembled untouched.
+        from deerflow.extensions import resolve_subagent_middlewares
+
+        middleware_source = resolve_subagent_middlewares(extensions)
+        if middleware_source is not None:
+            pending = list(middleware_source.pending_middlewares() or ())
+            if pending:
+                middlewares = [*middlewares, *pending]
         # Collect every guard middleware that exposes ``consume_stop_reason``
         # (TokenBudgetMiddleware, LoopDetectionMiddleware) so _aexecute can read
         # each after the run and surface whichever cap fired. Duck-typed

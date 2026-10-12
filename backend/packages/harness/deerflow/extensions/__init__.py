@@ -95,6 +95,87 @@ def resolve_runtime_evidence_hooks(extensions: LoadedExtensions | None) -> Any |
     return get_runtime_evidence_hooks()
 
 
+# --- Host seam providers (02-M6 registry contract) ---------------------------
+#
+# Three single-provider seams let the enterprise composition publish behavior
+# that upstream call sites consult (tool-scope adaptation, subagent assembly
+# middlewares, builtin tool overrides). Resolution mirrors
+# ``resolve_runtime_evidence_hooks``: an explicit extensions argument (or the
+# process default loaded set when ``None``) wins when it carries a registered
+# provider; otherwise resolution falls through to the process default
+# registered by the host composition below. The process default exists
+# because these seams are composition-level contracts, not plugin-optional
+# contributions: a host that installs the enterprise layer at gateway
+# composition must keep the seams active even when no plugin spec is loaded
+# (``load_extensions`` never runs there).
+
+
+def _resolve_single_seam(extensions: LoadedExtensions | None, bucket: str, default: Any) -> Any | None:
+    if extensions is None:
+        extensions = get_loaded_extensions()
+    entries = getattr(extensions, bucket)
+    if entries:
+        return entries[-1][1]
+    return default
+
+
+def resolve_tool_scopes(extensions: LoadedExtensions | None) -> Any | None:
+    """Return the host's tool-scope adapter, or ``None`` for stock behavior."""
+    return _resolve_single_seam(extensions, "tool_scopes", _default_tool_scopes[0])
+
+
+def resolve_subagent_middlewares(extensions: LoadedExtensions | None) -> Any | None:
+    """Return the host's subagent middleware source, or ``None``."""
+    return _resolve_single_seam(extensions, "subagent_middlewares", _default_subagent_middlewares[0])
+
+
+def resolve_builtin_tool_overrides(extensions: LoadedExtensions | None) -> Any | None:
+    """Return the host's builtin tool overrides, or ``None``."""
+    return _resolve_single_seam(extensions, "builtin_tool_overrides", _default_builtin_tool_overrides[0])
+
+
+def _register_default_seam(bucket: list[Any], label: str, owner: str, provider: Any) -> None:
+    """Install a process-default seam provider (single registration).
+
+    Same single-provider semantics as the registry bucket: a second, different
+    provider is refused with both owners named. Re-registering the identical
+    object is a no-op so module re-imports (test reloads) stay harmless.
+    """
+    current = bucket[0]
+    if current is provider:
+        return
+    if current is not None:
+        raise ValueError(f"{label} are a single-provider registration: '{bucket[1]}' already registered them, refusing the registration from '{owner}'")
+    bucket[:] = (provider, owner)
+
+
+def set_default_tool_scopes(adapter: Any, *, owner: str = "host:tool_scopes") -> None:
+    """Register the process-default tool-scope adapter (gateway composition)."""
+    _register_default_seam(_default_tool_scopes, "tool scopes", owner, adapter)
+
+
+def set_default_subagent_middlewares(source: Any, *, owner: str = "host:subagent_middlewares") -> None:
+    """Register the process-default subagent middleware source."""
+    _register_default_seam(_default_subagent_middlewares, "subagent middlewares", owner, source)
+
+
+def set_default_builtin_tool_overrides(overrides: Any, *, owner: str = "host:builtin_tools") -> None:
+    """Register the process-default builtin tool overrides."""
+    _register_default_seam(_default_builtin_tool_overrides, "builtin tool overrides", owner, overrides)
+
+
+def reset_default_extension_seams() -> None:
+    """Clear the process-default seam providers. Test hygiene only."""
+    _default_tool_scopes[:] = (None, None)
+    _default_subagent_middlewares[:] = (None, None)
+    _default_builtin_tool_overrides[:] = (None, None)
+
+
+_default_tool_scopes: list[Any] = [None, None]
+_default_subagent_middlewares: list[Any] = [None, None]
+_default_builtin_tool_overrides: list[Any] = [None, None]
+
+
 def set_loaded_extensions(loaded: LoadedExtensions) -> None:
     global _loaded
     _loaded = loaded
@@ -171,9 +252,16 @@ __all__ = [
     "load_extensions",
     "record_runtime_diagnostic",
     "record_runtime_diagnostics",
+    "reset_default_extension_seams",
     "reset_loaded_extensions",
     "reset_runtime_diagnostics",
+    "resolve_builtin_tool_overrides",
     "resolve_run_extensions",
     "resolve_runtime_evidence_hooks",
+    "resolve_subagent_middlewares",
+    "resolve_tool_scopes",
+    "set_default_builtin_tool_overrides",
+    "set_default_subagent_middlewares",
+    "set_default_tool_scopes",
     "set_loaded_extensions",
 ]

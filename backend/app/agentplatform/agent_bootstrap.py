@@ -4,15 +4,26 @@ AgentPlatform is canonical-only: a custom agent created by the lead agent
 during a run must become a Resource-catalog row (plus its published filesystem
 draft) owned by the authenticated user. DeerFlow's stock ``setup_agent`` builtin
 only knows the legacy per-user agent store, so this module restores the
-canonical publication by wrapping that tool at gateway composition time.
+canonical publication and offers it to the host through the builtin-tool
+override seam.
 
-The wrap is installed once (``install()``) and replaces the module attributes
-``deerflow.tools.builtins.setup_agent`` / ``...setup_agent_tool.setup_agent``;
-the lead-agent assembly imports the tool lazily on every graph build, so every
-subsequent build picks up the wrapped tool. The DeerFlow package itself is not
-modified. The wrapper resolves ``get_paths`` and ``get_session_factory``
-through the tool module namespace at call time, which keeps the contract-test
-patch seams on that module load-bearing.
+Two tracks publish the tool during the expand/contract transition (ticket
+#64, 02-M6), selected by ``IDEER_BUILTIN_TOOL_SEAM``:
+
+* ``registry`` (the contract track): ``install()`` registers a
+  ``BuiltinToolOverrides`` provider through the harness extension seam
+  (``deerflow.extensions.set_default_builtin_tool_overrides``); the lead-agent
+  assembly resolves the override at its builtin import site and no upstream
+  module attribute is ever rewritten.
+* ``legacy`` (default during expand): ``install()`` replaces the module
+  attributes ``deerflow.tools.builtins.setup_agent`` /
+  ``...setup_agent_tool.setup_agent``; the lead-agent assembly imports the
+  tool lazily on every graph build, so every subsequent build picks up the
+  wrapped tool.
+
+The wrapper resolves ``get_paths`` through the tool module namespace at call
+time and ``get_session_factory`` through this module's namespace, keeping the
+contract-test patch seams load-bearing.
 """
 
 from __future__ import annotations
@@ -20,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +41,7 @@ from langgraph.types import Command
 from sqlalchemy import select
 
 from deerflow.config.agents_config import SOUL_FILENAME, validate_agent_name
+from deerflow.persistence.engine import get_session_factory
 from deerflow.runtime.user_context import resolve_runtime_user_id
 from deerflow.tools.types import Runtime
 
@@ -38,6 +51,11 @@ _TOOL_MODULE_NAME = "deerflow.tools.builtins.setup_agent_tool"
 _BUILTINS_MODULE_NAME = "deerflow.tools.builtins"
 
 _installed = False
+
+
+def _seam_track() -> str:
+    track = os.environ.get("IDEER_BUILTIN_TOOL_SEAM", "legacy").strip().lower()
+    return "registry" if track == "registry" else "legacy"
 
 
 def _write_user_agent_files(*, user_id: str, agent_name: str, description: str, soul: str, skills: list[str] | None = None) -> None:
@@ -92,7 +110,7 @@ def _create_canonical_agent(
     from app.agentplatform.resources.actors import actor_from_user
 
     tool_module = importlib.import_module(_TOOL_MODULE_NAME)
-    session_factory = tool_module.get_session_factory()
+    session_factory = get_session_factory()
     if session_factory is None:
         # Standalone tool graphs (and first boot before persistence startup)
         # still need a durable, user-scoped file result.
@@ -227,17 +245,41 @@ def setup_agent(
         return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=runtime.tool_call_id)]})
 
 
-def install() -> None:
-    """Replace DeerFlow's stock ``setup_agent`` with the canonical wrapper.
+class CanonicalBuiltinToolOverrides:
+    """Builtin tool override provider for the registry track.
 
-    Idempotent. Also exposes ``get_session_factory`` on the tool module so the
-    catalog seam has a single, patchable home (the wrapper reads it lazily).
+    Publishes the canonical ``setup_agent`` under its stock builtin name;
+    every other builtin keeps the host default.
+    """
+
+    def resolve_builtin_tool(self, name: str, default: Any) -> Any:
+        if name == "setup_agent":
+            return setup_agent
+        return default
+
+
+def install() -> None:
+    """Publish the canonical ``setup_agent`` to the host.
+
+    Idempotent. The active track (``IDEER_BUILTIN_TOOL_SEAM``, default
+    ``legacy`` during the expand/contract transition) decides how:
+    ``registry`` registers a ``BuiltinToolOverrides`` provider through the
+    harness extension seam — upstream module attributes stay stock;
+    ``legacy`` replaces the two upstream module attributes and attaches
+    ``get_session_factory`` to the tool module so the legacy wrapper's
+    catalog seam has a single, patchable home (read lazily).
     """
     global _installed
     if _installed:
         return
 
-    from deerflow.persistence.engine import get_session_factory
+    if _seam_track() == "registry":
+        from deerflow.extensions import set_default_builtin_tool_overrides
+
+        set_default_builtin_tool_overrides(CanonicalBuiltinToolOverrides(), owner="agentplatform:agent_bootstrap")
+        _installed = True
+        logger.debug("agent_bootstrap: canonical setup_agent registered via builtin tool seam")
+        return
 
     tool_module = importlib.import_module(_TOOL_MODULE_NAME)
     if not hasattr(tool_module, "get_session_factory"):

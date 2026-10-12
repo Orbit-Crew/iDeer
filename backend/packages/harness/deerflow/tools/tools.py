@@ -219,4 +219,12 @@ def get_available_tools(
                 "Duplicate tool name %r detected and skipped — check your config.yaml and MCP server registrations (issue #1803).",
                 t.name,
             )
+    # Host seam (registry contract): an enterprise composition may adapt the
+    # assembled list to the caller's authorized tool scope. No provider
+    # registered → the assembled list is returned untouched.
+    from deerflow.extensions import resolve_tool_scopes
+
+    scope_adapter = resolve_tool_scopes(None)
+    if scope_adapter is not None:
+        unique_tools = list(scope_adapter.apply_tool_scopes(unique_tools, subagent_enabled=subagent_enabled))
     return unique_tools

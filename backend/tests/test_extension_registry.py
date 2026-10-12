@@ -207,3 +207,59 @@ def test_app_store_is_created_at_build_time():
     loaded = ExtensionRegistry().build()
     assert loaded.app_store is not None
     assert loaded.app_store.scope_id == "app"
+
+
+# --- Host seam buckets (02-M6, ticket #64) -----------------------------------
+
+
+def test_host_seam_buckets_are_single_provider_registrations():
+    """Tool scopes, subagent middlewares and builtin tool overrides each
+    resolve exactly one provider per call site; a second registration from
+    another source must fail at the registration seam (mirroring runtime
+    evidence hooks) instead of being silently last-wins at resolve time."""
+    cases = [
+        ("tool_scopes", lambda registry, provider: registry.tool_scopes(provider), "tool_scopes"),
+        ("subagent_middlewares", lambda registry, provider: registry.subagent_middlewares(provider), "subagent_middlewares"),
+        ("builtin_tools", lambda registry, provider: registry.builtin_tools(provider), "builtin_tool_overrides"),
+    ]
+    for label, register, field in cases:
+        registry = ExtensionRegistry()
+        first, second = _Contributor(f"first-{label}"), _Contributor(f"second-{label}")
+        with registry.attributed_to("a_ext:install"):
+            register(registry, first)
+        with pytest.raises(ValueError, match="single-provider"):
+            with registry.attributed_to("b_ext:install"):
+                register(registry, second)
+
+        loaded = registry.build()
+        assert getattr(loaded, field) == (("a_ext:install", first),), label
+
+
+def test_one_install_cannot_register_a_host_seam_twice():
+    registry = ExtensionRegistry()
+    first, second = _Contributor("first-scopes"), _Contributor("second-scopes")
+    with pytest.raises(ValueError, match="single-provider"):
+        with registry.attributed_to("a_ext:install"):
+            registry.tool_scopes(first)
+            registry.tool_scopes(second)
+
+    assert registry.build().tool_scopes == (("a_ext:install", first),)
+
+
+def test_host_seam_registrations_roll_back_positionally():
+    registry = ExtensionRegistry()
+    with registry.attributed_to("keep:install"):
+        registry.middlewares(_Contributor("keep"))
+    mark = registry.mark()
+    with registry.attributed_to("drop:install"):
+        registry.tool_scopes(_Contributor("drop-scopes"))
+        registry.subagent_middlewares(_Contributor("drop-middlewares"))
+        registry.builtin_tools(_Contributor("drop-overrides"))
+
+    registry.rollback_to(mark)
+    loaded = registry.build()
+
+    assert [contributor.tag for _, contributor in loaded.middleware_contributors] == ["keep"]
+    assert loaded.tool_scopes == ()
+    assert loaded.subagent_middlewares == ()
+    assert loaded.builtin_tool_overrides == ()
