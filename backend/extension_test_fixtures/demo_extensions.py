@@ -62,6 +62,17 @@ def install_disabled(registry: ExtensionRegistry, config: Mapping[str, Any]) -> 
     registry.middlewares(_Contributor("enabled"))
 
 
+def install_evidence_hooks(registry: ExtensionRegistry, config: Mapping[str, Any]) -> None:
+    """Registers a runtime-evidence provider.
+
+    Runtime evidence hooks are a single-provider registration, so mounting this
+    entry point twice exercises the duplicate-rejection seam: the second
+    registration must fail loudly instead of silently overriding the first.
+    """
+    INSTALLED.append(f"evidence:{config.get('label', '')}")
+    registry.runtime_evidence(_Contributor(f"evidence:{config.get('label', '')}"))
+
+
 def install_shared_use(registry: ExtensionRegistry, config: Mapping[str, Any]) -> None:
     """Registers a middleware contributor; raises afterward if configured to.
 

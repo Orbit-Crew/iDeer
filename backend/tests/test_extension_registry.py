@@ -141,6 +141,32 @@ def test_registration_order_is_preserved():
     assert [source for source, _ in loaded.middleware_contributors] == ["a_ext:install", "b_ext:install"]
 
 
+def test_runtime_evidence_hooks_are_a_single_provider_registration():
+    """Consumers resolve one evidence-hook provider per loaded set; unlike the
+    additive buckets, a second registration from another source must fail at
+    the registration seam instead of being silently last-wins at resolve time."""
+    registry = ExtensionRegistry()
+    first, second = _Contributor("first-hooks"), _Contributor("second-hooks")
+    with registry.attributed_to("a_ext:install"):
+        registry.runtime_evidence(first)
+    with pytest.raises(ValueError, match="single-provider"):
+        with registry.attributed_to("b_ext:install"):
+            registry.runtime_evidence(second)
+
+    assert registry.build().runtime_evidence_hooks == (("a_ext:install", first),)
+
+
+def test_one_install_cannot_register_runtime_evidence_hooks_twice():
+    registry = ExtensionRegistry()
+    first, second = _Contributor("first-hooks"), _Contributor("second-hooks")
+    with pytest.raises(ValueError, match="single-provider"):
+        with registry.attributed_to("a_ext:install"):
+            registry.runtime_evidence(first)
+            registry.runtime_evidence(second)
+
+    assert registry.build().runtime_evidence_hooks == (("a_ext:install", first),)
+
+
 def test_discard_removes_every_entry_of_one_source():
     """A partially-registered extension is worse than an absent one: the data
     it produces looks complete but is not."""

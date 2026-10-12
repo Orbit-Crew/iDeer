@@ -24,6 +24,7 @@
 | 2026-10-11 | 批次1治理票 49（04-M7 台账补登记） | 登记对照命令前缀之外的 harness 差异：`backend/packages/harness/pyproject.toml`（2026-10-01 巡检行移交的待登记项，`python-docx` 条款）补登记为 PATCH-036（合并 develop 时因 fault-zeroing 登记 issue #22 撞号，重编为 PATCH-037，内容不变），覆盖该文件全部本地差异（`python-docx>=1.1.2`，引入提交 `7ae6b5907`；`pymupdf4llm>=0.0.17,<2`，引入提交 `44498da80`）。该文件在对照命令 `-- backend/packages/harness/deerflow` 前缀之外，与结构化注册表 `paths` 同 scope，不进注册表、不占 66 文件预算；`python3 scripts/check_upstream_patches.py --base HEAD --upstream-baseline 345f08be0` 复测 pass。同票核对 04-M7 指认的内置工具消息文案一行变更归属：即 `update_agent_tool.py` 迁移脚本路径文案修正，2026-10-11 结构化注册表落地行已登记为 PATCH-034（原因/修改/测试/Owner/移除条件齐全，注册表携 current 验证证据），无重复登记。 |
 | 2026-10-11 | 批次4整改票 59（07-H1 上游 PR 候选登记） | 本地修复 `frontend/src/app/api/memory/[...path]/route.ts` catch-all 代理的路径穿越（07-H1：Next 动态段解码后拼回 pathname，`new URL` 归一化 `..`/`%2e%2e` 使 `/api/memory` 前缀失效，`GET /api/memory/..%2F..%2Fv1%2Fadmin` 可达网关任意路径）。上游 `v2.1.0`（`345f08be0`）内同名文件同病（仅 `BACKEND_BASE_URL` 环境变量回退链不同），整理为上游 PR 候选与 P003/P011/P014/P032 并列进下轮收敛 reassess：目标仓库 `bytedance/deer-flow`，diff 草稿与 PR 正文见 `docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md`（段白名单 + 重编码拼接 + 构造后 `pathname.startsWith("/api/memory/")` 断言，拒绝返回 404）。该文件属前端面（非 `backend/packages/harness/` 差异），不进结构化注册表、不占 66 文件预算；本地验证：`tests/unit/app/api/memory/[...path]/route.test.ts` 新增 6 条穿越用例先红（6/6 失败）后绿，`tests/unit/app/api/memory/route.test.ts` 与登录面共享 `next-path` 校验收敛用例全绿。 |
 | 2026-10-11 | 批次4整改票 61（03 渠道族上游 PR 候选登记） | 本地修复渠道生命周期与循环亲和五件（03-H1/H2/M3/M4/M6+M5）：Telegram/DingTalk 轮询线程死亡后清 `_running` 并覆写 `is_running` 检查线程存活（与既有 Feishu/Discord 覆写对齐）；飞书 stop() 断开 lark WS（`_disconnect` 有界提交 + 停 SDK 循环阻断无限自动重连）并置 `_stopped` 屏蔽旧实例事件；Slack connect Future 保存 + done callback 清 `_running`；Discord 身份附加并入 `_publish_reserved` 以 attach+commit 协程提交网关主循环（对齐 Slack `_publish_inbound_with_connection`）、`/connect` 绑定比照 Telegram 提交主循环；manager 默认 inbound 文件 reader 收敛为白名单式（无注册 reader 的渠道丢弃 URL 附件并告警）。上游 `v2.1.0`（`345f08be0`）内 `slack.py:145`/`feishu.py stop`/`telegram.py`/`dingtalk.py`/`discord.py:578`/`manager.py:1107` 同病，整理为上游 PR 候选进下轮收敛 reassess：目标仓库 `bytedance/deer-flow`，三模式 diff 草稿与验证证据见 `docs/upgrades/upstream-pr-candidates/channel-lifecycle-loop-affinity.md`。适配器与 manager 属 `backend/app/` 控制面（非 harness 差异），不进结构化注册表、不占 66 文件预算；本地验证：`tests/unit/channels/test_channel_lifecycle_contracts.py` 新增 10 条合同测试先红（8/8 目标用例失败）后绿，`backend/tests/unit/channels/` 1480 passed 全绿，邻接面（root tests/test_channels.py 等 6 文件）全绿。 |
+| 2026-10-13 | 批次5整改票 63（04-M5 registry 重复注册语义 + 上游 PR 候选登记） | 补登记 PATCH-038：`extensions/registry.py` 的 `runtime_evidence()` 由无条件 append（重复注册静默 `[-1][1]` 取最后一个、前者被覆盖且无诊断，04-M5）改为单 provider 拒绝重复——桶内已有注册即抛 `ValueError` 并命名既有/被拒 source，经 loader 既有失败路径变为回滚 + error diagnostic + `required` 启动中止；`extensions/__init__.py` 的 `resolve_runtime_evidence_hooks` 行为不变，docstring 由 "the latest" 收敛为单 provider 语义。两文件与 PATCH-024 注册行共享，按 PATCH-004/023 共享文件先例在结构化注册表并列登记（重叠 ownership，不新增差异文件、不占 66 文件预算），PATCH-024 的 current_verification 同步复验刷新（35 passed）。上游比对结论与票面预判相反：`git show deerflow/main`（`81fa17c15ab`）与 `345f08be0`（v2.1.0）内 `extensions/__init__.py`/`registry.py` 均无 `resolve_runtime_evidence_hooks`/`runtime_evidence`——runtime evidence 注册缝为 fork 本地新增（`ef2ed33dd`，PATCH-024 面），上游今日无同病可提；上游 PR 候选按"候选登记+diff 草稿"收口（与 #59/#61 同口径，实际提交由用户决定），语义为：若该注册缝随 PATCH-005 移除条件（runtime 暴露 receipt/evidence contribution callbacks）等路径上提上游，单 provider 确定性语义须随提案原生携带，草稿见 `docs/upgrades/upstream-pr-candidates/registry-duplicate-evidence-hooks.md`，并列进下轮收敛 reassess。本地验证：新增 4 条合同测试（registry 跨源/同源拒绝、loader 双 spec 显式失败/required 中止）先红（4 failed）后绿，三文件合计 75 passed；治理门 `check_upstream_patches.py --base f0a33e741 --upstream-baseline 345f08be0` pass。 |
 
 ### 2026-09-08 巡检逐项结论（2026-10-01 自历史档案迁入，内容保持原文）
 
@@ -505,6 +506,44 @@
 - **编号说明**: 原登记为 PATCH-036（2026-10-11 票 49），与 develop 侧 fault-zeroing
   登记（issue #22）撞号，合并时让位重编为 PATCH-037；内容不变。
 
+### PATCH-038: extension registry runtime evidence hooks 重复注册确定性拒绝
+
+- **文件**: `backend/packages/harness/deerflow/extensions/registry.py`
+  （`ExtensionRegistry.runtime_evidence`）、
+  `backend/packages/harness/deerflow/extensions/__init__.py`
+  （`resolve_runtime_evidence_hooks` docstring 单 provider 语义澄清）。两文件与
+  PATCH-024 注册行共享，结构化注册表按 PATCH-004/023 共享文件先例并列登记
+  （重叠 ownership，不新增差异文件、不占 66 文件预算）。
+- **修改**: `runtime_evidence()` 由无条件 append 改为单 provider 拒绝重复：桶内
+  已有注册时抛 `ValueError`，错误消息命名既有注册 source 与被拒 source；异常经
+  install() 传播，由 loader 既有失败路径处置（位置回滚 + error diagnostic，
+  `required: true` 时 `ExtensionLoadError` 启动中止）。`resolve_runtime_evidence_hooks`
+  解析行为不变（注册面保证 loaded 集至多一个 provider，`[-1][1]` 即唯一项），
+  仅 docstring 由 "the latest" 收敛为单 provider 语义。
+- **原因**: 此前重复注册静默按 `extensions.runtime_evidence_hooks[-1][1]` 取最后
+  一个，前者被覆盖且无诊断（发现 04-M5，票 #63）；registry 其它桶为叠加语义，但
+  runtime evidence 的全部消费方（`task_tool`、subagents executor、run worker、
+  tool_receipt middleware）把解析结果当单一 hooks 对象使用，静默覆盖即缺陷本体，
+  该桶只能单 provider。拒绝放在注册缝而非解析缝：错误在扩展装载期归属到具体
+  source，复用 loader 全部既有失败机制，零新增运行时路径。唯一在树内注册方
+  `agentplatform_extension.install` 的两个 `runtime_evidence(...)` 调用分支互斥，
+  单次 install 至多注册一次；全库无其它注册点，合法场景不受影响。
+- **影响**: 无扩展或恰好一个 provider 时行为不变（PATCH-024 验证命令复验
+  35 passed）；第二次注册（同源或异源）显式失败；无扩展时
+  `resolve_runtime_evidence_hooks` 仍回退进程全局默认（`get_runtime_evidence_hooks`）。
+- **测试**: `backend/tests/test_extension_registry.py`
+  （跨源拒绝、同源二次拒绝、首个注册存活）、`backend/tests/test_extension_loader.py`
+  （双 spec 挂载第二个显式失败并回滚、error diagnostic 指认、
+  `resolve_runtime_evidence_hooks` 返回首个 provider、required 中止启动）、
+  `extension_test_fixtures/demo_extensions.py`（`install_evidence_hooks` fixture）。
+  先红（4 条新用例全失败）后绿；三测试文件合计 75 passed。
+- **Owner**: runtime evidence maintainers
+- **移除条件**: 上游 harness registry 提供 runtime evidence 注册缝并内建等价的
+  重复注册确定性语义（或吸收本补丁）并被本仓库采纳后，随 PATCH-024 一体评估
+  移除；上游 applicability 核对比结论见
+  `docs/upgrades/upstream-pr-candidates/registry-duplicate-evidence-hooks.md`
+  （上游 `deerflow/main` 与 v2.1.0 均无该注册缝，候选为条件性 rider）。
+
 ## Enforcement
 
 每次收敛提交前重跑对照命令并更新本台账；存在未登记差异即门禁失败。
@@ -560,7 +599,7 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
     {"id": "PATCH-021", "paths": ["backend/packages/harness/deerflow/community/aio_sandbox/aio_sandbox_provider.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-022", "paths": ["backend/packages/harness/deerflow/community/ragflow/tools.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-023", "paths": ["backend/packages/harness/deerflow/config/app_config.py"], "verification_status": "historical", "lifecycle_status": "open"},
-    {"id": "PATCH-024", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && PYTHONPATH=.:tests uv run pytest tests/test_run_worker_delivery.py::test_retrieval_evidence_is_persisted_with_terminal_run tests/unit/knowledge/test_retrieval_receipts.py tests/test_agentplatform_extension_boundary.py -q", "result": "35 passed (re-verified after issue #55 single-track hook registration touched extensions/__init__.py)"}},
+    {"id": "PATCH-024", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/test_run_worker_delivery.py::test_retrieval_evidence_is_persisted_with_terminal_run tests/unit/knowledge/test_retrieval_receipts.py tests/test_agentplatform_extension_boundary.py -q", "result": "35 passed (re-verified after issue #63 deterministic duplicate runtime-evidence-hook registration touched extensions/registry.py and extensions/__init__.py)"}},
     {"id": "PATCH-025", "paths": ["backend/packages/harness/deerflow/models/openai_codex_provider.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-026", "paths": ["backend/packages/harness/deerflow/runtime/journal.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-027", "paths": ["backend/packages/harness/deerflow/runtime/runs/worker.py", "backend/packages/harness/deerflow/runtime/runs/manager.py"], "verification_status": "historical", "lifecycle_status": "open"},
@@ -571,7 +610,8 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
     {"id": "PATCH-032", "paths": ["backend/packages/harness/deerflow/utils/readability.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-033", "paths": ["backend/packages/harness/deerflow/extensions/ordering.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && PYTHONPATH=.:tests uv run pytest tests/test_extension_ordering.py -q", "result": "12 passed"}},
     {"id": "PATCH-034", "paths": ["backend/packages/harness/deerflow/tools/builtins/update_agent_tool.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && PYTHONPATH=.:tests uv run pytest tests/test_update_agent_tool.py -q", "result": "27 passed"}},
-    {"id": "PATCH-035", "paths": ["backend/packages/harness/deerflow/CLAUDE.md", "backend/packages/harness/deerflow/agents/CLAUDE.md", "backend/packages/harness/deerflow/agents/memory/CLAUDE.md", "backend/packages/harness/deerflow/agents/middlewares/CLAUDE.md", "backend/packages/harness/deerflow/community/tavily/CLAUDE.md", "backend/packages/harness/deerflow/config/CLAUDE.md", "backend/packages/harness/deerflow/extensions/CLAUDE.md", "backend/packages/harness/deerflow/mcp/CLAUDE.md", "backend/packages/harness/deerflow/models/CLAUDE.md", "backend/packages/harness/deerflow/persistence/migrations/CLAUDE.md", "backend/packages/harness/deerflow/persistence/user/CLAUDE.md", "backend/packages/harness/deerflow/reflection/CLAUDE.md", "backend/packages/harness/deerflow/runtime/CLAUDE.md", "backend/packages/harness/deerflow/sandbox/CLAUDE.md", "backend/packages/harness/deerflow/skills/CLAUDE.md", "backend/packages/harness/deerflow/subagents/CLAUDE.md", "backend/packages/harness/deerflow/tools/CLAUDE.md", "backend/packages/harness/deerflow/tracing/CLAUDE.md", "backend/packages/harness/deerflow/tui/CLAUDE.md", "backend/packages/harness/deerflow/utils/CLAUDE.md"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "python3 scripts/sync_agent_guidance.py --check", "result": "mirror consistency check passed (28 pairs)"}}
+    {"id": "PATCH-035", "paths": ["backend/packages/harness/deerflow/CLAUDE.md", "backend/packages/harness/deerflow/agents/CLAUDE.md", "backend/packages/harness/deerflow/agents/memory/CLAUDE.md", "backend/packages/harness/deerflow/agents/middlewares/CLAUDE.md", "backend/packages/harness/deerflow/community/tavily/CLAUDE.md", "backend/packages/harness/deerflow/config/CLAUDE.md", "backend/packages/harness/deerflow/extensions/CLAUDE.md", "backend/packages/harness/deerflow/mcp/CLAUDE.md", "backend/packages/harness/deerflow/models/CLAUDE.md", "backend/packages/harness/deerflow/persistence/migrations/CLAUDE.md", "backend/packages/harness/deerflow/persistence/user/CLAUDE.md", "backend/packages/harness/deerflow/reflection/CLAUDE.md", "backend/packages/harness/deerflow/runtime/CLAUDE.md", "backend/packages/harness/deerflow/sandbox/CLAUDE.md", "backend/packages/harness/deerflow/skills/CLAUDE.md", "backend/packages/harness/deerflow/subagents/CLAUDE.md", "backend/packages/harness/deerflow/tools/CLAUDE.md", "backend/packages/harness/deerflow/tracing/CLAUDE.md", "backend/packages/harness/deerflow/tui/CLAUDE.md", "backend/packages/harness/deerflow/utils/CLAUDE.md"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "python3 scripts/sync_agent_guidance.py --check", "result": "mirror consistency check passed (28 pairs)"}},
+    {"id": "PATCH-038", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/test_extension_registry.py tests/test_extension_loader.py tests/test_agentplatform_extension_boundary.py -q", "result": "75 passed (new duplicate-registration contract tests red 4/4 before the fix, green after; PATCH-024 lane re-verified 35 passed)"}}
   ]
 }
 ```

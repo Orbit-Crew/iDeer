@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from deerflow.extensions import resolve_runtime_evidence_hooks
 from deerflow.extensions.loader import (
     Diagnostic,
     ExtensionLoadError,
@@ -140,6 +141,35 @@ def test_required_extension_failure_aborts_startup():
     spec = ExtensionSpec(use=f"{_FIXTURE}:install_partial_then_raise", required=True)
     with pytest.raises(ExtensionLoadError):
         load_extensions([spec])
+
+
+def test_second_runtime_evidence_provider_fails_explicitly_instead_of_overriding():
+    """Runtime evidence hooks are a single-provider registration: mounting the
+    provider twice must fail the second install loudly (rollback + error
+    diagnostic) rather than silently take the last registrant at resolve time."""
+    specs = [
+        ExtensionSpec(use=f"{_FIXTURE}:install_evidence_hooks", config={"label": "first"}),
+        ExtensionSpec(use=f"{_FIXTURE}:install_evidence_hooks", config={"label": "second"}),
+    ]
+    loaded, diagnostics = load_extensions(specs)
+
+    assert [diagnostic.level for diagnostic in diagnostics] == ["error"]
+    assert diagnostics[0].source == f"{_FIXTURE}:install_evidence_hooks"
+    assert "single-provider" in diagnostics[0].message
+    assert len(loaded.runtime_evidence_hooks) == 1, "the refused registration must not override the loaded provider"
+    source, hooks = loaded.runtime_evidence_hooks[0]
+    assert source == f"{_FIXTURE}:install_evidence_hooks"
+    assert hooks.tag == "evidence:first"
+    assert resolve_runtime_evidence_hooks(loaded) is hooks
+
+
+def test_a_required_duplicate_runtime_evidence_provider_aborts_startup():
+    specs = [
+        ExtensionSpec(use=f"{_FIXTURE}:install_evidence_hooks", config={"label": "first"}),
+        ExtensionSpec(use=f"{_FIXTURE}:install_evidence_hooks", config={"label": "second"}, required=True),
+    ]
+    with pytest.raises(ExtensionLoadError):
+        load_extensions(specs)
 
 
 def test_required_unresolvable_extension_aborts_startup():

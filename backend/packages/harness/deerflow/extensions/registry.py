@@ -110,7 +110,14 @@ class ExtensionRegistry(ExtensionRegistryContract):
         self._task_lifecycle.append((self._source(), contributor))
 
     def runtime_evidence(self, hooks: RuntimeEvidenceHooks) -> None:
-        self._runtime_evidence_hooks.append((self._source(), hooks))
+        source = self._source()
+        if self._runtime_evidence_hooks:
+            # Single-provider seam, unlike the additive buckets above: every
+            # consumer resolves one hooks object, so a second registration
+            # must fail here — with the existing owner named — instead of
+            # being silently last-wins when the snapshot is resolved.
+            raise ValueError(f"runtime evidence hooks are a single-provider registration: '{self._runtime_evidence_hooks[0][0]}' already registered them, refusing the registration from '{source}'")
+        self._runtime_evidence_hooks.append((source, hooks))
 
     def system_model_observer(self, observer: SystemModelCallObserver) -> None:
         self._system_model_observers.append((self._source(), observer))
