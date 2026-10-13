@@ -1,20 +1,14 @@
-"""Expand/contract contract tests for the workflow executor bridge seams (#64, 02-M6).
+"""Contract tests for the workflow executor bridge seams (#64, 02-M6).
 
 The bridge publishes two enterprise contracts — knowledge tool-scope
 adaptation at tool assembly and workflow file-scope middlewares at subagent
-agent assembly:
+agent assembly — as single-provider registrations through the harness
+extension seams (contract batches 1-2 removed both import-time module
+rewrites; upstream modules stay stock).
 
-* tool-scope (contract batch 1, registry-only): single-provider registration
-  through the harness extension seam consulted at the end of
-  ``get_available_tools``; upstream modules stay untouched;
-* subagent middleware (still dual-tracked): ``legacy`` rewrites
-  ``deerflow.subagents.executor.create_agent`` at import; ``registry``
-  registers through the harness extension seam.
-
-These tests pin (a) each seam's install state, (b) the registry track's
-process hygiene, (c) the scoped behavior matrix the seams must uphold, and
-(d) the seam's executor-side middleware contract. The middleware install-state
-probe flips together with the contract batch that removes its rewrite.
+These tests pin (a) the registry-only install state for both seams, (b) the
+scoped behavior matrix the seams must uphold, and (c) the seam's
+executor-side middleware contract.
 """
 
 from __future__ import annotations
@@ -83,36 +77,24 @@ def test_tool_scope_track_is_registry_only_at_import() -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_middleware_legacy_track_default_rewrites_create_agent_at_import() -> None:
-    """Remaining legacy track (middleware seam, until its contract batch):
-    importing the bridge still wraps the executor module's ``create_agent``
-    binding. Flips to the stock-identity assertion in the batch that removes
-    ``_install_scope_aware_create_agent``."""
-    probe = "\n".join(
-        [
-            "import deerflow.subagents.executor as executor_module",
-            "import app.agentplatform.workflows.v2.executor_bridge",
-            "assert getattr(executor_module.create_agent, '_workflow_scope_aware', False), 'create_agent rewrite missing'",
-        ]
-    )
-    result = _run_probe(probe)
-    assert result.returncode == 0, result.stderr
-
-
-def test_middleware_registry_track_leaves_create_agent_unrewritten() -> None:
-    """Registry track for the middleware seam: the same import must leave the
-    executor binding stock and publish the provider through the seam instead."""
+def test_middleware_track_is_registry_only_at_import() -> None:
+    """Contract batch 2 (middleware seam): importing the bridge must leave the
+    executor module's ``create_agent`` binding stock and serve the middleware
+    contract through the harness extension seam instead. Was the expand-phase
+    legacy probe asserting the rewrite was present; flipped with the batch
+    that removed ``_install_scope_aware_create_agent``."""
     probe = "\n".join(
         [
             "import deerflow.subagents.executor as executor_module",
             "from langchain.agents import create_agent as langchain_create_agent",
             "import app.agentplatform.workflows.v2.executor_bridge",
-            "from deerflow.extensions import resolve_subagent_middlewares",
+            "from deerflow.extensions import resolve_subagent_middlewares, resolve_tool_scopes",
             "assert executor_module.create_agent is langchain_create_agent, 'executor binding rewritten'",
             "assert type(resolve_subagent_middlewares(None)).__name__ == 'WorkflowMiddlewareSource', 'middleware provider missing'",
+            "assert type(resolve_tool_scopes(None)).__name__ == 'WorkflowKnowledgeToolScopes', 'tool-scope provider missing'",
         ]
     )
-    result = _run_probe(probe, env={"IDEER_SUBAGENT_MIDDLEWARE_SEAM": "registry"})
+    result = _run_probe(probe)
     assert result.returncode == 0, result.stderr
 
 
@@ -167,10 +149,10 @@ _SCENARIOS = [
 def stock_seam_state(monkeypatch: pytest.MonkeyPatch):
     """Isolate the stock tool assembly from the bridge's registrations.
 
-    Importing the bridge (contract batch 1) registers the process-default
-    tool-scope provider and, on the remaining middleware legacy track, wraps
-    the executor binding. Pin the package binding to the stock implementation
-    and clear any process default providers for the duration of the test.
+    Importing the bridge (contract batches 1-2) registers the process-default
+    tool-scope and middleware providers. Pin the package binding to the stock
+    implementation (belt-and-braces against any test-process rewrite) and
+    clear the process default providers for the duration of the test.
     """
     monkeypatch.setattr(deerflow.tools, "get_available_tools", deerflow.tools.tools.get_available_tools)
     reset_default_extension_seams()
