@@ -25,7 +25,6 @@ fallback would put files into ``default/`` if propagation breaks.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
 from types import SimpleNamespace
@@ -54,13 +53,25 @@ from deerflow.runtime.runs.worker import _build_runtime_context, _install_runtim
 # ---------------------------------------------------------------------------
 
 
-def _make_request(user_id_str: str | None) -> SimpleNamespace:
+def _make_request(
+    user_id_str: str | None,
+    *,
+    system_role: str = "user",
+    oauth_provider: str | None = None,
+    oauth_id: str | None = None,
+) -> SimpleNamespace:
     """Build a fake FastAPI Request that carries an authenticated user."""
     if user_id_str is None:
         user = None
     else:
         # User.id is UUID in production; honour that
-        user = SimpleNamespace(id=UUID(user_id_str), email="alice@local")
+        user = SimpleNamespace(
+            id=UUID(user_id_str),
+            email="alice@local",
+            system_role=system_role,
+            oauth_provider=oauth_provider,
+            oauth_id=oauth_id,
+        )
     return SimpleNamespace(state=SimpleNamespace(user=user))
 
 
@@ -69,45 +80,36 @@ def _assemble_config(
     body_config: dict | None,
     body_context: dict | None,
     request_user_id: str | None,
+    request_user_role: str = "user",
+    request_oauth_provider: str | None = None,
+    request_oauth_id: str | None = None,
     thread_id: str = "thread-e2e",
     assistant_id: str = "lead_agent",
 ) -> dict:
     """Replay the **exact** start_run config-assembly sequence."""
     config = build_run_config(thread_id, body_config, None, assistant_id=assistant_id)
     merge_run_context_overrides(config, body_context)
-    inject_authenticated_user_context(config, _make_request(request_user_id))
+    inject_authenticated_user_context(
+        config,
+        _make_request(
+            request_user_id,
+            system_role=request_user_role,
+            oauth_provider=request_oauth_provider,
+            oauth_id=request_oauth_id,
+        ),
+    )
     return config
 
 
 def _make_paths_mock(tmp_path: Path):
-    """Mirror the production paths.base_dir signature."""
+    """Mirror the production paths.user_agent_dir signature."""
     from unittest.mock import MagicMock
 
     paths = MagicMock()
     paths.base_dir = tmp_path
+    paths.agent_dir = lambda name: tmp_path / "agents" / name
+    paths.user_agent_dir = lambda user_id, name: tmp_path / "users" / user_id / "agents" / name
     return paths
-
-
-@pytest_asyncio.fixture
-async def catalog_db(tmp_path: Path) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
-    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'catalog.db'}")
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    yield async_sessionmaker(engine, expire_on_commit=False)
-    await engine.dispose()
-
-
-async def _seed_user(catalog_db: async_sessionmaker[AsyncSession], user_id: str) -> None:
-    async with catalog_db() as session:
-        session.add(UserModel(id=user_id, username=f"{user_id}@test.com", role=UserRole.USER, disabled=False))
-        await session.commit()
-
-
-async def _assert_agent_owner(catalog_db: async_sessionmaker[AsyncSession], slug: str, expected_owner: str) -> None:
-    async with catalog_db() as session:
-        resource = (await session.execute(select(Resource).where(Resource.type == "agent", Resource.slug == slug))).scalar_one_or_none()
-        assert resource is not None, f"no catalog agent with slug {slug!r}"
-        assert str(resource.owner_id) == expected_owner, f"agent {slug!r} owned by {resource.owner_id!r}, expected {expected_owner!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +141,22 @@ class TestConfigAssembly:
         runtime_ctx = _build_runtime_context("thread-e2e", "run-1", config.get("context"), None)
         assert runtime_ctx["user_id"] == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
+    def test_authenticated_user_context_includes_role_and_oauth_identity(self):
+        """Server-authenticated user attributes should reach runtime.context."""
+        config = _assemble_config(
+            body_config={"recursion_limit": 1000},
+            body_context=None,
+            request_user_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            request_user_role="admin",
+            request_oauth_provider="github",
+            request_oauth_id="gh_123",
+        )
+        runtime_ctx = _build_runtime_context("thread-e2e", "run-1", config.get("context"), None)
+        assert runtime_ctx["user_id"] == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        assert runtime_ctx["user_role"] == "admin"
+        assert runtime_ctx["oauth_provider"] == "github"
+        assert runtime_ctx["oauth_id"] == "gh_123"
+
     def test_body_context_empty_dict_still_injects_user_id(self):
         """body.context={} (falsy) path: inject must still produce user_id."""
         config = _assemble_config(
@@ -159,15 +177,60 @@ class TestConfigAssembly:
         runtime_ctx = _build_runtime_context("thread-e2e", "run-1", config.get("context"), None)
         assert runtime_ctx["user_id"] == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
-    def test_client_supplied_user_id_is_overridden(self):
-        """Spoofed client user_id must be overwritten by inject (auth-trusted source)."""
+    def test_body_context_user_id_is_overridden(self):
+        """``body.context`` may carry a legacy/non-web user_id, but server auth wins.
+
+        This covers the whitelisted ``body.context`` merge path only. Full
+        identity spoofing coverage lives in the ``body.config.context`` test
+        below, because that path copies arbitrary context keys before inject
+        overwrites them.
+        """
         config = _assemble_config(
             body_config={"recursion_limit": 1000},
-            body_context={"agent_name": "myagent", "user_id": "spoofed"},
+            body_context={
+                "agent_name": "myagent",
+                "user_id": "spoofed",
+            },
             request_user_id="11111111-2222-3333-4444-555555555555",
+            request_user_role="user",
         )
         runtime_ctx = _build_runtime_context("thread-e2e", "run-1", config.get("context"), None)
         assert runtime_ctx["user_id"] == "11111111-2222-3333-4444-555555555555"
+        assert runtime_ctx["user_role"] == "user"
+        assert runtime_ctx["oauth_provider"] is None
+        assert runtime_ctx["oauth_id"] is None
+
+    def test_spoofed_context_in_body_config_is_overridden_by_inject(self):
+        """The real spoofing vector is ``body.config.context``: ``build_run_config``
+        copies it wholesale (no whitelist, unlike ``body.context``), so only
+        ``inject_authenticated_user_context``'s unconditional assignment can
+        defeat a client that spoofs ``user_id``/``user_role``/``oauth_*`` there.
+
+        The companion test above covers only ``body.context.user_id``. This
+        test spoofs via ``body.config.context`` so all spoofed values actually
+        reach ``config['context']`` and ``inject``'s overwrite is the only thing
+        standing between them and ``runtime_ctx``.
+        """
+        config = _assemble_config(
+            body_config={
+                "context": {
+                    "user_id": "spoofed-id",
+                    "user_role": "admin",
+                    "oauth_provider": "spoofed-provider",
+                    "oauth_id": "spoofed-subject",
+                },
+            },
+            body_context=None,
+            request_user_id="11111111-2222-3333-4444-555555555555",
+            request_user_role="user",
+            request_oauth_provider="keycloak",
+            request_oauth_id="real-subject",
+        )
+        runtime_ctx = _build_runtime_context("thread-e2e", "run-1", config.get("context"), None)
+        assert runtime_ctx["user_id"] == "11111111-2222-3333-4444-555555555555"
+        assert runtime_ctx["user_role"] == "user"
+        assert runtime_ctx["oauth_provider"] == "keycloak"
+        assert runtime_ctx["oauth_id"] == "real-subject"
 
     def test_unauthenticated_request_does_not_inject(self):
         """If request.state.user is missing (impossible under fail-closed auth, but
@@ -180,6 +243,16 @@ class TestConfigAssembly:
         )
         runtime_ctx = _build_runtime_context("thread-e2e", "run-1", config.get("context"), None)
         assert "user_id" not in runtime_ctx
+
+    def test_client_supplied_user_id_is_overridden(self):
+        """Spoofed client user_id must be overwritten by inject (auth-trusted source)."""
+        config = _assemble_config(
+            body_config={"recursion_limit": 1000},
+            body_context={"agent_name": "myagent", "user_id": "spoofed"},
+            request_user_id="11111111-2222-3333-4444-555555555555",
+        )
+        runtime_ctx = _build_runtime_context("thread-e2e", "run-1", config.get("context"), None)
+        assert runtime_ctx["user_id"] == "11111111-2222-3333-4444-555555555555"
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +269,7 @@ def _build_real_bootstrap_graph(authenticated_user_id: str):
     """
     from langchain.agents import create_agent
 
-    from app.agentplatform.tools.setup_agent_tool import setup_agent
+    from deerflow.tools.builtins.setup_agent_tool import setup_agent
 
     # First model turn: emit a tool_call for setup_agent
     # Second model turn (after tool result): final answer (terminates the loop)
@@ -230,18 +303,17 @@ def _build_real_bootstrap_graph(authenticated_user_id: str):
 
 @pytest.mark.no_auto_user
 @pytest.mark.asyncio
-async def test_real_graph_real_setup_agent_writes_to_authenticated_user_dir(tmp_path: Path, catalog_db: async_sessionmaker[AsyncSession]):
+async def test_real_graph_real_setup_agent_writes_to_authenticated_user_dir(tmp_path: Path):
     """The smoking-gun test for issue #2862.
 
     Under no_auto_user (contextvar = empty), if user_id propagation through
     runtime.context is broken, setup_agent will fall back to DEFAULT_USER_ID
-    and the catalog resource would be owned by the default user. The owner
-    assertion is what makes this test load-bearing.
+    and write to users/default/agents/... The assertion that this directory
+    DOES NOT exist is what makes this test load-bearing.
     """
     from langgraph.runtime import Runtime
 
     auth_uid = "abcdef01-2345-6789-abcd-ef0123456789"
-    await _seed_user(catalog_db, auth_uid)
     config = _assemble_config(
         body_config={"recursion_limit": 50},
         body_context={"agent_name": "e2e-agent", "is_bootstrap": True},
@@ -259,14 +331,10 @@ async def test_real_graph_real_setup_agent_writes_to_authenticated_user_dir(tmp_
 
     graph = _build_real_bootstrap_graph(auth_uid)
 
-    # Patch get_paths (file-system rooting) + get_session_factory (catalog);
-    # everything else is real
-    with (
-        patch(
-            "app.agentplatform.tools.setup_agent_tool.get_paths",
-            return_value=_make_paths_mock(tmp_path),
-        ),
-        patch("app.agentplatform.tools.setup_agent_tool.get_session_factory", return_value=catalog_db),
+    # Patch get_paths only (the file-system rooting); everything else is real
+    with patch(
+        "deerflow.config.agents_config.get_paths",
+        return_value=_make_paths_mock(tmp_path),
     ):
         # Drive the real graph. This goes through real ToolNode + real Runtime merge.
         final_state = await graph.ainvoke(
@@ -274,8 +342,14 @@ async def test_real_graph_real_setup_agent_writes_to_authenticated_user_dir(tmp_
             config=config,
         )
 
-    # Load-bearing assertions: catalog agent must be owned by the authenticated user
-    await _assert_agent_owner(catalog_db, "e2e-agent", auth_uid)
+    expected_dir = tmp_path / "users" / auth_uid / "agents" / "e2e-agent"
+    default_dir = tmp_path / "users" / "default" / "agents" / "e2e-agent"
+
+    # Load-bearing assertions:
+    assert expected_dir.exists(), f"Agent directory not found at the authenticated user's path. Expected: {expected_dir}. tmp_path tree: {[str(p) for p in tmp_path.rglob('*')]}"
+    assert (expected_dir / "SOUL.md").read_text() == "# My E2E Agent\n\nA SOUL written by the model."
+    assert (expected_dir / "config.yaml").exists()
+    assert not default_dir.exists(), "REGRESSION: agent landed under users/default/. user_id propagation broke somewhere between HTTP layer and ToolRuntime.context."
 
     # And final state should reflect tool success
     last = final_state["messages"][-1]
@@ -284,18 +358,14 @@ async def test_real_graph_real_setup_agent_writes_to_authenticated_user_dir(tmp_
 
 @pytest.mark.no_auto_user
 @pytest.mark.asyncio
-async def test_inject_failure_falls_back_to_default_proving_test_is_load_bearing(tmp_path: Path, catalog_db: async_sessionmaker[AsyncSession]):
+async def test_inject_failure_falls_back_to_default_proving_test_is_load_bearing(tmp_path: Path):
     """Negative control: if inject does NOT happen (no user in request), and
-    contextvar is empty (no_auto_user), setup_agent must fail (no catalog
-    user to own the resource) rather than silently landing under default/.
+    contextvar is empty (no_auto_user), setup_agent must land in default/.
 
     This proves the positive test is actually load-bearing — i.e. it would
     have failed before PR #2784, not passed accidentally.
     """
     from langgraph.runtime import Runtime
-
-    # Only an unrelated user exists in the catalog — the fallback user does not.
-    await _seed_user(catalog_db, "someone-else")
 
     config = _assemble_config(
         body_config={"recursion_limit": 50},
@@ -311,24 +381,17 @@ async def test_inject_failure_falls_back_to_default_proving_test_is_load_bearing
 
     graph = _build_real_bootstrap_graph("does-not-matter")
 
-    with (
-        patch(
-            "app.agentplatform.tools.setup_agent_tool.get_paths",
-            return_value=_make_paths_mock(tmp_path),
-        ),
-        patch("app.agentplatform.tools.setup_agent_tool.get_session_factory", return_value=catalog_db),
+    with patch(
+        "deerflow.config.agents_config.get_paths",
+        return_value=_make_paths_mock(tmp_path),
     ):
         await graph.ainvoke(
             {"messages": [HumanMessage(content="Create fallback-agent")]},
             config=config,
         )
 
-    # Negative control: no inject + no contextvar must NOT create a catalog
-    # resource — the fallback user does not exist in the catalog, so the tool
-    # must fail instead of silently writing somewhere.
-    async with catalog_db() as session:
-        resource = (await session.execute(select(Resource).where(Resource.type == "agent", Resource.slug == "fallback-agent"))).scalar_one_or_none()
-        assert resource is None, "Negative control failed: agent was created despite no authenticated user. The test infrastructure may not be reproducing the bug condition."
+    default_dir = tmp_path / "users" / "default" / "agents" / "fallback-agent"
+    assert default_dir.exists(), "Negative control failed: even without inject + contextvar, agent did not land in default/. The test infrastructure may not be reproducing the bug condition."
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +401,7 @@ async def test_inject_failure_falls_back_to_default_proving_test_is_load_bearing
 
 @pytest.mark.no_auto_user
 @pytest.mark.asyncio
-async def test_subgraph_invocation_preserves_user_id_in_runtime(tmp_path: Path, catalog_db: async_sessionmaker[AsyncSession]):
+async def test_subgraph_invocation_preserves_user_id_in_runtime(tmp_path: Path):
     """When a parent graph invokes a child graph (the pattern used by
     subagents), parent_runtime.merge() must keep user_id intact.
 
@@ -349,10 +412,9 @@ async def test_subgraph_invocation_preserves_user_id_in_runtime(tmp_path: Path, 
     from langchain.agents import create_agent
     from langgraph.runtime import Runtime
 
-    from app.agentplatform.tools.setup_agent_tool import setup_agent
+    from deerflow.tools.builtins.setup_agent_tool import setup_agent
 
     auth_uid = "deadbeef-0000-1111-2222-333344445555"
-    await _seed_user(catalog_db, auth_uid)
 
     # Inner graph: same as the bootstrap flow
     inner_model = FakeToolCallingModel(
@@ -388,12 +450,9 @@ async def test_subgraph_invocation_preserves_user_id_in_runtime(tmp_path: Path, 
     runtime = Runtime(context=runtime_ctx, store=None)
     config.setdefault("configurable", {})["__pregel_runtime"] = runtime
 
-    with (
-        patch(
-            "app.agentplatform.tools.setup_agent_tool.get_paths",
-            return_value=_make_paths_mock(tmp_path),
-        ),
-        patch("app.agentplatform.tools.setup_agent_tool.get_session_factory", return_value=catalog_db),
+    with patch(
+        "deerflow.config.agents_config.get_paths",
+        return_value=_make_paths_mock(tmp_path),
     ):
         # Direct sub-graph invoke (mimics what a subagent invocation looks like
         # — distinct ainvoke call, but parent config carries the same runtime).
@@ -402,7 +461,10 @@ async def test_subgraph_invocation_preserves_user_id_in_runtime(tmp_path: Path, 
             config=config,
         )
 
-    await _assert_agent_owner(catalog_db, "subgraph-agent", auth_uid)
+    expected_dir = tmp_path / "users" / auth_uid / "agents" / "subgraph-agent"
+    default_dir = tmp_path / "users" / "default" / "agents" / "subgraph-agent"
+    assert expected_dir.exists()
+    assert not default_dir.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -410,7 +472,7 @@ async def test_subgraph_invocation_preserves_user_id_in_runtime(tmp_path: Path, 
 # ---------------------------------------------------------------------------
 
 
-def test_sync_tool_dispatch_through_thread_pool_uses_runtime_context(tmp_path: Path, catalog_db: async_sessionmaker[AsyncSession]):
+def test_sync_tool_dispatch_through_thread_pool_uses_runtime_context(tmp_path: Path):
     """setup_agent is a sync function. When dispatched through ToolNode's
     ContextThreadPoolExecutor, runtime.context must still carry user_id —
     not via thread-local copy_context (which only carries contextvars), but
@@ -419,10 +481,9 @@ def test_sync_tool_dispatch_through_thread_pool_uses_runtime_context(tmp_path: P
     from langchain.agents import create_agent
     from langgraph.runtime import Runtime
 
-    from app.agentplatform.tools.setup_agent_tool import setup_agent
+    from deerflow.tools.builtins.setup_agent_tool import setup_agent
 
     auth_uid = "11112222-3333-4444-5555-666677778888"
-    asyncio.run(_seed_user(catalog_db, auth_uid))
 
     fake_model = FakeToolCallingModel(
         responses=[
@@ -453,12 +514,9 @@ def test_sync_tool_dispatch_through_thread_pool_uses_runtime_context(tmp_path: P
     runtime = Runtime(context=runtime_ctx, store=None)
     config.setdefault("configurable", {})["__pregel_runtime"] = runtime
 
-    with (
-        patch(
-            "app.agentplatform.tools.setup_agent_tool.get_paths",
-            return_value=_make_paths_mock(tmp_path),
-        ),
-        patch("app.agentplatform.tools.setup_agent_tool.get_session_factory", return_value=catalog_db),
+    with patch(
+        "deerflow.config.agents_config.get_paths",
+        return_value=_make_paths_mock(tmp_path),
     ):
         # Use SYNC invoke to hit the ContextThreadPoolExecutor path
         graph.invoke(
@@ -466,4 +524,30 @@ def test_sync_tool_dispatch_through_thread_pool_uses_runtime_context(tmp_path: P
             config=config,
         )
 
-    asyncio.run(_assert_agent_owner(catalog_db, "sync-agent", auth_uid))
+    expected_dir = tmp_path / "users" / auth_uid / "agents" / "sync-agent"
+    default_dir = tmp_path / "users" / "default" / "agents" / "sync-agent"
+    assert expected_dir.exists()
+    assert not default_dir.exists()
+
+
+# --- merged from test_setup_agent_e2e_user_isolation.py (subdir-only tests; root copy is the dedup base) ---
+@pytest_asyncio.fixture
+async def catalog_db(tmp_path: Path) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'catalog.db'}")
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    await engine.dispose()
+
+
+async def _seed_user(catalog_db: async_sessionmaker[AsyncSession], user_id: str) -> None:
+    async with catalog_db() as session:
+        session.add(UserModel(id=user_id, username=f"{user_id}@test.com", role=UserRole.USER, disabled=False))
+        await session.commit()
+
+
+async def _assert_agent_owner(catalog_db: async_sessionmaker[AsyncSession], slug: str, expected_owner: str) -> None:
+    async with catalog_db() as session:
+        resource = (await session.execute(select(Resource).where(Resource.type == "agent", Resource.slug == slug))).scalar_one_or_none()
+        assert resource is not None, f"no catalog agent with slug {slug!r}"
+        assert str(resource.owner_id) == expected_owner, f"agent {slug!r} owned by {resource.owner_id!r}, expected {expected_owner!r}"

@@ -202,6 +202,29 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/skills
 | `tests/test_subagent_skills_config.py` (42 identical + 0 drifted + 0 root-only) | `tests/unit/skills/test_subagent_skills_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_tracing_config.py` (7 identical + 0 drifted + 0 root-only) | `tests/unit/scripts/test_tracing_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
+## Batch 2026-10-13: backend/tests root↔subdir dedup — integration/api + contracts (batch 8 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/integration/api tests/contracts -q -m "not serial and not requires_llm and not live and not external"` → 1628 passed / 42 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_artifacts_router.py` (2 identical + 4 drifted + 31 root-only) | `tests/integration/api/test_artifacts_router.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_e2e.py` (27 identical + 16 drifted + 0 root-only) | `tests/integration/api/test_client_e2e.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_queue_user_isolation.py` (2 identical + 5 drifted + 0 root-only) | `tests/contracts/test_memory_queue_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_router.py` (0 identical + 12 drifted + 17 root-only) | `tests/integration/api/test_memory_router.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_storage_user_isolation.py` (0 identical + 8 drifted + 0 root-only) | `tests/contracts/test_memory_storage_user_isolation.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_thread_meta_isolation.py` (8 identical + 0 drifted + 14 root-only) | `tests/contracts/test_memory_thread_meta_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_updater_user_isolation.py` (0 identical + 3 drifted + 0 root-only) | `tests/contracts/test_memory_updater_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_migration_user_isolation.py` (13 identical + 0 drifted + 11 root-only) | `tests/contracts/test_migration_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_paths_user_isolation.py` (34 identical + 0 drifted + 11 root-only) | `tests/contracts/test_paths_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_runs_api_endpoints.py` (10 identical + 1 drifted + 7 root-only) | `tests/integration/api/test_runs_api_endpoints.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_e2e_user_isolation.py` (5 identical + 4 drifted + 3 root-only) | `tests/contracts/test_setup_agent_e2e_user_isolation.py` | root variant wins on drifted names; 1 class methods + 3 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_http_e2e_real_server.py` (0 identical + 1 drifted + 0 root-only) | `tests/integration/api/test_setup_agent_http_e2e_real_server.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_suggestions_router.py` (5 identical + 4 drifted + 11 root-only) | `tests/integration/api/test_suggestions_router.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_threads_router.py` (19 identical + 1 drifted + 92 root-only) | `tests/integration/api/test_threads_router.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_update_agent_e2e_user_isolation.py` (0 identical + 3 drifted + 0 root-only) | `tests/contracts/test_update_agent_e2e_user_isolation.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_uploads_router.py` (14 identical + 16 drifted + 15 root-only) | `tests/integration/api/test_uploads_router.py` | root variant wins on drifted names; 0 class methods + 43 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
 ## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (batch 1 of 8)
 
 Ticket #66 under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
