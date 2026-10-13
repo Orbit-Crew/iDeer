@@ -52,7 +52,10 @@ def test_read_dat_exposes_only_file_path_and_paging_parameters(config_example: A
     tools = get_available_tools(groups=["telemetry"], include_mcp=False, app_config=config_example)
     read_dat = next(tool for tool in tools if tool.name == "read_dat")
 
-    assert set(read_dat.args) == {"file_path", "offset", "length"}
+    # Ticket 74: the surface grows by exactly one optional `mode` switch
+    # (view/structure); paging stays view-only.
+    assert set(read_dat.args) == {"file_path", "offset", "length", "mode"}
+    assert read_dat.args["mode"].get("default") == "view"
 
 
 def test_bundled_agent_example_config_and_skill_allowed_tools_declare_the_telemetry_chain() -> None:

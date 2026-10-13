@@ -10,6 +10,13 @@ machine-distinguishable reason codes (``path_out_of_bounds`` /
 ``invalid_paging`` / ``thread_context_missing``), and never writes to or
 executes the file.
 
+Ticket 74: ``mode="structure"`` adds a deterministic structure probe on the
+same tool — candidate sync-word n-grams, their gap regularity, and an
+inferred frame length — with all caps as code constants, streaming/bounded
+scans, visible truncation flags, and an explicit 未检出 conclusion when no
+repeating structure exists.  ``mode="view"`` stays the default and is
+byte-for-byte the ticket-73 behavior.
+
 Everything here drives the tool coroutine directly (the builtin-tool test
 convention) against seeded uploads on a temporary filesystem home plus the
 committed synthetic samples under ``backend/tests/fixtures/telemetry/``.
@@ -31,6 +38,8 @@ from deerflow.config.paths import Paths
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "telemetry"
 NORMAL_FRAMES = (FIXTURES_DIR / "normal_frames.dat").read_bytes()
+TRUNCATED_FRAMES = (FIXTURES_DIR / "truncated.dat").read_bytes()
+NO_SYNC_ENTROPY = (FIXTURES_DIR / "no_sync_high_entropy.dat").read_bytes()
 
 
 def _runtime(env, thread_id: str = "thread-1", user_id: str = "owner-1") -> SimpleNamespace:
@@ -269,3 +278,152 @@ async def test_calls_leave_source_file_unchanged(env) -> None:
 
     after = (target.stat().st_size, target.stat().st_mtime_ns, hashlib.sha256(target.read_bytes()).hexdigest())
     assert after == before
+
+
+# --- ticket 74: mode="structure" — deterministic structure probe ---------
+
+
+def _candidate(payload: dict, pattern_hex: str) -> dict | None:
+    return next((item for item in payload["candidates"] if item["pattern_hex"] == pattern_hex), None)
+
+
+@pytest.mark.asyncio
+async def test_structure_mode_detects_sync_word_frame_length_and_caps_output(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", mode="structure")
+
+    assert "error" not in payload
+    assert payload["mode"] == "structure"
+    assert payload["path"] == "/mnt/user-data/uploads/frames.dat"
+    assert payload["file_size"] == len(NORMAL_FRAMES)
+    assert payload["scanned_bytes"] == len(NORMAL_FRAMES)
+    assert payload["scan_truncated"] is False
+    # The fixture layout is documented (32-byte frames, sync 1A CF FC 1D), so
+    # asserting the concrete finding is legitimate: the detector must find it
+    # generically, this asserts it did.
+    sync = _candidate(payload, "1a cf fc 1d")
+    assert sync is not None
+    assert sync["occurrences"] == 64
+    assert sync["dominant_gap_bytes"] == 32
+    assert sync["gap_regular"] is True
+    assert sync["gap_regularity"] == 1.0
+    assert sync["inferred_frame_bytes"] == 32
+    # Occurrence totals are exact but gap evidence is a bounded sample — the
+    # cap must be visible instead of silently implied.
+    assert sync["gap_samples"] == tool_module._STRUCTURE_MAX_GAP_SAMPLES
+    assert sync["gaps_capped"] is True
+    assert payload["detected"] is True
+    assert payload["inferred_frame_bytes"] == 32
+    # Output caps are code constants and truncation is visible.
+    assert len(payload["candidates"]) == tool_module._STRUCTURE_MAX_CANDIDATES
+    assert payload["candidates_truncated"] is True
+    assert payload["summary"]
+
+
+@pytest.mark.asyncio
+async def test_structure_mode_reports_explicit_not_detected_for_unstructured_file(env) -> None:
+    _seed_upload(env, "noise.dat", NO_SYNC_ENTROPY)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/noise.dat", mode="structure")
+
+    assert "error" not in payload
+    assert payload["detected"] is False
+    assert payload["inferred_frame_bytes"] is None
+    # An explicit conclusion, never a bare empty result.
+    assert "未检出" in payload["summary"]
+    for candidate in payload["candidates"]:
+        assert candidate["inferred_frame_bytes"] is None
+
+
+@pytest.mark.asyncio
+async def test_structure_mode_on_truncated_stream_detects_frames_without_fabricating(env) -> None:
+    _seed_upload(env, "cut.dat", TRUNCATED_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/cut.dat", mode="structure")
+
+    assert "error" not in payload
+    assert payload["file_size"] == len(TRUNCATED_FRAMES)  # 40 full frames + 17-byte tail
+    assert payload["detected"] is True
+    sync = _candidate(payload, "1a cf fc 1d")
+    assert sync is not None
+    # 40 full frames plus the visible sync word of the cut 41st frame — the
+    # tail is counted honestly (a partial frame is never fabricated: gap
+    # regularity and the frame-length inference stay untouched by it).
+    assert sync["occurrences"] == 41
+    assert sync["dominant_gap_bytes"] == 32
+    assert sync["gap_regular"] is True
+    assert sync["inferred_frame_bytes"] == 32
+    assert payload["inferred_frame_bytes"] == 32
+
+
+@pytest.mark.asyncio
+async def test_structure_mode_is_deterministic_across_calls(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    runtime = _runtime(env)
+
+    first = await tool_module.read_dat_tool.coroutine(runtime=runtime, file_path="/mnt/user-data/uploads/frames.dat", mode="structure")
+    second = await tool_module.read_dat_tool.coroutine(runtime=runtime, file_path="/mnt/user-data/uploads/frames.dat", mode="structure")
+
+    assert first == second
+
+
+@pytest.mark.asyncio
+async def test_structure_caps_are_enforced_and_marked_in_payload(env, monkeypatch) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    monkeypatch.setattr(tool_module, "_STRUCTURE_MAX_CANDIDATES", 2)
+    monkeypatch.setattr(tool_module, "_STRUCTURE_MAX_GAP_SAMPLES", 4)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", mode="structure")
+
+    assert len(payload["candidates"]) == 2
+    assert payload["candidates_truncated"] is True
+    for candidate in payload["candidates"]:
+        assert candidate["gap_samples"] <= 4
+    # Detection is a property of the file, not of the display cap: the sync
+    # structure stays reported even when the candidate list itself is capped.
+    assert payload["detected"] is True
+    assert payload["inferred_frame_bytes"] == 32
+
+
+@pytest.mark.asyncio
+async def test_unknown_mode_is_rejected_with_invalid_mode(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", mode="parse")
+
+    assert payload["reason_code"] == "invalid_mode"
+    assert payload["allowed_pattern"] == "/mnt/user-data/uploads/<file>"
+
+
+@pytest.mark.asyncio
+async def test_explicit_view_mode_matches_default_output(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    runtime = _runtime(env)
+
+    default_raw = await tool_module.read_dat_tool.coroutine(runtime=runtime, file_path="/mnt/user-data/uploads/frames.dat", length=32)
+    explicit_raw = await tool_module.read_dat_tool.coroutine(runtime=runtime, file_path="/mnt/user-data/uploads/frames.dat", length=32, mode="view")
+
+    assert explicit_raw == default_raw
+
+
+@pytest.mark.asyncio
+async def test_structure_mode_leaves_source_file_unchanged(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    target = env.paths.sandbox_uploads_dir("thread-1", user_id="owner-1") / "frames.dat"
+    before = (target.stat().st_size, target.stat().st_mtime_ns, hashlib.sha256(target.read_bytes()).hexdigest())
+
+    await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", mode="structure")
+
+    after = (target.stat().st_size, target.stat().st_mtime_ns, hashlib.sha256(target.read_bytes()).hexdigest())
+    assert after == before
+
+
+@pytest.mark.asyncio
+async def test_structure_mode_enforces_the_same_uploads_fence(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/workspace/frames.dat", mode="structure")
+
+    assert payload["reason_code"] == "path_out_of_bounds"
+    assert payload["allowed_pattern"] == "/mnt/user-data/uploads/<file>"
