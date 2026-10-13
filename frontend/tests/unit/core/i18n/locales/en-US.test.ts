@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { enUS } from "@/core/i18n/locales/en-US";
 
+// A locale entry must be a non-empty string. This upgrades the previous
+// `toBeTruthy()` sweep, which silently passed empty strings — exactly the
+// regression mode for translation keys. The path argument makes a failure
+// point at the offending key (vitest renders the second expect argument).
+function expectNonEmptyString(value: unknown, path: string): void {
+  expect(
+    value,
+    `enUS.${path} must be a non-empty string, got ${JSON.stringify(value)}`,
+  ).satisfies((v: unknown) => typeof v === "string" && v.length > 0);
+}
+
 describe("en-US translations", () => {
   describe("locale meta", () => {
     it("has locale.localName as English", () => {
@@ -72,91 +83,190 @@ describe("en-US translations", () => {
 
   describe("clipboard section", () => {
     it("has all clipboard keys", () => {
-      expect(enUS.clipboard.copyToClipboard).toBeTruthy();
-      expect(enUS.clipboard.copiedToClipboard).toBeTruthy();
-      expect(enUS.clipboard.failedToCopyToClipboard).toBeTruthy();
-      expect(enUS.clipboard.linkCopied).toBeTruthy();
+      expectNonEmptyString(
+        enUS.clipboard.copyToClipboard,
+        "clipboard.copyToClipboard",
+      );
+      expectNonEmptyString(
+        enUS.clipboard.copiedToClipboard,
+        "clipboard.copiedToClipboard",
+      );
+      expectNonEmptyString(
+        enUS.clipboard.failedToCopyToClipboard,
+        "clipboard.failedToCopyToClipboard",
+      );
+      expectNonEmptyString(enUS.clipboard.linkCopied, "clipboard.linkCopied");
     });
   });
 
   describe("inputBox section", () => {
     it("has basic input box keys", () => {
-      expect(enUS.inputBox.placeholder).toBeTruthy();
-      expect(enUS.inputBox.createSkillPrompt).toBeTruthy();
-      expect(enUS.inputBox.addAttachments).toBeTruthy();
+      expectNonEmptyString(enUS.inputBox.placeholder, "inputBox.placeholder");
+      expectNonEmptyString(
+        enUS.inputBox.createSkillPrompt,
+        "inputBox.createSkillPrompt",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.addAttachments,
+        "inputBox.addAttachments",
+      );
     });
 
     it("has mode descriptions", () => {
-      expect(enUS.inputBox.flashMode).toBeTruthy();
-      expect(enUS.inputBox.flashModeDescription).toBeTruthy();
-      expect(enUS.inputBox.reasoningMode).toBeTruthy();
-      expect(enUS.inputBox.reasoningModeDescription).toBeTruthy();
-      expect(enUS.inputBox.proMode).toBeTruthy();
-      expect(enUS.inputBox.proModeDescription).toBeTruthy();
-      expect(enUS.inputBox.ultraMode).toBeTruthy();
-      expect(enUS.inputBox.ultraModeDescription).toBeTruthy();
+      expectNonEmptyString(enUS.inputBox.flashMode, "inputBox.flashMode");
+      expectNonEmptyString(
+        enUS.inputBox.flashModeDescription,
+        "inputBox.flashModeDescription",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningMode,
+        "inputBox.reasoningMode",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningModeDescription,
+        "inputBox.reasoningModeDescription",
+      );
+      expectNonEmptyString(enUS.inputBox.proMode, "inputBox.proMode");
+      expectNonEmptyString(
+        enUS.inputBox.proModeDescription,
+        "inputBox.proModeDescription",
+      );
+      expectNonEmptyString(enUS.inputBox.ultraMode, "inputBox.ultraMode");
+      expectNonEmptyString(
+        enUS.inputBox.ultraModeDescription,
+        "inputBox.ultraModeDescription",
+      );
     });
 
     it("has reasoning effort levels", () => {
-      expect(enUS.inputBox.reasoningEffortMinimal).toBeTruthy();
-      expect(enUS.inputBox.reasoningEffortMinimalDescription).toBeTruthy();
-      expect(enUS.inputBox.reasoningEffortLow).toBeTruthy();
-      expect(enUS.inputBox.reasoningEffortLowDescription).toBeTruthy();
-      expect(enUS.inputBox.reasoningEffortMedium).toBeTruthy();
-      expect(enUS.inputBox.reasoningEffortMediumDescription).toBeTruthy();
-      expect(enUS.inputBox.reasoningEffortHigh).toBeTruthy();
-      expect(enUS.inputBox.reasoningEffortHighDescription).toBeTruthy();
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortMinimal,
+        "inputBox.reasoningEffortMinimal",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortMinimalDescription,
+        "inputBox.reasoningEffortMinimalDescription",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortLow,
+        "inputBox.reasoningEffortLow",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortLowDescription,
+        "inputBox.reasoningEffortLowDescription",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortMedium,
+        "inputBox.reasoningEffortMedium",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortMediumDescription,
+        "inputBox.reasoningEffortMediumDescription",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortHigh,
+        "inputBox.reasoningEffortHigh",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.reasoningEffortHighDescription,
+        "inputBox.reasoningEffortHighDescription",
+      );
     });
 
     it("has followup keys", () => {
-      expect(enUS.inputBox.followupLoading).toBeTruthy();
-      expect(enUS.inputBox.followupConfirmTitle).toBeTruthy();
-      expect(enUS.inputBox.followupConfirmDescription).toBeTruthy();
-      expect(enUS.inputBox.followupConfirmAppend).toBeTruthy();
-      expect(enUS.inputBox.followupConfirmReplace).toBeTruthy();
+      expectNonEmptyString(
+        enUS.inputBox.followupLoading,
+        "inputBox.followupLoading",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.followupConfirmTitle,
+        "inputBox.followupConfirmTitle",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.followupConfirmDescription,
+        "inputBox.followupConfirmDescription",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.followupConfirmAppend,
+        "inputBox.followupConfirmAppend",
+      );
+      expectNonEmptyString(
+        enUS.inputBox.followupConfirmReplace,
+        "inputBox.followupConfirmReplace",
+      );
     });
   });
 
   describe("sidebar section", () => {
     it("has all sidebar keys", () => {
-      expect(enUS.sidebar.newChat).toBeTruthy();
-      expect(enUS.sidebar.chats).toBeTruthy();
-      expect(enUS.sidebar.recentChats).toBeTruthy();
-      expect(enUS.sidebar.demoChats).toBeTruthy();
-      expect(enUS.sidebar.scheduledTasks).toBeTruthy();
-      expect(enUS.sidebar.workflows).toBeTruthy();
+      expectNonEmptyString(enUS.sidebar.newChat, "sidebar.newChat");
+      expectNonEmptyString(enUS.sidebar.chats, "sidebar.chats");
+      expectNonEmptyString(enUS.sidebar.recentChats, "sidebar.recentChats");
+      expectNonEmptyString(enUS.sidebar.demoChats, "sidebar.demoChats");
+      expectNonEmptyString(
+        enUS.sidebar.scheduledTasks,
+        "sidebar.scheduledTasks",
+      );
+      expectNonEmptyString(enUS.sidebar.workflows, "sidebar.workflows");
     });
   });
 
   describe("agents section", () => {
     it("has all agent management keys", () => {
-      expect(enUS.agents.title).toBeTruthy();
-      expect(enUS.agents.description).toBeTruthy();
-      expect(enUS.agents.newAgent).toBeTruthy();
-      expect(enUS.agents.emptyTitle).toBeTruthy();
-      expect(enUS.agents.emptyDescription).toBeTruthy();
-      expect(enUS.agents.chat).toBeTruthy();
-      expect(enUS.agents.delete).toBeTruthy();
-      expect(enUS.agents.deleteConfirm).toBeTruthy();
-      expect(enUS.agents.deleteSuccess).toBeTruthy();
-      expect(enUS.agents.template).toBeTruthy();
-      expect(enUS.agents.newChat).toBeTruthy();
+      expectNonEmptyString(enUS.agents.title, "agents.title");
+      expectNonEmptyString(enUS.agents.description, "agents.description");
+      expectNonEmptyString(enUS.agents.newAgent, "agents.newAgent");
+      expectNonEmptyString(enUS.agents.emptyTitle, "agents.emptyTitle");
+      expectNonEmptyString(
+        enUS.agents.emptyDescription,
+        "agents.emptyDescription",
+      );
+      expectNonEmptyString(enUS.agents.chat, "agents.chat");
+      expectNonEmptyString(enUS.agents.delete, "agents.delete");
+      expectNonEmptyString(enUS.agents.deleteConfirm, "agents.deleteConfirm");
+      expectNonEmptyString(enUS.agents.deleteSuccess, "agents.deleteSuccess");
+      expectNonEmptyString(enUS.agents.template, "agents.template");
+      expectNonEmptyString(enUS.agents.newChat, "agents.newChat");
     });
 
     it("has agent creation page keys", () => {
-      expect(enUS.agents.createPageTitle).toBeTruthy();
-      expect(enUS.agents.createPageSubtitle).toBeTruthy();
+      expectNonEmptyString(
+        enUS.agents.createPageTitle,
+        "agents.createPageTitle",
+      );
+      expectNonEmptyString(
+        enUS.agents.createPageSubtitle,
+        "agents.createPageSubtitle",
+      );
     });
 
     it("has name step keys", () => {
-      expect(enUS.agents.nameStepTitle).toBeTruthy();
-      expect(enUS.agents.nameStepHint).toBeTruthy();
-      expect(enUS.agents.nameStepPlaceholder).toBeTruthy();
-      expect(enUS.agents.nameStepContinue).toBeTruthy();
-      expect(enUS.agents.nameStepInvalidError).toBeTruthy();
-      expect(enUS.agents.nameStepAlreadyExistsError).toBeTruthy();
-      expect(enUS.agents.nameStepNetworkError).toBeTruthy();
-      expect(enUS.agents.nameStepCheckError).toBeTruthy();
+      expectNonEmptyString(enUS.agents.nameStepTitle, "agents.nameStepTitle");
+      expectNonEmptyString(enUS.agents.nameStepHint, "agents.nameStepHint");
+      expectNonEmptyString(
+        enUS.agents.nameStepPlaceholder,
+        "agents.nameStepPlaceholder",
+      );
+      expectNonEmptyString(
+        enUS.agents.nameStepContinue,
+        "agents.nameStepContinue",
+      );
+      expectNonEmptyString(
+        enUS.agents.nameStepInvalidError,
+        "agents.nameStepInvalidError",
+      );
+      expectNonEmptyString(
+        enUS.agents.nameStepAlreadyExistsError,
+        "agents.nameStepAlreadyExistsError",
+      );
+      expectNonEmptyString(
+        enUS.agents.nameStepNetworkError,
+        "agents.nameStepNetworkError",
+      );
+      expectNonEmptyString(
+        enUS.agents.nameStepCheckError,
+        "agents.nameStepCheckError",
+      );
     });
 
     it("has nameStepBootstrapMessage with placeholder", () => {
@@ -164,34 +274,46 @@ describe("en-US translations", () => {
     });
 
     it("has save-related keys", () => {
-      expect(enUS.agents.save).toBeTruthy();
-      expect(enUS.agents.saving).toBeTruthy();
-      expect(enUS.agents.saveRequested).toBeTruthy();
-      expect(enUS.agents.saveHint).toBeTruthy();
-      expect(enUS.agents.saveCommandMessage).toBeTruthy();
-      expect(enUS.agents.agentCreatedPendingRefresh).toBeTruthy();
-      expect(enUS.agents.more).toBeTruthy();
-      expect(enUS.agents.agentCreated).toBeTruthy();
-      expect(enUS.agents.startChatting).toBeTruthy();
-      expect(enUS.agents.backToGallery).toBeTruthy();
+      expectNonEmptyString(enUS.agents.save, "agents.save");
+      expectNonEmptyString(enUS.agents.saving, "agents.saving");
+      expectNonEmptyString(enUS.agents.saveRequested, "agents.saveRequested");
+      expectNonEmptyString(enUS.agents.saveHint, "agents.saveHint");
+      expectNonEmptyString(
+        enUS.agents.saveCommandMessage,
+        "agents.saveCommandMessage",
+      );
+      expectNonEmptyString(
+        enUS.agents.agentCreatedPendingRefresh,
+        "agents.agentCreatedPendingRefresh",
+      );
+      expectNonEmptyString(enUS.agents.more, "agents.more");
+      expectNonEmptyString(enUS.agents.agentCreated, "agents.agentCreated");
+      expectNonEmptyString(enUS.agents.startChatting, "agents.startChatting");
+      expectNonEmptyString(enUS.agents.backToGallery, "agents.backToGallery");
     });
   });
 
   describe("workflows section", () => {
     it("has gallery keys", () => {
-      expect(enUS.workflows.title).toBeTruthy();
-      expect(enUS.workflows.description).toBeTruthy();
-      expect(enUS.workflows.newWorkflow).toBeTruthy();
-      expect(enUS.workflows.emptyTitle).toBeTruthy();
-      expect(enUS.workflows.emptyDescription).toBeTruthy();
+      expectNonEmptyString(enUS.workflows.title, "workflows.title");
+      expectNonEmptyString(enUS.workflows.description, "workflows.description");
+      expectNonEmptyString(enUS.workflows.newWorkflow, "workflows.newWorkflow");
+      expectNonEmptyString(enUS.workflows.emptyTitle, "workflows.emptyTitle");
+      expectNonEmptyString(
+        enUS.workflows.emptyDescription,
+        "workflows.emptyDescription",
+      );
     });
 
     it("has card keys", () => {
-      expect(enUS.workflows.view).toBeTruthy();
-      expect(enUS.workflows.deleteTitle).toBeTruthy();
-      expect(enUS.workflows.deleteSuccess).toBeTruthy();
-      expect(enUS.workflows.deleting).toBeTruthy();
-      expect(enUS.workflows.unknown).toBeTruthy();
+      expectNonEmptyString(enUS.workflows.view, "workflows.view");
+      expectNonEmptyString(enUS.workflows.deleteTitle, "workflows.deleteTitle");
+      expectNonEmptyString(
+        enUS.workflows.deleteSuccess,
+        "workflows.deleteSuccess",
+      );
+      expectNonEmptyString(enUS.workflows.deleting, "workflows.deleting");
+      expectNonEmptyString(enUS.workflows.unknown, "workflows.unknown");
     });
 
     it("has deleteConfirm as function", () => {
@@ -213,18 +335,30 @@ describe("en-US translations", () => {
     });
 
     it("has detail keys", () => {
-      expect(enUS.workflows.notFound).toBeTruthy();
-      expect(enUS.workflows.backToWorkflows).toBeTruthy();
-      expect(enUS.workflows.edit).toBeTruthy();
-      expect(enUS.workflows.run).toBeTruthy();
-      expect(enUS.workflows.stepsDescription).toBeTruthy();
-      expect(enUS.workflows.noSteps).toBeTruthy();
-      expect(enUS.workflows.inputsTitle).toBeTruthy();
-      expect(enUS.workflows.inputsDescription).toBeTruthy();
-      expect(enUS.workflows.required).toBeTruthy();
-      expect(enUS.workflows.runStatus).toBeTruthy();
-      expect(enUS.workflows.runId).toBeTruthy();
-      expect(enUS.workflows.yamlDefinition).toBeTruthy();
+      expectNonEmptyString(enUS.workflows.notFound, "workflows.notFound");
+      expectNonEmptyString(
+        enUS.workflows.backToWorkflows,
+        "workflows.backToWorkflows",
+      );
+      expectNonEmptyString(enUS.workflows.edit, "workflows.edit");
+      expectNonEmptyString(enUS.workflows.run, "workflows.run");
+      expectNonEmptyString(
+        enUS.workflows.stepsDescription,
+        "workflows.stepsDescription",
+      );
+      expectNonEmptyString(enUS.workflows.noSteps, "workflows.noSteps");
+      expectNonEmptyString(enUS.workflows.inputsTitle, "workflows.inputsTitle");
+      expectNonEmptyString(
+        enUS.workflows.inputsDescription,
+        "workflows.inputsDescription",
+      );
+      expectNonEmptyString(enUS.workflows.required, "workflows.required");
+      expectNonEmptyString(enUS.workflows.runStatus, "workflows.runStatus");
+      expectNonEmptyString(enUS.workflows.runId, "workflows.runId");
+      expectNonEmptyString(
+        enUS.workflows.yamlDefinition,
+        "workflows.yamlDefinition",
+      );
     });
 
     it("has stepsTitle function", () => {
@@ -233,11 +367,17 @@ describe("en-US translations", () => {
     });
 
     it("has run dialog keys", () => {
-      expect(enUS.workflows.runDialog).toBeTruthy();
-      expect(enUS.workflows.runDialogDescription).toBeTruthy();
-      expect(enUS.workflows.defaultPrefix).toBeTruthy();
-      expect(enUS.workflows.noInputs).toBeTruthy();
-      expect(enUS.workflows.starting).toBeTruthy();
+      expectNonEmptyString(enUS.workflows.runDialog, "workflows.runDialog");
+      expectNonEmptyString(
+        enUS.workflows.runDialogDescription,
+        "workflows.runDialogDescription",
+      );
+      expectNonEmptyString(
+        enUS.workflows.defaultPrefix,
+        "workflows.defaultPrefix",
+      );
+      expectNonEmptyString(enUS.workflows.noInputs, "workflows.noInputs");
+      expectNonEmptyString(enUS.workflows.starting, "workflows.starting");
     });
 
     it("has enterInput function", () => {
@@ -246,14 +386,17 @@ describe("en-US translations", () => {
     });
 
     it("has create/edit keys", () => {
-      expect(enUS.workflows.createSubtitle).toBeTruthy();
-      expect(enUS.workflows.yamlEditor).toBeTruthy();
-      expect(enUS.workflows.creating).toBeTruthy();
-      expect(enUS.workflows.saving).toBeTruthy();
-      expect(enUS.workflows.created).toBeTruthy();
-      expect(enUS.workflows.updated).toBeTruthy();
-      expect(enUS.workflows.started).toBeTruthy();
-      expect(enUS.workflows.saveChanges).toBeTruthy();
+      expectNonEmptyString(
+        enUS.workflows.createSubtitle,
+        "workflows.createSubtitle",
+      );
+      expectNonEmptyString(enUS.workflows.yamlEditor, "workflows.yamlEditor");
+      expectNonEmptyString(enUS.workflows.creating, "workflows.creating");
+      expectNonEmptyString(enUS.workflows.saving, "workflows.saving");
+      expectNonEmptyString(enUS.workflows.created, "workflows.created");
+      expectNonEmptyString(enUS.workflows.updated, "workflows.updated");
+      expectNonEmptyString(enUS.workflows.started, "workflows.started");
+      expectNonEmptyString(enUS.workflows.saveChanges, "workflows.saveChanges");
     });
 
     it("has requiredMissing function", () => {
@@ -265,68 +408,113 @@ describe("en-US translations", () => {
 
   describe("breadcrumb section", () => {
     it("has all breadcrumb keys", () => {
-      expect(enUS.breadcrumb.workspace).toBeTruthy();
-      expect(enUS.breadcrumb.chats).toBeTruthy();
-      expect(enUS.breadcrumb.workflows).toBeTruthy();
-      expect(enUS.breadcrumb.edit).toBeTruthy();
-      expect(enUS.breadcrumb.runs).toBeTruthy();
+      expectNonEmptyString(enUS.breadcrumb.workspace, "breadcrumb.workspace");
+      expectNonEmptyString(enUS.breadcrumb.chats, "breadcrumb.chats");
+      expectNonEmptyString(enUS.breadcrumb.workflows, "breadcrumb.workflows");
+      expectNonEmptyString(enUS.breadcrumb.edit, "breadcrumb.edit");
+      expectNonEmptyString(enUS.breadcrumb.runs, "breadcrumb.runs");
     });
   });
 
   describe("workspace section", () => {
     it("has all workspace keys", () => {
-      expect(enUS.workspace.officialWebsite).toBeTruthy();
-      expect(enUS.workspace.githubTooltip).toBeTruthy();
-      expect(enUS.workspace.settingsAndMore).toBeTruthy();
-      expect(enUS.workspace.visitGithub).toBeTruthy();
-      expect(enUS.workspace.reportIssue).toBeTruthy();
-      expect(enUS.workspace.contactUs).toBeTruthy();
-      expect(enUS.workspace.about).toBeTruthy();
-      expect(enUS.workspace.logout).toBeTruthy();
-      expect(enUS.workspace.adminPanel).toBeTruthy();
-      expect(enUS.workspace.userManagement).toBeTruthy();
-      expect(enUS.workspace.departmentManagement).toBeTruthy();
-      expect(enUS.workspace.toolManagement).toBeTruthy();
+      expectNonEmptyString(
+        enUS.workspace.officialWebsite,
+        "workspace.officialWebsite",
+      );
+      expectNonEmptyString(
+        enUS.workspace.githubTooltip,
+        "workspace.githubTooltip",
+      );
+      expectNonEmptyString(
+        enUS.workspace.settingsAndMore,
+        "workspace.settingsAndMore",
+      );
+      expectNonEmptyString(enUS.workspace.visitGithub, "workspace.visitGithub");
+      expectNonEmptyString(enUS.workspace.reportIssue, "workspace.reportIssue");
+      expectNonEmptyString(enUS.workspace.contactUs, "workspace.contactUs");
+      expectNonEmptyString(enUS.workspace.about, "workspace.about");
+      expectNonEmptyString(enUS.workspace.logout, "workspace.logout");
+      expectNonEmptyString(enUS.workspace.adminPanel, "workspace.adminPanel");
+      expectNonEmptyString(
+        enUS.workspace.userManagement,
+        "workspace.userManagement",
+      );
+      expectNonEmptyString(
+        enUS.workspace.departmentManagement,
+        "workspace.departmentManagement",
+      );
+      expectNonEmptyString(
+        enUS.workspace.toolManagement,
+        "workspace.toolManagement",
+      );
     });
   });
 
   describe("conversation section", () => {
     it("has conversation keys", () => {
-      expect(enUS.conversation.noMessages).toBeTruthy();
-      expect(enUS.conversation.startConversation).toBeTruthy();
+      expectNonEmptyString(
+        enUS.conversation.noMessages,
+        "conversation.noMessages",
+      );
+      expectNonEmptyString(
+        enUS.conversation.startConversation,
+        "conversation.startConversation",
+      );
     });
   });
 
   describe("chats section", () => {
     it("has searchChats", () => {
-      expect(enUS.chats.searchChats).toBeTruthy();
+      expectNonEmptyString(enUS.chats.searchChats, "chats.searchChats");
     });
   });
 
   describe("pages section", () => {
     it("has page title keys", () => {
       expect(enUS.pages.appName).toBe("iDeer");
-      expect(enUS.pages.chats).toBeTruthy();
-      expect(enUS.pages.newChat).toBeTruthy();
-      expect(enUS.pages.untitled).toBeTruthy();
+      expectNonEmptyString(enUS.pages.chats, "pages.chats");
+      expectNonEmptyString(enUS.pages.newChat, "pages.newChat");
+      expectNonEmptyString(enUS.pages.untitled, "pages.untitled");
     });
   });
 
   describe("toolCalls section", () => {
     it("has all tool call string keys", () => {
-      expect(enUS.toolCalls.lessSteps).toBeTruthy();
-      expect(enUS.toolCalls.executeCommand).toBeTruthy();
-      expect(enUS.toolCalls.presentFiles).toBeTruthy();
-      expect(enUS.toolCalls.needYourHelp).toBeTruthy();
-      expect(enUS.toolCalls.searchForRelatedInfo).toBeTruthy();
-      expect(enUS.toolCalls.searchForRelatedImages).toBeTruthy();
-      expect(enUS.toolCalls.viewWebPage).toBeTruthy();
-      expect(enUS.toolCalls.listFolder).toBeTruthy();
-      expect(enUS.toolCalls.readFile).toBeTruthy();
-      expect(enUS.toolCalls.writeFile).toBeTruthy();
-      expect(enUS.toolCalls.clickToViewContent).toBeTruthy();
-      expect(enUS.toolCalls.writeTodos).toBeTruthy();
-      expect(enUS.toolCalls.skillInstallTooltip).toBeTruthy();
+      expectNonEmptyString(enUS.toolCalls.lessSteps, "toolCalls.lessSteps");
+      expectNonEmptyString(
+        enUS.toolCalls.executeCommand,
+        "toolCalls.executeCommand",
+      );
+      expectNonEmptyString(
+        enUS.toolCalls.presentFiles,
+        "toolCalls.presentFiles",
+      );
+      expectNonEmptyString(
+        enUS.toolCalls.needYourHelp,
+        "toolCalls.needYourHelp",
+      );
+      expectNonEmptyString(
+        enUS.toolCalls.searchForRelatedInfo,
+        "toolCalls.searchForRelatedInfo",
+      );
+      expectNonEmptyString(
+        enUS.toolCalls.searchForRelatedImages,
+        "toolCalls.searchForRelatedImages",
+      );
+      expectNonEmptyString(enUS.toolCalls.viewWebPage, "toolCalls.viewWebPage");
+      expectNonEmptyString(enUS.toolCalls.listFolder, "toolCalls.listFolder");
+      expectNonEmptyString(enUS.toolCalls.readFile, "toolCalls.readFile");
+      expectNonEmptyString(enUS.toolCalls.writeFile, "toolCalls.writeFile");
+      expectNonEmptyString(
+        enUS.toolCalls.clickToViewContent,
+        "toolCalls.clickToViewContent",
+      );
+      expectNonEmptyString(enUS.toolCalls.writeTodos, "toolCalls.writeTodos");
+      expectNonEmptyString(
+        enUS.toolCalls.skillInstallTooltip,
+        "toolCalls.skillInstallTooltip",
+      );
     });
 
     it("has moreSteps function", () => {
@@ -360,17 +548,20 @@ describe("en-US translations", () => {
 
   describe("uploads section", () => {
     it("has upload keys", () => {
-      expect(enUS.uploads.uploading).toBeTruthy();
-      expect(enUS.uploads.uploadingFiles).toBeTruthy();
+      expectNonEmptyString(enUS.uploads.uploading, "uploads.uploading");
+      expectNonEmptyString(
+        enUS.uploads.uploadingFiles,
+        "uploads.uploadingFiles",
+      );
     });
   });
 
   describe("subtasks section", () => {
     it("has subtask keys", () => {
-      expect(enUS.subtasks.subtask).toBeTruthy();
-      expect(enUS.subtasks.in_progress).toBeTruthy();
-      expect(enUS.subtasks.completed).toBeTruthy();
-      expect(enUS.subtasks.failed).toBeTruthy();
+      expectNonEmptyString(enUS.subtasks.subtask, "subtasks.subtask");
+      expectNonEmptyString(enUS.subtasks.in_progress, "subtasks.in_progress");
+      expectNonEmptyString(enUS.subtasks.completed, "subtasks.completed");
+      expectNonEmptyString(enUS.subtasks.failed, "subtasks.failed");
     });
 
     it("has executing function for singular", () => {
@@ -388,32 +579,68 @@ describe("en-US translations", () => {
 
   describe("tokenUsage section", () => {
     it("has basic token usage keys", () => {
-      expect(enUS.tokenUsage.title).toBeTruthy();
-      expect(enUS.tokenUsage.label).toBeTruthy();
-      expect(enUS.tokenUsage.input).toBeTruthy();
-      expect(enUS.tokenUsage.output).toBeTruthy();
-      expect(enUS.tokenUsage.total).toBeTruthy();
-      expect(enUS.tokenUsage.view).toBeTruthy();
-      expect(enUS.tokenUsage.unavailable).toBeTruthy();
-      expect(enUS.tokenUsage.unavailableShort).toBeTruthy();
-      expect(enUS.tokenUsage.note).toBeTruthy();
-      expect(enUS.tokenUsage.finalAnswer).toBeTruthy();
-      expect(enUS.tokenUsage.stepTotal).toBeTruthy();
-      expect(enUS.tokenUsage.sharedAttribution).toBeTruthy();
+      expectNonEmptyString(enUS.tokenUsage.title, "tokenUsage.title");
+      expectNonEmptyString(enUS.tokenUsage.label, "tokenUsage.label");
+      expectNonEmptyString(enUS.tokenUsage.input, "tokenUsage.input");
+      expectNonEmptyString(enUS.tokenUsage.output, "tokenUsage.output");
+      expectNonEmptyString(enUS.tokenUsage.total, "tokenUsage.total");
+      expectNonEmptyString(enUS.tokenUsage.view, "tokenUsage.view");
+      expectNonEmptyString(
+        enUS.tokenUsage.unavailable,
+        "tokenUsage.unavailable",
+      );
+      expectNonEmptyString(
+        enUS.tokenUsage.unavailableShort,
+        "tokenUsage.unavailableShort",
+      );
+      expectNonEmptyString(enUS.tokenUsage.note, "tokenUsage.note");
+      expectNonEmptyString(
+        enUS.tokenUsage.finalAnswer,
+        "tokenUsage.finalAnswer",
+      );
+      expectNonEmptyString(enUS.tokenUsage.stepTotal, "tokenUsage.stepTotal");
+      expectNonEmptyString(
+        enUS.tokenUsage.sharedAttribution,
+        "tokenUsage.sharedAttribution",
+      );
     });
 
     it("has presets", () => {
-      expect(enUS.tokenUsage.presets.off).toBeTruthy();
-      expect(enUS.tokenUsage.presets.summary).toBeTruthy();
-      expect(enUS.tokenUsage.presets.perTurn).toBeTruthy();
-      expect(enUS.tokenUsage.presets.debug).toBeTruthy();
+      expectNonEmptyString(
+        enUS.tokenUsage.presets.off,
+        "tokenUsage.presets.off",
+      );
+      expectNonEmptyString(
+        enUS.tokenUsage.presets.summary,
+        "tokenUsage.presets.summary",
+      );
+      expectNonEmptyString(
+        enUS.tokenUsage.presets.perTurn,
+        "tokenUsage.presets.perTurn",
+      );
+      expectNonEmptyString(
+        enUS.tokenUsage.presets.debug,
+        "tokenUsage.presets.debug",
+      );
     });
 
     it("has presetDescriptions", () => {
-      expect(enUS.tokenUsage.presetDescriptions.off).toBeTruthy();
-      expect(enUS.tokenUsage.presetDescriptions.summary).toBeTruthy();
-      expect(enUS.tokenUsage.presetDescriptions.perTurn).toBeTruthy();
-      expect(enUS.tokenUsage.presetDescriptions.debug).toBeTruthy();
+      expectNonEmptyString(
+        enUS.tokenUsage.presetDescriptions.off,
+        "tokenUsage.presetDescriptions.off",
+      );
+      expectNonEmptyString(
+        enUS.tokenUsage.presetDescriptions.summary,
+        "tokenUsage.presetDescriptions.summary",
+      );
+      expectNonEmptyString(
+        enUS.tokenUsage.presetDescriptions.perTurn,
+        "tokenUsage.presetDescriptions.perTurn",
+      );
+      expectNonEmptyString(
+        enUS.tokenUsage.presetDescriptions.debug,
+        "tokenUsage.presetDescriptions.debug",
+      );
     });
 
     it("has subagent function", () => {
@@ -436,189 +663,529 @@ describe("en-US translations", () => {
 
   describe("shortcuts section", () => {
     it("has all shortcut keys", () => {
-      expect(enUS.shortcuts.searchActions).toBeTruthy();
-      expect(enUS.shortcuts.noResults).toBeTruthy();
-      expect(enUS.shortcuts.actions).toBeTruthy();
-      expect(enUS.shortcuts.keyboardShortcuts).toBeTruthy();
-      expect(enUS.shortcuts.keyboardShortcutsDescription).toBeTruthy();
-      expect(enUS.shortcuts.openCommandPalette).toBeTruthy();
-      expect(enUS.shortcuts.toggleSidebar).toBeTruthy();
+      expectNonEmptyString(
+        enUS.shortcuts.searchActions,
+        "shortcuts.searchActions",
+      );
+      expectNonEmptyString(enUS.shortcuts.noResults, "shortcuts.noResults");
+      expectNonEmptyString(enUS.shortcuts.actions, "shortcuts.actions");
+      expectNonEmptyString(
+        enUS.shortcuts.keyboardShortcuts,
+        "shortcuts.keyboardShortcuts",
+      );
+      expectNonEmptyString(
+        enUS.shortcuts.keyboardShortcutsDescription,
+        "shortcuts.keyboardShortcutsDescription",
+      );
+      expectNonEmptyString(
+        enUS.shortcuts.openCommandPalette,
+        "shortcuts.openCommandPalette",
+      );
+      expectNonEmptyString(
+        enUS.shortcuts.toggleSidebar,
+        "shortcuts.toggleSidebar",
+      );
     });
   });
 
   describe("settings section", () => {
     it("has top-level settings keys", () => {
-      expect(enUS.settings.title).toBeTruthy();
-      expect(enUS.settings.description).toBeTruthy();
+      expectNonEmptyString(enUS.settings.title, "settings.title");
+      expectNonEmptyString(enUS.settings.description, "settings.description");
     });
 
     it("has section keys", () => {
-      expect(enUS.settings.sections.account).toBeTruthy();
-      expect(enUS.settings.sections.appearance).toBeTruthy();
-      expect(enUS.settings.sections.memory).toBeTruthy();
-      expect(enUS.settings.sections.tools).toBeTruthy();
-      expect(enUS.settings.sections.skills).toBeTruthy();
-      expect(enUS.settings.sections.notification).toBeTruthy();
-      expect(enUS.settings.sections.about).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.sections.account,
+        "settings.sections.account",
+      );
+      expectNonEmptyString(
+        enUS.settings.sections.appearance,
+        "settings.sections.appearance",
+      );
+      expectNonEmptyString(
+        enUS.settings.sections.memory,
+        "settings.sections.memory",
+      );
+      expectNonEmptyString(
+        enUS.settings.sections.tools,
+        "settings.sections.tools",
+      );
+      expectNonEmptyString(
+        enUS.settings.sections.skills,
+        "settings.sections.skills",
+      );
+      expectNonEmptyString(
+        enUS.settings.sections.notification,
+        "settings.sections.notification",
+      );
+      expectNonEmptyString(
+        enUS.settings.sections.about,
+        "settings.sections.about",
+      );
     });
 
     it("has memory settings", () => {
-      expect(enUS.settings.memory.title).toBeTruthy();
-      expect(enUS.settings.memory.description).toBeTruthy();
-      expect(enUS.settings.memory.empty).toBeTruthy();
-      expect(enUS.settings.memory.rawJson).toBeTruthy();
-      expect(enUS.settings.memory.exportButton).toBeTruthy();
-      expect(enUS.settings.memory.exportSuccess).toBeTruthy();
-      expect(enUS.settings.memory.importButton).toBeTruthy();
-      expect(enUS.settings.memory.importConfirmTitle).toBeTruthy();
-      expect(enUS.settings.memory.importConfirmDescription).toBeTruthy();
-      expect(enUS.settings.memory.importFileLabel).toBeTruthy();
-      expect(enUS.settings.memory.importInvalidFile).toBeTruthy();
-      expect(enUS.settings.memory.importSuccess).toBeTruthy();
+      expectNonEmptyString(enUS.settings.memory.title, "settings.memory.title");
+      expectNonEmptyString(
+        enUS.settings.memory.description,
+        "settings.memory.description",
+      );
+      expectNonEmptyString(enUS.settings.memory.empty, "settings.memory.empty");
+      expectNonEmptyString(
+        enUS.settings.memory.rawJson,
+        "settings.memory.rawJson",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.exportButton,
+        "settings.memory.exportButton",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.exportSuccess,
+        "settings.memory.exportSuccess",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.importButton,
+        "settings.memory.importButton",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.importConfirmTitle,
+        "settings.memory.importConfirmTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.importConfirmDescription,
+        "settings.memory.importConfirmDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.importFileLabel,
+        "settings.memory.importFileLabel",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.importInvalidFile,
+        "settings.memory.importInvalidFile",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.importSuccess,
+        "settings.memory.importSuccess",
+      );
     });
 
     it("has memory fact management keys", () => {
-      expect(enUS.settings.memory.manualFactSource).toBeTruthy();
-      expect(enUS.settings.memory.addFact).toBeTruthy();
-      expect(enUS.settings.memory.addFactTitle).toBeTruthy();
-      expect(enUS.settings.memory.editFactTitle).toBeTruthy();
-      expect(enUS.settings.memory.addFactSuccess).toBeTruthy();
-      expect(enUS.settings.memory.editFactSuccess).toBeTruthy();
-      expect(enUS.settings.memory.factSave).toBeTruthy();
-      expect(enUS.settings.memory.factValidationContent).toBeTruthy();
-      expect(enUS.settings.memory.factValidationConfidence).toBeTruthy();
-      expect(enUS.settings.memory.noFacts).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.memory.manualFactSource,
+        "settings.memory.manualFactSource",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.addFact,
+        "settings.memory.addFact",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.addFactTitle,
+        "settings.memory.addFactTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.editFactTitle,
+        "settings.memory.editFactTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.addFactSuccess,
+        "settings.memory.addFactSuccess",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.editFactSuccess,
+        "settings.memory.editFactSuccess",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factSave,
+        "settings.memory.factSave",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factValidationContent,
+        "settings.memory.factValidationContent",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factValidationConfidence,
+        "settings.memory.factValidationConfidence",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.noFacts,
+        "settings.memory.noFacts",
+      );
     });
 
     it("has memory clear and delete keys", () => {
-      expect(enUS.settings.memory.clearAll).toBeTruthy();
-      expect(enUS.settings.memory.clearAllConfirmTitle).toBeTruthy();
-      expect(enUS.settings.memory.clearAllConfirmDescription).toBeTruthy();
-      expect(enUS.settings.memory.clearAllSuccess).toBeTruthy();
-      expect(enUS.settings.memory.factDeleteConfirmTitle).toBeTruthy();
-      expect(enUS.settings.memory.factDeleteConfirmDescription).toBeTruthy();
-      expect(enUS.settings.memory.factDeleteSuccess).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.memory.clearAll,
+        "settings.memory.clearAll",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.clearAllConfirmTitle,
+        "settings.memory.clearAllConfirmTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.clearAllConfirmDescription,
+        "settings.memory.clearAllConfirmDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.clearAllSuccess,
+        "settings.memory.clearAllSuccess",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factDeleteConfirmTitle,
+        "settings.memory.factDeleteConfirmTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factDeleteConfirmDescription,
+        "settings.memory.factDeleteConfirmDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factDeleteSuccess,
+        "settings.memory.factDeleteSuccess",
+      );
     });
 
     it("has memory fact form label keys", () => {
-      expect(enUS.settings.memory.factContentLabel).toBeTruthy();
-      expect(enUS.settings.memory.factCategoryLabel).toBeTruthy();
-      expect(enUS.settings.memory.factConfidenceLabel).toBeTruthy();
-      expect(enUS.settings.memory.factContentPlaceholder).toBeTruthy();
-      expect(enUS.settings.memory.factCategoryPlaceholder).toBeTruthy();
-      expect(enUS.settings.memory.factConfidenceHint).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.memory.factContentLabel,
+        "settings.memory.factContentLabel",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factCategoryLabel,
+        "settings.memory.factCategoryLabel",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factConfidenceLabel,
+        "settings.memory.factConfidenceLabel",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factContentPlaceholder,
+        "settings.memory.factContentPlaceholder",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factCategoryPlaceholder,
+        "settings.memory.factCategoryPlaceholder",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factConfidenceHint,
+        "settings.memory.factConfidenceHint",
+      );
     });
 
     it("has memory filter and search keys", () => {
-      expect(enUS.settings.memory.summaryReadOnly).toBeTruthy();
-      expect(enUS.settings.memory.memoryFullyEmpty).toBeTruthy();
-      expect(enUS.settings.memory.factPreviewLabel).toBeTruthy();
-      expect(enUS.settings.memory.searchPlaceholder).toBeTruthy();
-      expect(enUS.settings.memory.filterAll).toBeTruthy();
-      expect(enUS.settings.memory.filterFacts).toBeTruthy();
-      expect(enUS.settings.memory.filterSummaries).toBeTruthy();
-      expect(enUS.settings.memory.noMatches).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.memory.summaryReadOnly,
+        "settings.memory.summaryReadOnly",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.memoryFullyEmpty,
+        "settings.memory.memoryFullyEmpty",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.factPreviewLabel,
+        "settings.memory.factPreviewLabel",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.searchPlaceholder,
+        "settings.memory.searchPlaceholder",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.filterAll,
+        "settings.memory.filterAll",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.filterFacts,
+        "settings.memory.filterFacts",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.filterSummaries,
+        "settings.memory.filterSummaries",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.noMatches,
+        "settings.memory.noMatches",
+      );
     });
 
     it("has memory markdown keys", () => {
-      expect(enUS.settings.memory.markdown.overview).toBeTruthy();
-      expect(enUS.settings.memory.markdown.userContext).toBeTruthy();
-      expect(enUS.settings.memory.markdown.work).toBeTruthy();
-      expect(enUS.settings.memory.markdown.personal).toBeTruthy();
-      expect(enUS.settings.memory.markdown.topOfMind).toBeTruthy();
-      expect(enUS.settings.memory.markdown.historyBackground).toBeTruthy();
-      expect(enUS.settings.memory.markdown.recentMonths).toBeTruthy();
-      expect(enUS.settings.memory.markdown.earlierContext).toBeTruthy();
-      expect(enUS.settings.memory.markdown.longTermBackground).toBeTruthy();
-      expect(enUS.settings.memory.markdown.updatedAt).toBeTruthy();
-      expect(enUS.settings.memory.markdown.facts).toBeTruthy();
-      expect(enUS.settings.memory.markdown.empty).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.overview,
+        "settings.memory.markdown.overview",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.userContext,
+        "settings.memory.markdown.userContext",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.work,
+        "settings.memory.markdown.work",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.personal,
+        "settings.memory.markdown.personal",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.topOfMind,
+        "settings.memory.markdown.topOfMind",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.historyBackground,
+        "settings.memory.markdown.historyBackground",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.recentMonths,
+        "settings.memory.markdown.recentMonths",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.earlierContext,
+        "settings.memory.markdown.earlierContext",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.longTermBackground,
+        "settings.memory.markdown.longTermBackground",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.updatedAt,
+        "settings.memory.markdown.updatedAt",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.facts,
+        "settings.memory.markdown.facts",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.empty,
+        "settings.memory.markdown.empty",
+      );
     });
 
     it("has memory markdown table keys", () => {
-      expect(enUS.settings.memory.markdown.table.category).toBeTruthy();
-      expect(enUS.settings.memory.markdown.table.confidence).toBeTruthy();
-      expect(enUS.settings.memory.markdown.table.content).toBeTruthy();
-      expect(enUS.settings.memory.markdown.table.source).toBeTruthy();
-      expect(enUS.settings.memory.markdown.table.createdAt).toBeTruthy();
-      expect(enUS.settings.memory.markdown.table.view).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.table.category,
+        "settings.memory.markdown.table.category",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.table.confidence,
+        "settings.memory.markdown.table.confidence",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.table.content,
+        "settings.memory.markdown.table.content",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.table.source,
+        "settings.memory.markdown.table.source",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.table.createdAt,
+        "settings.memory.markdown.table.createdAt",
+      );
+      expectNonEmptyString(
+        enUS.settings.memory.markdown.table.view,
+        "settings.memory.markdown.table.view",
+      );
     });
 
     it("has memory markdown table confidenceLevel keys", () => {
-      expect(
+      expectNonEmptyString(
         enUS.settings.memory.markdown.table.confidenceLevel.veryHigh,
-      ).toBeTruthy();
-      expect(
+        "settings.memory.markdown.table.confidenceLevel.veryHigh",
+      );
+      expectNonEmptyString(
         enUS.settings.memory.markdown.table.confidenceLevel.high,
-      ).toBeTruthy();
-      expect(
+        "settings.memory.markdown.table.confidenceLevel.high",
+      );
+      expectNonEmptyString(
         enUS.settings.memory.markdown.table.confidenceLevel.normal,
-      ).toBeTruthy();
-      expect(
+        "settings.memory.markdown.table.confidenceLevel.normal",
+      );
+      expectNonEmptyString(
         enUS.settings.memory.markdown.table.confidenceLevel.unknown,
-      ).toBeTruthy();
+        "settings.memory.markdown.table.confidenceLevel.unknown",
+      );
     });
 
     it("has appearance settings", () => {
-      expect(enUS.settings.appearance.themeTitle).toBeTruthy();
-      expect(enUS.settings.appearance.themeDescription).toBeTruthy();
-      expect(enUS.settings.appearance.system).toBeTruthy();
-      expect(enUS.settings.appearance.light).toBeTruthy();
-      expect(enUS.settings.appearance.dark).toBeTruthy();
-      expect(enUS.settings.appearance.systemDescription).toBeTruthy();
-      expect(enUS.settings.appearance.lightDescription).toBeTruthy();
-      expect(enUS.settings.appearance.darkDescription).toBeTruthy();
-      expect(enUS.settings.appearance.languageTitle).toBeTruthy();
-      expect(enUS.settings.appearance.languageDescription).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.appearance.themeTitle,
+        "settings.appearance.themeTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.themeDescription,
+        "settings.appearance.themeDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.system,
+        "settings.appearance.system",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.light,
+        "settings.appearance.light",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.dark,
+        "settings.appearance.dark",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.systemDescription,
+        "settings.appearance.systemDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.lightDescription,
+        "settings.appearance.lightDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.darkDescription,
+        "settings.appearance.darkDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.languageTitle,
+        "settings.appearance.languageTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.appearance.languageDescription,
+        "settings.appearance.languageDescription",
+      );
     });
 
     it("has tools settings", () => {
-      expect(enUS.settings.tools.title).toBeTruthy();
-      expect(enUS.settings.tools.description).toBeTruthy();
+      expectNonEmptyString(enUS.settings.tools.title, "settings.tools.title");
+      expectNonEmptyString(
+        enUS.settings.tools.description,
+        "settings.tools.description",
+      );
     });
 
     it("has skills settings", () => {
-      expect(enUS.settings.skills.title).toBeTruthy();
-      expect(enUS.settings.skills.description).toBeTruthy();
-      expect(enUS.settings.skills.createSkill).toBeTruthy();
-      expect(enUS.settings.skills.emptyTitle).toBeTruthy();
-      expect(enUS.settings.skills.emptyDescription).toBeTruthy();
-      expect(enUS.settings.skills.emptyButton).toBeTruthy();
+      expectNonEmptyString(enUS.settings.skills.title, "settings.skills.title");
+      expectNonEmptyString(
+        enUS.settings.skills.description,
+        "settings.skills.description",
+      );
+      expectNonEmptyString(
+        enUS.settings.skills.createSkill,
+        "settings.skills.createSkill",
+      );
+      expectNonEmptyString(
+        enUS.settings.skills.emptyTitle,
+        "settings.skills.emptyTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.skills.emptyDescription,
+        "settings.skills.emptyDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.skills.emptyButton,
+        "settings.skills.emptyButton",
+      );
     });
 
     it("has notification settings", () => {
-      expect(enUS.settings.notification.title).toBeTruthy();
-      expect(enUS.settings.notification.description).toBeTruthy();
-      expect(enUS.settings.notification.requestPermission).toBeTruthy();
-      expect(enUS.settings.notification.deniedHint).toBeTruthy();
-      expect(enUS.settings.notification.testButton).toBeTruthy();
-      expect(enUS.settings.notification.testTitle).toBeTruthy();
-      expect(enUS.settings.notification.testBody).toBeTruthy();
-      expect(enUS.settings.notification.notSupported).toBeTruthy();
-      expect(enUS.settings.notification.disableNotification).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.notification.title,
+        "settings.notification.title",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.description,
+        "settings.notification.description",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.requestPermission,
+        "settings.notification.requestPermission",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.deniedHint,
+        "settings.notification.deniedHint",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.testButton,
+        "settings.notification.testButton",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.testTitle,
+        "settings.notification.testTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.testBody,
+        "settings.notification.testBody",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.notSupported,
+        "settings.notification.notSupported",
+      );
+      expectNonEmptyString(
+        enUS.settings.notification.disableNotification,
+        "settings.notification.disableNotification",
+      );
     });
 
     it("has account settings", () => {
-      expect(enUS.settings.account.profileTitle).toBeTruthy();
-      expect(enUS.settings.account.email).toBeTruthy();
-      expect(enUS.settings.account.role).toBeTruthy();
-      expect(enUS.settings.account.changePasswordTitle).toBeTruthy();
-      expect(enUS.settings.account.changePasswordDescription).toBeTruthy();
-      expect(enUS.settings.account.currentPassword).toBeTruthy();
-      expect(enUS.settings.account.newPassword).toBeTruthy();
-      expect(enUS.settings.account.confirmNewPassword).toBeTruthy();
-      expect(enUS.settings.account.passwordMismatch).toBeTruthy();
-      expect(enUS.settings.account.passwordTooShort).toBeTruthy();
-      expect(enUS.settings.account.passwordChangedSuccess).toBeTruthy();
-      expect(enUS.settings.account.networkError).toBeTruthy();
-      expect(enUS.settings.account.updating).toBeTruthy();
-      expect(enUS.settings.account.updatePassword).toBeTruthy();
-      expect(enUS.settings.account.signOut).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.account.profileTitle,
+        "settings.account.profileTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.email,
+        "settings.account.email",
+      );
+      expectNonEmptyString(enUS.settings.account.role, "settings.account.role");
+      expectNonEmptyString(
+        enUS.settings.account.changePasswordTitle,
+        "settings.account.changePasswordTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.changePasswordDescription,
+        "settings.account.changePasswordDescription",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.currentPassword,
+        "settings.account.currentPassword",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.newPassword,
+        "settings.account.newPassword",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.confirmNewPassword,
+        "settings.account.confirmNewPassword",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.passwordMismatch,
+        "settings.account.passwordMismatch",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.passwordTooShort,
+        "settings.account.passwordTooShort",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.passwordChangedSuccess,
+        "settings.account.passwordChangedSuccess",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.networkError,
+        "settings.account.networkError",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.updating,
+        "settings.account.updating",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.updatePassword,
+        "settings.account.updatePassword",
+      );
+      expectNonEmptyString(
+        enUS.settings.account.signOut,
+        "settings.account.signOut",
+      );
     });
 
     it("has acknowledge settings", () => {
-      expect(enUS.settings.acknowledge.emptyTitle).toBeTruthy();
-      expect(enUS.settings.acknowledge.emptyDescription).toBeTruthy();
+      expectNonEmptyString(
+        enUS.settings.acknowledge.emptyTitle,
+        "settings.acknowledge.emptyTitle",
+      );
+      expectNonEmptyString(
+        enUS.settings.acknowledge.emptyDescription,
+        "settings.acknowledge.emptyDescription",
+      );
     });
   });
 
