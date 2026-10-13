@@ -157,6 +157,29 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/tools 
 | `tests/test_update_agent_tool.py` (0 identical + 0 drifted + 27 root-only) | `tests/unit/tools/test_update_agent_tool.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_view_image_tool.py` (6 identical + 1 drifted + 1 root-only) | `tests/unit/tools/test_view_image_tool.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
+## Batch 2026-10-13: backend/tests root↔subdir dedup — sandbox (batch 6 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/sandbox tests/integration/sandbox -q -m "not serial and not requires_llm and not live and not external"` → 2144 passed / 10 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_aio_sandbox.py` (13 identical + 3 drifted + 43 root-only) | `tests/integration/sandbox/test_aio_sandbox.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_aio_sandbox_local_backend.py` (13 identical + 1 drifted + 82 root-only) | `tests/integration/sandbox/test_aio_sandbox_local_backend.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_aio_sandbox_readiness.py` (0 identical + 3 drifted + 2 root-only) | `tests/integration/sandbox/test_aio_sandbox_readiness.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_docker_sandbox_mode_detection.py` (6 identical + 0 drifted + 20 root-only) | `tests/integration/sandbox/test_docker_sandbox_mode_detection.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_encoding.py` (5 identical + 3 drifted + 13 root-only) | `tests/unit/sandbox/test_local_sandbox_encoding.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_provider_mounts.py` (39 identical + 5 drifted + 11 root-only) | `tests/unit/sandbox/test_local_sandbox_provider_mounts.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_virtual_path_contract.py` (14 identical + 6 drifted + 4 root-only) | `tests/unit/sandbox/test_local_sandbox_virtual_path_contract.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_provisioner_pvc_volumes.py` (2 identical + 4 drifted + 53 root-only) | `tests/integration/sandbox/test_provisioner_pvc_volumes.py` | root variant wins on drifted names; 12 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_remote_sandbox_backend.py` (19 identical + 1 drifted + 14 root-only) | `tests/integration/sandbox/test_remote_sandbox_backend.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_runtime_paths.py` (5 identical + 4 drifted + 3 root-only) | `tests/unit/sandbox/test_runtime_paths.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_audit_middleware.py` (47 identical + 0 drifted + 25 root-only) | `tests/unit/sandbox/test_sandbox_audit_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_middleware.py` (2 identical + 4 drifted + 30 root-only) | `tests/unit/sandbox/test_sandbox_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_orphan_reconciliation.py` (11 identical + 14 drifted + 65 root-only) | `tests/integration/sandbox/test_sandbox_orphan_reconciliation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_orphan_reconciliation_e2e.py` (3 identical + 0 drifted + 0 root-only) | `tests/integration/api/test_sandbox_orphan_reconciliation_e2e.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_search_tools.py` (15 identical + 4 drifted + 21 root-only) | `tests/unit/sandbox/test_sandbox_search_tools.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_tools_security.py` (67 identical + 24 drifted + 28 root-only) | `tests/unit/sandbox/test_sandbox_tools_security.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir; carried test path literals adapted to the root _THREAD_DATA binding (/tmp/deer-flow) | both copies green on the same candidate pre-merge |
+
 ## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (batch 1 of 8)
 
 Ticket #66 under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
