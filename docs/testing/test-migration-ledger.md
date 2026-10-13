@@ -202,6 +202,39 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/skills
 | `tests/test_subagent_skills_config.py` (42 identical + 0 drifted + 0 root-only) | `tests/unit/skills/test_subagent_skills_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_tracing_config.py` (7 identical + 0 drifted + 0 root-only) | `tests/unit/scripts/test_tracing_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
+## Batch 2026-10-13: backend/tests dedup — intentional keeps and scope boundary
+
+Ticket #66 scope closure under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
+
+1. `tests/blocking_io/` keeps (10 root files + their blocking_io twins):
+   `test_artifact_archive.py`, `test_batch_acceptance.py`,
+   `test_honcho_memory_backend.py`, `test_openviking_memory_backend.py`,
+   `test_persistence_bootstrap.py`, `test_project_documents_promotion.py`,
+   `test_project_trash.py`, `test_sandbox_authorization.py`,
+   `test_skill_export.py`, `test_skills_reload.py`. The standard lane runs
+   with `--ignore=tests/blocking_io` and the blocking-io lane runs only
+   `tests/blocking_io`, so these same-name copies never co-collect in any
+   lane run; the blocking_io twin is the strict Blockbuster-gate owner and
+   the root copy is the non-gated general home (root-only functions would
+   change semantics under the gate). Kept intentionally.
+2. 541 root-level test files without any same-name twin: no duplicate
+   collection (verified by `scripts/check_test_collection_duplicates.py`);
+   kept at root pending per-file layer assignment, which is the follow-up
+   layering migration (#69) and not part of the dual-run defect.
+
+Post-dedup, the duplicate-collection guard
+(`scripts/check_test_collection_duplicates.py`) reports zero duplicate
+test-name keys in standard lane scope; the before/after collect-only counts
+are recorded in the decision record's execution summary. Closure lane:
+backend-standard green at 4c07acbc0 — 26836 passed / 235 skipped,
+TEST_LANE_DURATION 926s (baseline pre-dedup at d8f1418d2: 29629 passed /
+236 skipped, 1128s; −2793 duplicated executions, −202s), artifact
+`logs/test-lanes/backend-standard-20261013T123933Z-2950947/run.log`. Two
+runtime-reference follow-up fixes landed after the batches: 4c07acbc0
+(module-path imports and a Path source-read repointed to keepers; the first
+closure run failed 8 tests on them) and 529d0e87d (sandbox-image-smoke
+workflow + scripts guidance repointed to keeper paths).
+
 ## Batch 2026-10-13: backend/tests root↔subdir dedup — integration/api + contracts (batch 8 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/integration/api tests/contracts -q -m "not serial and not requires_llm and not live and not external"` → 1628 passed / 42 skipped; ruff check/format clean.

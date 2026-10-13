@@ -46,7 +46,14 @@ verified-against: worktree fix/cr-batch6-test-dedup @ 45e61766a
 
 ## 执行摘要
 
-(执行后回填:批次列表、collect-only 前后计数、车道时长对比、遗留问题。)
+2026-10-13 当日完成,提交序:
+
+- 决策与守卫:`756531bfa`(本决策)、`c4cde8630`(2026-07-09 账本批次事实更正)、`c28a24dd8`(守卫 `scripts/check_test_collection_duplicates.py`,引入时对现状报红:2607 个同名测试键/148 对被双收集)。
+- 去重 8 批(每批焦点绿+账本登记):`ea95eeaec`(channels/memory/workflows)、`bbbb9d050`(gateway)、`518aed0ce`(runtime)、`a2a4f23ad`(models/persistence)、`21c1a9cb1`(tools)、`01edba683`(sandbox)、`47a1cb6bb`(skills/scripts)、`8122daac6`(integration/api+contracts)。
+- 执行后修复(运行时引用不被 import/AST 清查覆盖):`4c07acbc0`(三处跨测试 import 与一处 `Path` 源码读改指 keeper;收口车道首轮 8 failed 即此)、`529d0e87d`(sandbox-image-smoke workflow 与 scripts 指南改指 keeper 路径)。
+- collect-only:执行前全树 30239 收集项、2607 个同名键双收集 → 执行后标准车道范围 27385 项、守卫报零重复。
+- 车道时长:基线(去重前,d8f1418d2)backend-standard 29629 passed/236 skipped、1128s;去重后(4c07acbc0,后继仅配置/文档提交)26836 passed/235 skipped、926s(产物 `logs/test-lanes/backend-standard-20261013T123933Z-2950947/run.log`)——用例数 −2793(即被去重的同名副本执行),时长 −202s(−17.9%)。
+- 遗留:541 个根目录独有测试文件的层位归置归 #69;`tests/blocking_io/` 14 对同名文件按执行域分离保留(见范围裁定)。
 
 ## 复议条件
 
