@@ -757,6 +757,8 @@ tool_groups:
   # 代码证据工具组：归零代码包静态分析（analyze_code_evidence）与
   # 沙箱代码执行（code_interpreter）。
   - name: code
+  # 遥测工具组：输入区 .dat 遥测文件只读检查（read_dat），后续帧统计/解码工具同组接入。
+  - name: telemetry
 
 # ============================================================================
 # Tools Configuration
@@ -802,6 +804,14 @@ tools:
   - name: code_interpreter
     group: code
     use: app.agentplatform.community.code_interpreter.tools:code_interpreter_tool
+
+  # 遥测 .dat 裸读（ticket 73）：read_dat 只读输出会话输入区
+  # /mnt/user-data/uploads/ 内 .dat 文件的十六进制+ASCII 视图，offset/length
+  # 翻页；围栏外路径、非 .dat 后缀、超过单文件上限（512 MiB 代码常量）均
+  # 结构化拒绝并返回原因码，绝不执行文件内容。
+  - name: read_dat
+    group: telemetry
+    use: app.agentplatform.tools.read_dat_tool:read_dat_tool
 
   # 结构化数据分析（只读）：仅可读取 /mnt/user-data 与 /tmp 下的文件。
   - name: data_analyzer
