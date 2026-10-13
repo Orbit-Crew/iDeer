@@ -17,15 +17,15 @@ contracts that workflow agent nodes depend on have no upstream equivalent:
    The bridge reproduces the events by streaming new messages off the result
    while the run executes.
 
-No deerflow behavior is modified on the registry track (ticket #64, 02-M6):
-the two contracts are published as single-provider seam registrations
-(``WorkflowKnowledgeToolScopes`` at tool assembly,
-``WorkflowMiddlewareSource`` at subagent agent assembly), still keyed off the
-same request-scoped ContextVars, so the wrapper is inert for every
-non-workflow executor. During the expand/contract transition the import-time
-module-rewrite track (``legacy``) remains the default; the seam switches are
-``IDEER_TOOL_SCOPE_SEAM`` / ``IDEER_SUBAGENT_MIDDLEWARE_SEAM`` and both tracks
-disappear with the legacy one once the contract batches land.
+No deerflow module is rewritten through the tool-scope contract (ticket #64,
+02-M6, contract batch 1): the knowledge tool-scope contract is published as a
+single-provider seam registration (``WorkflowKnowledgeToolScopes``, resolved
+at the end of ``get_available_tools``) — registry-only since this batch. The
+file-scope middleware contract (``WorkflowMiddlewareSource``, consulted at
+subagent agent assembly) is still dual-tracked behind
+``IDEER_SUBAGENT_MIDDLEWARE_SEAM`` until its contract batch lands. Both
+contracts remain keyed off the same request-scoped ContextVars, so every
+non-workflow caller is a passthrough.
 """
 
 from __future__ import annotations
@@ -52,14 +52,13 @@ __all__ = ["SubagentStatus", "WorkflowSubagentConfig", "WorkflowSubagentExecutor
 _PENDING_FILE_SCOPE: ContextVar[list[Any] | None] = ContextVar("workflow_file_scope_middlewares", default=None)
 _PENDING_KNOWLEDGE_SCOPE: ContextVar[KnowledgeScope | None] = ContextVar("workflow_knowledge_scope", default=None)
 
-#: Expand/contract switch (ticket #64, 02-M6). ``legacy`` keeps the import-time
-#: module rewrites as the active track; ``registry`` publishes the same two
-#: contracts through the harness extension seams
-#: (``deerflow.extensions.set_default_tool_scopes`` /
-#: ``set_default_subagent_middlewares``) and leaves every upstream module
-#: untouched. Removed together with the legacy track at the end of the
-#: contract batches.
-_TOOL_SCOPE_SEAM_ENV = "IDEER_TOOL_SCOPE_SEAM"
+#: Expand/contract switch (ticket #64, 02-M6), remaining seam: the subagent
+#: middleware contract. ``legacy`` (still the default) keeps the import-time
+#: ``create_agent`` module rewrite as the active track; ``registry`` publishes
+#: the contract through the harness extension seam
+#: (``deerflow.extensions.set_default_subagent_middlewares``) and leaves the
+#: upstream module untouched. The tool-scope seam already completed its
+#: contract batch and is registry-only. Removed with the last legacy track.
 _SUBAGENT_MIDDLEWARE_SEAM_ENV = "IDEER_SUBAGENT_MIDDLEWARE_SEAM"
 
 
@@ -101,30 +100,6 @@ class WorkflowMiddlewareSource:
         return list(_PENDING_FILE_SCOPE.get() or ())
 
 
-def _install_scope_aware_tool_loading() -> None:
-    """Apply the current Workflow scope to tools loaded by native delegation."""
-
-    import deerflow.tools as deerflow_tools
-
-    original = deerflow_tools.get_available_tools
-    if getattr(original, "_workflow_knowledge_scope_aware", False):
-        return
-
-    def scoped_tools(*args: Any, **kwargs: Any) -> list[Any]:
-        tools = original(*args, **kwargs)
-        scope = _PENDING_KNOWLEDGE_SCOPE.get()
-        # Native task-tool delegation has no canonical child dependency
-        # declaration.  Keep the child fail-closed instead of inheriting the
-        # parent's KB allowlist; canonical Workflow Agent nodes are assembled
-        # through the adapters and receive their own narrowed scope.
-        if scope is not None and kwargs.get("subagent_enabled") is False:
-            scope = KnowledgeScope()
-        return adapt_knowledge_tools(tools, scope) if scope is not None else tools
-
-    scoped_tools._workflow_knowledge_scope_aware = True  # type: ignore[attr-defined]
-    deerflow_tools.get_available_tools = scoped_tools
-
-
 def _install_scope_aware_create_agent() -> None:
     """Wrap the executor module's ``create_agent`` once, at import time.
 
@@ -148,18 +123,17 @@ def _install_scope_aware_create_agent() -> None:
 
 
 def _install_workflow_seams() -> None:
-    """Publish the workflow execution contracts on the active track.
+    """Publish the workflow execution contracts.
 
-    ``legacy`` (default during the expand phase): import-time module rewrites,
-    exactly as before. ``registry``: single-provider registration through the
-    harness extension seams; upstream modules stay untouched.
+    The tool-scope contract is registry-only (contract batch 1): the seam
+    deerflow consults at the end of ``get_available_tools`` resolves
+    ``WorkflowKnowledgeToolScopes`` from the process default this import
+    registers; upstream modules stay untouched. The subagent middleware
+    contract is still dual-tracked (see ``_SUBAGENT_MIDDLEWARE_SEAM_ENV``).
     """
-    if _seam_track(_TOOL_SCOPE_SEAM_ENV) == "registry":
-        from deerflow.extensions import set_default_tool_scopes
+    from deerflow.extensions import set_default_tool_scopes
 
-        set_default_tool_scopes(WorkflowKnowledgeToolScopes(), owner="workflows.v2:executor_bridge")
-    else:
-        _install_scope_aware_tool_loading()
+    set_default_tool_scopes(WorkflowKnowledgeToolScopes(), owner="workflows.v2:executor_bridge")
     if _seam_track(_SUBAGENT_MIDDLEWARE_SEAM_ENV) == "registry":
         from deerflow.extensions import set_default_subagent_middlewares
 

@@ -2,19 +2,19 @@
 
 The bridge publishes two enterprise contracts — knowledge tool-scope
 adaptation at tool assembly and workflow file-scope middlewares at subagent
-agent assembly — on two tracks:
+agent assembly:
 
-* ``legacy`` (expand default): import-time rewrites of
-  ``deerflow.tools.get_available_tools`` and
-  ``deerflow.subagents.executor.create_agent``;
-* ``registry``: single-provider registration through the harness extension
-  seams; upstream modules stay untouched.
+* tool-scope (contract batch 1, registry-only): single-provider registration
+  through the harness extension seam consulted at the end of
+  ``get_available_tools``; upstream modules stay untouched;
+* subagent middleware (still dual-tracked): ``legacy`` rewrites
+  ``deerflow.subagents.executor.create_agent`` at import; ``registry``
+  registers through the harness extension seam.
 
-These tests pin (a) the legacy install state, (b) the registry track's
-process hygiene, (c) behavioral equivalence of both tracks on the shared
-scenarios, and (d) the seam's executor-side middleware contract. The legacy
-install-state probe flips together with the contract batch that removes the
-rewrite.
+These tests pin (a) each seam's install state, (b) the registry track's
+process hygiene, (c) the scoped behavior matrix the seams must uphold, and
+(d) the seam's executor-side middleware contract. The middleware install-state
+probe flips together with the contract batch that removes its rewrite.
 """
 
 from __future__ import annotations
@@ -64,16 +64,34 @@ def _run_probe(source: str, *, env: dict[str, str] | None = None) -> subprocess.
 # --- Track install state (probes) --------------------------------------------
 
 
-def test_legacy_track_default_rewrites_upstream_bindings_at_import() -> None:
-    """Expand-phase default: importing the bridge leaves the two import-time
-    module rewrites in place. This probe flips to the stock-identity assertion
-    in the contract batch that removes the rewrite."""
+def test_tool_scope_track_is_registry_only_at_import() -> None:
+    """Contract batch 1 (tool loading): importing the bridge must leave the
+    ``deerflow.tools`` package binding stock and serve the knowledge tool-scope
+    contract through the harness extension seam instead. Was the expand-phase
+    legacy probe asserting the rewrite was present; flipped with the batch that
+    removed ``_install_scope_aware_tool_loading``."""
     probe = "\n".join(
         [
-            "import deerflow.tools",
+            "import deerflow.tools, deerflow.tools.tools",
+            "import app.agentplatform.workflows.v2.executor_bridge",
+            "from deerflow.extensions import resolve_tool_scopes",
+            "assert deerflow.tools.get_available_tools is deerflow.tools.tools.get_available_tools, 'package binding rewritten'",
+            "assert type(resolve_tool_scopes(None)).__name__ == 'WorkflowKnowledgeToolScopes', 'tool-scope provider missing'",
+        ]
+    )
+    result = _run_probe(probe)
+    assert result.returncode == 0, result.stderr
+
+
+def test_middleware_legacy_track_default_rewrites_create_agent_at_import() -> None:
+    """Remaining legacy track (middleware seam, until its contract batch):
+    importing the bridge still wraps the executor module's ``create_agent``
+    binding. Flips to the stock-identity assertion in the batch that removes
+    ``_install_scope_aware_create_agent``."""
+    probe = "\n".join(
+        [
             "import deerflow.subagents.executor as executor_module",
             "import app.agentplatform.workflows.v2.executor_bridge",
-            "assert getattr(deerflow.tools.get_available_tools, '_workflow_knowledge_scope_aware', False), 'tool loading rewrite missing'",
             "assert getattr(executor_module.create_agent, '_workflow_scope_aware', False), 'create_agent rewrite missing'",
         ]
     )
@@ -81,23 +99,20 @@ def test_legacy_track_default_rewrites_upstream_bindings_at_import() -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_registry_track_leaves_upstream_bindings_unrewritten() -> None:
-    """Registry track: the same import must leave upstream modules stock and
-    publish both providers through the harness extension seams instead."""
+def test_middleware_registry_track_leaves_create_agent_unrewritten() -> None:
+    """Registry track for the middleware seam: the same import must leave the
+    executor binding stock and publish the provider through the seam instead."""
     probe = "\n".join(
         [
-            "import deerflow.tools, deerflow.tools.tools",
             "import deerflow.subagents.executor as executor_module",
             "from langchain.agents import create_agent as langchain_create_agent",
             "import app.agentplatform.workflows.v2.executor_bridge",
-            "from deerflow.extensions import resolve_subagent_middlewares, resolve_tool_scopes",
-            "assert deerflow.tools.get_available_tools is deerflow.tools.tools.get_available_tools, 'package binding rewritten'",
+            "from deerflow.extensions import resolve_subagent_middlewares",
             "assert executor_module.create_agent is langchain_create_agent, 'executor binding rewritten'",
-            "assert type(resolve_tool_scopes(None)).__name__ == 'WorkflowKnowledgeToolScopes', 'tool-scope provider missing'",
             "assert type(resolve_subagent_middlewares(None)).__name__ == 'WorkflowMiddlewareSource', 'middleware provider missing'",
         ]
     )
-    result = _run_probe(probe, env={"IDEER_TOOL_SCOPE_SEAM": "registry", "IDEER_SUBAGENT_MIDDLEWARE_SEAM": "registry"})
+    result = _run_probe(probe, env={"IDEER_SUBAGENT_MIDDLEWARE_SEAM": "registry"})
     assert result.returncode == 0, result.stderr
 
 
@@ -149,42 +164,37 @@ _SCENARIOS = [
 
 
 @pytest.fixture
-def legacy_wrapper(monkeypatch: pytest.MonkeyPatch):
-    """Isolate the legacy wrapper from the registry track.
+def stock_seam_state(monkeypatch: pytest.MonkeyPatch):
+    """Isolate the stock tool assembly from the bridge's registrations.
 
-    Saves the package binding as imported (the wrapper under the expand
-    default), pins the package binding to the stock implementation so the
-    registry leg never runs through the wrapper, and clears any process
-    default providers. ``None`` once the legacy track is removed.
+    Importing the bridge (contract batch 1) registers the process-default
+    tool-scope provider and, on the remaining middleware legacy track, wraps
+    the executor binding. Pin the package binding to the stock implementation
+    and clear any process default providers for the duration of the test.
     """
-    wrapper = deerflow.tools.get_available_tools
-    is_wrapper = getattr(wrapper, "_workflow_knowledge_scope_aware", False)
     monkeypatch.setattr(deerflow.tools, "get_available_tools", deerflow.tools.tools.get_available_tools)
     reset_default_extension_seams()
-    yield wrapper if is_wrapper else None
+    yield
     reset_default_extension_seams()
 
 
 @pytest.mark.parametrize(("scope", "subagent_enabled"), _SCENARIOS, ids=["no-scope-sub", "no-scope-lead", "scoped-sub", "scoped-lead"])
-def test_registry_seam_matches_the_legacy_wrapper_behavior(monkeypatch: pytest.MonkeyPatch, legacy_wrapper, scope, subagent_enabled) -> None:
-    """For every knowledge-scope scenario the registry-track seam (inside the
-    stock ``tools.tools.get_available_tools``) and the legacy wrapper (the
-    package binding, its captured original running with no provider) must
-    produce equivalent results: same tool names and same adaptation matrix."""
+def test_registry_seam_scoping_matrix(monkeypatch: pytest.MonkeyPatch, stock_seam_state, scope, subagent_enabled) -> None:
+    """The registry-track seam (inside the stock
+    ``tools.tools.get_available_tools``) must uphold the fail-closed scoping
+    matrix the expand-phase equivalence test pinned against the removed legacy
+    wrapper: same tool names, same adaptation decisions per scenario."""
     _scoped_loader(monkeypatch)
 
     token = executor_bridge._PENDING_KNOWLEDGE_SCOPE.set(scope)
     try:
-        # Legacy track alone: wrapper over stock assembly (no provider registered).
-        legacy_result = legacy_wrapper(subagent_enabled=subagent_enabled, include_mcp=False, include_upload_tool=False) if legacy_wrapper is not None else None
-        # Registry track alone: the seam inside the stock implementation.
         set_default_tool_scopes(WorkflowKnowledgeToolScopes(), owner="test:seam_contract")
         registry_result = deerflow.tools.tools.get_available_tools(subagent_enabled=subagent_enabled, include_mcp=False, include_upload_tool=False)
     finally:
         executor_bridge._PENDING_KNOWLEDGE_SCOPE.reset(token)
         reset_default_extension_seams()
 
-    # The fail-closed matrix pins the shared behavior (both tracks).
+    # The fail-closed matrix pins the shared behavior (both historical tracks).
     if scope is None:
         assert _names(registry_result) == ["knowledge_search", "write_file"]
     elif subagent_enabled is False:
@@ -194,12 +204,8 @@ def test_registry_seam_matches_the_legacy_wrapper_behavior(monkeypatch: pytest.M
         assert getattr(registry_result[0], "args_schema", None) is not None, "scoped loading must rebind the knowledge tool"
     assert registry_result[_names(registry_result).index("write_file")] is deerflow.tools.tools.BUILTIN_TOOLS[0]
 
-    if legacy_result is not None:
-        assert _names(legacy_result) == _names(registry_result), "tracks diverge on names"
-        assert [getattr(t, "args_schema", None) is not None for t in legacy_result] == [getattr(t, "args_schema", None) is not None for t in registry_result], "tracks diverge on knowledge-tool adaptation"
 
-
-def test_stock_behavior_without_provider(monkeypatch: pytest.MonkeyPatch, legacy_wrapper) -> None:
+def test_stock_behavior_without_provider(monkeypatch: pytest.MonkeyPatch, stock_seam_state) -> None:
     """Without a registered provider the seam must be a pure passthrough even
     while a workflow scope is pending."""
     _scoped_loader(monkeypatch)
