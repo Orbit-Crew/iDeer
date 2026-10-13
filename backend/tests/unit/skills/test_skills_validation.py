@@ -1,20 +1,12 @@
-"""Tests for enterprise skill frontmatter validation.
+"""Tests for skill frontmatter validation.
 
 Consolidates all _validate_skill_frontmatter tests (previously split across
 test_skills_router.py and this module) into a single dedicated module.
-
-The enterprise validator (``app.agentplatform.resources.skill_validation``)
-extends the upstream key set with i18n / governance frontmatter keys and
-keeps ``allowed-tools`` list-only, matching the bundled skills under
-``resources/skills/``.
 """
 
 from pathlib import Path
 
-from app.agentplatform.resources.skill_validation import (
-    ALLOWED_FRONTMATTER_PROPERTIES,
-    _validate_skill_frontmatter,
-)
+from deerflow.skills.validation import ALLOWED_FRONTMATTER_PROPERTIES, _validate_skill_frontmatter
 
 
 def _write_skill(tmp_path: Path, content: str) -> Path:
@@ -55,17 +47,25 @@ class TestValidateSkillFrontmatter:
         assert msg == "Skill is valid!"
         assert name == "my-skill"
 
-    def test_rejects_allowed_tools_string(self, tmp_path):
+    def test_allows_argument_hint(self, tmp_path):
         skill_dir = _write_skill(
             tmp_path,
-            "---\nname: my-skill\ndescription: A skill\nallowed-tools: bash\n---\n\nBody\n",
+            "---\nname: my-skill\ndescription: A skill\nargument-hint: '[issue-number]'\n---\n\nBody\n",
         )
         valid, msg, name = _validate_skill_frontmatter(skill_dir)
-        assert valid is False
-        assert "allowed-tools" in msg
-        assert str(tmp_path) not in msg
-        assert "SKILL.md" in msg
-        assert name is None
+        assert valid is True
+        assert msg == "Skill is valid!"
+        assert name == "my-skill"
+
+    def test_allows_allowed_tools_string(self, tmp_path):
+        skill_dir = _write_skill(
+            tmp_path,
+            "---\nname: my-skill\ndescription: A skill\nallowed-tools: Bash(tvly *) Bash(playwright-cli:*)\n---\n\nBody\n",
+        )
+        valid, msg, name = _validate_skill_frontmatter(skill_dir)
+        assert valid is True
+        assert msg == "Skill is valid!"
+        assert name == "my-skill"
 
     def test_rejects_allowed_tools_non_string_entry(self, tmp_path):
         skill_dir = _write_skill(
@@ -123,6 +123,17 @@ class TestValidateSkillFrontmatter:
         valid, msg, _ = _validate_skill_frontmatter(skill_dir)
         assert valid is False
         assert "custom-field" in msg
+
+    def test_non_string_frontmatter_key_reports_cleanly_instead_of_crashing(self, tmp_path):
+        skill_dir = _write_skill(
+            tmp_path,
+            "---\nname: my-skill\ndescription: test\n42: bad\ncustom-field: bad\n---\n\nBody\n",
+        )
+        valid, msg, name = _validate_skill_frontmatter(skill_dir)
+        assert valid is False
+        assert "custom-field" in msg
+        assert "42" in msg
+        assert name is None
 
     def test_name_must_be_hyphen_case(self, tmp_path):
         skill_dir = _write_skill(
@@ -189,6 +200,37 @@ class TestValidateSkillFrontmatter:
         assert valid is False
         assert "too long" in msg.lower()
 
+    def test_description_at_max_length_accepted(self, tmp_path):
+        max_desc = "a" * 1024
+        skill_dir = _write_skill(
+            tmp_path,
+            f"---\nname: my-skill\ndescription: {max_desc}\n---\n\nBody\n",
+        )
+        valid, msg, name = _validate_skill_frontmatter(skill_dir)
+        assert valid is True
+        assert msg == "Skill is valid!"
+        assert name == "my-skill"
+
+    def test_empty_description_rejected(self, tmp_path):
+        skill_dir = _write_skill(
+            tmp_path,
+            "---\nname: my-skill\ndescription: ''\n---\n\nBody\n",
+        )
+        valid, msg, name = _validate_skill_frontmatter(skill_dir)
+        assert valid is False
+        assert "empty" in msg.lower()
+        assert name is None
+
+    def test_whitespace_only_description_rejected(self, tmp_path):
+        skill_dir = _write_skill(
+            tmp_path,
+            "---\nname: my-skill\ndescription: '   '\n---\n\nBody\n",
+        )
+        valid, msg, name = _validate_skill_frontmatter(skill_dir)
+        assert valid is False
+        assert "empty" in msg.lower()
+        assert name is None
+
     def test_empty_name_rejected(self, tmp_path):
         skill_dir = _write_skill(
             tmp_path,
@@ -201,14 +243,7 @@ class TestValidateSkillFrontmatter:
     def test_allowed_properties_constant(self):
         assert "name" in ALLOWED_FRONTMATTER_PROPERTIES
         assert "description" in ALLOWED_FRONTMATTER_PROPERTIES
-        assert "description_zh" in ALLOWED_FRONTMATTER_PROPERTIES
-        assert "description_en" in ALLOWED_FRONTMATTER_PROPERTIES
         assert "license" in ALLOWED_FRONTMATTER_PROPERTIES
-        assert "display_name" in ALLOWED_FRONTMATTER_PROPERTIES
-        assert "display_name_en" in ALLOWED_FRONTMATTER_PROPERTIES
-        assert "name_zh" in ALLOWED_FRONTMATTER_PROPERTIES
-        assert "visibility" in ALLOWED_FRONTMATTER_PROPERTIES
-        assert "skill_id" in ALLOWED_FRONTMATTER_PROPERTIES
 
     def test_reads_utf8_on_windows_locale(self, tmp_path, monkeypatch):
         skill_dir = _write_skill(

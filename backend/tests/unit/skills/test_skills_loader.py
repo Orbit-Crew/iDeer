@@ -1,16 +1,13 @@
-"""Tests for recursive skills loading.
-
-Contract (deerflow runtime): the skills root resolves to ``skills`` under the
-caller project root (override with ``DEER_FLOW_SKILLS_PATH``), skills live in
-category directories (``public/``, ``custom/``), a directory containing
-SKILL.md is a package boundary, and hidden directories are skipped.
-"""
+"""Tests for recursive skills loading."""
 
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from deerflow.config.skills_config import SkillsConfig
 from deerflow.skills.storage import get_or_new_skill_storage
+from deerflow.skills.storage.local_skill_storage import LocalSkillStorage
 
 
 def _write_skill(skill_dir: Path, name: str, description: str) -> None:
@@ -43,13 +40,12 @@ def test_get_skills_root_path_honors_env_override(tmp_path: Path, monkeypatch):
 
 
 def test_load_skills_discovers_nested_skills_and_sets_container_paths(tmp_path: Path):
-    """Namespace directories without SKILL.md are recursed into; container
-    paths include the category segment."""
+    """Nested skills should be discovered recursively with correct container paths."""
     skills_root = tmp_path / "skills"
 
     _write_skill(skills_root / "public" / "root-skill", "root-skill", "Root skill")
     _write_skill(skills_root / "public" / "parent" / "child-skill", "child-skill", "Child skill")
-    _write_skill(skills_root / "public" / "team" / "helper", "team-helper", "Team helper")
+    _write_skill(skills_root / "custom" / "team" / "helper", "team-helper", "Team helper")
 
     skills = get_or_new_skill_storage(skills_path=skills_root).load_skills(enabled_only=False)
     by_name = {skill.name: skill for skill in skills}
@@ -67,26 +63,64 @@ def test_load_skills_discovers_nested_skills_and_sets_container_paths(tmp_path: 
     assert child_skill.get_container_file_path() == "/mnt/skills/public/parent/child-skill/SKILL.md"
 
     assert team_skill.skill_path == "team/helper"
-    assert team_skill.get_container_file_path() == "/mnt/skills/public/team/helper/SKILL.md"
+    assert team_skill.get_container_file_path() == "/mnt/skills/custom/team/helper/SKILL.md"
 
 
-def test_load_skills_treats_skill_dir_as_package_boundary(tmp_path: Path):
-    """A SKILL.md nested inside another skill package is a support resource
-    (e.g. an eval fixture), not a separate runtime skill."""
+def test_local_storage_accepts_external_custom_skill_directory_symlink(tmp_path: Path):
     skills_root = tmp_path / "skills"
+    external_file = tmp_path / "external-skills" / "external-skill" / "SKILL.md"
+    external_file.parent.mkdir(parents=True)
+    external_file.write_text("---\nname: external-skill\ndescription: An external skill\n---\n", encoding="utf-8")
 
-    _write_skill(skills_root / "public" / "outer-skill", "outer-skill", "Outer skill")
-    _write_skill(
-        skills_root / "public" / "outer-skill" / "evals" / "fixtures" / "inner",
-        "inner-skill",
-        "Fixture skill",
+    linked_dir = skills_root / "custom" / "external-skill"
+    linked_file = linked_dir / "SKILL.md"
+    linked_dir.parent.mkdir(parents=True)
+    try:
+        linked_dir.symlink_to(external_file.parent, target_is_directory=True)
+    except OSError as exc:
+        if getattr(exc, "winerror", None) == 1314:
+            pytest.skip("Windows symlink creation requires SeCreateSymbolicLinkPrivilege")
+        raise
+
+    storage = LocalSkillStorage(host_path=str(skills_root))
+
+    assert storage.validate_skill_file_path(linked_file) == external_file
+
+
+def test_load_skills_discovers_parenthesized_portable_allowed_tools(tmp_path: Path):
+    skills_root = tmp_path / "skills"
+    skill_dir = skills_root / "custom" / "tavily-cli"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: tavily-cli\ndescription: Tavily CLI\nallowed-tools: Bash(tvly *)\n---\n\n# Tavily CLI\n",
+        encoding="utf-8",
     )
 
     skills = get_or_new_skill_storage(skills_path=skills_root).load_skills(enabled_only=False)
-    names = {skill.name for skill in skills}
 
-    assert "outer-skill" in names
-    assert "inner-skill" not in names
+    skill = next(skill for skill in skills if skill.name == "tavily-cli")
+    assert skill.allowed_tools == ("Bash(tvly *)",)
+
+
+def test_load_skills_stops_at_skill_package_boundary(tmp_path: Path):
+    """SKILL.md files inside an existing skill package are support data, not skills."""
+    skills_root = tmp_path / "skills"
+
+    _write_skill(skills_root / "public" / "reviewer", "reviewer", "Reviews skills")
+    _write_skill(
+        skills_root / "public" / "reviewer" / "evals" / "fixtures" / "injection",
+        "injection-example",
+        "Calibration fixture",
+    )
+    _write_skill(
+        skills_root / "public" / "reviewer" / "examples" / "helper",
+        "nested-example",
+        "Nested package example",
+    )
+
+    skills = get_or_new_skill_storage(skills_path=skills_root).load_skills(enabled_only=False)
+
+    assert {skill.name for skill in skills} == {"reviewer"}
 
 
 def test_load_skills_skips_hidden_directories(tmp_path: Path):
@@ -105,6 +139,38 @@ def test_load_skills_skips_hidden_directories(tmp_path: Path):
 
     assert "ok-skill" in names
     assert "secret-skill" not in names
+
+
+def test_load_skills_prefers_custom_over_public_with_same_name(tmp_path: Path):
+    skills_root = tmp_path / "skills"
+    _write_skill(skills_root / "public" / "shared-skill", "shared-skill", "Public version")
+    _write_skill(skills_root / "custom" / "shared-skill", "shared-skill", "Custom version")
+
+    skills = get_or_new_skill_storage(skills_path=skills_root).load_skills(enabled_only=False)
+    shared = next(skill for skill in skills if skill.name == "shared-skill")
+
+    assert shared.category == "custom"
+    assert shared.description == "Custom version"
+
+
+# --- merged from test_skills_loader.py (subdir-only tests; root copy is the dedup base) ---
+def test_load_skills_treats_skill_dir_as_package_boundary(tmp_path: Path):
+    """A SKILL.md nested inside another skill package is a support resource
+    (e.g. an eval fixture), not a separate runtime skill."""
+    skills_root = tmp_path / "skills"
+
+    _write_skill(skills_root / "public" / "outer-skill", "outer-skill", "Outer skill")
+    _write_skill(
+        skills_root / "public" / "outer-skill" / "evals" / "fixtures" / "inner",
+        "inner-skill",
+        "Fixture skill",
+    )
+
+    skills = get_or_new_skill_storage(skills_path=skills_root).load_skills(enabled_only=False)
+    names = {skill.name for skill in skills}
+
+    assert "outer-skill" in names
+    assert "inner-skill" not in names
 
 
 def test_load_skills_deduplicates_by_name_within_flat_root(tmp_path: Path):
