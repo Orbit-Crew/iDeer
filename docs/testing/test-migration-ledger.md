@@ -38,6 +38,47 @@ The batch entries below are historical examples. Use only the entry relevant
 to the test being moved; they do not replace validation on the current
 candidate.
 
+## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (batch 1 of 8)
+
+Ticket #66 under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
+for every root ↔ `{unit,integration,contracts}` same-name pair the ROOT copy is
+the merge base and is deleted after its content lands at the canonical subdir
+path (`__file__` depths normalized); subdir-only tests are carried over
+(spliced into same-named classes or appended as module defs). On drifted
+same-name tests the root variant wins: both variants were green on the same
+candidate before the merge, so no retained assertion is weaker than what the
+standard lane ran. Module-global directives (`pytestmark`, `pytest_plugins`)
+are not carried from the sub copy. Per-file merge reports (spliced methods,
+carried defs, root-wins conflicts, import shadowing) are archived in the
+ticket's `dev-log/batch6/merge_report_*.json`.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_channel_file_attachments.py` (16 identical + 4 drifted + 28 root-only) | `tests/unit/channels/test_channel_file_attachments.py` | root variant wins on drifted names; 18 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_channels.py` (74 identical + 19 drifted + 259 root-only) | `tests/unit/channels/test_channels.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_dingtalk_channel.py` (66 identical + 12 drifted + 42 root-only) | `tests/unit/channels/test_dingtalk_channel.py` | root variant wins on drifted names; 0 class methods + 37 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_discord_channel.py` (0 identical + 0 drifted + 23 root-only) | `tests/unit/channels/test_discord_channel.py` | root variant wins on drifted names; 0 class methods + 22 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_feishu_parser.py` (5 identical + 1 drifted + 25 root-only) | `tests/unit/workflows/test_feishu_parser.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_prompt_injection.py` (10 identical + 1 drifted + 24 root-only) | `tests/unit/memory/test_memory_prompt_injection.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_queue.py` (0 identical + 10 drifted + 16 root-only) | `tests/unit/memory/test_memory_queue.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir; appended legacy-API test rewritten against `app.agentplatform.legacy.memory.queue` alias | both copies green on the same candidate pre-merge |
+| `tests/test_memory_storage.py` (0 identical + 11 drifted + 5 root-only) | `tests/unit/memory/test_memory_storage.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir; appended legacy-API tests rewritten against `app.agentplatform.legacy.memory.storage` alias | both copies green on the same candidate pre-merge |
+| `tests/test_memory_updater.py` (13 identical + 33 drifted + 36 root-only) | `tests/unit/memory/test_memory_updater.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_upload_filtering.py` (22 identical + 4 drifted + 7 root-only) | `tests/unit/memory/test_memory_upload_filtering.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_parser.py` (13 identical + 3 drifted + 14 root-only) | `tests/unit/workflows/test_skills_parser.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_wechat_channel.py` (18 identical + 11 drifted + 12 root-only) | `tests/unit/channels/test_wechat_channel.py` | root variant wins on drifted names; 0 class methods + 85 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+Validation (this batch):
+
+```bash
+cd backend
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \
+  uv run --no-sync pytest tests/unit/channels tests/unit/memory tests/unit/workflows \
+  -q -m "not serial and not requires_llm and not live and not external"
+# 2560 passed
+uv run --no-sync ruff check tests/unit/channels tests/unit/memory tests/unit/workflows
+uv run --no-sync ruff format --check tests/unit/channels tests/unit/memory tests/unit/workflows
+```
+
 ## Batch 2026-10-03: Thread initialization ordering duplicate
 
 Removed `frontend/tests/e2e/workflows/chat-thread-init-ordering.spec.ts` and
