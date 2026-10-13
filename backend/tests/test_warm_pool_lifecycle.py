@@ -6,6 +6,8 @@ import threading
 import time
 from typing import Any
 
+from _eventual import wait_until
+
 from deerflow.community.warm_pool_lifecycle import DEFAULT_IDLE_TIMEOUT, DEFAULT_REPLICAS, WarmPoolLifecycleMixin
 
 
@@ -84,10 +86,10 @@ def test_start_idle_checker_uses_monkeypatchable_interval(monkeypatch) -> None:
     provider._warm_pool["expired"] = ("entry-expired", time.time() - 10)
 
     provider._start_idle_checker()
-    deadline = time.time() + 1
-    while "expired" in provider._warm_pool and time.time() < deadline:
-        time.sleep(0.01)
-    provider._stop_idle_checker()
+    try:
+        wait_until(lambda: "expired" not in provider._warm_pool, timeout=5, message="idle checker never reaped the expired entry")
+    finally:
+        provider._stop_idle_checker()
 
     assert "expired" not in provider._warm_pool
     assert provider.destroyed == [("expired", "entry-expired", "idle_timeout")]

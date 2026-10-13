@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _eventual import wait_until
 
 from deerflow.community.aio_sandbox.aio_sandbox_provider import (
     SandboxBeingDestroyedError,
@@ -828,7 +829,7 @@ def test_expired_lease_lets_peer_adopt_crashed_owner_container():
     worker_b._backend.list_running.return_value = [info]
 
     # Owner "crashes": stops renewing. Its lease lapses in the store.
-    time.sleep(0.1)
+    wait_until(lambda: shared.owner("crashed1") is None, timeout=5, message="the crashed owner's lease never lapsed")
 
     now = time.time()
     with patch.object(aio_mod.time, "time", return_value=now):
@@ -1141,9 +1142,7 @@ def test_renewal_loop_refreshes_owned_leases():
 
     worker._start_lease_renewal()
     try:
-        deadline = time.time() + 3
-        while not renewed and time.time() < deadline:
-            time.sleep(0.02)
+        wait_until(lambda: renewed, timeout=3, message="the renewal heartbeat never renewed sb1")
     finally:
         worker._stop_lease_renewal()
 
@@ -1875,10 +1874,11 @@ def test_teardown_release_waits_for_the_heartbeat_to_exit():
     blocking.unblock.set()
     assert blocking.refresh_completed.wait(timeout=5), "the in-flight refresh never completed"
 
-    deadline = time.time() + 5
-    while time.time() < deadline and shared.owner("defer1") is not None:
-        time.sleep(0.02)
-    assert shared.owner("defer1") is None, "a refresh that landed after the release stranded the id under a `del:` marker"
+    wait_until(
+        lambda: shared.owner("defer1") is None,
+        timeout=5,
+        message="a refresh that landed after the release stranded the id under a `del:` marker",
+    )
     assert worker_b._ownership.take("defer1") is True
 
 
@@ -2027,8 +2027,11 @@ def test_teardown_heartbeat_stops_when_the_stop_returns():
     assert [t for t in threading.enumerate() if t.name == "sandbox-teardown-lease"] == [], "a teardown heartbeat thread outlived its stop"
 
     # And nothing keeps refreshing the marker past its TTL.
-    time.sleep(0.3)
-    assert shared.owner("doomed2") is None
+    wait_until(
+        lambda: shared.owner("doomed2") is None,
+        timeout=5,
+        message="a teardown heartbeat outlived the stop and kept the doomed2 marker alive",
+    )
 
 
 def test_cached_sandbox_being_destroyed_is_dropped_not_reused():
@@ -3022,7 +3025,11 @@ def test_a_container_adopted_during_register_is_not_reaped_from_the_warm_pool():
     assert out.get("id") == "adopted"
     assert "adopted" not in provider._warm_pool, "the adopted entry survived, giving the container two reapers"
 
-    time.sleep(0.02)
+    # Make any lingering warm entries reaping-eligible deterministically
+    # instead of sleeping past the idle threshold.
+    with provider._lock:
+        for stale_id, (entry, timestamp) in list(provider._warm_pool.items()):
+            provider._warm_pool[stale_id] = (entry, timestamp - 1)
     provider._reap_expired_warm(0.01)
     provider._backend.destroy.assert_not_called()
     assert provider.get("adopted") is not None, "warm expiry stopped a container this turn is holding"

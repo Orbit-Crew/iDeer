@@ -2,6 +2,8 @@ import threading
 import time
 from unittest.mock import MagicMock, call, patch
 
+from _eventual import wait_until
+
 from deerflow.agents.memory.backends.deermem.deermem.config import DeerMemConfig
 from deerflow.agents.memory.backends.deermem.deermem.core.queue import ConversationContext, MemoryUpdateQueue
 
@@ -333,8 +335,7 @@ def _run_inflight_worker(queue: MemoryUpdateQueue, release: threading.Event) -> 
     thread = threading.Thread(target=_inflight, name="fake-inflight-worker", daemon=True)
     thread.start()
     # Wait until the fake worker has claimed _processing.
-    while not queue.is_processing:
-        time.sleep(0.005)
+    wait_until(lambda: queue.is_processing, timeout=5, message="fake worker never claimed _processing")
     return thread
 
 

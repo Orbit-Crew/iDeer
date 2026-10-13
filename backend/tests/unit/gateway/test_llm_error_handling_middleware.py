@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from _eventual import wait_until
 from langchain_core.messages import AIMessage
 from langgraph.errors import GraphBubbleUp
 
@@ -1797,13 +1798,7 @@ def test_limiter_caps_concurrent_sync_calls() -> None:
     t1.start()
     t2.start()
     # Wait until one handler is in-flight; the other blocks on the limiter.
-    for _ in range(400):
-        with lock:
-            if max_in_flight >= 1:
-                break
-        time.sleep(0.005)
-    with lock:
-        assert max_in_flight == 1
+    wait_until(lambda: max_in_flight >= 1, timeout=2, message="no handler ever became in-flight")
 
     gate.set()
     t1.join(timeout=5)
@@ -1850,13 +1845,7 @@ def test_cap_is_frozen_at_first_construction_and_unchanged_by_later_instances() 
     holder = threading.Thread(target=lambda: first_mw.wrap_model_call(SimpleNamespace(), handler))
     holder.start()
     try:
-        for _ in range(400):
-            with lock:
-                if max_in_flight >= 1:
-                    break
-            time.sleep(0.005)
-        with lock:
-            assert max_in_flight == 1
+        wait_until(lambda: max_in_flight >= 1, timeout=2, message="holder never became in-flight")
         assert limiter.in_flight == 1  # holder holds the single permit
 
         # Later instances try to raise (3) and to disable (0): both ignored.
@@ -1921,11 +1910,7 @@ def test_first_constructed_cap_wins_over_later_config_snapshot() -> None:
     for t in threads:
         t.start()
     try:
-        for _ in range(400):
-            with lock:
-                if max_in_flight >= 1:
-                    break
-            time.sleep(0.005)
+        wait_until(lambda: max_in_flight >= 1, timeout=2, message="no call ever became in-flight")
         # Give the queued calls a chance to (incorrectly) exceed the frozen cap.
         time.sleep(0.05)
         with lock:

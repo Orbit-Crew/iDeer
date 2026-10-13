@@ -15,6 +15,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from _eventual import wait_until
 
 import deerflow.utils.assembly_io as assembly_io
 
@@ -62,9 +63,11 @@ def test_abandoned_loop_does_not_wedge_the_counter() -> None:
     loop.close()
 
     # Give the pool worker time to finish its finally-block decrement.
-    deadline = time.monotonic() + 5
-    while assembly_io._pending_assemblies != 0 and time.monotonic() < deadline:
-        time.sleep(0.01)
+    wait_until(
+        lambda: assembly_io._pending_assemblies == 0,
+        timeout=5,
+        message=errors[0] if errors else "counter was not decremented by the dispatched work item",
+    )
     assert assembly_io._pending_assemblies == 0, errors or "counter was not decremented by the dispatched work item"
 
 

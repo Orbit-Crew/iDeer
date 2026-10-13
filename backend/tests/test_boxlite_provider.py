@@ -18,6 +18,7 @@ import time
 import types
 
 import pytest
+from _eventual import wait_until
 
 from deerflow.community.boxlite.box import BoxliteBox
 from deerflow.community.boxlite.provider import BoxliteProvider, _import_simplebox
@@ -1014,11 +1015,8 @@ def test_idle_reaper_destroys_expired_warm_boxes(monkeypatch):
     warm_box = provider._warm_pool[sid][0]
     provider._warm_pool[sid] = (warm_box, time.time() - 9999)
 
-    # Wait long enough for the reaper to detect and destroy it
-    time.sleep(0.3)
-
-    # Box should be gone from warm pool and closed
-    assert sid not in provider._warm_pool
+    # Wait until the reaper detects and destroys the expired entry
+    wait_until(lambda: sid not in provider._warm_pool, timeout=5, message="reaper never removed the expired warm entry")
     assert warm_box._closed
 
     provider.shutdown()

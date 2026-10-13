@@ -22,6 +22,7 @@ import time
 import types
 
 import pytest
+from _eventual import wait_until
 
 from deerflow.community.tenki.provider import _BOOTSTRAP_TIMEOUT, TenkiSandboxProvider, _import_client
 from deerflow.community.tenki.sandbox import TenkiSandbox
@@ -924,8 +925,7 @@ def test_idle_reaper_destroys_expired_warm(monkeypatch):
     provider.release(sid)
     warm_box = provider._warm_pool[sid][0]
     provider._warm_pool[sid] = (warm_box, time.time() - 9999)
-    time.sleep(0.3)
-    assert sid not in provider._warm_pool
+    wait_until(lambda: sid not in provider._warm_pool, timeout=5, message="idle checker never reaped the backdated warm entry")
     assert warm_box.is_closed
     provider.shutdown()
 

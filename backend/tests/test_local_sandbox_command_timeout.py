@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 import pytest
+from _eventual import wait_until
 
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.sandbox.local import local_sandbox
@@ -53,10 +54,7 @@ def test_backgrounded_process_does_not_inherit_deleted_temp_capture(tmp_path):
     output = sandbox.execute_command(f"{shlex.quote(sys.executable)} -c {shlex.quote(script)} & echo launched", timeout=10)
 
     assert "launched" in output
-    for _ in range(50):
-        if marker.exists():
-            break
-        time.sleep(0.1)
+    wait_until(lambda: marker.exists(), timeout=10, message="backgrounded sandbox process never wrote the fd1 marker")
     assert marker.exists()
     assert " (deleted)" not in marker.read_text()
 

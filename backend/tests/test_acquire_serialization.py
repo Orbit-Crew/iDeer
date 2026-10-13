@@ -8,6 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from _eventual import wait_until
 
 from deerflow.sandbox.acquire_serialization import AcquireSerializer
 from deerflow.trace_context import get_current_trace_id, request_trace_context
@@ -101,9 +102,7 @@ class TestAsyncContract:
         # the acquire worker itself. Blocking this loop keeps asyncio Future
         # callbacks from hiding a lock leak here.
         release_holder.set()
-        deadline = time.monotonic() + 2
-        while serializer._table and time.monotonic() < deadline:
-            time.sleep(0.01)
+        wait_until(lambda: not serializer._table, timeout=2, message="acquire worker never cleaned up the serializer table")
         holder.join(timeout=2)
         assert not holder.is_alive()
         assert len(serializer._table) == 0

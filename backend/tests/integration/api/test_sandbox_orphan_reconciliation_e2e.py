@@ -15,9 +15,9 @@ Requires: Docker running locally
 """
 
 import subprocess
-import time
 
 import pytest
+from _eventual import wait_until
 
 
 def _docker_available() -> bool:
@@ -115,11 +115,12 @@ class TestOrphanReconciliationE2E:
             # Destroy it (simulating what _reconcile_orphans does for old containers)
             backend.destroy(orphan_info)
 
-            # Give Docker a moment to stop the container
-            time.sleep(1)
-
-            # Verify container is gone
-            assert not _container_running(container_name), "Orphan container should be stopped after destroy"
+            # Verify the container actually stops instead of hoping one second was enough
+            wait_until(
+                lambda: not _container_running(container_name),
+                timeout=15,
+                message="Orphan container should be stopped after destroy",
+            )
 
         finally:
             # Safety cleanup
@@ -162,11 +163,12 @@ class TestOrphanReconciliationE2E:
             for info in running:
                 backend.destroy(info)
 
-            time.sleep(1)
-
-            # Verify all gone
             for name in containers:
-                assert not _container_running(name), f"{name} should be stopped"
+                wait_until(
+                    lambda name=name: not _container_running(name),
+                    timeout=15,
+                    message=f"{name} should be stopped",
+                )
 
         finally:
             for name in containers:

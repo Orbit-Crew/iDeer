@@ -9,7 +9,6 @@ import asyncio
 import json
 import logging
 import threading
-import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -114,7 +113,19 @@ def _run_on_message_with_loop(ch, content_dict, **kwargs):
             patch("app.channels.feishu.FEISHU_INBOUND_BATCH_WINDOW_SECONDS", 0.01),
         ):
             ch._on_message(event)
-            time.sleep(0.2)
+            # Settle signal instead of a fixed sleep: the batch window is
+            # shrunk to 10ms above, so once the background loop has drained
+            # every pending batch the scheduled prepares have all run (or
+            # deliberately not run, for the negative cases).
+            from _eventual import wait_until
+
+            wait_until(
+                lambda: not ch._pending_inbound_batches,
+                timeout=5,
+                message="inbound batch never drained on the background loop",
+            )
+            # Barrier: confirms the loop has spun past the batch drain above.
+            asyncio.run_coroutine_threadsafe(asyncio.sleep(0), loop).result(timeout=5)
     finally:
         loop.call_soon_threadsafe(loop.stop)
         loop_thread.join(timeout=2)

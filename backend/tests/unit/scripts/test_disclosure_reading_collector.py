@@ -4,9 +4,10 @@ import os
 import signal
 import subprocess
 import sys
-import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+from _eventual import wait_until
 
 ROOT = Path(__file__).resolve().parents[4]
 CLI = ROOT / "scripts" / "disclosure_reading_collector.py"
@@ -393,11 +394,11 @@ def test_runner_timeout_cleans_only_its_child_process_group(tmp_path):
         # Wait for the fake CLI to prove it spawned the child before the
         # runner's startup deadline. This makes the cleanup assertion about
         # the process-group timeout phase, even under a loaded test lane.
-        readiness_deadline = time.monotonic() + startup_timeout_seconds
-        while not child_pid.exists() and runner.poll() is None:
-            if time.monotonic() >= readiness_deadline:
-                break
-            time.sleep(0.01)
+        wait_until(
+            lambda: child_pid.exists() or runner.poll() is not None,
+            timeout=startup_timeout_seconds,
+            message="fake Codex did not spawn its child before timeout",
+        )
         assert child_pid.exists(), "fake Codex did not spawn its child before timeout"
 
         stdout, _stderr = runner.communicate(timeout=startup_timeout_seconds + 2)
@@ -407,8 +408,11 @@ def test_runner_timeout_cleans_only_its_child_process_group(tmp_path):
         assert record["status"] == "failed"
         assert record["failure_class"] == "workspace_load"
         assert Path(run_data["trace"]).is_file()
-        time.sleep(1.5)
-        assert not marker.exists()
+        wait_until(
+            lambda: not marker.exists(),
+            timeout=5,
+            message="process-group timeout phase never removed the child marker",
+        )
         assert sibling.poll() is None
         assert child_pid.exists()
     finally:
@@ -464,9 +468,11 @@ def test_runner_sigterm_cleans_child_group_and_records_interruption(tmp_path):
         env={**os.environ, "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"]},
     )
     try:
-        deadline = time.monotonic() + 10
-        while not child_pid.exists() and runner.poll() is None and time.monotonic() < deadline:
-            time.sleep(0.02)
+        wait_until(
+            lambda: child_pid.exists() or runner.poll() is not None,
+            timeout=10,
+            message="fake Codex did not spawn its child before timeout",
+        )
         assert child_pid.exists()
         os.kill(runner.pid, signal.SIGTERM)
         stdout, stderr = runner.communicate(timeout=5)
@@ -479,8 +485,11 @@ def test_runner_sigterm_cleans_child_group_and_records_interruption(tmp_path):
         assert record["failure_class"] == "infrastructure"
         assert Path(result_data["trace"]).is_file()
         assert sibling.poll() is None
-        time.sleep(0.9)
-        assert not marker.exists()
+        wait_until(
+            lambda: not marker.exists(),
+            timeout=5,
+            message="SIGTERM shutdown never removed the child marker",
+        )
     finally:
         if runner.poll() is None:
             runner.kill()
