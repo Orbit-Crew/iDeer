@@ -7,19 +7,11 @@ only knows the legacy per-user agent store, so this module restores the
 canonical publication and offers it to the host through the builtin-tool
 override seam.
 
-Two tracks publish the tool during the expand/contract transition (ticket
-#64, 02-M6), selected by ``IDEER_BUILTIN_TOOL_SEAM``:
-
-* ``registry`` (the contract track): ``install()`` registers a
-  ``BuiltinToolOverrides`` provider through the harness extension seam
-  (``deerflow.extensions.set_default_builtin_tool_overrides``); the lead-agent
-  assembly resolves the override at its builtin import site and no upstream
-  module attribute is ever rewritten.
-* ``legacy`` (default during expand): ``install()`` replaces the module
-  attributes ``deerflow.tools.builtins.setup_agent`` /
-  ``...setup_agent_tool.setup_agent``; the lead-agent assembly imports the
-  tool lazily on every graph build, so every subsequent build picks up the
-  wrapped tool.
+``install()`` (ticket #64, 02-M6, contract batch) registers a
+``BuiltinToolOverrides`` provider through the harness extension seam
+(``deerflow.extensions.set_default_builtin_tool_overrides``); the lead-agent
+assembly resolves the override at its builtin binding site and no upstream
+module attribute is ever rewritten.
 
 The wrapper resolves ``get_paths`` through the tool module namespace at call
 time and ``get_session_factory`` through this module's namespace, keeping the
@@ -31,7 +23,6 @@ from __future__ import annotations
 import asyncio
 import importlib
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
@@ -48,14 +39,8 @@ from deerflow.tools.types import Runtime
 logger = logging.getLogger(__name__)
 
 _TOOL_MODULE_NAME = "deerflow.tools.builtins.setup_agent_tool"
-_BUILTINS_MODULE_NAME = "deerflow.tools.builtins"
 
 _installed = False
-
-
-def _seam_track() -> str:
-    track = os.environ.get("IDEER_BUILTIN_TOOL_SEAM", "legacy").strip().lower()
-    return "registry" if track == "registry" else "legacy"
 
 
 def _write_user_agent_files(*, user_id: str, agent_name: str, description: str, soul: str, skills: list[str] | None = None) -> None:
@@ -246,7 +231,7 @@ def setup_agent(
 
 
 class CanonicalBuiltinToolOverrides:
-    """Builtin tool override provider for the registry track.
+    """Builtin tool override provider for the host composition.
 
     Publishes the canonical ``setup_agent`` under its stock builtin name;
     every other builtin keeps the host default.
@@ -261,33 +246,19 @@ class CanonicalBuiltinToolOverrides:
 def install() -> None:
     """Publish the canonical ``setup_agent`` to the host.
 
-    Idempotent. The active track (``IDEER_BUILTIN_TOOL_SEAM``, default
-    ``legacy`` during the expand/contract transition) decides how:
-    ``registry`` registers a ``BuiltinToolOverrides`` provider through the
-    harness extension seam — upstream module attributes stay stock;
-    ``legacy`` replaces the two upstream module attributes and attaches
-    ``get_session_factory`` to the tool module so the legacy wrapper's
-    catalog seam has a single, patchable home (read lazily).
+    Idempotent. Registers a ``BuiltinToolOverrides`` provider through the
+    harness extension seam — upstream module attributes stay stock and the
+    lead-agent assembly resolves the canonical tool at its builtin binding
+    site. The catalog session seam lives on this module's
+    ``get_session_factory`` namespace (read lazily at call time).
     """
     global _installed
     if _installed:
         return
 
-    if _seam_track() == "registry":
-        from deerflow.extensions import set_default_builtin_tool_overrides
+    from deerflow.extensions import set_default_builtin_tool_overrides
 
-        set_default_builtin_tool_overrides(CanonicalBuiltinToolOverrides(), owner="agentplatform:agent_bootstrap")
-        _installed = True
-        logger.debug("agent_bootstrap: canonical setup_agent registered via builtin tool seam")
-        return
-
-    tool_module = importlib.import_module(_TOOL_MODULE_NAME)
-    if not hasattr(tool_module, "get_session_factory"):
-        tool_module.get_session_factory = get_session_factory
-    tool_module.setup_agent = setup_agent
-
-    builtins_module = importlib.import_module(_BUILTINS_MODULE_NAME)
-    builtins_module.setup_agent = setup_agent
+    set_default_builtin_tool_overrides(CanonicalBuiltinToolOverrides(), owner="agentplatform:agent_bootstrap")
 
     _installed = True
-    logger.debug("agent_bootstrap: canonical setup_agent installed")
+    logger.debug("agent_bootstrap: canonical setup_agent registered via builtin tool seam")

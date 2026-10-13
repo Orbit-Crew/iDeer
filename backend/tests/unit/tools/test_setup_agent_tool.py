@@ -27,12 +27,13 @@ DEFAULT_USER = "test-user-autouse"
 def _stock_setup_agent_tool():
     """Pin the upstream stock tool for every test in this file.
 
-    Tests that import the gateway (e.g. test_mcp_config_secrets) trigger
-    ``app.agentplatform.agent_bootstrap.install()`` at collection time, which
-    rebinds ``setup_agent_tool.setup_agent`` to the enterprise resource-catalog
-    wrapper. These tests exercise the upstream per-user store contract, so
-    reload the tool module to restore the stock implementation, and restore
-    the previous attribute afterwards to keep the process state unchanged.
+    Since the #64 builtin-seam contract batch the gateway import no longer
+    rebinds ``setup_agent_tool.setup_agent`` (the canonical tool is served
+    through the ``builtin_tools`` extension seam instead), so this reload is
+    belt-and-braces: it restores the stock implementation if any earlier
+    test-process state touched the module, and keeps the process state
+    unchanged afterwards. These tests exercise the upstream per-user store
+    contract.
     """
     previous = setup_agent_tool_module.setup_agent
     importlib.reload(setup_agent_tool_module)
