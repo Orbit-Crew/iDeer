@@ -134,8 +134,9 @@ test.describe("Workflow management", () => {
     test("New Workflow button navigates to create page", async ({ page }) => {
       mockLangGraphAPI(page, { workflows: MOCK_WORKFLOWS });
       await page.goto("/workspace/workflows");
-      await page.waitForLoadState("networkidle");
 
+      // The click auto-waits for the button's actionability; no networkidle
+      // gate needed (a Playwright-flagged antipattern).
       await page.getByRole("button", { name: /new workflow/i }).click();
 
       await expect(page).toHaveURL(/\/workspace\/workflows\/new/, {

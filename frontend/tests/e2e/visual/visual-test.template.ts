@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import { mockLangGraphAPI } from "../utils/mock-api";
+import { waitForAnimationsSettled } from "../utils/settle";
 
 /**
  * Visual regression test template.
@@ -26,13 +27,14 @@ test.describe(`${PAGE_NAME} — visual regression`, () => {
 
   test("default viewport screenshot", async ({ page }) => {
     await page.goto(TEST_ROUTE);
-    await page.waitForLoadState("networkidle");
     // Wait for main content to render before screenshot
     await page
       .locator("main, h1, [class*='flex']")
       .first()
       .waitFor({ state: "visible", timeout: 10000 });
-    await page.waitForTimeout(1000); // let animations settle
+    // Let animations finish observably before the pixel capture
+    // (bounded: persistent animations degrade to the fixed wait).
+    await waitForAnimationsSettled(page, 5_000);
 
     await expect(page).toHaveScreenshot(`${PAGE_NAME}-default.png`, {
       fullPage: true,
@@ -44,12 +46,13 @@ test.describe(`${PAGE_NAME} — visual regression`, () => {
   test("mobile viewport screenshot", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(TEST_ROUTE);
-    await page.waitForLoadState("networkidle");
     await page
       .locator("main, h1, [class*='flex']")
       .first()
       .waitFor({ state: "visible", timeout: 10000 });
-    await page.waitForTimeout(1000);
+    // Let animations finish observably before the pixel capture
+    // (bounded: persistent animations degrade to the fixed wait).
+    await waitForAnimationsSettled(page, 5_000);
 
     await expect(page).toHaveScreenshot(`${PAGE_NAME}-mobile.png`, {
       fullPage: true,
@@ -59,12 +62,13 @@ test.describe(`${PAGE_NAME} — visual regression`, () => {
   test("dark mode screenshot", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto(TEST_ROUTE);
-    await page.waitForLoadState("networkidle");
     await page
       .locator("main, h1, [class*='flex']")
       .first()
       .waitFor({ state: "visible", timeout: 10000 });
-    await page.waitForTimeout(1000);
+    // Let animations finish observably before the pixel capture
+    // (bounded: persistent animations degrade to the fixed wait).
+    await waitForAnimationsSettled(page, 5_000);
 
     await expect(page).toHaveScreenshot(`${PAGE_NAME}-dark.png`, {
       fullPage: true,

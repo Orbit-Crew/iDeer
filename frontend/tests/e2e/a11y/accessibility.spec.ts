@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "@playwright/test";
 
 import { mockLangGraphAPI } from "../utils/mock-api";
+import { waitForAnimationsSettled } from "../utils/settle";
 
 /**
  * Accessibility (a11y) tests using axe-core.
@@ -26,12 +27,15 @@ test.describe("Accessibility — WCAG 2.1 AA", () => {
       mockLangGraphAPI(page);
 
       await page.goto(pageInfo.path);
-      await page.waitForLoadState("networkidle");
+      // Playwright flags "networkidle" as a wait antipattern; goto already
+      // settles the load event and the body assertion below is the element
+      // gate.
+      await page.waitForLoadState("domcontentloaded");
       await expect(page.locator("body")).toBeVisible();
-      // Suggestions intentionally stagger their fade-in; wait for the final
-      // item to settle so axe measures the steady-state contrast, not a
-      // partially transparent animation frame.
-      await page.waitForTimeout(1_000);
+      // Suggestions intentionally stagger their fade-in; wait for the
+      // animations to finish observably so axe measures the steady-state
+      // contrast, not a partially transparent animation frame.
+      await waitForAnimationsSettled(page);
 
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "best-practice"])

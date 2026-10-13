@@ -20,10 +20,10 @@ test.describe("Memory Management", () => {
 
   test("memory settings area is reachable", async ({ page }) => {
     await page.goto("/workspace");
-    await page.waitForLoadState("networkidle");
 
     // Open the sidebar settings menu via the nav-menu trigger in the sidebar
-    // footer, then click "Settings" to open the settings dialog.
+    // footer, then click "Settings" to open the settings dialog. The
+    // visibility assert is the observable gate (no networkidle antipattern).
     const navMenuTrigger = page.locator('[data-testid="nav-menu-trigger"]');
     await expect(navMenuTrigger).toBeVisible({ timeout: 10000 });
     await navMenuTrigger.click();
