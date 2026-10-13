@@ -59,7 +59,7 @@ middleware 投影、一组对 host 单例 builtin 的覆盖决定。两个 provi
   +required 中止、三 consult 点"无 provider 原样/有 provider 生效"合同、
   子进程探针（import 不留下进程全局改写）。
 
-## diff 草稿（参考实现，票 #64 expand 落地）
+## diff 草稿（参考实现，票 #64 expand 落地、contract 批后为唯一轨道）
 
 上游无对应代码，以下为本仓 fork 内已落地的最小参考实现（引入见台账
 PATCH-039/040/041）。关键形态：
@@ -88,17 +88,23 @@ if builtin_overrides is not None:
     setup_agent = builtin_overrides.resolve_builtin_tool("setup_agent", setup_agent)
 ```
 
-## 本地验证证据（2026-10-13，票 #64 expand 阶段）
+## 本地验证证据（2026-10-13，票 #64 contract 终态）
 
-- `tests/unit/workflows/test_v2_executor_bridge_seam_contract.py`：两轨
-  fail-closed 矩阵与行为等价、无 provider 直通、子进程探针（registry 轨
-  断言 `deerflow.tools.get_available_tools`/`deerflow.subagents.executor.create_agent`
-  与 stock 同一性；legacy 轨锁定旧改写仍在——contract 批次翻转）；
+- `tests/unit/workflows/test_v2_executor_bridge_seam_contract.py`：registry
+  单轨 fail-closed 矩阵、无 provider 直通、子进程探针（import 断言
+  `deerflow.tools.get_available_tools`/`deerflow.subagents.executor.create_agent`
+  与 stock 同一性 + 三 provider 就位；行为等价矩阵由 expand 阶段双轨合同
+  测试锁定，contract 批后保留为单轨断言）；
 - `tests/unit/gateway/test_subagent_executor.py`：seam 在上游链后 append
   pending middlewares（无 provider / 空 pending / 非空 pending 三态）；
 - `tests/unit/agentplatform/test_agent_bootstrap_seam.py`：builtin 覆盖缝
-  两轨探针、install 幂等、canonical 行为（空 soul 拒绝 / 默认 SOUL 落盘 /
-  无 session factory 回退 agent store）；
-- `tests/test_extension_registry.py` / `tests/test_extension_loader.py` /
-  `tests/test_agentplatform_extension_boundary.py`：三桶重复拒绝、loader
-  失败路径、解析链三层回退与进程默认注册语义。
+  探针（gateway import 后两处模块属性 stock、无 `get_session_factory`
+  泄漏、provider 注册）、install 幂等、canonical 行为（空 soul 拒绝 /
+  默认 SOUL 落盘 / 无 session factory 回退 agent store）；
+- `tests/test_agentplatform_extension_boundary.py`：三桶重复拒绝、loader
+  失败路径、解析链三层回退与进程默认注册语义，外加总揽子进程探针
+  `test_importing_the_enterprise_composition_rewrites_no_upstream_binding`
+  （同解释器 import executor_bridge + app.gateway.services，断言零进程
+  全局改写）。
+- 残留清零：全树 grep `_workflow_knowledge_scope_aware` /
+  `_workflow_scope_aware` / `IDEER_*_SEAM` 开关零命中。

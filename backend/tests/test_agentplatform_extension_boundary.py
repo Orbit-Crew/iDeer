@@ -474,3 +474,35 @@ def test_process_default_seam_registration_refuses_a_second_owner() -> None:
         assert resolve_tool_scopes(None) is first
     finally:
         reset_default_extension_seams()
+
+
+def test_importing_the_enterprise_composition_rewrites_no_upstream_binding() -> None:
+    """The #64 contract terminal state, #55-style subprocess probe.
+
+    Importing the two enterprise composition modules (workflow executor bridge
+    and the gateway services tree) must leave every upstream binding these
+    seams used to rewrite at import time stock, and must publish the three
+    providers through the process-default seams instead: module rewrites were
+    the pre-contract track (02-M6 findings 1-3).
+    """
+    probe = "\n".join(
+        [
+            "import deerflow.tools, deerflow.tools.tools",
+            "import deerflow.subagents.executor as executor_module",
+            "import deerflow.tools.builtins as builtins_module",
+            "import deerflow.tools.builtins.setup_agent_tool as tool_module",
+            "from langchain.agents import create_agent as langchain_create_agent",
+            "import app.agentplatform.workflows.v2.executor_bridge",
+            "import app.gateway.services",
+            "from deerflow.extensions import resolve_builtin_tool_overrides, resolve_subagent_middlewares, resolve_tool_scopes",
+            "assert deerflow.tools.get_available_tools is deerflow.tools.tools.get_available_tools, 'tools package binding rewritten'",
+            "assert executor_module.create_agent is langchain_create_agent, 'executor binding rewritten'",
+            "assert builtins_module.setup_agent is tool_module.setup_agent, 'builtins re-export rewritten'",
+            "assert not hasattr(tool_module, 'get_session_factory'), 'attribute leaked onto the upstream module'",
+            "assert resolve_tool_scopes(None) is not None, 'tool-scope provider missing'",
+            "assert resolve_subagent_middlewares(None) is not None, 'middleware provider missing'",
+            "assert resolve_builtin_tool_overrides(None) is not None, 'builtin override provider missing'",
+        ]
+    )
+    result = _run_probe(probe)
+    assert result.returncode == 0, result.stderr
