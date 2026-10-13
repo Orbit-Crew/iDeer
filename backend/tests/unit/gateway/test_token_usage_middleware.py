@@ -1,6 +1,4 @@
-"""Tests for TokenUsageMiddleware and attribution helpers."""
-
-from __future__ import annotations
+"""Tests for TokenUsageMiddleware attribution annotations."""
 
 import logging
 from types import SimpleNamespace
@@ -8,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.graph.message import add_messages
 
 from deerflow.agents.middlewares.token_usage_middleware import (
     SUBAGENT_TOKEN_USAGE_ATTRIBUTED_KEY,
@@ -24,477 +23,344 @@ from deerflow.agents.middlewares.token_usage_middleware import (
 )
 from deerflow.subagents.status_contract import SUBAGENT_TOKEN_USAGE_KEY
 
-# ---------------------------------------------------------------------------
-# _string_arg
-# ---------------------------------------------------------------------------
 
-
-class TestStringArg:
-    def test_returns_stripped_string(self):
-        assert _string_arg("  hello  ") == "hello"
-
-    def test_returns_none_for_whitespace_only(self):
-        assert _string_arg("   ") is None
-
-    def test_returns_none_for_empty_string(self):
-        assert _string_arg("") is None
-
-    def test_returns_none_for_non_string_int(self):
-        assert _string_arg(123) is None
-
-    def test_returns_none_for_non_string_none(self):
-        assert _string_arg(None) is None
-
-    def test_returns_none_for_non_string_list(self):
-        assert _string_arg(["a"]) is None
-
-    def test_returns_clean_string(self):
-        assert _string_arg("test") == "test"
-
-
-# ---------------------------------------------------------------------------
-# _normalize_todos
-# ---------------------------------------------------------------------------
-
-
-class TestNormalizeTodos:
-    def test_returns_empty_for_non_list_none(self):
-        assert _normalize_todos(None) == []
-
-    def test_returns_empty_for_non_list_string(self):
-        assert _normalize_todos("not a list") == []
-
-    def test_returns_empty_for_non_list_int(self):
-        assert _normalize_todos(42) == []
-
-    def test_skips_non_dict_items(self):
-        assert _normalize_todos(["foo", 123, None]) == []
-
-    def test_normalizes_valid_todo(self):
-        result = _normalize_todos([{"content": "  buy milk  ", "status": "pending"}])
-        assert len(result) == 1
-        assert result[0]["content"] == "buy milk"
-        assert result[0]["status"] == "pending"
-
-    def test_ignores_invalid_status(self):
-        result = _normalize_todos([{"content": "task", "status": "invalid"}])
-        assert len(result) == 1
-        assert "status" not in result[0]
-
-    def test_content_whitespace_only_drops_content_key(self):
-        result = _normalize_todos([{"content": "   ", "status": "completed"}])
-        assert len(result) == 1
-        assert "content" not in result[0]
-        assert result[0]["status"] == "completed"
-
-    def test_valid_statuses_all_accepted(self):
-        for status in ("pending", "in_progress", "completed"):
-            result = _normalize_todos([{"content": "c", "status": status}])
-            assert result[0]["status"] == status
-
-    def test_empty_dict_item(self):
-        result = _normalize_todos([{}])
-        assert len(result) == 1
-        assert result[0] == {}
-
-
-# ---------------------------------------------------------------------------
-# _todo_action_kind
-# ---------------------------------------------------------------------------
-
-
-class TestTodoActionKind:
-    def test_no_previous_completed(self):
-        assert _todo_action_kind(None, {"status": "completed"}) == "todo_complete"
-
-    def test_no_previous_in_progress(self):
-        assert _todo_action_kind(None, {"status": "in_progress"}) == "todo_start"
-
-    def test_no_previous_pending(self):
-        assert _todo_action_kind(None, {"status": "pending"}) == "todo_update"
-
-    def test_no_previous_no_status(self):
-        assert _todo_action_kind(None, {}) == "todo_update"
-
-    def test_content_changed(self):
-        prev = {"content": "old"}
-        curr = {"content": "new", "status": "in_progress"}
-        assert _todo_action_kind(prev, curr) == "todo_update"
-
-    def test_same_content_completed(self):
-        prev = {"content": "task"}
-        curr = {"content": "task", "status": "completed"}
-        assert _todo_action_kind(prev, curr) == "todo_complete"
-
-    def test_same_content_in_progress(self):
-        prev = {"content": "task"}
-        curr = {"content": "task", "status": "in_progress"}
-        assert _todo_action_kind(prev, curr) == "todo_start"
-
-    def test_same_content_other_status(self):
-        prev = {"content": "task"}
-        curr = {"content": "task", "status": "pending"}
-        assert _todo_action_kind(prev, curr) == "todo_update"
-
-
-# ---------------------------------------------------------------------------
-# _build_todo_actions
-# ---------------------------------------------------------------------------
-
-
-class TestBuildTodoActions:
-    def test_empty_lists(self):
-        assert _build_todo_actions([], []) == []
-
-    def test_new_todo_added(self):
-        actions = _build_todo_actions([], [{"content": "task1", "status": "in_progress"}])
-        assert len(actions) == 1
-        assert actions[0]["kind"] == "todo_start"
-        assert actions[0]["content"] == "task1"
-
-    def test_todo_removed(self):
-        actions = _build_todo_actions([{"content": "task1"}], [])
-        assert len(actions) == 1
-        assert actions[0]["kind"] == "todo_remove"
-        assert actions[0]["content"] == "task1"
-
-    def test_todo_status_change(self):
-        prev = [{"content": "task1", "status": "pending"}]
-        curr = [{"content": "task1", "status": "completed"}]
-        actions = _build_todo_actions(prev, curr)
-        assert len(actions) == 1
-        assert actions[0]["kind"] == "todo_complete"
-
-    def test_unchanged_todo_skipped(self):
-        prev = [{"content": "task1", "status": "pending"}]
-        curr = [{"content": "task1", "status": "pending"}]
-        actions = _build_todo_actions(prev, curr)
-        assert actions == []
-
-    def test_content_change_detected(self):
-        prev = [{"content": "old", "status": "pending"}]
-        curr = [{"content": "new", "status": "pending"}]
-        actions = _build_todo_actions(prev, curr)
-        # "old" positionally matched to "new" but content differs -> todo_update
-        assert any(a["content"] == "new" for a in actions)
-        # "old" was matched positionally so it's NOT removed
-        assert not any(a.get("content") == "old" and a["kind"] == "todo_remove" for a in actions)
-
-    def test_previous_todo_without_content_skipped_in_removal(self):
-        prev = [{"status": "pending"}]
-        curr = []
-        actions = _build_todo_actions(prev, curr)
-        assert actions == []
-
-    def test_next_todo_without_content_skipped(self):
-        prev = []
-        curr = [{"status": "pending"}]
-        actions = _build_todo_actions(prev, curr)
-        assert actions == []
-
-    def test_positional_fallback_matching(self):
-        prev = [{"content": "taskA", "status": "pending"}]
-        curr = [{"content": "taskB", "status": "completed"}]
-        actions = _build_todo_actions(prev, curr)
-        # taskA positionally matched to taskB (content differs) -> todo_update for taskB
-        # taskA is matched so NOT removed
-        assert any(a["content"] == "taskB" for a in actions)
-        assert not any(a.get("content") == "taskA" and a["kind"] == "todo_remove" for a in actions)
-
-    def test_multiple_todos_mixed(self):
-        prev = [
-            {"content": "a", "status": "pending"},
-            {"content": "b", "status": "in_progress"},
-        ]
-        curr = [
-            {"content": "a", "status": "completed"},
-            {"content": "c", "status": "pending"},
-        ]
-        actions = _build_todo_actions(prev, curr)
-        # "a" matched by content, status changed -> todo_complete
-        assert any(a["kind"] == "todo_complete" and a["content"] == "a" for a in actions)
-        # "c" matched positionally to "b" (content differs) -> todo_update
-        assert any(a["content"] == "c" for a in actions)
-        # "b" was positionally matched to "c" so it's NOT removed
-        assert not any(a.get("content") == "b" and a["kind"] == "todo_remove" for a in actions)
-
-    def test_previous_empty_content_skipped_in_removal(self):
-        prev = [{"content": ""}]
-        curr = []
-        actions = _build_todo_actions(prev, curr)
-        assert actions == []
-
-
-# ---------------------------------------------------------------------------
-# _describe_tool_call
-# ---------------------------------------------------------------------------
-
-
-class TestDescribeToolCall:
-    def test_write_todos_with_actions(self):
-        tc = {
-            "name": "write_todos",
-            "id": "tc1",
-            "args": {"todos": [{"content": "task1", "status": "pending"}]},
-        }
-        result = _describe_tool_call(tc, [])
-        assert len(result) >= 1
-        assert result[0]["tool_call_id"] == "tc1"
-
-    def test_write_todos_no_actions_returns_generic(self):
-        tc = {
-            "name": "write_todos",
-            "id": "tc1",
-            "args": {"todos": []},
-        }
-        result = _describe_tool_call(tc, [])
-        assert len(result) == 1
-        assert result[0]["kind"] == "tool"
-        assert result[0]["tool_name"] == "write_todos"
-
-    def test_task_tool(self):
-        tc = {
-            "name": "task",
-            "id": "tc2",
-            "args": {"description": "do stuff", "subagent_type": "general"},
-        }
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "subagent"
-        assert result[0]["description"] == "do stuff"
-        assert result[0]["subagent_type"] == "general"
-
-    def test_web_search(self):
-        tc = {"name": "web_search", "id": "tc3", "args": {"query": "python"}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "search"
-        assert result[0]["query"] == "python"
-
-    def test_image_search(self):
-        tc = {"name": "image_search", "id": "tc4", "args": {"query": "cat"}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "search"
-        assert result[0]["tool_name"] == "image_search"
-
-    def test_present_files(self):
-        tc = {"name": "present_files", "id": "tc5", "args": {}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "present_files"
-
-    def test_ask_clarification(self):
-        tc = {"name": "ask_clarification", "id": "tc6", "args": {}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "clarification"
-
-    def test_generic_tool(self):
-        tc = {"name": "read_file", "id": "tc7", "args": {"description": "read it"}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "tool"
-        assert result[0]["tool_name"] == "read_file"
-        assert result[0]["description"] == "read it"
-
-    def test_missing_name_defaults_to_unknown(self):
-        tc = {"id": "tc8", "args": {}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["tool_name"] == "unknown"
-
-    def test_non_dict_args_handled(self):
-        tc = {"name": "foo", "id": "tc9", "args": "invalid"}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "tool"
-
-    def test_missing_id_returns_none(self):
-        tc = {"name": "foo", "args": {}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["tool_call_id"] is None
-
-    def test_task_with_none_description_and_subagent_type(self):
-        tc = {"name": "task", "id": "tc10", "args": {}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "subagent"
-        assert result[0]["description"] is None
-        assert result[0]["subagent_type"] is None
-
-    def test_search_with_none_query(self):
-        tc = {"name": "web_search", "id": "tc11", "args": {}}
-        result = _describe_tool_call(tc, [])
-        assert result[0]["kind"] == "search"
-        assert result[0]["query"] is None
-
-
-# ---------------------------------------------------------------------------
-# _infer_step_kind
-# ---------------------------------------------------------------------------
-
-
-class TestInferStepKind:
-    def test_single_todo_action(self):
-        msg = AIMessage(content="")
-        actions = [{"kind": "todo_start", "content": "task"}]
-        assert _infer_step_kind(msg, actions) == "todo_update"
-
-    def test_single_subagent_action(self):
-        msg = AIMessage(content="")
-        actions = [{"kind": "subagent"}]
-        assert _infer_step_kind(msg, actions) == "subagent_dispatch"
-
-    def test_multiple_actions(self):
-        msg = AIMessage(content="")
-        actions = [{"kind": "tool"}, {"kind": "search"}]
-        assert _infer_step_kind(msg, actions) == "tool_batch"
-
-    def test_no_actions_with_content(self):
-        msg = AIMessage(content="Hello!")
-        assert _infer_step_kind(msg, []) == "final_answer"
-
-    def test_no_actions_no_content(self):
-        msg = AIMessage(content="")
-        assert _infer_step_kind(msg, []) == "thinking"
-
-    def test_single_todo_complete(self):
-        msg = AIMessage(content="")
-        actions = [{"kind": "todo_complete"}]
-        assert _infer_step_kind(msg, actions) == "todo_update"
-
-    def test_single_todo_update(self):
-        msg = AIMessage(content="")
-        actions = [{"kind": "todo_update"}]
-        assert _infer_step_kind(msg, actions) == "todo_update"
-
-    def test_single_todo_remove(self):
-        msg = AIMessage(content="")
-        actions = [{"kind": "todo_remove"}]
-        assert _infer_step_kind(msg, actions) == "todo_update"
-
-
-# ---------------------------------------------------------------------------
-# _has_tool_call
-# ---------------------------------------------------------------------------
-
-
-class TestHasToolCall:
-    def test_finds_tool_call_by_id(self):
-        msg = AIMessage(content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}])
-        assert _has_tool_call(msg, "tc1") is True
-
-    def test_returns_false_when_not_found(self):
-        msg = AIMessage(content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}])
-        assert _has_tool_call(msg, "tc2") is False
-
-    def test_handles_none_tool_calls(self):
-        msg = AIMessage(content="")
-        msg.tool_calls = None
-        assert _has_tool_call(msg, "tc1") is False
-
-    def test_handles_object_with_id_attr(self):
-        tc = SimpleNamespace(id="tc_obj")
-        msg = AIMessage(content="")
-        # Manually set tool_calls to bypass langchain validation
-        msg.tool_calls = [tc]
-        assert _has_tool_call(msg, "tc_obj") is True
-        assert _has_tool_call(msg, "other") is False
-
-    def test_empty_tool_calls(self):
-        msg = AIMessage(content="", tool_calls=[])
-        assert _has_tool_call(msg, "tc1") is False
-
-
-# ---------------------------------------------------------------------------
-# _build_attribution
-# ---------------------------------------------------------------------------
-
-
-class TestBuildAttribution:
-    def test_no_tool_calls_final_answer(self):
-        msg = AIMessage(content="Hello")
-        result = _build_attribution(msg, [])
-        assert result["version"] == 1
-        assert result["kind"] == "final_answer"
-        assert result["shared_attribution"] is False
-        assert result["tool_call_ids"] == []
-        assert result["actions"] == []
-
-    def test_no_tool_calls_thinking(self):
-        msg = AIMessage(content="")
-        result = _build_attribution(msg, [])
-        assert result["kind"] == "thinking"
-
-    def test_single_tool_call(self):
-        msg = AIMessage(
-            content="",
-            tool_calls=[{"id": "tc1", "name": "read_file", "args": {"description": "read"}}],
-        )
-        result = _build_attribution(msg, [])
-        assert result["kind"] == "tool_batch"
-        assert result["tool_call_ids"] == ["tc1"]
-        assert len(result["actions"]) == 1
-
-    def test_multiple_tool_calls_shared(self):
-        msg = AIMessage(
-            content="",
-            tool_calls=[
-                {"id": "tc1", "name": "read_file", "args": {}},
-                {"id": "tc2", "name": "web_search", "args": {"query": "q"}},
-            ],
-        )
-        result = _build_attribution(msg, [])
-        assert result["shared_attribution"] is True
-        assert len(result["tool_call_ids"]) == 2
-
-    def test_write_todos_updates_current_todos(self):
-        msg = AIMessage(
-            content="",
-            tool_calls=[
-                {
-                    "id": "tc1",
-                    "name": "write_todos",
-                    "args": {"todos": [{"content": "task1", "status": "pending"}]},
-                },
-                {"id": "tc2", "name": "read_file", "args": {}},
-            ],
-        )
-        result = _build_attribution(msg, [])
-        assert len(result["actions"]) >= 2
-
-    def test_non_dict_tool_call_skipped(self):
-        msg = AIMessage(content="")
-        msg.tool_calls = [MagicMock()]
-        result = _build_attribution(msg, [])
-        assert result["tool_call_ids"] == []
-
-    def test_version_is_1(self):
-        msg = AIMessage(content="")
-        result = _build_attribution(msg, [])
-        assert result["version"] == 1
-
-    def test_single_todo_action_kind_is_todo_update(self):
-        msg = AIMessage(
-            content="",
-            tool_calls=[
-                {
-                    "id": "tc1",
-                    "name": "write_todos",
-                    "args": {"todos": [{"content": "task1", "status": "pending"}]},
-                }
-            ],
-        )
-        result = _build_attribution(msg, [])
-        assert result["kind"] == "todo_update"
-
-    def test_single_subagent_action_kind_is_subagent_dispatch(self):
-        msg = AIMessage(
-            content="",
-            tool_calls=[{"id": "tc1", "name": "task", "args": {"description": "d", "subagent_type": "g"}}],
-        )
-        result = _build_attribution(msg, [])
-        assert result["kind"] == "subagent_dispatch"
-
-
-# ---------------------------------------------------------------------------
-# TokenUsageMiddleware
-# ---------------------------------------------------------------------------
+def _make_runtime():
+    runtime = MagicMock()
+    runtime.context = {"thread_id": "test-thread"}
+    return runtime
 
 
 class TestTokenUsageMiddleware:
+    def test_logs_cache_token_details(self, caplog):
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(
+            content="Here is the final answer.",
+            usage_metadata={
+                "input_tokens": 350,
+                "output_tokens": 240,
+                "total_tokens": 590,
+                "input_token_details": {
+                    "audio": 10,
+                    "cache_creation": 200,
+                    "cache_read": 100,
+                },
+                "output_token_details": {
+                    "audio": 10,
+                    "reasoning": 200,
+                },
+            },
+        )
+
+        with caplog.at_level(
+            logging.INFO,
+            logger="deerflow.agents.middlewares.token_usage_middleware",
+        ):
+            result = middleware.after_model({"messages": [message]}, _make_runtime())
+
+        assert result is not None
+        assert "LLM token usage: input=350 output=240 total=590" in caplog.text
+        assert "input_token_details={'audio': 10, 'cache_creation': 200, 'cache_read': 100}" in caplog.text
+        assert "output_token_details={'audio': 10, 'reasoning': 200}" in caplog.text
+
+    def test_logs_basic_tokens_when_no_detail_fields_in_usage_metadata(self, caplog):
+        """When usage_metadata has only totals (no input_token_details), log just the counts."""
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(
+            content="Here is the final answer.",
+            usage_metadata={
+                "input_tokens": 350,
+                "output_tokens": 240,
+                "total_tokens": 590,
+            },
+        )
+
+        with caplog.at_level(
+            logging.INFO,
+            logger="deerflow.agents.middlewares.token_usage_middleware",
+        ):
+            result = middleware.after_model({"messages": [message]}, _make_runtime())
+
+        assert result is not None
+        assert "LLM token usage: input=350 output=240 total=590" in caplog.text
+        assert "input_token_details" not in caplog.text
+
+    def test_no_log_when_usage_metadata_is_missing(self, caplog):
+        """When usage_metadata is absent, no token usage line is logged."""
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(
+            content="Here is the final answer.",
+            response_metadata={
+                "usage": {
+                    "input_tokens": 350,
+                    "output_tokens": 240,
+                    "total_tokens": 590,
+                }
+            },
+        )
+
+        with caplog.at_level(
+            logging.INFO,
+            logger="deerflow.agents.middlewares.token_usage_middleware",
+        ):
+            result = middleware.after_model({"messages": [message]}, _make_runtime())
+
+        assert result is not None
+        assert "LLM token usage" not in caplog.text
+
+    def test_annotates_todo_updates_with_structured_actions(self):
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": "write_todos:1",
+                    "name": "write_todos",
+                    "args": {
+                        "todos": [
+                            {"content": "Inspect streaming path", "status": "completed"},
+                            {"content": "Design token attribution schema", "status": "in_progress"},
+                        ]
+                    },
+                }
+            ],
+            usage_metadata={"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+        )
+
+        state = {
+            "messages": [message],
+            "todos": [
+                {"content": "Inspect streaming path", "status": "in_progress"},
+                {"content": "Design token attribution schema", "status": "pending"},
+            ],
+        }
+
+        result = middleware.after_model(state, _make_runtime())
+
+        assert result is not None
+        updated_message = result["messages"][0]
+        attribution = updated_message.additional_kwargs[TOKEN_USAGE_ATTRIBUTION_KEY]
+        assert attribution["kind"] == "tool_batch"
+        assert attribution["shared_attribution"] is True
+        assert attribution["tool_call_ids"] == ["write_todos:1"]
+        assert attribution["actions"] == [
+            {
+                "kind": "todo_complete",
+                "content": "Inspect streaming path",
+                "tool_call_id": "write_todos:1",
+            },
+            {
+                "kind": "todo_start",
+                "content": "Design token attribution schema",
+                "tool_call_id": "write_todos:1",
+            },
+        ]
+
+    def test_annotates_subagent_and_search_steps(self):
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": "task:1",
+                    "name": "task",
+                    "args": {
+                        "description": "spec-coder patch message grouping",
+                        "subagent_type": "general-purpose",
+                    },
+                },
+                {
+                    "id": "web_search:1",
+                    "name": "web_search",
+                    "args": {"query": "LangGraph useStream messages tuple"},
+                },
+            ],
+        )
+
+        result = middleware.after_model({"messages": [message]}, _make_runtime())
+
+        assert result is not None
+        attribution = result["messages"][0].additional_kwargs[TOKEN_USAGE_ATTRIBUTION_KEY]
+        assert attribution["kind"] == "tool_batch"
+        assert attribution["shared_attribution"] is True
+        assert attribution["actions"] == [
+            {
+                "kind": "subagent",
+                "description": "spec-coder patch message grouping",
+                "subagent_type": "general-purpose",
+                "tool_call_id": "task:1",
+            },
+            {
+                "kind": "search",
+                "tool_name": "web_search",
+                "query": "LangGraph useStream messages tuple",
+                "tool_call_id": "web_search:1",
+            },
+        ]
+
+    def test_marks_final_answer_when_no_tools(self):
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(content="Here is the final answer.")
+
+        result = middleware.after_model({"messages": [message]}, _make_runtime())
+
+        assert result is not None
+        attribution = result["messages"][0].additional_kwargs[TOKEN_USAGE_ATTRIBUTION_KEY]
+        assert attribution["kind"] == "final_answer"
+        assert attribution["shared_attribution"] is False
+        assert attribution["actions"] == []
+
+    def test_annotates_removed_todos(self):
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": "write_todos:remove",
+                    "name": "write_todos",
+                    "args": {
+                        "todos": [],
+                    },
+                }
+            ],
+        )
+
+        result = middleware.after_model(
+            {
+                "messages": [message],
+                "todos": [
+                    {"content": "Archive obsolete plan", "status": "pending"},
+                ],
+            },
+            _make_runtime(),
+        )
+
+        assert result is not None
+        attribution = result["messages"][0].additional_kwargs[TOKEN_USAGE_ATTRIBUTION_KEY]
+        assert attribution["kind"] == "todo_update"
+        assert attribution["shared_attribution"] is False
+        assert attribution["actions"] == [
+            {
+                "kind": "todo_remove",
+                "content": "Archive obsolete plan",
+                "tool_call_id": "write_todos:remove",
+            }
+        ]
+
+    def test_merges_subagent_usage_by_message_position_when_ai_message_ids_are_missing(self):
+        middleware = TokenUsageMiddleware()
+        first_dispatch = AIMessage(
+            content="",
+            tool_calls=[{"id": "task:first", "name": "task", "args": {}}],
+        )
+        second_dispatch = AIMessage(
+            content="",
+            tool_calls=[
+                {"id": "task:second-a", "name": "task", "args": {}},
+                {"id": "task:second-b", "name": "task", "args": {}},
+            ],
+        )
+        messages = [
+            first_dispatch,
+            ToolMessage(content="first", tool_call_id="task:first"),
+            second_dispatch,
+            ToolMessage(
+                content="second-a",
+                tool_call_id="task:second-a",
+                additional_kwargs={SUBAGENT_TOKEN_USAGE_KEY: {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}},
+            ),
+            ToolMessage(
+                content="second-b",
+                tool_call_id="task:second-b",
+                additional_kwargs={SUBAGENT_TOKEN_USAGE_KEY: {"input_tokens": 20, "output_tokens": 7, "total_tokens": 27}},
+            ),
+            AIMessage(content="done"),
+        ]
+
+        result = middleware.after_model({"messages": messages}, _make_runtime())
+
+        assert result is not None
+        usage_updates = [message for message in result["messages"] if getattr(message, "usage_metadata", None)]
+        assert len(usage_updates) == 1
+        updated = usage_updates[0]
+        assert updated.tool_calls == second_dispatch.tool_calls
+        assert updated.usage_metadata == {
+            "input_tokens": 30,
+            "output_tokens": 12,
+            "total_tokens": 42,
+        }
+
+    def test_reused_tool_call_id_keeps_usage_scoped_to_each_run_history(self):
+        middleware = TokenUsageMiddleware()
+        tool_call_id = "reused-provider-tool-call-id"
+
+        def apply_usage(usage):
+            dispatch = AIMessage(
+                content="",
+                tool_calls=[{"id": tool_call_id, "name": "task", "args": {}}],
+            )
+            messages = [
+                dispatch,
+                ToolMessage(
+                    content="task result",
+                    tool_call_id=tool_call_id,
+                    additional_kwargs={SUBAGENT_TOKEN_USAGE_KEY: usage},
+                ),
+                AIMessage(content="done"),
+            ]
+
+            result = middleware.after_model({"messages": messages}, _make_runtime())
+
+            assert result is not None
+            return next(message.usage_metadata for message in result["messages"] if getattr(message, "usage_metadata", None))
+
+        assert apply_usage({"input_tokens": 10, "output_tokens": 2, "total_tokens": 12}) == {
+            "input_tokens": 10,
+            "output_tokens": 2,
+            "total_tokens": 12,
+        }
+        assert apply_usage({"input_tokens": 90, "output_tokens": 8, "total_tokens": 98}) == {
+            "input_tokens": 90,
+            "output_tokens": 8,
+            "total_tokens": 98,
+        }
+
+    def test_subagent_usage_attribution_is_idempotent_when_state_is_reprocessed(self):
+        middleware = TokenUsageMiddleware()
+        dispatch = AIMessage(
+            id="dispatch-message",
+            content="",
+            tool_calls=[{"id": "task:replayed", "name": "task", "args": {}}],
+        )
+        tool_result = ToolMessage(
+            id="tool-message",
+            content="task result",
+            tool_call_id="task:replayed",
+            additional_kwargs={
+                SUBAGENT_TOKEN_USAGE_KEY: {
+                    "input_tokens": 10,
+                    "output_tokens": 2,
+                    "total_tokens": 12,
+                }
+            },
+        )
+        final = AIMessage(id="final-message", content="done")
+        messages = [dispatch, tool_result, final]
+
+        first_update = middleware.after_model({"messages": messages}, _make_runtime())
+
+        assert first_update is not None
+        checkpoint_messages = add_messages(messages, first_update["messages"])
+        updated_dispatch = next(message for message in checkpoint_messages if message.id == dispatch.id)
+        assert updated_dispatch.usage_metadata == {
+            "input_tokens": 10,
+            "output_tokens": 2,
+            "total_tokens": 12,
+        }
+
+        second_update = middleware.after_model({"messages": checkpoint_messages}, _make_runtime())
+
+        assert second_update is None
+
     def _make_state(self, messages, todos=None):
         state = {"messages": messages}
         if todos is not None:
@@ -819,3 +685,444 @@ class TestTokenUsageMiddleware:
         assert usage["input_tokens"] == 15
         assert usage["output_tokens"] == 10
         assert usage["total_tokens"] == 25
+
+
+class TestBuildTodoActions:
+    def test_duplicate_content_emits_todo_remove(self):
+        """When next_todos has duplicate content entries that exhaust previous_by_content,
+        the positional fallback must not consume an unrelated previous todo as matched.
+        The unrelated previous entry should still produce a todo_remove action."""
+        previous = [
+            {"content": "A", "status": "pending"},
+            {"content": "B", "status": "pending"},
+        ]
+        next_todos = [
+            {"content": "A", "status": "in_progress"},
+            {"content": "A", "status": "completed"},
+        ]
+        actions = _build_todo_actions(previous, next_todos)
+        assert any(a.get("kind") == "todo_remove" and a.get("content") == "B" for a in actions), f"Expected todo_remove for B but got: {actions}"
+
+    def test_empty_lists(self):
+        assert _build_todo_actions([], []) == []
+
+    def test_new_todo_added(self):
+        actions = _build_todo_actions([], [{"content": "task1", "status": "in_progress"}])
+        assert len(actions) == 1
+        assert actions[0]["kind"] == "todo_start"
+        assert actions[0]["content"] == "task1"
+
+    def test_todo_removed(self):
+        actions = _build_todo_actions([{"content": "task1"}], [])
+        assert len(actions) == 1
+        assert actions[0]["kind"] == "todo_remove"
+        assert actions[0]["content"] == "task1"
+
+    def test_todo_status_change(self):
+        prev = [{"content": "task1", "status": "pending"}]
+        curr = [{"content": "task1", "status": "completed"}]
+        actions = _build_todo_actions(prev, curr)
+        assert len(actions) == 1
+        assert actions[0]["kind"] == "todo_complete"
+
+    def test_unchanged_todo_skipped(self):
+        prev = [{"content": "task1", "status": "pending"}]
+        curr = [{"content": "task1", "status": "pending"}]
+        actions = _build_todo_actions(prev, curr)
+        assert actions == []
+
+    def test_content_change_detected(self):
+        prev = [{"content": "old", "status": "pending"}]
+        curr = [{"content": "new", "status": "pending"}]
+        actions = _build_todo_actions(prev, curr)
+        # "old" positionally matched to "new" but content differs -> todo_update
+        assert any(a["content"] == "new" for a in actions)
+        # "old" was matched positionally so it's NOT removed
+        assert not any(a.get("content") == "old" and a["kind"] == "todo_remove" for a in actions)
+
+    def test_previous_todo_without_content_skipped_in_removal(self):
+        prev = [{"status": "pending"}]
+        curr = []
+        actions = _build_todo_actions(prev, curr)
+        assert actions == []
+
+    def test_next_todo_without_content_skipped(self):
+        prev = []
+        curr = [{"status": "pending"}]
+        actions = _build_todo_actions(prev, curr)
+        assert actions == []
+
+    def test_positional_fallback_matching(self):
+        prev = [{"content": "taskA", "status": "pending"}]
+        curr = [{"content": "taskB", "status": "completed"}]
+        actions = _build_todo_actions(prev, curr)
+        # taskA positionally matched to taskB (content differs) -> todo_update for taskB
+        # taskA is matched so NOT removed
+        assert any(a["content"] == "taskB" for a in actions)
+        assert not any(a.get("content") == "taskA" and a["kind"] == "todo_remove" for a in actions)
+
+    def test_multiple_todos_mixed(self):
+        prev = [
+            {"content": "a", "status": "pending"},
+            {"content": "b", "status": "in_progress"},
+        ]
+        curr = [
+            {"content": "a", "status": "completed"},
+            {"content": "c", "status": "pending"},
+        ]
+        actions = _build_todo_actions(prev, curr)
+        # "a" matched by content, status changed -> todo_complete
+        assert any(a["kind"] == "todo_complete" and a["content"] == "a" for a in actions)
+        # "c" matched positionally to "b" (content differs) -> todo_update
+        assert any(a["content"] == "c" for a in actions)
+        # "b" was positionally matched to "c" so it's NOT removed
+        assert not any(a.get("content") == "b" and a["kind"] == "todo_remove" for a in actions)
+
+    def test_previous_empty_content_skipped_in_removal(self):
+        prev = [{"content": ""}]
+        curr = []
+        actions = _build_todo_actions(prev, curr)
+        assert actions == []
+
+
+# --- merged from test_token_usage_middleware.py (subdir-only tests; root copy is the dedup base) ---
+class TestStringArg:
+    def test_returns_stripped_string(self):
+        assert _string_arg("  hello  ") == "hello"
+
+    def test_returns_none_for_whitespace_only(self):
+        assert _string_arg("   ") is None
+
+    def test_returns_none_for_empty_string(self):
+        assert _string_arg("") is None
+
+    def test_returns_none_for_non_string_int(self):
+        assert _string_arg(123) is None
+
+    def test_returns_none_for_non_string_none(self):
+        assert _string_arg(None) is None
+
+    def test_returns_none_for_non_string_list(self):
+        assert _string_arg(["a"]) is None
+
+    def test_returns_clean_string(self):
+        assert _string_arg("test") == "test"
+
+
+class TestNormalizeTodos:
+    def test_returns_empty_for_non_list_none(self):
+        assert _normalize_todos(None) == []
+
+    def test_returns_empty_for_non_list_string(self):
+        assert _normalize_todos("not a list") == []
+
+    def test_returns_empty_for_non_list_int(self):
+        assert _normalize_todos(42) == []
+
+    def test_skips_non_dict_items(self):
+        assert _normalize_todos(["foo", 123, None]) == []
+
+    def test_normalizes_valid_todo(self):
+        result = _normalize_todos([{"content": "  buy milk  ", "status": "pending"}])
+        assert len(result) == 1
+        assert result[0]["content"] == "buy milk"
+        assert result[0]["status"] == "pending"
+
+    def test_ignores_invalid_status(self):
+        result = _normalize_todos([{"content": "task", "status": "invalid"}])
+        assert len(result) == 1
+        assert "status" not in result[0]
+
+    def test_content_whitespace_only_drops_content_key(self):
+        result = _normalize_todos([{"content": "   ", "status": "completed"}])
+        assert len(result) == 1
+        assert "content" not in result[0]
+        assert result[0]["status"] == "completed"
+
+    def test_valid_statuses_all_accepted(self):
+        for status in ("pending", "in_progress", "completed"):
+            result = _normalize_todos([{"content": "c", "status": status}])
+            assert result[0]["status"] == status
+
+    def test_empty_dict_item(self):
+        result = _normalize_todos([{}])
+        assert len(result) == 1
+        assert result[0] == {}
+
+
+class TestTodoActionKind:
+    def test_no_previous_completed(self):
+        assert _todo_action_kind(None, {"status": "completed"}) == "todo_complete"
+
+    def test_no_previous_in_progress(self):
+        assert _todo_action_kind(None, {"status": "in_progress"}) == "todo_start"
+
+    def test_no_previous_pending(self):
+        assert _todo_action_kind(None, {"status": "pending"}) == "todo_update"
+
+    def test_no_previous_no_status(self):
+        assert _todo_action_kind(None, {}) == "todo_update"
+
+    def test_content_changed(self):
+        prev = {"content": "old"}
+        curr = {"content": "new", "status": "in_progress"}
+        assert _todo_action_kind(prev, curr) == "todo_update"
+
+    def test_same_content_completed(self):
+        prev = {"content": "task"}
+        curr = {"content": "task", "status": "completed"}
+        assert _todo_action_kind(prev, curr) == "todo_complete"
+
+    def test_same_content_in_progress(self):
+        prev = {"content": "task"}
+        curr = {"content": "task", "status": "in_progress"}
+        assert _todo_action_kind(prev, curr) == "todo_start"
+
+    def test_same_content_other_status(self):
+        prev = {"content": "task"}
+        curr = {"content": "task", "status": "pending"}
+        assert _todo_action_kind(prev, curr) == "todo_update"
+
+
+class TestDescribeToolCall:
+    def test_write_todos_with_actions(self):
+        tc = {
+            "name": "write_todos",
+            "id": "tc1",
+            "args": {"todos": [{"content": "task1", "status": "pending"}]},
+        }
+        result = _describe_tool_call(tc, [])
+        assert len(result) >= 1
+        assert result[0]["tool_call_id"] == "tc1"
+
+    def test_write_todos_no_actions_returns_generic(self):
+        tc = {
+            "name": "write_todos",
+            "id": "tc1",
+            "args": {"todos": []},
+        }
+        result = _describe_tool_call(tc, [])
+        assert len(result) == 1
+        assert result[0]["kind"] == "tool"
+        assert result[0]["tool_name"] == "write_todos"
+
+    def test_task_tool(self):
+        tc = {
+            "name": "task",
+            "id": "tc2",
+            "args": {"description": "do stuff", "subagent_type": "general"},
+        }
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "subagent"
+        assert result[0]["description"] == "do stuff"
+        assert result[0]["subagent_type"] == "general"
+
+    def test_web_search(self):
+        tc = {"name": "web_search", "id": "tc3", "args": {"query": "python"}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "search"
+        assert result[0]["query"] == "python"
+
+    def test_image_search(self):
+        tc = {"name": "image_search", "id": "tc4", "args": {"query": "cat"}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "search"
+        assert result[0]["tool_name"] == "image_search"
+
+    def test_present_files(self):
+        tc = {"name": "present_files", "id": "tc5", "args": {}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "present_files"
+
+    def test_ask_clarification(self):
+        tc = {"name": "ask_clarification", "id": "tc6", "args": {}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "clarification"
+
+    def test_generic_tool(self):
+        tc = {"name": "read_file", "id": "tc7", "args": {"description": "read it"}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "tool"
+        assert result[0]["tool_name"] == "read_file"
+        assert result[0]["description"] == "read it"
+
+    def test_missing_name_defaults_to_unknown(self):
+        tc = {"id": "tc8", "args": {}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["tool_name"] == "unknown"
+
+    def test_non_dict_args_handled(self):
+        tc = {"name": "foo", "id": "tc9", "args": "invalid"}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "tool"
+
+    def test_missing_id_returns_none(self):
+        tc = {"name": "foo", "args": {}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["tool_call_id"] is None
+
+    def test_task_with_none_description_and_subagent_type(self):
+        tc = {"name": "task", "id": "tc10", "args": {}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "subagent"
+        assert result[0]["description"] is None
+        assert result[0]["subagent_type"] is None
+
+    def test_search_with_none_query(self):
+        tc = {"name": "web_search", "id": "tc11", "args": {}}
+        result = _describe_tool_call(tc, [])
+        assert result[0]["kind"] == "search"
+        assert result[0]["query"] is None
+
+
+class TestInferStepKind:
+    def test_single_todo_action(self):
+        msg = AIMessage(content="")
+        actions = [{"kind": "todo_start", "content": "task"}]
+        assert _infer_step_kind(msg, actions) == "todo_update"
+
+    def test_single_subagent_action(self):
+        msg = AIMessage(content="")
+        actions = [{"kind": "subagent"}]
+        assert _infer_step_kind(msg, actions) == "subagent_dispatch"
+
+    def test_multiple_actions(self):
+        msg = AIMessage(content="")
+        actions = [{"kind": "tool"}, {"kind": "search"}]
+        assert _infer_step_kind(msg, actions) == "tool_batch"
+
+    def test_no_actions_with_content(self):
+        msg = AIMessage(content="Hello!")
+        assert _infer_step_kind(msg, []) == "final_answer"
+
+    def test_no_actions_no_content(self):
+        msg = AIMessage(content="")
+        assert _infer_step_kind(msg, []) == "thinking"
+
+    def test_single_todo_complete(self):
+        msg = AIMessage(content="")
+        actions = [{"kind": "todo_complete"}]
+        assert _infer_step_kind(msg, actions) == "todo_update"
+
+    def test_single_todo_update(self):
+        msg = AIMessage(content="")
+        actions = [{"kind": "todo_update"}]
+        assert _infer_step_kind(msg, actions) == "todo_update"
+
+    def test_single_todo_remove(self):
+        msg = AIMessage(content="")
+        actions = [{"kind": "todo_remove"}]
+        assert _infer_step_kind(msg, actions) == "todo_update"
+
+
+class TestHasToolCall:
+    def test_finds_tool_call_by_id(self):
+        msg = AIMessage(content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}])
+        assert _has_tool_call(msg, "tc1") is True
+
+    def test_returns_false_when_not_found(self):
+        msg = AIMessage(content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}])
+        assert _has_tool_call(msg, "tc2") is False
+
+    def test_handles_none_tool_calls(self):
+        msg = AIMessage(content="")
+        msg.tool_calls = None
+        assert _has_tool_call(msg, "tc1") is False
+
+    def test_handles_object_with_id_attr(self):
+        tc = SimpleNamespace(id="tc_obj")
+        msg = AIMessage(content="")
+        # Manually set tool_calls to bypass langchain validation
+        msg.tool_calls = [tc]
+        assert _has_tool_call(msg, "tc_obj") is True
+        assert _has_tool_call(msg, "other") is False
+
+    def test_empty_tool_calls(self):
+        msg = AIMessage(content="", tool_calls=[])
+        assert _has_tool_call(msg, "tc1") is False
+
+
+class TestBuildAttribution:
+    def test_no_tool_calls_final_answer(self):
+        msg = AIMessage(content="Hello")
+        result = _build_attribution(msg, [])
+        assert result["version"] == 1
+        assert result["kind"] == "final_answer"
+        assert result["shared_attribution"] is False
+        assert result["tool_call_ids"] == []
+        assert result["actions"] == []
+
+    def test_no_tool_calls_thinking(self):
+        msg = AIMessage(content="")
+        result = _build_attribution(msg, [])
+        assert result["kind"] == "thinking"
+
+    def test_single_tool_call(self):
+        msg = AIMessage(
+            content="",
+            tool_calls=[{"id": "tc1", "name": "read_file", "args": {"description": "read"}}],
+        )
+        result = _build_attribution(msg, [])
+        assert result["kind"] == "tool_batch"
+        assert result["tool_call_ids"] == ["tc1"]
+        assert len(result["actions"]) == 1
+
+    def test_multiple_tool_calls_shared(self):
+        msg = AIMessage(
+            content="",
+            tool_calls=[
+                {"id": "tc1", "name": "read_file", "args": {}},
+                {"id": "tc2", "name": "web_search", "args": {"query": "q"}},
+            ],
+        )
+        result = _build_attribution(msg, [])
+        assert result["shared_attribution"] is True
+        assert len(result["tool_call_ids"]) == 2
+
+    def test_write_todos_updates_current_todos(self):
+        msg = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": "tc1",
+                    "name": "write_todos",
+                    "args": {"todos": [{"content": "task1", "status": "pending"}]},
+                },
+                {"id": "tc2", "name": "read_file", "args": {}},
+            ],
+        )
+        result = _build_attribution(msg, [])
+        assert len(result["actions"]) >= 2
+
+    def test_non_dict_tool_call_skipped(self):
+        msg = AIMessage(content="")
+        msg.tool_calls = [MagicMock()]
+        result = _build_attribution(msg, [])
+        assert result["tool_call_ids"] == []
+
+    def test_version_is_1(self):
+        msg = AIMessage(content="")
+        result = _build_attribution(msg, [])
+        assert result["version"] == 1
+
+    def test_single_todo_action_kind_is_todo_update(self):
+        msg = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": "tc1",
+                    "name": "write_todos",
+                    "args": {"todos": [{"content": "task1", "status": "pending"}]},
+                }
+            ],
+        )
+        result = _build_attribution(msg, [])
+        assert result["kind"] == "todo_update"
+
+    def test_single_subagent_action_kind_is_subagent_dispatch(self):
+        msg = AIMessage(
+            content="",
+            tool_calls=[{"id": "tc1", "name": "task", "args": {"description": "d", "subagent_type": "g"}}],
+        )
+        result = _build_attribution(msg, [])
+        assert result["kind"] == "subagent_dispatch"
