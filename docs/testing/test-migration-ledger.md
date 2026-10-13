@@ -748,6 +748,17 @@ find tests -maxdepth 1 -type f -name 'test_*.py'
 PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/unit tests/integration tests/contracts -v -m "not serial and not requires_llm"
 ```
 
+Correction (2026-10-13, ticket #66): this batch's claim was true when recorded
+(commit `60f0ef382` moved the root files verbatim, e.g. `test_channels.py` as an
+R100 rename), but subsequent batch commits between 2026-07-09 and 2026-09-06
+(e.g. `4feb26e0f` "B4b 权限/隔离 + B4c 杂项" and the legacy-harness refactor)
+recreated root-level copies without a ledger batch. Both trees then evolved in
+parallel — root copies absorbing newer product-contract assertions, subdir
+copies evolving independently — so the "no root-level tests left" statement
+above no longer described the tree. The duplicates were resolved and this entry
+superseded by the 2026-10-13 dedup batches at the top of this ledger, under
+[the dedup decision](../decisions/2026-10-13-backend-test-dedup.md).
+
 ## Batch 2026-07-09: Stable Contract Entrypoints
 
 | Previous migrated path | Final path | Core assertions retained | Stronger replacement | Delete old path | Validation |
