@@ -40,8 +40,6 @@ logger = logging.getLogger(__name__)
 
 _TOOL_MODULE_NAME = "deerflow.tools.builtins.setup_agent_tool"
 
-_installed = False
-
 
 def _write_user_agent_files(*, user_id: str, agent_name: str, description: str, soul: str, skills: list[str] | None = None) -> None:
     """Upsert the agent record when the catalog seam is unavailable.
@@ -243,22 +241,29 @@ class CanonicalBuiltinToolOverrides:
         return default
 
 
+#: The single provider instance this module publishes. Module-level so every
+#: ``install()`` call re-registers the identical object: the harness seam's
+#: single-provider registration is same-object idempotent, refuses a foreign
+#: provider, and re-arms itself when the process default was cleared after an
+#: earlier composition installed it (``reset_default_extension_seams`` test
+#: hygiene; a one-shot ``_installed`` flag would leave such a process silently
+#: on the stock builtin).
+_provider = CanonicalBuiltinToolOverrides()
+
+
 def install() -> None:
     """Publish the canonical ``setup_agent`` to the host.
 
-    Idempotent. Registers a ``BuiltinToolOverrides`` provider through the
-    harness extension seam — upstream module attributes stay stock and the
-    lead-agent assembly resolves the canonical tool at its builtin binding
-    site. The catalog session seam lives on this module's
+    Idempotent and re-armable: registers the module's single
+    ``CanonicalBuiltinToolOverrides`` instance through the harness extension
+    seam — upstream module attributes stay stock and the lead-agent assembly
+    resolves the canonical tool at its builtin binding site. Registering the
+    identical object is a no-op, so every gateway composition (import and app
+    creation) can call this; a different provider already holding the seam is
+    refused. The catalog session seam lives on this module's
     ``get_session_factory`` namespace (read lazily at call time).
     """
-    global _installed
-    if _installed:
-        return
-
     from deerflow.extensions import set_default_builtin_tool_overrides
 
-    set_default_builtin_tool_overrides(CanonicalBuiltinToolOverrides(), owner="agentplatform:agent_bootstrap")
-
-    _installed = True
+    set_default_builtin_tool_overrides(_provider, owner="agentplatform:agent_bootstrap")
     logger.debug("agent_bootstrap: canonical setup_agent registered via builtin tool seam")

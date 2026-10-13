@@ -182,7 +182,41 @@ def _reset_frozen_checkpoint_channel_mode(monkeypatch):
 
     monkeypatch.setattr(checkpoint_mode, "_frozen_checkpoint_channel_mode", None)
     monkeypatch.setattr(checkpoint_mode, "_frozen_checkpoint_snapshot_frequency", None)
-    yield
+
+
+@pytest.fixture(autouse=True)
+def _preserve_extension_seam_defaults():
+    """Snapshot/restore the harness host-seam process defaults per test.
+
+    The #64 seams (tool scopes, subagent middlewares, builtin tool overrides)
+    are published as process-default providers by composition imports
+    (executor_bridge, agent_bootstrap via gateway services). Tests that call
+    ``reset_default_extension_seams()`` for their own isolation must not
+    strand the whole worker process without providers - later tests in the
+    same process would silently run the stock upstream behavior (the
+    canonical setup_agent business path, workflow scoping). Restore whatever
+    composition had registered before each test.
+    """
+    try:
+        from deerflow.extensions import (
+            _default_builtin_tool_overrides,
+            _default_subagent_middlewares,
+            _default_tool_scopes,
+        )
+    except ImportError:
+        yield
+        return
+    saved = (
+        list(_default_tool_scopes),
+        list(_default_subagent_middlewares),
+        list(_default_builtin_tool_overrides),
+    )
+    try:
+        yield
+    finally:
+        _default_tool_scopes[:] = saved[0]
+        _default_subagent_middlewares[:] = saved[1]
+        _default_builtin_tool_overrides[:] = saved[2]
 
 
 @pytest.fixture(autouse=True)

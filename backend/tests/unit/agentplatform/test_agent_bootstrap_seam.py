@@ -76,14 +76,33 @@ def test_gateway_import_leaves_the_builtin_stock_and_registers_the_override() ->
 
 
 def test_install_registers_once_and_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(agent_bootstrap, "_installed", False)
     reset_default_extension_seams()
     try:
         agent_bootstrap.install()
         first = resolve_builtin_tool_overrides(None)
         assert isinstance(first, agent_bootstrap.CanonicalBuiltinToolOverrides)
 
-        agent_bootstrap.install()  # idempotent: no second registration, same provider
+        agent_bootstrap.install()  # idempotent: same-object re-registration is a no-op
+        assert resolve_builtin_tool_overrides(None) is first
+    finally:
+        reset_default_extension_seams()
+
+
+def test_install_re_arms_after_the_process_default_is_cleared(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A cleared process default (test hygiene) must not strand the process on
+    the stock builtin: the next composition call re-registers the same
+    provider. This pins the regression that broke the real-server business
+    path when an earlier test reset the seams after the gateway import."""
+    reset_default_extension_seams()
+    try:
+        agent_bootstrap.install()
+        first = resolve_builtin_tool_overrides(None)
+        assert first is agent_bootstrap._provider
+
+        reset_default_extension_seams()  # simulate unbalanced test hygiene
+        assert resolve_builtin_tool_overrides(None) is None
+
+        agent_bootstrap.install()  # next gateway composition (create_app)
         assert resolve_builtin_tool_overrides(None) is first
     finally:
         reset_default_extension_seams()
