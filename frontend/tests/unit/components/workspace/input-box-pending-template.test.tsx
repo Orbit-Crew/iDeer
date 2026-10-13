@@ -154,14 +154,6 @@ vi.mock("@/components/ai-elements/suggestion", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/confetti-button", () => ({
-  ConfettiButton: ({ children, onClick, ...props }: any) => (
-    <button data-testid="confetti-button" onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-}));
-
 vi.mock("@/components/workspace/mode-hover-guide", () => ({
   ModeHoverGuide: ({ children }: any) => (
     <div data-testid="mode-hover-guide">{children}</div>
