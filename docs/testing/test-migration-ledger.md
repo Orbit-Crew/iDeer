@@ -105,6 +105,26 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/runtim
 | `tests/test_token_usage.py` (14 identical + 0 drifted + 0 root-only) | `tests/unit/runtime/test_token_usage.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_worker_langfuse_metadata.py` (1 identical + 3 drifted + 2 root-only) | `tests/unit/runtime/test_worker_langfuse_metadata.py` | root variant wins on drifted names; 4 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
+## Batch 2026-10-13: backend/tests root↔subdir dedup — models/persistence (batch 4 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/models tests/unit/persistence -q -m "not serial and not requires_llm and not live and not external"` → 1093 passed / 1 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_client.py` (91 identical + 52 drifted + 46 root-only) | `tests/unit/models/test_client.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_langfuse_metadata.py` (1 identical + 2 drifted + 5 root-only) | `tests/unit/models/test_client_langfuse_metadata.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_live.py` (19 identical + 0 drifted + 0 root-only) | `tests/unit/models/test_client_live.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_codex_provider.py` (21 identical + 0 drifted + 5 root-only) | `tests/unit/models/test_codex_provider.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_infoquest_client.py` (0 identical + 0 drifted + 22 root-only) | `tests/unit/models/test_infoquest_client.py` | root variant wins on drifted names; 11 class methods + 10 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_lead_agent_model_resolution.py` (11 identical + 6 drifted + 31 root-only) | `tests/unit/models/test_lead_agent_model_resolution.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mindie_provider.py` (41 identical + 0 drifted + 4 root-only) | `tests/unit/models/test_mindie_provider.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_model_config.py` (2 identical + 0 drifted + 2 root-only) | `tests/unit/models/test_model_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_model_factory.py` (31 identical + 4 drifted + 34 root-only) | `tests/unit/models/test_model_factory.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_patched_deepseek.py` (9 identical + 1 drifted + 0 root-only) | `tests/unit/models/test_patched_deepseek.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_patched_minimax.py` (1 identical + 3 drifted + 1 root-only) | `tests/unit/models/test_patched_minimax.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_persistence_scaffold.py` (21 identical + 1 drifted + 17 root-only) | `tests/unit/persistence/test_persistence_scaffold.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_vllm_provider.py` (0 identical + 0 drifted + 16 root-only) | `tests/unit/models/test_vllm_provider.py` | root variant wins on drifted names; 0 class methods + 8 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
 ## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (batch 1 of 8)
 
 Ticket #66 under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):

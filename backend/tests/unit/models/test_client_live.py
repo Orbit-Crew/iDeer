@@ -1,12 +1,18 @@
-"""Live integration tests for DeerFlowClient with real API.
+"""Live integration tests for DeerFlowClient with real external APIs.
 
 These tests require a working config.yaml with valid API credentials.
-They are skipped in CI and must be run explicitly:
+They can incur API costs and create local sandboxes, artifacts, or files.
+They are skipped in CI and default test runs and must be run explicitly:
 
-    PYTHONPATH=. uv run pytest tests/test_client_live.py -v -s
+    make test-live
+
+For direct pytest invocation, set the explicit opt-in flag:
+
+    DEER_FLOW_RUN_LIVE_TESTS=1 PYTHONPATH=. uv run pytest tests/test_client_live.py -v -s
 """
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -15,12 +21,21 @@ from deerflow.client import DeerFlowClient, StreamEvent
 from deerflow.sandbox.security import is_host_bash_allowed
 from deerflow.uploads.manager import PathTraversalError
 
-# Skip entire module when no config.yaml exists (the rest is handled by the
-# conftest _skip_llm_if_no_key fixture using the initial env state).
-if not Path(__file__).resolve().parents[4].joinpath("config.yaml").exists():
-    pytest.skip("No config.yaml found — live tests require valid API credentials", allow_module_level=True)
+pytestmark = pytest.mark.live
 
-pytestmark = pytest.mark.requires_llm
+_LIVE_TEST_OPT_IN = "DEER_FLOW_RUN_LIVE_TESTS"
+
+# Skip the entire module unless every live-test precondition is satisfied.
+_skip_reason = None
+if os.environ.get("CI"):
+    _skip_reason = "Live tests skipped in CI"
+elif os.environ.get(_LIVE_TEST_OPT_IN) != "1":
+    _skip_reason = f"Set {_LIVE_TEST_OPT_IN}=1 to run live tests with real external APIs"
+elif not Path(__file__).resolve().parents[2].joinpath("config.yaml").exists():
+    _skip_reason = "No config.yaml found — live tests require valid API credentials"
+
+if _skip_reason:
+    pytest.skip(_skip_reason, allow_module_level=True)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -30,7 +45,7 @@ pytestmark = pytest.mark.requires_llm
 @pytest.fixture(scope="module")
 def client():
     """Create a real DeerFlowClient (no mocks)."""
-    return DeerFlowClient(model_name="deepseek-v4-flash", thinking_enabled=False)
+    return DeerFlowClient(thinking_enabled=False)
 
 
 @pytest.fixture
