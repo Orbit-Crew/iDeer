@@ -85,7 +85,7 @@ anchor, and preserve its conservative over-report-rather-than-infer stance.
   boundaries under `backend/app/` and `backend/packages/harness/deerflow/`
   into `.deer-flow/thread-boundary-inventory.json`. Implementation and
   coverage: `tests/support/detectors/thread_boundaries.py` and
-  `tests/test_detect_thread_boundaries.py` (under `backend/tests/`).
+  `tests/unit/runtime/test_detect_thread_boundaries.py` (under `backend/tests/`).
 - `detect-blocking-io` (root or `backend` Makefile; both resolve to the same
   repo-root output `.deer-flow/blocking-io-findings.json`) AST-parses
   `backend/app/`, `backend/packages/harness/deerflow/`, and `backend/scripts/`,
@@ -112,7 +112,7 @@ anchor, and preserve its conservative over-report-rather-than-infer stance.
   [.github/workflows/backend-blocking-io-tests.yml](../.github/workflows/backend-blocking-io-tests.yml).
 
 Regression tests related to Docker/provisioner behavior:
-- `tests/test_docker_sandbox_mode_detection.py` (mode detection from `config.yaml`)
+- `tests/integration/sandbox/test_docker_sandbox_mode_detection.py` (mode detection from `config.yaml`)
 - `tests/test_provisioner_kubeconfig.py` (kubeconfig file/directory handling)
 - `tests/test_provisioner_request_threading.py` (keeps provisioner sandbox CRUD
   endpoints as sync FastAPI handlers so synchronous K8s client calls run in the
@@ -126,7 +126,7 @@ Blocking-IO runtime gate:
   alongside the gate mechanics.
 
 Boundary check (harness → app import firewall):
-- `tests/test_harness_boundary.py` — ensures `packages/harness/deerflow/` never imports from `app.*`
+- `tests/unit/gateway/test_harness_boundary.py` — ensures `packages/harness/deerflow/` never imports from `app.*`
 
 Memory backend async boundary:
 - `MemoryMiddleware.aafter_agent` calls `MemoryManager.aadd`; network-backed

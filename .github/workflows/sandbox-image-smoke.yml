@@ -16,7 +16,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'backend/packages/harness/deerflow/community/aio_sandbox/**'
-      - 'backend/tests/test_aio_sandbox_local_backend.py'
+      - 'backend/tests/integration/sandbox/test_aio_sandbox_local_backend.py'
       - '.github/workflows/sandbox-image-smoke.yml'
 
 concurrency:
@@ -77,4 +77,4 @@ jobs:
 
       - name: Run the live real-image smoke tests
         working-directory: backend
-        run: uv run pytest -m live tests/test_aio_sandbox_local_backend.py -v
+        run: uv run pytest -m live tests/integration/sandbox/test_aio_sandbox_local_backend.py -v
