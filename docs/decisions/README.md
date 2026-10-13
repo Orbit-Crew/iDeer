@@ -100,6 +100,13 @@ verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
   - trigger：规划或启动里程碑、判定补丁关闭顺序时读全文；注意其状态基线为 2026-09-08，属时点记录。
   - 实现/验证：各里程碑交付以当时候选的验收记录为准；当前候选状态见[项目状态页](../project-state.md)。
 
+### 测试资产治理（test suite governance）
+
+- [backend/tests 双目录同名副本去重：采纳迁移收尾](2026-10-13-backend-test-dedup.md) — 148 对根/子目录同名测试副本按"根副本为合并基、子目录为规范位置"完成迁移收尾（选项 a），拒绝把双跑登记为已知状态；`tests/blocking_io/` 与根目录独有文件不在去重范围。
+  - scope：backend/tests 同名测试副本的去重口径、冲突裁决规则与守卫机制；不改产品代码与用例语义归属。
+  - trigger：移动/删除 backend 测试文件、解释 test-migration-ledger 2026-07-09 批次与现状的矛盾、或收到重复收集守卫报红时读全文。
+  - 实现/验证：批次记录见 [test-migration-ledger](../testing/test-migration-ledger.md)；守卫为 `scripts/check_test_collection_duplicates.py`。
+
 ## 历史与专项设计
 
 - [内网源码导入取舍分析（历史）](../archive/2026/decisions/intranet-source-import-decision-2026-07-15.md)
