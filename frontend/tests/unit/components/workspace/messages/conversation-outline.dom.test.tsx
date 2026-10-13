@@ -47,8 +47,8 @@ describe("ConversationOutline", () => {
 
     openOutline();
 
-    expect(await screen.findByText("First question")).toBeTruthy();
-    expect(screen.getByText("Second question")).toBeTruthy();
+    expect(await screen.findByText("First question")).toBeInTheDocument();
+    expect(screen.getByText("Second question")).toBeInTheDocument();
     const menu = screen.getByTestId("conversation-outline-menu");
     expect(menu.classList.contains("overflow-y-auto")).toBe(true);
     expect(menu.classList.contains("max-h-[min(72vh,36rem)]")).toBe(true);
@@ -70,7 +70,7 @@ describe("ConversationOutline", () => {
     fireEvent.click(await screen.findByText("First question"));
 
     expect(onChapterSelect).toHaveBeenCalledWith("human-1");
-    expect(screen.getByTestId("conversation-outline-menu")).toBeTruthy();
-    expect(screen.getByRole("log")).toBeTruthy();
+    expect(screen.getByTestId("conversation-outline-menu")).toBeInTheDocument();
+    expect(screen.getByRole("log")).toBeInTheDocument();
   });
 });

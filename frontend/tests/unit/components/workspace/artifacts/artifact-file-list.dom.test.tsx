@@ -97,14 +97,14 @@ describe("ArtifactFileList archive download", () => {
       await screen.findByRole("button", {
         name: "Download selected files (2 files)",
       }),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
     expect(archiveState.manifest).toHaveBeenCalledWith({
       runId: "branch-run",
       threadId: "branch-thread",
     });
     expect(
       screen.getByText(/The file list comes from this response/),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   it("shows selected listed files even when the verified run has other files", async () => {
@@ -115,7 +115,7 @@ describe("ArtifactFileList archive download", () => {
       await screen.findByRole("button", {
         name: "Download selected files (2 files)",
       }),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   it("does not offer an archive when only one attempted file was delivered", async () => {

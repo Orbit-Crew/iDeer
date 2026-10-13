@@ -152,18 +152,18 @@ describe("TrashView", () => {
   it("renders rows with the origin project and remaining retention", () => {
     mocks.documents = [makeTrashDocument()];
     render(<TrashView />, { wrapper: Wrapper });
-    expect(screen.getByText("q3-report.pdf")).toBeDefined();
-    expect(screen.getByText(/from Alpha/)).toBeDefined();
-    expect(screen.getByText(/20 days left/)).toBeDefined();
-    expect(screen.getByRole("button", { name: /Restore/ })).toBeDefined();
+    expect(screen.getByText("q3-report.pdf")).toBeInTheDocument();
+    expect(screen.getByText(/from Alpha/)).toBeInTheDocument();
+    expect(screen.getByText(/20 days left/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Restore/ })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Delete permanently/ }),
-    ).toBeDefined();
+    ).toBeInTheDocument();
   });
 
   it("shows the empty state without the empty-trash action", () => {
     render(<TrashView />, { wrapper: Wrapper });
-    expect(screen.getByText("Trash is empty.")).toBeDefined();
+    expect(screen.getByText("Trash is empty.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Empty trash" })).toBeNull();
   });
 
@@ -198,11 +198,11 @@ describe("TrashView", () => {
     render(<TrashView />, { wrapper: Wrapper });
     fireEvent.click(screen.getByRole("button", { name: /Restore/ }));
     await waitFor(() => {
-      expect(screen.getByText("Choose a project")).toBeDefined();
+      expect(screen.getByText("Choose a project")).toBeInTheDocument();
     });
     expect(
       screen.getByText(/original project is gone or archived/),
-    ).toBeDefined();
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Beta" }));
     expect(mocks.restoreMutate).toHaveBeenLastCalledWith(
       { documentId: "doc-1", projectId: "proj-2" },
@@ -232,7 +232,7 @@ describe("TrashView", () => {
     });
     // No picker for a conflict — the row simply stays in trash.
     expect(screen.queryByText("Choose a project")).toBeNull();
-    expect(screen.getByText("q3-report.pdf")).toBeDefined();
+    expect(screen.getByText("q3-report.pdf")).toBeInTheDocument();
   });
 
   it("requires the irreversible confirmation before purging one document", () => {
@@ -246,7 +246,7 @@ describe("TrashView", () => {
     fireEvent.click(screen.getByRole("button", { name: /Delete permanently/ }));
     expect(
       screen.getByText(/will be permanently deleted. This cannot be undone./),
-    ).toBeDefined();
+    ).toBeInTheDocument();
     expect(mocks.purgeMutate).not.toHaveBeenCalled();
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
@@ -267,7 +267,7 @@ describe("TrashView", () => {
       screen.getByText(
         "2 documents will be permanently deleted. This cannot be undone.",
       ),
-    ).toBeDefined();
+    ).toBeInTheDocument();
     expect(mocks.emptyMutate).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog");
     fireEvent.click(
@@ -281,7 +281,7 @@ describe("TrashView", () => {
     mocks.documentsTotal = 3;
     mocks.documentsHasNextPage = true;
     render(<TrashView />, { wrapper: Wrapper });
-    expect(screen.getByText("Showing 1 of 3")).toBeDefined();
+    expect(screen.getByText("Showing 1 of 3")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("trash-load-more"));
     expect(mocks.fetchNextTrashPage).toHaveBeenCalledTimes(1);
   });
@@ -296,7 +296,7 @@ describe("TrashView", () => {
       screen.getByText(
         "5 documents will be permanently deleted. This cannot be undone.",
       ),
-    ).toBeDefined();
+    ).toBeInTheDocument();
   });
 
   it("computes the remaining retention from the configured window", () => {
@@ -304,7 +304,7 @@ describe("TrashView", () => {
     mocks.retentionDays = 7;
     mocks.documents = [makeTrashDocument()];
     render(<TrashView />, { wrapper: Wrapper });
-    expect(screen.getByText(/Less than a day left/)).toBeDefined();
+    expect(screen.getByText(/Less than a day left/)).toBeInTheDocument();
     expect(screen.queryByText(/20 days left/)).toBeNull();
   });
 
@@ -312,6 +312,6 @@ describe("TrashView", () => {
     mocks.retentionDays = undefined;
     mocks.documents = [makeTrashDocument()];
     render(<TrashView />, { wrapper: Wrapper });
-    expect(screen.getByText(/20 days left/)).toBeDefined();
+    expect(screen.getByText(/20 days left/)).toBeInTheDocument();
   });
 });

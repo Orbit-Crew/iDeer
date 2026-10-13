@@ -150,8 +150,10 @@ describe("MCPPluginManager MCP switches", () => {
       );
       expect(
         screen.getByRole("button", { name: "Configure Lark" }),
-      ).toBeDefined();
-      expect(screen.getByRole("button", { name: "All plugins" })).toBeDefined();
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "All plugins" }),
+      ).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Add server" })).toBeNull();
     },
   );
@@ -161,7 +163,7 @@ describe("MCPPluginManager MCP switches", () => {
 
     render(<MCPPluginManager />);
 
-    expect(screen.getByText("Error: request failed")).toBeDefined();
+    expect(screen.getByText("Error: request failed")).toBeInTheDocument();
   });
 
   it("disables every switch while a targeted update is pending", () => {
@@ -184,7 +186,7 @@ describe("MCPPluginManager MCP switches", () => {
 
     const switches = screen.getAllByRole("switch");
     const githubSwitch = switches[0];
-    expect(githubSwitch).toBeDefined();
+    expect(githubSwitch).toBeInTheDocument();
     expect((githubSwitch as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(githubSwitch!);
@@ -249,7 +251,7 @@ describe("MCPPluginManager add server", () => {
     expect(screen.getByRole("alert").textContent).toBe("Enter valid JSON");
     expect(
       screen.getByRole("textbox", { name: "MCP server JSON definition" }),
-    ).toBeDefined();
+    ).toBeInTheDocument();
   });
 
   it("offers the add action when no server is configured yet", () => {
@@ -257,7 +259,7 @@ describe("MCPPluginManager add server", () => {
 
     render(<MCPPluginManager />);
 
-    expect(screen.getByText("No tools")).toBeDefined();
+    expect(screen.getByText("No tools")).toBeInTheDocument();
     expect(
       screen
         .getByRole("button", { name: "Add server" })
@@ -276,7 +278,9 @@ describe("MCPPluginManager add server", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mcpMockState.updateMutate).not.toHaveBeenCalled();
-    expect(screen.getByText('Server "github" already exists')).toBeDefined();
+    expect(
+      screen.getByText('Server "github" already exists'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -336,7 +340,7 @@ describe("MCPPluginManager edit server", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mcpMockState.updateMutate).not.toHaveBeenCalled();
-    expect(screen.getByText('Keep the name "github"')).toBeDefined();
+    expect(screen.getByText('Keep the name "github"')).toBeInTheDocument();
   });
 
   it("rejects editing multiple servers at once", () => {
@@ -353,7 +357,7 @@ describe("MCPPluginManager edit server", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mcpMockState.updateMutate).not.toHaveBeenCalled();
-    expect(screen.getByText("Edit exactly one server")).toBeDefined();
+    expect(screen.getByText("Edit exactly one server")).toBeInTheDocument();
   });
 });
 

@@ -25,10 +25,10 @@ describe("I18nProvider", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("en-US:English")).toBeTruthy();
+    expect(screen.getByText("en-US:English")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "switch" }));
 
-    expect(await screen.findByText("zh-CN:中文")).toBeTruthy();
+    expect(await screen.findByText("zh-CN:中文")).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("zh-CN");
   });
 
@@ -39,6 +39,6 @@ describe("I18nProvider", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("zh-CN:中文")).toBeTruthy();
+    expect(screen.getByText("zh-CN:中文")).toBeInTheDocument();
   });
 });

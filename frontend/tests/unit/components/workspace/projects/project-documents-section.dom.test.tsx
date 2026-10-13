@@ -287,11 +287,11 @@ describe("ProjectDocumentsSection", () => {
       <ProjectDocumentsSection project={makeProject()} threads={THREADS} />,
       { wrapper: Wrapper },
     );
-    expect(screen.getByText("summary.pdf")).toBeDefined();
+    expect(screen.getByText("summary.pdf")).toBeInTheDocument();
     expect(screen.getAllByText(/2\.0 KiB/).length).toBeGreaterThan(0);
-    expect(screen.getByText("from Report chat · output")).toBeDefined();
+    expect(screen.getByText("from Report chat · output")).toBeInTheDocument();
     // Upload-sourced rows carry no provenance badge: exactly one badge total.
-    expect(screen.getByText("notes.txt")).toBeDefined();
+    expect(screen.getByText("notes.txt")).toBeInTheDocument();
     expect(screen.getAllByText(/from Report chat/)).toHaveLength(1);
   });
 
@@ -299,9 +299,9 @@ describe("ProjectDocumentsSection", () => {
     render(<ProjectDocumentsSection project={makeProject()} threads={[]} />, {
       wrapper: Wrapper,
     });
-    expect(screen.getByText("No documents yet")).toBeDefined();
-    expect(screen.getByText(/Memory stays global for now/)).toBeDefined();
-    expect(screen.getByRole("button", { name: "Upload" })).toBeDefined();
+    expect(screen.getByText("No documents yet")).toBeInTheDocument();
+    expect(screen.getByText(/Memory stays global for now/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload" })).toBeInTheDocument();
   });
 
   it("renders a content-missing row from the server flag without any preview attempt", () => {
@@ -311,11 +311,13 @@ describe("ProjectDocumentsSection", () => {
     });
     // The list response's ``content_missing`` flag is authoritative: badge +
     // trash-only action render immediately, no preview fetch is probed.
-    expect(screen.getByTestId("content-missing-badge")).toBeDefined();
-    expect(screen.getByText("Content missing")).toBeDefined();
+    expect(screen.getByTestId("content-missing-badge")).toBeInTheDocument();
+    expect(screen.getByText("Content missing")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Attach to chat/ })).toBeNull();
-    expect(screen.getByRole("button", { name: /Move to trash/ })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /Move to trash/ }),
+    ).toBeInTheDocument();
     expect(mocks.fetchPreview).not.toHaveBeenCalled();
   });
 
@@ -330,7 +332,7 @@ describe("ProjectDocumentsSection", () => {
     await waitFor(() => {
       expect(
         within(dialog).getByText("Couldn't load project documents"),
-      ).toBeDefined();
+      ).toBeInTheDocument();
     });
     // The row is NOT marked missing from a failed preview: the server flag
     // on the next list response owns that state. (Close the modal first —
@@ -340,7 +342,7 @@ describe("ProjectDocumentsSection", () => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
     expect(screen.queryByTestId("content-missing-badge")).toBeNull();
-    expect(screen.getByRole("button", { name: "Preview" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Preview" })).toBeInTheDocument();
   });
 
   it("shows the archived read-only banner and hides every mutation affordance", () => {
@@ -372,13 +374,13 @@ describe("ProjectDocumentsSection", () => {
     );
     expect(
       screen.getByTestId("project-documents-archived-banner"),
-    ).toBeDefined();
+    ).toBeInTheDocument();
     // Reads stay: preview, download, attach.
-    expect(screen.getByRole("button", { name: "Preview" })).toBeDefined();
-    expect(screen.getByRole("link", { name: "Download" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Preview" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Attach to chat/ }),
-    ).toBeDefined();
+    ).toBeInTheDocument();
     // Mutations go: upload, trash, save-to-project.
     expect(screen.queryByRole("button", { name: "Upload" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Move to trash/ })).toBeNull();
@@ -425,7 +427,7 @@ describe("ProjectDocumentsSection", () => {
     render(<ProjectDocumentsSection project={makeProject()} threads={[]} />, {
       wrapper: Wrapper,
     });
-    expect(screen.getByText("Showing 3 of 5")).toBeDefined();
+    expect(screen.getByText("Showing 3 of 5")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("project-documents-load-more"));
     expect(mocks.fetchNextDocumentsPage).toHaveBeenCalledTimes(1);
   });
@@ -436,7 +438,7 @@ describe("ProjectDocumentsSection", () => {
     render(<ProjectDocumentsSection project={makeProject()} threads={[]} />, {
       wrapper: Wrapper,
     });
-    expect(screen.getByText("Showing 1 of 1")).toBeDefined();
+    expect(screen.getByText("Showing 1 of 1")).toBeInTheDocument();
     expect(screen.queryByTestId("project-documents-load-more")).toBeNull();
   });
 
@@ -451,7 +453,7 @@ describe("ProjectDocumentsSection", () => {
       wrapper: Wrapper,
     });
     fireEvent.click(screen.getByRole("button", { name: /Move to trash/ }));
-    expect(screen.getByText(/stay recoverable for 7 days/)).toBeDefined();
+    expect(screen.getByText(/stay recoverable for 7 days/)).toBeInTheDocument();
   });
 
   it("falls back to the 30-day default when the config endpoint is unavailable", () => {
@@ -462,7 +464,9 @@ describe("ProjectDocumentsSection", () => {
       wrapper: Wrapper,
     });
     fireEvent.click(screen.getByRole("button", { name: /Move to trash/ }));
-    expect(screen.getByText(/stay recoverable for 30 days/)).toBeDefined();
+    expect(
+      screen.getByText(/stay recoverable for 30 days/),
+    ).toBeInTheDocument();
   });
 
   it("renders a browser-viewable binary in the sandboxed iframe, never as text", async () => {
@@ -547,7 +551,7 @@ describe("ProjectDocumentsSection", () => {
       within(dialog).getByText(
         "This file type can't be previewed in the browser. Download it to view it.",
       ),
-    ).toBeDefined();
+    ).toBeInTheDocument();
     const download = within(dialog).getByRole("link", { name: "Download" });
     expect(download.getAttribute("href")).toBe(
       "/backend/api/projects/proj-1/documents/doc-zip/content?download=true",
@@ -600,7 +604,7 @@ describe("ProjectDocumentsSection", () => {
     // Archived chats are requested away server-side and filtered again
     // client-side, so one never occupies an eligible slot.
     expect(mocks.infiniteThreadsParams).toMatchObject({ archived: false });
-    expect(within(dialog).getByText("Active chat")).toBeDefined();
+    expect(within(dialog).getByText("Active chat")).toBeInTheDocument();
     expect(within(dialog).queryByText("Archived chat")).toBeNull();
     fireEvent.click(screen.getByTestId("attach-thread-load-more"));
     expect(mocks.fetchNextThreadsPage).toHaveBeenCalledTimes(1);
@@ -676,7 +680,7 @@ describe("ProjectDocumentsSection", () => {
       <ProjectDocumentsSection project={makeProject()} threads={THREADS} />,
       { wrapper: Wrapper },
     );
-    expect(screen.getByText("chart.png")).toBeDefined();
+    expect(screen.getByText("chart.png")).toBeInTheDocument();
     expect(screen.queryByTestId("thread-files-truncated")).toBeNull();
   });
 });
