@@ -4,7 +4,7 @@ kind: reference
 status: current
 owner: repository maintainers
 scope: engineering terminology and product concept definitions for the whole repository
-last-verified: 2026-10-04
+last-verified: 2026-10-13
 verified-against: worktree docs/agent-doc-disclosure @ ed87169e7
 ---
 
@@ -405,6 +405,14 @@ _Avoid_: Treating "not scanned" as "no alerts", silent degradation
 **Hybrid Evidence Intake**:
 The fixed fault-zeroing input policy that expects both documentary evidence and a Code Evidence Package. If exactly one side is missing, the platform creates a paused Run and records the user's confirmation against the input snapshot before continuing; if both are missing, it rejects the request without creating a Run. A non-empty problem description or any document-type attachment satisfies the documentary side, while missing evidence remains visible in the coverage matrix and residual risks.
 _Avoid_: Evidence Mode selection, document-only Run, code-only Run, silent mode downgrade
+
+**Telemetry Format Document**:
+The human-readable description of raw telemetry frame layout (ICD-like) supplied as input evidence alongside .dat files. Parsing knowledge enters a Run only through this document; the platform keeps no built-in telemetry format registry.
+_Avoid_: Built-in format registry, magic-number whitelist as the source of parsing knowledge, model-invented frame structure without a source document
+
+**Frame Layout Spec**:
+The machine-readable, closed-vocabulary structural description of telemetry frames that the model translates from a Telemetry Format Document and passes as a parameter to the telemetry parse tool. It is declarative data recorded in the tool receipt, never executable code.
+_Avoid_: Custom parser script, arbitrary expressions as parsing rules, server-side hardcoded channel tables
 
 **Fault-zeroing Execution Kernel**:
 The single Workflow-backed implementation used by Skill, Agent, and Workflow invocation adapters for an actual fault-zeroing analysis. Educational or editing conversations remain ordinary Agent interactions; starting an analysis routes all three forms through the same evidence, fault-tree, assessment, review, reporting, and validation stages.
