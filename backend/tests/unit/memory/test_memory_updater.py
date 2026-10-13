@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.agentplatform.legacy.memory.updater import clear_memory_data
 from deerflow.agents.memory.backends.deermem.deermem.config import DeerMemConfig
 from deerflow.agents.memory.backends.deermem.deermem.core.prompt import format_conversation_for_update
 from deerflow.agents.memory.backends.deermem.deermem.core.storage import (
@@ -1916,17 +1915,3 @@ class TestParseMemoryUpdateFactsToRemoveGate:
         except json.JSONDecodeError:
             return
         raise AssertionError('decoy object {"user": "alice"} must be rejected')
-
-
-# --- merged from test_memory_updater.py (subdir-only tests; root copy is the dedup base) ---
-_LEGACY_MEMORY_KEYS = {"storage_path", "storage_class", "debounce_seconds", "max_facts", "fact_confidence_threshold", "max_injection_tokens", "model_name"}
-
-
-def test_clear_memory_data_resets_all_sections() -> None:
-    with patch("app.agentplatform.legacy.memory.updater._save_memory_to_file", return_value=True):
-        result = clear_memory_data()
-
-    assert result["version"] == "1.0"
-    assert result["facts"] == []
-    assert result["user"]["workContext"]["summary"] == ""
-    assert result["history"]["recentMonths"]["summary"] == ""

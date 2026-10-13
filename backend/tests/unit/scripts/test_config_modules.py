@@ -278,46 +278,13 @@ class TestGuardrailsConfig:
 
 class TestMemoryConfig:
     """The shared MemoryConfig is backend-agnostic; ideer-era knobs
-    (storage_path, max_facts, ...) are migrated into backend_config and the
-    legacy memory modules read them with the historical defaults."""
+    (storage_path, max_facts, ...) are migrated into backend_config."""
 
     def test_defaults(self):
         cfg = MemoryConfig()
         assert cfg.enabled is True
         assert cfg.injection_enabled is True
         assert cfg.backend_config == {}
-
-    def test_legacy_defaults_via_compat_reader(self):
-        from app.agentplatform.legacy.memory.compat import (
-            LEGACY_DEBOUNCE_SECONDS,
-            LEGACY_FACT_CONFIDENCE_THRESHOLD,
-            LEGACY_MAX_FACTS,
-            LEGACY_MAX_INJECTION_TOKENS,
-            LEGACY_STORAGE_CLASS,
-            legacy_memory_setting,
-        )
-
-        cfg = MemoryConfig()
-        assert legacy_memory_setting(cfg, "storage_path", "") == ""
-        assert legacy_memory_setting(cfg, "debounce_seconds", LEGACY_DEBOUNCE_SECONDS) == 30
-        assert legacy_memory_setting(cfg, "max_facts", LEGACY_MAX_FACTS) == 100
-        assert legacy_memory_setting(cfg, "fact_confidence_threshold", LEGACY_FACT_CONFIDENCE_THRESHOLD) == pytest.approx(0.7)
-        assert legacy_memory_setting(cfg, "max_injection_tokens", LEGACY_MAX_INJECTION_TOKENS) == 2000
-        assert "FileMemoryStorage" in legacy_memory_setting(cfg, "storage_class", LEGACY_STORAGE_CLASS)
-
-    @pytest.mark.parametrize(
-        "path",
-        [
-            pytest.param("", id="empty-defaults-per-user"),
-            pytest.param("/abs/path/memory.json", id="absolute"),
-            pytest.param("relative/path", id="relative"),
-        ],
-    )
-    def test_storage_path_variants(self, path):
-        from app.agentplatform.legacy.memory.compat import legacy_memory_setting
-
-        cfg = MemoryConfig(backend_config={"storage_path": path})
-        assert legacy_memory_setting(cfg, "storage_path", "") == path
 
     def test_singleton_get_set(self):
         original = get_memory_config()
