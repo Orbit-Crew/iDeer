@@ -422,9 +422,9 @@ def test_reject_path_traversal_blocks_backslash_dotdot() -> None:
 
 def test_reject_path_traversal_allows_normal_paths() -> None:
     # Should not raise
-    _reject_path_traversal("/mnt/user-data/workspace/file.txt")
-    _reject_path_traversal("/mnt/skills/public/bootstrap/SKILL.md")
-    _reject_path_traversal("/mnt/user-data/workspace/sub/dir/file.py")
+    assert _reject_path_traversal("/mnt/user-data/workspace/file.txt") is None
+    assert _reject_path_traversal("/mnt/skills/public/bootstrap/SKILL.md") is None
+    assert _reject_path_traversal("/mnt/user-data/workspace/sub/dir/file.py") is None
 
 
 # ---------- validate_local_tool_path ----------
@@ -462,14 +462,14 @@ def test_validate_local_tool_path_rejects_bare_virtual_root() -> None:
 
 def test_validate_local_tool_path_allows_user_data_paths() -> None:
     # Should not raise — user-data paths are always allowed
-    validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/workspace/file.txt", _THREAD_DATA)
-    validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/uploads/doc.pdf", _THREAD_DATA)
-    validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/outputs/result.csv", _THREAD_DATA)
+    assert validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/workspace/file.txt", _THREAD_DATA) is None
+    assert validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/uploads/doc.pdf", _THREAD_DATA) is None
+    assert validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/outputs/result.csv", _THREAD_DATA) is None
 
 
 def test_validate_local_tool_path_allows_user_data_write() -> None:
     # read_only=False (default) should still work for user-data paths
-    validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/workspace/file.txt", _THREAD_DATA, read_only=False)
+    assert validate_local_tool_path(f"{VIRTUAL_PATH_PREFIX}/workspace/file.txt", _THREAD_DATA, read_only=False) is None
 
 
 def test_validate_local_tool_path_rejects_traversal_in_user_data() -> None:
@@ -699,24 +699,33 @@ def test_validate_local_bash_command_paths_guides_environment_probe_recovery(com
 
 def test_validate_local_bash_command_paths_allows_https_urls() -> None:
     """URLs like https://github.com/... must not be flagged as unsafe absolute paths."""
-    validate_local_bash_command_paths(
-        "cd /mnt/user-data/workspace && git clone https://github.com/CherryHQ/cherry-studio.git",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "cd /mnt/user-data/workspace && git clone https://github.com/CherryHQ/cherry-studio.git",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
 def test_validate_local_bash_command_paths_allows_http_urls() -> None:
     """HTTP URLs must not be flagged as unsafe absolute paths."""
-    validate_local_bash_command_paths(
-        "curl http://example.com/file.tar.gz -o /mnt/user-data/workspace/file.tar.gz",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl http://example.com/file.tar.gz -o /mnt/user-data/workspace/file.tar.gz",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
 def test_validate_local_bash_command_paths_allows_virtual_and_system_paths() -> None:
-    validate_local_bash_command_paths(
-        "/bin/echo ok > /mnt/user-data/workspace/out.txt && cat /dev/null",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "/bin/echo ok > /mnt/user-data/workspace/out.txt && cat /dev/null",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
@@ -809,31 +818,43 @@ def test_validate_local_bash_command_paths_blocks_bare_root_path(command: str) -
     ],
 )
 def test_validate_local_bash_command_paths_allows_cd_words_as_arguments(command: str) -> None:
-    validate_local_bash_command_paths(command, _THREAD_DATA)
+    assert validate_local_bash_command_paths(command, _THREAD_DATA) is None
 
 
 def test_validate_local_bash_command_paths_allows_workspace_relative_paths() -> None:
-    validate_local_bash_command_paths(
-        "mkdir -p reports && python script.py data/input.csv > reports/out.txt",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "mkdir -p reports && python script.py data/input.csv > reports/out.txt",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
 def test_validate_local_bash_command_paths_allows_cd_virtual_workspace_with_relative_paths() -> None:
-    validate_local_bash_command_paths(
-        "cd /mnt/user-data/workspace && cat data/input.csv > reports/out.txt",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "cd /mnt/user-data/workspace && cat data/input.csv > reports/out.txt",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
 def test_validate_local_bash_command_paths_allows_http_url_dotdot_segments() -> None:
-    validate_local_bash_command_paths(
-        "curl https://example.com/packages/../archive.tar.gz -o /mnt/user-data/workspace/archive.tar.gz",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl https://example.com/packages/../archive.tar.gz -o /mnt/user-data/workspace/archive.tar.gz",
+            _THREAD_DATA,
+        )
+        is None
     )
-    validate_local_bash_command_paths(
-        "curl http://example.com/packages/../archive.tar.gz -o /mnt/user-data/workspace/archive.tar.gz",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl http://example.com/packages/../archive.tar.gz -o /mnt/user-data/workspace/archive.tar.gz",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
@@ -849,7 +870,7 @@ def test_validate_local_bash_command_paths_allows_http_url_dotdot_segments() -> 
     ],
 )
 def test_validate_local_bash_command_paths_allows_non_path_string_literals(command: str) -> None:
-    validate_local_bash_command_paths(command, _THREAD_DATA)
+    assert validate_local_bash_command_paths(command, _THREAD_DATA) is None
 
 
 def test_validate_local_bash_command_paths_still_blocks_ascii_host_path_in_code() -> None:
@@ -975,10 +996,13 @@ def test_validate_local_tool_path_allows_skills_read_only() -> None:
     """read_file / ls should be able to access /mnt/skills paths."""
     with patch("deerflow.sandbox.tools._get_skills_container_path", return_value="/mnt/skills"):
         # Should not raise
-        validate_local_tool_path(
-            "/mnt/skills/public/bootstrap/SKILL.md",
-            _THREAD_DATA,
-            read_only=True,
+        assert (
+            validate_local_tool_path(
+                "/mnt/skills/public/bootstrap/SKILL.md",
+                _THREAD_DATA,
+                read_only=True,
+            )
+            is None
         )
 
 
@@ -996,38 +1020,56 @@ def test_validate_local_tool_path_blocks_skills_write() -> None:
 def test_validate_local_bash_command_paths_allows_skills_path() -> None:
     """bash commands referencing /mnt/skills should be allowed."""
     with patch("deerflow.sandbox.tools._get_skills_container_path", return_value="/mnt/skills"):
-        validate_local_bash_command_paths(
-            "cat /mnt/skills/public/bootstrap/SKILL.md",
-            _THREAD_DATA,
+        assert (
+            validate_local_bash_command_paths(
+                "cat /mnt/skills/public/bootstrap/SKILL.md",
+                _THREAD_DATA,
+            )
+            is None
         )
 
 
 def test_validate_local_bash_command_paths_allows_urls() -> None:
     """URLs in bash commands should not be mistaken for absolute paths (issue #1385)."""
     # HTTPS URLs
-    validate_local_bash_command_paths(
-        "curl -X POST https://example.com/api/v1/risk/check",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl -X POST https://example.com/api/v1/risk/check",
+            _THREAD_DATA,
+        )
+        is None
     )
     # HTTP URLs
-    validate_local_bash_command_paths(
-        "curl http://localhost:8080/health",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl http://localhost:8080/health",
+            _THREAD_DATA,
+        )
+        is None
     )
     # URLs with query strings
-    validate_local_bash_command_paths(
-        "curl https://api.example.com/v2/search?q=test",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl https://api.example.com/v2/search?q=test",
+            _THREAD_DATA,
+        )
+        is None
     )
     # FTP URLs
-    validate_local_bash_command_paths(
-        "curl ftp://ftp.example.com/pub/file.tar.gz",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl ftp://ftp.example.com/pub/file.tar.gz",
+            _THREAD_DATA,
+        )
+        is None
     )
     # URL mixed with valid virtual path
-    validate_local_bash_command_paths(
-        "curl https://example.com/data -o /mnt/user-data/workspace/data.json",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "curl https://example.com/data -o /mnt/user-data/workspace/data.json",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
@@ -1090,10 +1132,13 @@ def test_is_acp_workspace_path_recognises_prefix() -> None:
 
 def test_validate_local_tool_path_allows_acp_workspace_read_only() -> None:
     """read_file / ls should be able to access /mnt/acp-workspace paths."""
-    validate_local_tool_path(
-        "/mnt/acp-workspace/hello_world.py",
-        _THREAD_DATA,
-        read_only=True,
+    assert (
+        validate_local_tool_path(
+            "/mnt/acp-workspace/hello_world.py",
+            _THREAD_DATA,
+            read_only=True,
+        )
+        is None
     )
 
 
@@ -1109,9 +1154,12 @@ def test_validate_local_tool_path_blocks_acp_workspace_write() -> None:
 
 def test_validate_local_bash_command_paths_allows_acp_workspace() -> None:
     """bash commands referencing /mnt/acp-workspace should be allowed."""
-    validate_local_bash_command_paths(
-        "cp /mnt/acp-workspace/hello_world.py /mnt/user-data/outputs/hello_world.py",
-        _THREAD_DATA,
+    assert (
+        validate_local_bash_command_paths(
+            "cp /mnt/acp-workspace/hello_world.py /mnt/user-data/outputs/hello_world.py",
+            _THREAD_DATA,
+        )
+        is None
     )
 
 
@@ -1292,8 +1340,8 @@ def test_get_custom_mount_for_path_returns_longest_prefix() -> None:
 def test_validate_local_tool_path_allows_custom_mount_read() -> None:
     """read_file / ls should be able to access custom mount paths."""
     with patch("deerflow.sandbox.tools._get_custom_mounts", return_value=_mock_custom_mounts()):
-        validate_local_tool_path("/mnt/code-read/src/main.py", _THREAD_DATA, read_only=True)
-        validate_local_tool_path("/mnt/data/file.txt", _THREAD_DATA, read_only=True)
+        assert validate_local_tool_path("/mnt/code-read/src/main.py", _THREAD_DATA, read_only=True) is None
+        assert validate_local_tool_path("/mnt/data/file.txt", _THREAD_DATA, read_only=True) is None
 
 
 def test_validate_local_tool_path_blocks_read_only_mount_write() -> None:
@@ -1306,7 +1354,7 @@ def test_validate_local_tool_path_blocks_read_only_mount_write() -> None:
 def test_validate_local_tool_path_allows_writable_mount_write() -> None:
     """write_file / str_replace should succeed on writable custom mounts."""
     with patch("deerflow.sandbox.tools._get_custom_mounts", return_value=_mock_custom_mounts()):
-        validate_local_tool_path("/mnt/data/file.txt", _THREAD_DATA, read_only=False)
+        assert validate_local_tool_path("/mnt/data/file.txt", _THREAD_DATA, read_only=False) is None
 
 
 def test_validate_local_tool_path_blocks_traversal_in_custom_mount() -> None:
@@ -1319,8 +1367,8 @@ def test_validate_local_tool_path_blocks_traversal_in_custom_mount() -> None:
 def test_validate_local_bash_command_paths_allows_custom_mount() -> None:
     """bash commands referencing custom mount paths should be allowed."""
     with patch("deerflow.sandbox.tools._get_custom_mounts", return_value=_mock_custom_mounts()):
-        validate_local_bash_command_paths("cat /mnt/code-read/src/main.py", _THREAD_DATA)
-        validate_local_bash_command_paths("ls /mnt/data", _THREAD_DATA)
+        assert validate_local_bash_command_paths("cat /mnt/code-read/src/main.py", _THREAD_DATA) is None
+        assert validate_local_bash_command_paths("ls /mnt/data", _THREAD_DATA) is None
 
 
 def test_validate_local_bash_command_paths_blocks_traversal_in_custom_mount() -> None:

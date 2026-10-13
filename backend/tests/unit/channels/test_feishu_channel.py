@@ -306,7 +306,8 @@ class TestFeishuChannelStart:
         ch = _make_channel()
         ch._running = True
         await ch.start()
-        # Should return immediately
+        # Returns immediately and leaves the running state untouched.
+        assert ch._running is True
 
     @pytest.mark.asyncio
     async def test_start_success(self):
@@ -442,7 +443,10 @@ class TestFeishuChannelSend:
     async def test_send_no_client(self):
         ch = _make_channel()
         ch._api_client = None
-        await ch.send(_make_outbound())
+        with patch.object(ch, "_send_with_retry", new_callable=AsyncMock) as mock_retry:
+            result = await ch.send(_make_outbound())
+        assert result is None
+        mock_retry.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_send_success(self):
@@ -1282,16 +1286,20 @@ class TestReactionHelpers:
     async def test_add_reaction_no_client(self):
         ch = _make_channel()
         ch._api_client = None
-        await ch._add_reaction("msg_1")
-        # No error
+        with patch("app.channels.feishu.asyncio.to_thread") as mock_to_thread:
+            result = await ch._add_reaction("msg_1")
+        assert result is None
+        mock_to_thread.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_add_reaction_no_request_class(self):
         ch = _make_channel()
         ch._api_client = MagicMock()
         ch._CreateMessageReactionRequest = None
-        await ch._add_reaction("msg_1")
-        # Should return early without calling API
+        with patch("app.channels.feishu.asyncio.to_thread") as mock_to_thread:
+            result = await ch._add_reaction("msg_1")
+        assert result is None
+        mock_to_thread.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_add_reaction_success(self):
@@ -1323,7 +1331,10 @@ class TestReactionHelpers:
         ch._api_client.im.v1.message_reaction.create.side_effect = RuntimeError("api fail")
 
         # Should not raise, just log
-        await ch._add_reaction("msg_1", "OK")
+        with patch("app.channels.feishu.asyncio.to_thread", side_effect=RuntimeError("api fail")) as mock_to_thread:
+            result = await ch._add_reaction("msg_1", "OK")
+        assert result is None
+        mock_to_thread.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -1371,8 +1382,10 @@ class TestCardHelpers:
     async def test_create_card_no_client(self):
         ch = _make_channel()
         ch._api_client = None
-        await ch._create_card("chat_1", "text")
-        # No error
+        with patch("app.channels.feishu.asyncio.to_thread") as mock_to_thread:
+            result = await ch._create_card("chat_1", "text")
+        assert result is None
+        mock_to_thread.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_create_card_success(self):
@@ -1388,16 +1401,20 @@ class TestCardHelpers:
     async def test_update_card_no_client(self):
         ch = _make_channel()
         ch._api_client = None
-        await ch._update_card("msg_1", "text")
-        # No error
+        with patch("app.channels.feishu.asyncio.to_thread") as mock_to_thread:
+            result = await ch._update_card("msg_1", "text")
+        assert result is None
+        mock_to_thread.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_update_card_no_patch_request(self):
         ch = _make_channel()
         ch._api_client = MagicMock()
         ch._PatchMessageRequest = None
-        await ch._update_card("msg_1", "text")
-        # Should return early
+        with patch("app.channels.feishu.asyncio.to_thread") as mock_to_thread:
+            result = await ch._update_card("msg_1", "text")
+        assert result is None
+        mock_to_thread.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_update_card_success(self):
@@ -1460,8 +1477,10 @@ class TestRunningCardManagement:
         with patch("asyncio.create_task") as mock_create_task:
             mock_task = MagicMock()
             mock_create_task.return_value = mock_task
-            ch._ensure_running_card_started("src_msg")
-            # Default text is "Working on it..."
+            result = ch._ensure_running_card_started("src_msg")
+            assert result is mock_task
+            assert ch._running_card_tasks["src_msg"] is mock_task
+            mock_create_task.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_ensure_running_card_returns_cached(self):
@@ -1534,6 +1553,7 @@ class TestRunningCardManagement:
         task = MagicMock()
         task.exception.return_value = None
         ch._finalize_running_card_task("nonexistent", task)
+        assert ch._running_card_tasks == {}
 
 
 # ---------------------------------------------------------------------------
@@ -1709,41 +1729,41 @@ class TestLogHelpers:
         fut = MagicMock()
         fut.exception.return_value = RuntimeError("test error")
         # Should not raise
-        ch._log_future_error(fut, "test", "msg_1")
+        assert ch._log_future_error(fut, "test", "msg_1") is None
 
     def test_log_future_error_no_exception(self):
         ch = _make_channel()
         fut = MagicMock()
         fut.exception.return_value = None
-        ch._log_future_error(fut, "test", "msg_1")
+        assert ch._log_future_error(fut, "test", "msg_1") is None
 
     def test_log_future_error_exception_getting_exception(self):
         """When fut.exception() itself raises, should be silently caught."""
         ch = _make_channel()
         fut = MagicMock()
         fut.exception.side_effect = RuntimeError("cancelled")
-        ch._log_future_error(fut, "test", "msg_1")
+        assert ch._log_future_error(fut, "test", "msg_1") is None
 
     def test_log_task_error_with_exception(self):
         from app.channels.feishu import FeishuChannel
 
         task = MagicMock()
         task.exception.return_value = RuntimeError("test")
-        FeishuChannel._log_task_error(task, "test", "msg_1")
+        assert FeishuChannel._log_task_error(task, "test", "msg_1") is None
 
     def test_log_task_error_no_exception(self):
         from app.channels.feishu import FeishuChannel
 
         task = MagicMock()
         task.exception.return_value = None
-        FeishuChannel._log_task_error(task, "test", "msg_1")
+        assert FeishuChannel._log_task_error(task, "test", "msg_1") is None
 
     def test_log_task_error_cancelled(self):
         from app.channels.feishu import FeishuChannel
 
         task = MagicMock()
         task.exception.side_effect = asyncio.CancelledError()
-        FeishuChannel._log_task_error(task, "test", "msg_1")
+        assert FeishuChannel._log_task_error(task, "test", "msg_1") is None
 
     def test_log_task_error_generic_exception(self):
         """When task.exception() raises a non-CancelledError Exception."""
@@ -1751,7 +1771,7 @@ class TestLogHelpers:
 
         task = MagicMock()
         task.exception.side_effect = RuntimeError("unexpected")
-        FeishuChannel._log_task_error(task, "test", "msg_1")
+        assert FeishuChannel._log_task_error(task, "test", "msg_1") is None
 
 
 # ---------------------------------------------------------------------------
@@ -1933,16 +1953,22 @@ class TestOnMessage:
         ch = _make_channel()
         ch._main_loop = None
         event = _make_event({"text": "hi"})
-        # Should not raise
-        ch._on_message(event)
+        # Should not raise and must not schedule anything on a dead loop.
+        with patch("app.channels.feishu.asyncio.run_coroutine_threadsafe") as mock_sched, patch.object(ch, "_queue_file_inbound_batch") as mock_queue:
+            ch._on_message(event)
+        mock_sched.assert_not_called()
+        mock_queue.assert_not_called()
 
     def test_main_loop_exists_but_not_running(self):
         ch = _make_channel()
         ch._main_loop = asyncio.new_event_loop()
         ch._running = True
         event = _make_event({"text": "hi"})
-        # Should not raise, logs warning
-        ch._on_message(event)
+        # Should not raise, logs warning, schedules nothing.
+        with patch("app.channels.feishu.asyncio.run_coroutine_threadsafe") as mock_sched, patch.object(ch, "_queue_file_inbound_batch") as mock_queue:
+            ch._on_message(event)
+        mock_sched.assert_not_called()
+        mock_queue.assert_not_called()
         ch._main_loop.close()
 
     def test_parse_unknown_content(self):
@@ -1954,8 +1980,11 @@ class TestOnMessage:
         ch = _make_channel()
         event = MagicMock()
         event.event.message = None  # Will raise
-        # Should not raise
-        ch._on_message(event)
+        # Should not raise and must not schedule a broken inbound.
+        with patch("app.channels.feishu.asyncio.run_coroutine_threadsafe") as mock_sched, patch.object(ch, "_queue_file_inbound_batch") as mock_queue:
+            ch._on_message(event)
+        mock_sched.assert_not_called()
+        mock_queue.assert_not_called()
 
     def test_file_key_empty_string(self):
         ch = _make_channel()
@@ -2189,7 +2218,8 @@ class TestSendRunningReply:
         ch = _make_channel()
         with patch.object(ch, "_ensure_running_card", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
             # Should not raise
-            await ch._send_running_reply("msg_1")
+            result = await ch._send_running_reply("msg_1")
+            assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -2281,8 +2311,11 @@ class TestEdgeCases:
         ch = _make_channel()
         ch._main_loop = None
         event = _make_event({"text": "   "})
-        # text.strip() = "" and no files → ignored
-        ch._on_message(event)
+        # text.strip() = "" and no files → ignored: nothing may be scheduled.
+        with patch("app.channels.feishu.asyncio.run_coroutine_threadsafe") as mock_sched, patch.object(ch, "_queue_file_inbound_batch") as mock_queue:
+            ch._on_message(event)
+        mock_sched.assert_not_called()
+        mock_queue.assert_not_called()
 
     def test_on_message_preserves_text_stripping(self):
         ch = _make_channel()

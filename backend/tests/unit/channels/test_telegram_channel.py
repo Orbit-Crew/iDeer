@@ -292,14 +292,16 @@ class TestSend:
     async def test_no_application(self):
         ch = _make_channel()
         msg = _make_outbound()
-        await ch.send(msg)  # should return without error
+        result = await ch.send(msg)
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_invalid_chat_id(self):
         ch = _make_channel()
         ch._application = MagicMock()
         msg = _make_outbound(chat_id="not-a-number")
-        await ch.send(msg)  # logs error, returns
+        result = await ch.send(msg)
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_successful_send(self):
@@ -653,7 +655,8 @@ class TestSendRunningReply:
     @pytest.mark.asyncio
     async def test_no_application(self):
         ch = _make_channel()
-        await ch._send_running_reply("123", 1)  # no-op
+        result = await ch._send_running_reply("123", 1)
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_sends_working_message(self):
@@ -674,7 +677,8 @@ class TestSendRunningReply:
         ch._application = MagicMock()
         ch._application.bot = bot
 
-        await ch._send_running_reply("12345", 42)  # should not raise
+        result = await ch._send_running_reply("12345", 42)
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -702,7 +706,7 @@ class TestLogFutureError:
         fut = MagicMock()
         fut.exception.side_effect = Exception("cannot inspect")
         # Should not raise
-        ch._log_future_error(fut, "test_op", "msg_1")
+        assert ch._log_future_error(fut, "test_op", "msg_1") is None
 
 
 # ---------------------------------------------------------------------------
@@ -758,7 +762,9 @@ class TestRunPolling:
             init_side_effect=Exception("init fail"),
             updater_running=False,
         )
-        # No logger.exception call because self._running is False
+        # No logger.exception call because self._running is False; the flag
+        # is still cleared so is_running() cannot report fake-alive.
+        assert ch._running is False
 
     def test_run_polling_shutdown_updater_running(self):
         ch = _make_channel(running=True)
@@ -774,7 +780,9 @@ class TestRunPolling:
             updater_running=True,
             updater_stop_side_effect=Exception("stop fail"),
         )
-        # should not raise -- exception caught in finally
+        # should not raise -- exception caught in finally; the startup
+        # sequence still ran to the poll loop.
+        mock_loop.run_forever.assert_called_once()
 
     def test_run_polling_sets_event_loop(self):
         ch = _make_channel(running=True)
@@ -842,7 +850,10 @@ class TestCmdGeneric:
         update = _make_update(user_id=999, text="/help")
         ctx = MagicMock()
 
-        await ch._cmd_generic(update, ctx)
+        with patch.object(ch, "_submit_threadsafe_coroutine") as mock_submit, patch.object(ch, "_reserve_inbound") as mock_reserve:
+            await ch._cmd_generic(update, ctx)
+        mock_submit.assert_not_called()
+        mock_reserve.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_private_chat_topic_id_none(self):
@@ -913,7 +924,10 @@ class TestCmdGeneric:
         update = _make_update(text="/help")
         ctx = MagicMock()
 
-        await ch._cmd_generic(update, ctx)
+        with patch.object(ch, "_submit_threadsafe_coroutine") as mock_submit, patch.object(ch, "_reserve_inbound") as mock_reserve:
+            await ch._cmd_generic(update, ctx)
+        mock_submit.assert_not_called()
+        mock_reserve.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_main_loop_none(self):
@@ -922,7 +936,10 @@ class TestCmdGeneric:
         update = _make_update(text="/help")
         ctx = MagicMock()
 
-        await ch._cmd_generic(update, ctx)
+        with patch.object(ch, "_submit_threadsafe_coroutine") as mock_submit, patch.object(ch, "_reserve_inbound") as mock_reserve:
+            await ch._cmd_generic(update, ctx)
+        mock_submit.assert_not_called()
+        mock_reserve.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -937,7 +954,10 @@ class TestOnText:
         update = _make_update(user_id=999)
         ctx = MagicMock()
 
-        await ch._on_text(update, ctx)
+        with patch.object(ch, "_submit_threadsafe_coroutine") as mock_submit, patch.object(ch, "_reserve_inbound") as mock_reserve:
+            await ch._on_text(update, ctx)
+        mock_submit.assert_not_called()
+        mock_reserve.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_empty_text_ignored(self):
@@ -945,7 +965,10 @@ class TestOnText:
         update = _make_update(text="   ")
         ctx = MagicMock()
 
-        await ch._on_text(update, ctx)
+        with patch.object(ch, "_submit_threadsafe_coroutine") as mock_submit, patch.object(ch, "_reserve_inbound") as mock_reserve:
+            await ch._on_text(update, ctx)
+        mock_submit.assert_not_called()
+        mock_reserve.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_private_chat(self):
@@ -1011,7 +1034,10 @@ class TestOnText:
         update = _make_update(text="hi")
         ctx = MagicMock()
 
-        await ch._on_text(update, ctx)
+        with patch.object(ch, "_submit_threadsafe_coroutine") as mock_submit, patch.object(ch, "_reserve_inbound") as mock_reserve:
+            await ch._on_text(update, ctx)
+        mock_submit.assert_not_called()
+        mock_reserve.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_main_loop_none(self):
@@ -1020,7 +1046,10 @@ class TestOnText:
         update = _make_update(text="hi")
         ctx = MagicMock()
 
-        await ch._on_text(update, ctx)
+        with patch.object(ch, "_submit_threadsafe_coroutine") as mock_submit, patch.object(ch, "_reserve_inbound") as mock_reserve:
+            await ch._on_text(update, ctx)
+        mock_submit.assert_not_called()
+        mock_reserve.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -1094,6 +1123,8 @@ class TestOnOutbound:
 
         await ch._on_outbound(msg)
         # Attachment upload should NOT be attempted after text send failure
+        bot.send_photo.assert_not_awaited()
+        bot.send_document.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_attachments_uploaded_after_text(self):
@@ -1122,7 +1153,9 @@ class TestOnOutbound:
         msg = _make_outbound(attachments=[att])
 
         with patch("app.channels.telegram._load_telegram_input_file", MagicMock(return_value=MagicMock())):
-            await ch._on_outbound(msg)  # should not raise
+            result = await ch._on_outbound(msg)
+        assert result is None
+        bot.send_message.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_attachment_returns_false_logged(self):
@@ -1131,10 +1164,12 @@ class TestOnOutbound:
         ch._application = MagicMock()
         ch._application.bot = bot
 
-        with patch.object(ch, "send_file", new_callable=AsyncMock, return_value=False):
+        with patch.object(ch, "send_file", new_callable=AsyncMock, return_value=False) as mock_send_file:
             att = _make_attachment()
             msg = _make_outbound(attachments=[att])
-            await ch._on_outbound(msg)
+            result = await ch._on_outbound(msg)
+        assert result is None
+        mock_send_file.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_multiple_attachments(self):

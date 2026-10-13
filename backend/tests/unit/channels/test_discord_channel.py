@@ -950,6 +950,9 @@ class TestThreadPersistence:
         ch._record_thread_mapping("ch1", "t1")
         ch._thread_store_path = Path("/nonexistent/dir/file.json")
         ch._persist_thread_mappings()
+        # The in-memory mapping survives the failed persistence write.
+        assert ch._active_threads == {"ch1": "t1"}
+        assert ch._active_thread_ids == {"t1"}
 
 
 class TestPublishReserved:
@@ -1028,6 +1031,8 @@ class TestRunClient:
         t = threading.Thread(target=ch._run_client)
         t.start()
         t.join(timeout=5)
+        assert not t.is_alive()
+        ch._client.close.assert_awaited_once()
 
     def test_run_client_handles_close_error(self, caplog):
         ch = _make_channel()
@@ -1041,6 +1046,7 @@ class TestRunClient:
         t = threading.Thread(target=ch._run_client)
         t.start()
         t.join(timeout=5)
+        assert not t.is_alive()
 
 
 class TestLifecycle:
@@ -1079,6 +1085,8 @@ class TestLifecycle:
 
         _run(ch.start())
         # Should return immediately without importing discord
+        assert ch._running is True
+        assert ch._thread is None
 
     def test_start_missing_discord_module(self, caplog):
         ch = _make_channel()
@@ -1278,6 +1286,7 @@ class TestTyping:
         ch = _make_channel()
         # Should not raise when no task exists
         await ch._stop_typing("nonexistent", "thread1")
+        assert ch._typing_tasks == {}
 
     @pytest.mark.anyio
     async def test_stop_typing_already_done(self):
@@ -1308,7 +1317,8 @@ class TestAddReaction:
         msg.add_reaction = AsyncMock(side_effect=RuntimeError("no permission"))
         msg.id = "msg1"
 
-        await ch._add_reaction(msg)
+        result = await ch._add_reaction(msg)
+        assert result is None
 
 
 class TestCreateThread:
@@ -1602,7 +1612,9 @@ class TestSend:
 
         rcts_ctx, wf_ctx = _mock_rcts_and_wf()
         with rcts_ctx, wf_ctx:
-            await ch.send(msg)
+            result = await ch.send(msg)
+        assert result is None
+        ch._resolve_target.assert_awaited_once()
 
     @pytest.mark.anyio
     async def test_send_splits_long_text(self):
@@ -1785,8 +1797,10 @@ class TestOnMessage:
         ch._running = False
 
         msg = _make_mock_message()
-        await ch._on_message(msg)
+        with patch.object(ch, "_publish_reserved") as mock_publish:
+            await ch._on_message(msg)
         # Should return immediately
+        mock_publish.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_no_client(self):
@@ -1795,7 +1809,9 @@ class TestOnMessage:
         ch._client = None
 
         msg = _make_mock_message()
-        await ch._on_message(msg)
+        with patch.object(ch, "_publish_reserved") as mock_publish:
+            await ch._on_message(msg)
+        mock_publish.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_author_is_bot(self):
@@ -1804,6 +1820,7 @@ class TestOnMessage:
 
         await ch._on_message(msg)
         # Should be ignored
+        ch._publish_reserved.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_author_is_self(self):
@@ -1812,6 +1829,7 @@ class TestOnMessage:
 
         await ch._on_message(msg)
         # Should be ignored
+        ch._publish_reserved.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_guild_not_allowed(self):
@@ -1825,6 +1843,7 @@ class TestOnMessage:
 
         await ch._on_message(msg)
         # Should be ignored
+        ch._publish_reserved.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_guild_allowed(self):
@@ -1851,6 +1870,7 @@ class TestOnMessage:
 
         await ch._on_message(msg)
         # Should be ignored
+        ch._publish_reserved.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_empty_content(self):
@@ -1859,6 +1879,7 @@ class TestOnMessage:
 
         await ch._on_message(msg)
         # Should be ignored
+        ch._publish_reserved.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_no_discord_module(self):
@@ -1868,6 +1889,7 @@ class TestOnMessage:
 
         await ch._on_message(msg)
         # Should be ignored
+        ch._publish_reserved.assert_not_called()
 
     @pytest.mark.anyio
     async def test_on_message_strips_mention(self):
@@ -2330,7 +2352,9 @@ class TestOnOutbound:
         msg = _make_outbound(channel_name="discord")
         msg.attachments = [_make_attachment()]
 
-        await ch._on_outbound(msg)
+        result = await ch._on_outbound(msg)
+        assert result is None
+        ch.send_file.assert_not_awaited()
 
         ch.send_file.assert_not_called()
 
@@ -2343,8 +2367,10 @@ class TestOnOutbound:
         msg = _make_outbound(channel_name="discord")
         msg.attachments = [_make_attachment()]
 
-        await ch._on_outbound(msg)
+        result = await ch._on_outbound(msg)
         # Should log but not raise
+        assert result is None
+        ch.send_file.assert_awaited_once()
 
     @pytest.mark.anyio
     async def test_on_outbound_file_upload_returns_false(self, caplog):
