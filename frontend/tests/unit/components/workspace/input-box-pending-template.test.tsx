@@ -404,7 +404,7 @@ describe("InputBox pendingTemplate", () => {
     });
 
     const textarea = document.querySelector("textarea[name='message']");
-    expect(textarea).toBeTruthy();
+    expect(textarea).toBeInTheDocument();
   });
 
   it("pendingTemplate + non-empty input → asks before replacing", () => {
@@ -471,7 +471,7 @@ describe("InputBox pendingTemplate", () => {
     });
 
     const textarea = document.querySelector("textarea[name='message']");
-    expect(textarea).toBeTruthy();
+    expect(textarea).toBeInTheDocument();
   });
 
   it("confirmReplace(followup) → requestFormSubmit called (regression)", async () => {
@@ -561,6 +561,6 @@ describe("InputBox pendingTemplate", () => {
     const textarea = document.querySelector<HTMLTextAreaElement>(
       "textarea[name='message']",
     );
-    expect(textarea).toBeTruthy();
+    expect(textarea).toBeInTheDocument();
   });
 });

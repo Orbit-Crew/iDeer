@@ -195,7 +195,7 @@ describe("RetrievalTestPanel", () => {
     render(<RetrievalTestPanel knowledgeBaseId={undefined} />);
     expect(
       screen.getByText("Select a knowledge base to run retrieval tests"),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   test("reports a knowledge base without published revisions", async () => {
@@ -205,7 +205,7 @@ describe("RetrievalTestPanel", () => {
       screen.getByText(
         "This knowledge base has no published revision to test yet",
       ),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   test("runs a test with question and bounded K, showing frozen profile", async () => {
@@ -297,7 +297,7 @@ describe("RetrievalTestPanel", () => {
       returned_count: 0,
     };
     const { container } = await renderPanel();
-    expect(screen.getByText("No hits for this question.")).toBeTruthy();
+    expect(screen.getByText("No hits for this question.")).toBeInTheDocument();
 
     cleanup();
     mockState.runData = {
@@ -309,7 +309,7 @@ describe("RetrievalTestPanel", () => {
     await renderPanel();
     expect(
       screen.getByText("Retrieval failed (connection_error)."),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   test("maps access loss to the restricted state", async () => {
@@ -317,19 +317,21 @@ describe("RetrievalTestPanel", () => {
     const { container } = await renderPanel();
     expect(
       screen.getByText("You no longer have access to this knowledge base."),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   test("replays archived records without re-running retrieval", async () => {
     const user = userEvent.setup();
     const { container } = await renderPanel();
 
-    expect(screen.getByText("Archived tests")).toBeTruthy();
+    expect(screen.getByText("Archived tests")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /View record/ }));
 
     expect(runRetrievalTest).not.toHaveBeenCalled();
     // Detail comes from the dedicated record query once a record is selected.
-    expect(screen.getByRole("button", { name: /View record/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /View record/ }),
+    ).toBeInTheDocument();
   });
 
   test("shows the restricted state when an archived record is inaccessible", async () => {
@@ -339,6 +341,6 @@ describe("RetrievalTestPanel", () => {
     await user.click(screen.getByRole("button", { name: /View record/ }));
     expect(
       screen.getByText("This record is no longer accessible."),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 });

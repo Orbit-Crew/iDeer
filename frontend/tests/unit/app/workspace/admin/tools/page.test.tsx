@@ -157,7 +157,7 @@ describe("ToolsPage", () => {
       const backLink = links.find(
         (l) => l.getAttribute("href") === "/workspace/admin",
       );
-      expect(backLink).toBeDefined();
+      expect(backLink).toBeInTheDocument();
     });
   });
 

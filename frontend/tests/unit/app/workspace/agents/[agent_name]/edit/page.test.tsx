@@ -427,7 +427,7 @@ describe("AgentEditPage", () => {
       const backButton = buttons.find(
         (b) => b.getAttribute("variant") === "ghost",
       );
-      expect(backButton).toBeTruthy();
+      expect(backButton).toBeInTheDocument();
       await user.click(backButton!);
       expect(mocks.push).toHaveBeenCalledWith("/workspace/agents/test-agent");
     });
@@ -879,7 +879,7 @@ describe("AgentEditPage", () => {
       const noDescSkillSection = screen
         .getByText("no-desc-skill")
         .closest("label");
-      expect(noDescSkillSection).toBeTruthy();
+      expect(noDescSkillSection).toBeInTheDocument();
       // skill.description is "" which is falsy, so the description div is not rendered
       const descDiv = noDescSkillSection!.querySelector(
         ".text-muted-foreground",

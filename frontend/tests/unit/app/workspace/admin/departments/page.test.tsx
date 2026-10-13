@@ -182,7 +182,7 @@ describe("DepartmentsPage", () => {
       const backLink = links.find(
         (l) => l.getAttribute("href") === "/workspace/admin",
       );
-      expect(backLink).toBeTruthy();
+      expect(backLink).toBeInTheDocument();
     });
   });
 
