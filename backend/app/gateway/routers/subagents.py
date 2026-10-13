@@ -1,4 +1,7 @@
-"""Catalog and administrator CRUD API for subagent definitions."""
+"""Catalog and administrator CRUD API for subagent definitions.
+
+Mount status: deliberately NOT mounted by ``create_app()`` (see app.py) —
+same upstream-convergence decision as routers/agents.py (ledger D4)."""
 
 from __future__ import annotations
 

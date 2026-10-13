@@ -9,6 +9,9 @@ queries against the harness-owned ``runs`` / ``threads_meta`` tables instead of
 widening the runtime ``RunStore`` surface. Requires a SQL database backend
 (``database.backend: sqlite | postgres``); returns 503 on the memory backend,
 which persists no run history to report on.
+
+Mount status: NOT mounted by ``create_app()`` and no other mount point
+exists in the repo — retained as an available surface, not a live API.
 """
 
 import asyncio

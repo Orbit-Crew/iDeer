@@ -1,3 +1,8 @@
+"""Browser-capability endpoints (HTTP + WebSocket).
+
+Mount status: NOT mounted by ``create_app()`` and no other mount point
+exists in the repo — retained as an available surface, not a live API."""
+
 import asyncio
 import base64
 import contextlib
