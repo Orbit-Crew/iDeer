@@ -22,12 +22,14 @@ echo "Cleaning up sandbox containers with prefix: ${PREFIX}"
 cleanup_docker() {
     if command -v docker &> /dev/null; then
         echo -n "Checking Docker containers... "
-        DOCKER_CONTAINERS=$(docker ps -q --filter "name=${PREFIX}" 2>/dev/null || echo "")
+        # name= filters are substring matches; anchor with ^ so unrelated
+        # containers like "my-ideer-sandbox-2" do not match (08-L4).
+        DOCKER_CONTAINERS=$(docker ps -q --filter "name=^${PREFIX}" 2>/dev/null || echo "")
 
         if [ -n "$DOCKER_CONTAINERS" ]; then
             echo ""
             echo "Found Docker containers to clean up:"
-            docker ps --filter "name=${PREFIX}" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}"
+            docker ps --filter "name=^${PREFIX}" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}"
             echo "Stopping Docker containers..."
             echo "$DOCKER_CONTAINERS" | xargs docker stop 2>/dev/null || true
             echo -e "${GREEN}✓ Docker containers stopped${NC}"
@@ -48,22 +50,27 @@ cleanup_apple_container() {
         CONTAINER_LIST=$(container list --format json 2>/dev/null || echo "[]")
 
         if [ "$CONTAINER_LIST" != "[]" ] && [ -n "$CONTAINER_LIST" ]; then
-            # Extract container IDs that match our prefix
+            # Extract container IDs that match our prefix. PREFIX flows in as
+            # argv: interpolating it into the Python source made any quote in
+            # it a syntax error that the bare except silently swallowed
+            # (08-L4). The prefix stays a plain containment check because the
+            # Apple container CLI offers no anchored name filter.
             CONTAINER_IDS=$(echo "$CONTAINER_LIST" | python3 -c "
 import json
 import sys
 try:
+    prefix = sys.argv[1]
     containers = json.load(sys.stdin)
     if isinstance(containers, list):
         for c in containers:
             if isinstance(c, dict):
                 # Apple Container uses 'id' field which contains the container name
                 cid = c.get('configuration').get('id', '')
-                if '${PREFIX}' in cid:
+                if prefix in cid:
                     print(cid)
-except:
+except Exception:
     pass
-" 2>/dev/null || echo "")
+" "$PREFIX" 2>/dev/null || echo "")
 
             if [ -n "$CONTAINER_IDS" ]; then
                 echo ""

@@ -67,8 +67,11 @@ example_version = example.get('config_version', 0)
 
 if user_version >= example_version:
     print(f'Config schema version {user_version} is current; checking structural migrations...')
-
-print(f'Upgrading config.yaml: version {user_version} -> {example_version}')
+else:
+    # 08-L10: print the upgrade banner only when there is a version to upgrade;
+    # the two prints used to run together on an already-current config
+    # (claiming version X -> X with X equal on both sides).
+    print(f'Upgrading config.yaml: version {user_version} -> {example_version}')
 print()
 
 # ── Migrations ───────────────────────────────────────────────────────────
