@@ -36,9 +36,9 @@
     "delta_rule": "verify hashes at the baseline commit, or recompute at a new candidate and record the delta here before relying on the inventory; never overwrite rows silently"
   },
   "inventory": {
-    "count": 363,
+    "count": 365,
     "classification_counts": {
-      "engineering-body-review": 249,
+      "engineering-body-review": 251,
       "agent-guidance": 56,
       "fixture-or-manual-inventory-only": 37,
       "protected-baseline": 21
@@ -2362,11 +2362,25 @@
         "lines": 146
       },
       {
+        "path": "docs/upgrades/upstream-pr-candidates/host-seam-extension-points.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "cea7652b9b8f4584ee1040da53f2d43aa92cd504b8fc6741fcba39c7c53f9e5e",
+        "lines": 110
+      },
+      {
         "path": "docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md",
         "classification": "engineering-body-review",
         "protected": false,
         "sha256": "d6aa9fa9e2c6f857ada9ec050f969bca74a2f160a916eababb2834a6357f9dcd",
         "lines": 134
+      },
+      {
+        "path": "docs/upgrades/upstream-pr-candidates/registry-duplicate-evidence-hooks.md",
+        "classification": "engineering-body-review",
+        "protected": false,
+        "sha256": "b09473426a5963916015a1ea711bd0f6a80f32518087d5520e1d98274d68d276",
+        "lines": 92
       },
       {
         "path": "docs/workflow-langgraph-runtime-v2-implementation-plan.md",
