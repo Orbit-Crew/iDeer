@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import threading
 import time
 import urllib.request
@@ -1240,14 +1241,25 @@ def _load_or_create_key(
 
 
 def _write_private_key(path: Path, key: Ed25519PrivateKey) -> None:
-    path.write_bytes(
-        key.private_bytes(
-            encoding=Encoding.PEM,
-            format=PrivateFormat.PKCS8,
-            encryption_algorithm=NoEncryption(),
-        )
+    # Create the file directly at 0600: write_bytes-then-chmod left a short
+    # umask-dependent window where the PEM private key was world-readable
+    # and the write was not atomic (05-L3).
+    descriptor = os.open(
+        path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
     )
-    path.chmod(0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(
+                key.private_bytes(
+                    encoding=Encoding.PEM,
+                    format=PrivateFormat.PKCS8,
+                    encryption_algorithm=NoEncryption(),
+                )
+            )
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
 
 
 def _drain_pending(loop: asyncio.AbstractEventLoop) -> None:

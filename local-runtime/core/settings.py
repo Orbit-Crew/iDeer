@@ -15,9 +15,15 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+# One in-process lock for every RuntimeSettings.save(): the tray UI thread
+# and the runtime loop thread both persist configuration (05-L4).
+_SAVE_LOCK = threading.Lock()
 
 from .compat import StrEnum
 from .files import RootConfig
@@ -201,11 +207,21 @@ class RuntimeSettings:
     def save(self, path: str | Path) -> Path:
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(
-            json.dumps(self.as_dict(), ensure_ascii=False, indent=2, sort_keys=True)
-            + "\n",
-            encoding="utf-8",
-        )
+        # Writers span the runtime loop thread and the UI thread: serialize
+        # them, and replace the file atomically, so a reader never sees a
+        # torn JSON document (05-L4).
+        with _SAVE_LOCK:
+            payload = (
+                json.dumps(self.as_dict(), ensure_ascii=False, indent=2, sort_keys=True)
+                + "\n"
+            )
+            temporary = target.with_name(target.name + ".tmp")
+            try:
+                temporary.write_text(payload, encoding="utf-8")
+                os.replace(temporary, target)
+            except BaseException:
+                temporary.unlink(missing_ok=True)
+                raise
         return target
 
     @classmethod

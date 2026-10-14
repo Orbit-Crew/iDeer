@@ -293,3 +293,18 @@ def test_status_caches_audit_integrity_between_polls(
     monkeypatch.setattr(tray_module, "AUDIT_VERIFY_INTERVAL_SECONDS", 0.0)
     controller.status()
     assert len(calls) == 2, "an expired interval must re-verify"
+
+
+def test_written_private_key_is_never_world_readable(tmp_path: Path) -> None:
+    """05-L3: the key file is created at 0600, not written wide then chmodded."""
+    import os
+    import stat
+
+    from core.tray import _write_private_key
+
+    path = tmp_path / "device.pem"
+    key = Ed25519PrivateKey.generate()
+    _write_private_key(path, key)
+    mode = stat.S_IMODE(os.stat(path).st_mode)
+    assert mode == 0o600
+    assert b"PRIVATE KEY" in path.read_bytes()
