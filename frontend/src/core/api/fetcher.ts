@@ -99,6 +99,11 @@ export async function fetch(
   });
 
   if (res.status === 401 && init?.redirectOn401 !== false) {
+    if (typeof window === "undefined") {
+      // SSR/server context has no location to redirect: surface the 401
+      // instead of throwing a ReferenceError (report 06-L4).
+      throw new UnauthorizedError();
+    }
     // Include the search string: routes that carry their target in the query
     // (e.g. the standalone artifact viewer) are otherwise unrecoverable after
     // login, which lands on the default workspace instead.

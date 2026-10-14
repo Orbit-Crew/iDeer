@@ -398,6 +398,20 @@ describe("useGlobalShortcuts", () => {
   // Suppressed shortcut falls through to next matching shortcut
   // ---------------------------------------------------------------
 
+  it("suppresses a non-meta 'k' shortcut when focus is inside an INPUT element", () => {
+    // The input exemption is reserved for the meta-modified "k" (command
+    // palette); a plain "k" binding must not bypass suppression (report 06-L9).
+    const action = vi.fn();
+    renderHook(() => useGlobalShortcuts([{ key: "k", meta: false, action }]));
+
+    const input = mockElement("INPUT");
+    document.body.appendChild(input);
+    dispatchKey("k", { metaKey: false }, input);
+    document.body.removeChild(input);
+
+    expect(action).not.toHaveBeenCalled();
+  });
+
   it("falls through to next shortcut when current is suppressed in input", () => {
     const suppressedAction = vi.fn();
     const fallbackAction = vi.fn();
