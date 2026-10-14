@@ -169,6 +169,10 @@ def main() -> int:
     parser.add_argument("--head", help="head commit or ref; use with --base")
     parser.add_argument("--changed-files", nargs="*", help="explicit paths for tests")
     parser.add_argument("--github-output", help="append plan outputs to this GITHUB_OUTPUT file")
+    parser.add_argument(
+        "--plan-file",
+        help="also write the plan JSON to this file (workflows pass the file, not an env var: large diffs exceed the argument size limit)",
+    )
     args = parser.parse_args()
     if args.changed_files is not None:
         paths = args.changed_files
@@ -188,6 +192,8 @@ def main() -> int:
         with Path(args.github_output).open("a", encoding="utf-8") as output:
             output.write(f"plan={encoded}\n")
             output.write(f"channels={','.join(plan['channels'])}\n")
+    if args.plan_file:
+        Path(args.plan_file).write_text(encoded, encoding="utf-8")
     return 0
 
 
