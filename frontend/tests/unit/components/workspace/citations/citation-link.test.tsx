@@ -122,6 +122,15 @@ describe("CitationLink", () => {
     expect(mainLink).toBeInTheDocument();
   });
 
+  test("renders nothing for an unsafe href scheme", () => {
+    // Front-line scheme check in the renderer itself, independent of the
+    // sanitize pipeline ordering (report 07-L6).
+    const { container } = render(
+      <CitationLink href="javascript:alert(1)">Link</CitationLink>,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   test("preserves custom className", () => {
     render(
       <CitationLink href="https://example.com" className="custom">

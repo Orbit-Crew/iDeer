@@ -114,6 +114,23 @@ describe("SkillList", () => {
     );
   });
 
+  test("encodes reserved characters in the title detail link href", () => {
+    // The detail link interpolates the raw identity; like lines 133/191 it
+    // must be URL-encoded or reserved characters mangle the URL (report 07-L4).
+    mockSkills.splice(0, mockSkills.length, {
+      resource_id: "weird/id?id=1",
+      slug: "weird",
+      name: "weird",
+      description: "Weird identity skill",
+    });
+    render(<SkillList />);
+
+    expect(screen.getByRole("link", { name: "weird" })).toHaveAttribute(
+      "href",
+      `/workspace/capabilities/skills/${encodeURIComponent("weird/id?id=1")}`,
+    );
+  });
+
   test("matches the expert toolbar icon affordances", () => {
     render(<SkillList />);
 
