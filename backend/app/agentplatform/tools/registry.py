@@ -65,29 +65,37 @@ class ToolRegistry:
                 if unexpected:
                     logger.warning("Unexpected config keys for %s: %s", name, unexpected)
                     return False
-                # BUG-18: Validate values against schema types
+                # BUG-18: Validate values against schema types. bool is a subclass
+                # of int in Python, so it must be excluded explicitly wherever
+                # the schema does not ask for a boolean (report 02-L4).
                 for key, value in config.items():
                     prop_schema = properties.get(key, {})
                     expected_type = prop_schema.get("type")
-                    if expected_type:
+                    value_is_bool = isinstance(value, bool)
+                    if expected_type == "boolean":
+                        type_valid = value_is_bool
+                    elif expected_type == "integer":
+                        type_valid = isinstance(value, int) and not value_is_bool
+                    elif expected_type == "number":
+                        type_valid = isinstance(value, (int, float)) and not value_is_bool
+                    else:
                         type_map = {
                             "string": str,
-                            "integer": int,
-                            "number": (int, float),
-                            "boolean": bool,
                             "array": list,
                             "object": dict,
+                            "null": type(None),
                         }
                         expected_python_type = type_map.get(expected_type)
-                        if expected_python_type and not isinstance(value, expected_python_type):
-                            logger.warning(
-                                "Config value type mismatch for %s.%s: expected %s, got %s",
-                                name,
-                                key,
-                                expected_type,
-                                type(value).__name__,
-                            )
-                            return False
+                        type_valid = bool(expected_python_type and isinstance(value, expected_python_type))
+                    if expected_type and not type_valid:
+                        logger.warning(
+                            "Config value type mismatch for %s.%s: expected %s, got %s",
+                            name,
+                            key,
+                            expected_type,
+                            type(value).__name__,
+                        )
+                        return False
                     # Check enum constraints
                     enum_values = prop_schema.get("enum")
                     if enum_values and value not in enum_values:

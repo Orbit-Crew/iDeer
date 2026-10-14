@@ -120,6 +120,25 @@ class TestToolRegistryUpdateConfig:
         result = reg.update_config("t1", {"any_key": "val"})
         assert result is True
 
+    def test_update_config_bool_must_not_masquerade_as_integer(self):
+        """bool is a subclass of int: schema type ``integer`` must reject it
+        instead of letting True pass the isinstance check (report 02-L4)."""
+        reg = ToolRegistry()
+        tool = ToolInfo(
+            name="t1",
+            description="desc",
+            group="core",
+            configurable=True,
+            config_schema={"properties": {"retries": {"type": "integer"}, "enabled": {"type": "boolean"}, "ratio": {"type": "number"}}},
+        )
+        reg.register(tool)
+        assert reg.update_config("t1", {"retries": True}) is False
+        assert reg.update_config("t1", {"ratio": False}) is False
+        assert "retries" not in tool.config and "ratio" not in tool.config
+        assert reg.update_config("t1", {"retries": 3}) is True
+        assert reg.update_config("t1", {"enabled": True}) is True
+        assert reg.update_config("t1", {"ratio": 2.5}) is True
+
 
 class TestToolInfo:
     """Tests for ToolInfo dataclass defaults."""

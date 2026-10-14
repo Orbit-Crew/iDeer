@@ -233,7 +233,15 @@ async def migrate_meta_json(*, dry_run: bool = False) -> dict:
                 logger.error("Failed to migrate %s: %s", meta_file, e)
 
         if not dry_run and imported > 0:
-            await session.commit()
+            try:
+                await session.commit()
+            except Exception as e:
+                # The imported counter was incremented before the write landed;
+                # a failed commit must not leave the report claiming records
+                # that were never persisted (report 02-L5).
+                logger.error("Commit failed after migrating %d records: %s", imported, e)
+                failed += imported
+                imported = 0
 
     report = {
         "imported": imported,
@@ -262,12 +270,12 @@ async def migrate_meta_json(*, dry_run: bool = False) -> dict:
 
     # Sample validation: check 10% of imported records
     if imported > 0:
-        await _sample_validate(imported, skipped)
+        await _sample_validate()
 
     return report
 
 
-async def _sample_validate(imported: int, skipped: int) -> None:
+async def _sample_validate() -> None:
     """Sample validate 10% of imported records to ensure field values are consistent."""
     sf = get_session_factory()
     if sf is None:
@@ -320,6 +328,13 @@ async def backfill_tools(*, dry_run: bool = False, default_owner: str | None = N
     .meta.json files, so they were never migrated to resource_metadata.
     This function reads all MCP server names and creates resource_metadata
     entries for them.
+
+    Governance decision (report 02-L5): every backfilled tool is written with
+    ``visibility="public"`` and owned by the single ``--default-owner`` user,
+    so MCP tools stay discoverable across the deployment. Override the owner
+    with ``--default-owner``; there is intentionally no per-tool visibility
+    override — narrow a specific tool afterwards through the resource
+    governance API if needed.
 
     Args:
         dry_run: If True, only log what would happen without making changes.
@@ -398,7 +413,14 @@ async def backfill_tools(*, dry_run: bool = False, default_owner: str | None = N
                 logger.error("Failed to backfill tool '%s': %s", tool_name, e)
 
         if not dry_run and imported > 0:
-            await session.commit()
+            try:
+                await session.commit()
+            except Exception as e:
+                # Same honesty rule as migrate_meta_json (report 02-L5): a
+                # failed commit must not leave imported claiming persisted rows.
+                logger.error("Commit failed after backfilling %d tools: %s", imported, e)
+                failed += imported
+                imported = 0
 
     report = {
         "imported": imported,
