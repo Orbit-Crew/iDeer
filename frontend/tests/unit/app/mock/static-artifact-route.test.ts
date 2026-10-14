@@ -3,6 +3,10 @@ import { NextRequest } from "next/server";
 
 import { GET } from "@/app/mock/api/threads/[thread_id]/artifacts/[[...artifact_path]]/route";
 
+rs.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "true" },
+}));
+
 describe("static artifact mock route", () => {
   afterEach(() => {
     rs.restoreAllMocks();

@@ -9,6 +9,10 @@ vi.mock("@/core/threads/static-demo", () => ({
 
 import { POST } from "@/app/mock/api/threads/search/route";
 
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "true" },
+}));
+
 function threadJson(overrides: Record<string, unknown> = {}) {
   return JSON.stringify({
     thread_id: "test-thread",

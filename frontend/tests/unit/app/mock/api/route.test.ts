@@ -25,9 +25,31 @@ import { GET as GETMcpConfig } from "@/app/mock/api/mcp/config/route";
 import { GET as GETModels } from "@/app/mock/api/models/route";
 import { GET as GETSkills } from "@/app/mock/api/skills/route";
 
+let mockStaticWebsiteOnly = true;
+
+vi.mock("@/env", () => ({
+  env: {
+    get NEXT_PUBLIC_STATIC_WEBSITE_ONLY() {
+      return mockStaticWebsiteOnly ? "true" : undefined;
+    },
+  },
+}));
+
 async function parseJsonResponse(response: Response) {
   return JSON.parse(await response.text());
 }
+
+describe("mock API static-mode gate", () => {
+  test("mock endpoints answer 404 outside static-website-only mode", () => {
+    mockStaticWebsiteOnly = false;
+    try {
+      const response = GETModels();
+      expect(response.status).toBe(404);
+    } finally {
+      mockStaticWebsiteOnly = true;
+    }
+  });
+});
 
 describe("mock API route - mcp/config", () => {
   test("GET returns response with mcp_servers", async () => {

@@ -1,3 +1,7 @@
+import {
+  MOCK_API_UNAVAILABLE,
+  mockApiDisabled,
+} from "@/app/mock/api/mock-api-gate";
 import { DEMO_THREAD_IDS } from "@/core/threads/static-demo";
 
 type ThreadSearchRequest = {
@@ -13,6 +17,7 @@ type MockThreadSearchResult = Record<string, unknown> & {
 };
 
 export async function POST(request: Request) {
+  if (mockApiDisabled()) return MOCK_API_UNAVAILABLE;
   const body = ((await request.json().catch(() => ({}))) ??
     {}) as ThreadSearchRequest;
 

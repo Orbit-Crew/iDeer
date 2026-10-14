@@ -26,6 +26,10 @@ vi.mock("@/core/threads/static-demo", () => ({
 
 import { GET } from "@/app/mock/api/threads/[thread_id]/artifacts/[[...artifact_path]]/route";
 
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "true" },
+}));
+
 function makeRequest(url: string) {
   return new NextRequest(url);
 }
