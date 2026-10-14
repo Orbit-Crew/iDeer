@@ -56,6 +56,7 @@ from .transport import ConsentDecisionError, LocalRuntimeClient, RePairRequired
 #: hammers a downed intranet makes the outage worse than the outage does.
 RECONNECT_BACKOFF_SECONDS = 1.0
 MAX_RECONNECT_BACKOFF_SECONDS = 30.0
+READY_TIMEOUT_SECONDS = 5.0
 
 
 class TrayError(RuntimeError):
@@ -455,7 +456,12 @@ class TrayController:
             finally:
                 _drain_pending(loop)
                 loop.close()
-                self._loop = None
+                # Only clear the published loop if it is still ours: a runner
+                # reaped after a ready timeout must not clobber the loop a
+                # restarted session published in the meantime (05-M1).
+                with self._lifecycle:
+                    if self._loop is loop:
+                        self._loop = None
 
         # One critical section for the whole handoff: _stopping is cleared and
         # both the thread and its loop are published before the lock is
@@ -470,15 +476,37 @@ class TrayController:
                 target=runner, name="ideer-local-runtime", daemon=True
             )
             self._thread.start()
-            if not ready.wait(timeout=5):
-                # The thread exists but its loop never came up: stopping is
-                # already set, so a runner that wakes late will not dial.
-                raise TrayError("the runtime loop did not start")
+            timed_out = not ready.wait(timeout=READY_TIMEOUT_SECONDS)
+            if timed_out:
+                # The thread exists but its loop never came up. The old
+                # comment here claimed "stopping is already set" — nothing
+                # had set it, so a runner that woke late dialed anyway while
+                # start() had already raised, and the stuck _thread made
+                # every later start()/reconnect() fail with "already
+                # started" (05-M1). Fail closed: flip _stopping while the
+                # lock is still held, so the late _supervise exits without
+                # connecting.
+                self._stopping = True
+        if timed_out:
+            # Lock released before joining: the late runner's cleanup takes
+            # _lifecycle to unpublish its loop, so joining under the lock
+            # would deadlock. Reap so the controller is restartable; a thread
+            # that cannot be reaped keeps _thread set — "already started" is
+            # the honest answer while a zombie may still wake.
+            self._thread.join(timeout=10)
+            if not self._thread.is_alive():
+                with self._lifecycle:
+                    self._thread = None
+                    self._serve_task = None
+            raise TrayError("the runtime loop did not start")
 
     async def _supervise(self) -> None:
         """Keep the session up until :meth:`stop`, backing off between attempts."""
         backoff = RECONNECT_BACKOFF_SECONDS
-        if self.mcp_service is not None:
+        # A runner reaped after a ready timeout wakes with _stopping set: it
+        # must not start MCP servers (or dial) for a session that was given
+        # up on (05-M1).
+        if not self._stopping and self.mcp_service is not None:
             await self.mcp_service.supervisor.start_all()
         try:
             while not self._stopping:

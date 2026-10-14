@@ -873,7 +873,10 @@ class StdioMCPConnection:
                 break
             await asyncio.sleep(0.02)
         if process.returncode is None:
-            process.kill()
+            # The child was spawned with start_new_session, so a bare kill()
+            # would orphan the grandchildren an npx-style wrapper spawned;
+            # _terminate() signals the whole process group instead (05-M5).
+            _terminate(process)
         await process.wait()
         if self._reader_task is not None:
             self._reader_task.cancel()
