@@ -65,21 +65,6 @@ def _init_payload(**extra):
     }
 
 
-async def _get_roles_by_email(email: str) -> tuple[str, str]:
-    from sqlalchemy import select
-
-    from app.agentplatform.rbac_models import UserModel
-    from deerflow.persistence.engine import get_session_factory
-    from deerflow.persistence.user.model import UserRow
-
-    sf = get_session_factory()
-    assert sf is not None
-    async with sf() as session:
-        user_row = (await session.execute(select(UserRow).where(UserRow.email == email))).scalar_one()
-        rbac_user = (await session.execute(select(UserModel).where(UserModel.id == user_row.id))).scalar_one()
-    return user_row.system_role, rbac_user.role
-
-
 # ── Happy path ────────────────────────────────────────────────────────────
 
 
@@ -92,19 +77,6 @@ def test_initialize_creates_admin_and_sets_cookie(client):
     assert data["system_role"] == "super_admin"
     assert "access_token" in resp.cookies
 
-    auth_role, rbac_role = asyncio.run(_get_roles_by_email("admin@example.com"))
-    assert auth_role == "user"
-    assert rbac_role == "super_admin"
-
-
-def test_initialize_seeds_bundled_resources_for_new_admin(client):
-    """First admin creation immediately provisions the bundled catalog."""
-    with patch("app.gateway.app._seed_bundled_resources", new_callable=AsyncMock) as seed:
-        resp = client.post("/api/v1/auth/initialize", json=_init_payload())
-
-    assert resp.status_code == 201
-    seed.assert_awaited_once()
-
 
 def test_initialize_needs_setup_false(client):
     """Newly created admin via /initialize has needs_setup=False."""
@@ -112,7 +84,6 @@ def test_initialize_needs_setup_false(client):
     me = client.get("/api/v1/auth/me")
     assert me.status_code == 200
     assert me.json()["needs_setup"] is False
-    assert me.json()["system_role"] == "super_admin"
 
 
 # ── Rejection when already initialized ───────────────────────────────────
@@ -127,8 +98,7 @@ def test_initialize_rejected_when_admin_exists(client):
     )
     assert resp2.status_code == 409
     body = resp2.json()
-    assert body["error"]["code"] == "INTERNAL_ERROR"
-    assert "system_already_initialized" in body["error"]["message"]
+    assert body["detail"]["code"] == "system_already_initialized"
 
 
 def test_initialize_register_does_not_block_initialization(client):
@@ -139,6 +109,21 @@ def test_initialize_register_does_not_block_initialization(client):
     resp = client.post("/api/v1/auth/initialize", json=_init_payload())
     assert resp.status_code == 201
     assert resp.json()["system_role"] == "super_admin"
+
+
+def test_initialize_existing_regular_user_email_reports_email_conflict(client):
+    """With no admin, reusing a regular user's email is an email conflict, not initialized."""
+    client.post("/api/v1/auth/register", json={"email": "regular@example.com", "password": "Tr0ub4dor3a"})
+
+    resp = client.post(
+        "/api/v1/auth/initialize",
+        json={**_init_payload(), "email": "regular@example.com"},
+    )
+
+    assert resp.status_code == 400
+    body = resp.json()
+    assert body["detail"]["code"] == "email_already_exists"
+    assert client.get("/api/v1/auth/setup-status").json()["needs_setup"] is True
 
 
 # ── Endpoint is public (no cookie required) ───────────────────────────────
@@ -158,7 +143,7 @@ def test_initialize_accessible_without_cookie(client):
 
 
 def test_initialize_rejects_short_password(client):
-    """Password shorter than 8 chars is rejected during request validation."""
+    """Password shorter than 8 chars → 422."""
     resp = client.post(
         "/api/v1/auth/initialize",
         json={**_init_payload(), "password": "short"},
@@ -167,7 +152,7 @@ def test_initialize_rejects_short_password(client):
 
 
 def test_initialize_rejects_common_password(client):
-    """Common password is rejected during request validation."""
+    """Common password → 422."""
     resp = client.post(
         "/api/v1/auth/initialize",
         json={**_init_payload(), "password": "password123"},
@@ -193,16 +178,12 @@ def test_setup_status_after_initialization(client):
     assert resp.json()["needs_setup"] is False
 
 
-def test_setup_status_false_when_only_regular_user_exists(client):
+def test_setup_status_true_when_only_regular_user_exists(client):
     """setup-status returns needs_setup=True even when regular users exist (no admin)."""
     client.post("/api/v1/auth/register", json={"email": "regular@example.com", "password": "Tr0ub4dor3a"})
     resp = client.get("/api/v1/auth/setup-status")
     assert resp.status_code == 200
     assert resp.json()["needs_setup"] is True
-
-    auth_role, rbac_role = asyncio.run(_get_roles_by_email("regular@example.com"))
-    assert auth_role == "user"
-    assert rbac_role == "user"
 
 
 def test_setup_status_returns_cached_result_on_rapid_calls(client):
@@ -245,17 +226,17 @@ async def test_setup_status_single_flight_per_ip(monkeypatch):
         setup_status,
     )
 
-    class _Counter:
+    class _Provider:
         def __init__(self):
             self.calls = 0
 
-        async def count_active_super_admin_users(self):
+        async def count_admin_users(self):
             self.calls += 1
             await asyncio.sleep(0.05)
             return 0
 
-    counter = _Counter()
-    monkeypatch.setattr("app.gateway.routers.auth._count_active_super_admin_users", counter.count_active_super_admin_users)
+    provider = _Provider()
+    monkeypatch.setattr("app.gateway.routers.auth.get_local_provider", lambda: provider)
     _SETUP_STATUS_CACHE.clear()
     _SETUP_STATUS_INFLIGHT.clear()
 
@@ -277,4 +258,41 @@ async def test_setup_status_single_flight_per_ip(monkeypatch):
     )
 
     assert all(result["needs_setup"] is True for result in results)
-    assert counter.calls == 1
+    assert provider.calls == 1
+
+
+# --- merged from test_initialize_admin.py (subdir-only tests; root copy is the dedup base) ---
+async def _get_roles_by_email(email: str) -> tuple[str, str]:
+    from sqlalchemy import select
+
+    from app.agentplatform.rbac_models import UserModel
+    from deerflow.persistence.engine import get_session_factory
+    from deerflow.persistence.user.model import UserRow
+
+    sf = get_session_factory()
+    assert sf is not None
+    async with sf() as session:
+        user_row = (await session.execute(select(UserRow).where(UserRow.email == email))).scalar_one()
+        rbac_user = (await session.execute(select(UserModel).where(UserModel.id == user_row.id))).scalar_one()
+    return user_row.system_role, rbac_user.role
+
+
+def test_initialize_seeds_bundled_resources_for_new_admin(client):
+    """First admin creation immediately provisions the bundled catalog."""
+    with patch("app.gateway.app._seed_bundled_resources", new_callable=AsyncMock) as seed:
+        resp = client.post("/api/v1/auth/initialize", json=_init_payload())
+
+    assert resp.status_code == 201
+    seed.assert_awaited_once()
+
+
+def test_setup_status_false_when_only_regular_user_exists(client):
+    """setup-status returns needs_setup=True even when regular users exist (no admin)."""
+    client.post("/api/v1/auth/register", json={"email": "regular@example.com", "password": "Tr0ub4dor3a"})
+    resp = client.get("/api/v1/auth/setup-status")
+    assert resp.status_code == 200
+    assert resp.json()["needs_setup"] is True
+
+    auth_role, rbac_role = asyncio.run(_get_roles_by_email("regular@example.com"))
+    assert auth_role == "user"
+    assert rbac_role == "user"

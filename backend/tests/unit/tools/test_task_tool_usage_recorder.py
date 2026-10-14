@@ -74,6 +74,24 @@ def test_find_usage_recorder_returns_none_when_callbacks_is_none():
     assert _find_usage_recorder(runtime) is None
 
 
+def test_find_usage_recorder_returns_none_for_single_handler_object():
+    """A single handler instance (not wrapped in a list or manager) should not crash.
+
+    LangChain's contract is that ``config["callbacks"]`` is a list-or-manager,
+    but we treat any other shape defensively rather than letting a ``for`` loop
+    blow up at runtime.
+    """
+    runtime = _make_runtime(_RecorderHandler())
+    assert _find_usage_recorder(runtime) is None
+
+
+def test_find_usage_recorder_returns_none_when_config_not_dict():
+    """Defensive: a runtime without a dict-shaped config should not raise."""
+    runtime = SimpleNamespace(config="not-a-dict")
+    assert _find_usage_recorder(runtime) is None
+
+
+# --- merged from test_task_tool_usage_recorder.py (subdir-only tests; root copy is the dedup base) ---
 def test_find_usage_recorder_ignores_bare_handler_without_list_wrapper():
     """A bare handler (not a list or manager) is treated as "no recorder".
 
@@ -82,10 +100,4 @@ def test_find_usage_recorder_ignores_bare_handler_without_list_wrapper():
     """
     handler = _RecorderHandler()
     runtime = _make_runtime(handler)
-    assert _find_usage_recorder(runtime) is None
-
-
-def test_find_usage_recorder_returns_none_when_config_not_dict():
-    """Defensive: a runtime without a dict-shaped config should not raise."""
-    runtime = SimpleNamespace(config="not-a-dict")
     assert _find_usage_recorder(runtime) is None

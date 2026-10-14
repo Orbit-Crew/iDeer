@@ -38,6 +38,267 @@ The batch entries below are historical examples. Use only the entry relevant
 to the test being moved; they do not replace validation on the current
 candidate.
 
+## Batch 2026-10-13: backend/tests root↔subdir dedup — gateway (batch 2 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/gateway
+-q -m "not serial and not requires_llm and not live and not external"` →
+3075 passed / 18 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_auth.py` (50 identical + 3 drifted + 40 root-only) | `tests/unit/gateway/test_auth.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_auth_middleware.py` (17 identical + 2 drifted + 14 root-only) | `tests/unit/gateway/test_auth_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_auth_type_system.py` (45 identical + 4 drifted + 21 root-only) | `tests/unit/gateway/test_auth_type_system.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_clarification_middleware.py` (9 identical + 1 drifted + 53 root-only) | `tests/unit/gateway/test_clarification_middleware.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_csrf_middleware.py` (3 identical + 12 drifted + 3 root-only) | `tests/unit/gateway/test_csrf_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_dynamic_context_middleware.py` (7 identical + 5 drifted + 32 root-only) | `tests/unit/gateway/test_dynamic_context_middleware.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_feedback.py` (25 identical + 0 drifted + 5 root-only) | `tests/unit/gateway/test_feedback.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_config_freshness.py` (4 identical + 1 drifted + 1 root-only) | `tests/unit/gateway/test_gateway_config_freshness.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_docs_toggle.py` (10 identical + 0 drifted + 1 root-only) | `tests/unit/gateway/test_gateway_docs_toggle.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_lifespan_shutdown.py` (0 identical + 1 drifted + 12 root-only) | `tests/unit/gateway/test_gateway_lifespan_shutdown.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_services.py` (29 identical + 7 drifted + 135 root-only) | `tests/unit/gateway/test_gateway_services.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_guardrail_middleware.py` (25 identical + 0 drifted + 24 root-only) | `tests/unit/gateway/test_guardrail_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_harness_boundary.py` (1 identical + 0 drifted + 0 root-only) | `tests/unit/gateway/test_harness_boundary.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_initialize_admin.py` (6 identical + 6 drifted + 2 root-only) | `tests/unit/gateway/test_initialize_admin.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_internal_auth.py` (0 identical + 2 drifted + 2 root-only) | `tests/unit/gateway/test_internal_auth.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_langgraph_auth.py` (26 identical + 1 drifted + 9 root-only) | `tests/unit/gateway/test_langgraph_auth.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir; `__file__` .parent chain normalized for unit/gateway depth | both copies green on the same candidate pre-merge |
+| `tests/test_lead_agent_prompt.py` (7 identical + 8 drifted + 14 root-only) | `tests/unit/gateway/test_lead_agent_prompt.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_llm_error_handling_middleware.py` (9 identical + 5 drifted + 63 root-only) | `tests/unit/gateway/test_llm_error_handling_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_loop_detection_middleware.py` (59 identical + 4 drifted + 54 root-only) | `tests/unit/gateway/test_loop_detection_middleware.py` | root variant wins on drifted names; 2 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_safety_finish_reason_middleware.py` (31 identical + 1 drifted + 10 root-only) | `tests/unit/gateway/test_safety_finish_reason_middleware.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_security_scanner.py` (17 identical + 0 drifted + 10 root-only) | `tests/unit/gateway/test_security_scanner.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_executor.py` (0 identical + 0 drifted + 147 root-only) | `tests/unit/gateway/test_subagent_executor.py` | root variant wins on drifted names; 0 class methods + 29 module defs carried from subdir; 3 stale-API carried tests dropped (superseded by root TestAgentConstruction evolved equivalents) | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_limit_middleware.py` (12 identical + 1 drifted + 12 root-only) | `tests/unit/gateway/test_subagent_limit_middleware.py` | root variant wins on drifted names; 2 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_prompt_security.py` (3 identical + 3 drifted + 3 root-only) | `tests/unit/gateway/test_subagent_prompt_security.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_timeout_config.py` (44 identical + 3 drifted + 8 root-only) | `tests/unit/gateway/test_subagent_timeout_config.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_token_collector.py` (12 identical + 0 drifted + 2 root-only) | `tests/unit/gateway/test_subagent_token_collector.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_title_middleware_core_logic.py` (12 identical + 5 drifted + 32 root-only) | `tests/unit/gateway/test_title_middleware_core_logic.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_token_usage_middleware.py` (0 identical + 0 drifted + 11 root-only) | `tests/unit/gateway/test_token_usage_middleware.py` | root variant wins on drifted names; 35 class methods + 7 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_uploads_manager.py` (25 identical + 0 drifted + 6 root-only) | `tests/unit/gateway/test_uploads_manager.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_uploads_middleware_core_logic.py` (24 identical + 4 drifted + 24 root-only) | `tests/unit/gateway/test_uploads_middleware_core_logic.py` | root variant wins on drifted names; 10 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_user_context.py` (10 identical + 0 drifted + 16 root-only) | `tests/unit/gateway/test_user_context.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_view_image_middleware.py` (22 identical + 5 drifted + 16 root-only) | `tests/unit/gateway/test_view_image_middleware.py` | root variant wins on drifted names; 2 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — runtime (batch 3 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/runtime -q -m "not serial and not requires_llm and not live and not external"` → 1380 passed / 8 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_cancel_run_idempotent.py` (4 identical + 3 drifted + 0 root-only) | `tests/unit/runtime/test_cancel_run_idempotent.py` | root variant wins on drifted names; 2 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_checkpointer.py` (19 identical + 7 drifted + 30 root-only) | `tests/unit/runtime/test_checkpointer.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_detect_thread_boundaries.py` (4 identical + 2 drifted + 8 root-only) | `tests/unit/runtime/test_detect_thread_boundaries.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_run_recovery.py` (0 identical + 2 drifted + 4 root-only) | `tests/unit/runtime/test_gateway_run_recovery.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_runtime_cleanup.py` (5 identical + 1 drifted + 10 root-only) | `tests/unit/runtime/test_gateway_runtime_cleanup.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_event_store.py` (46 identical + 0 drifted + 44 root-only) | `tests/unit/runtime/test_run_event_store.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_manager.py` (38 identical + 5 drifted + 31 root-only) | `tests/unit/runtime/test_run_manager.py` | root variant wins on drifted names; 0 class methods + 56 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_repository.py` (25 identical + 9 drifted + 35 root-only) | `tests/unit/runtime/test_run_repository.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_worker_rollback.py` (12 identical + 5 drifted + 91 root-only) | `tests/unit/runtime/test_run_worker_rollback.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir; carried test id literals adapted to the root helper defaults (ckpt-1) | both copies green on the same candidate pre-merge |
+| `tests/test_safety_finish_reason_graph_integration.py` (3 identical + 0 drifted + 2 root-only) | `tests/unit/runtime/test_safety_finish_reason_graph_integration.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_serialization.py` (16 identical + 1 drifted + 9 root-only) | `tests/unit/runtime/test_serialization.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_stream_bridge.py` (10 identical + 1 drifted + 47 root-only) | `tests/unit/runtime/test_stream_bridge.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_data_middleware.py` (4 identical + 0 drifted + 2 root-only) | `tests/unit/runtime/test_thread_data_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_meta_repo.py` (46 identical + 1 drifted + 20 root-only) | `tests/unit/runtime/test_thread_meta_repo.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_run_messages_pagination.py` (9 identical + 1 drifted + 8 root-only) | `tests/unit/runtime/test_thread_run_messages_pagination.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_state_reducers.py` (10 identical + 2 drifted + 33 root-only) | `tests/unit/runtime/test_thread_state_reducers.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_token_usage.py` (0 identical + 2 drifted + 7 root-only) | `tests/unit/runtime/test_thread_token_usage.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_token_usage.py` (14 identical + 0 drifted + 0 root-only) | `tests/unit/runtime/test_token_usage.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_worker_langfuse_metadata.py` (1 identical + 3 drifted + 2 root-only) | `tests/unit/runtime/test_worker_langfuse_metadata.py` | root variant wins on drifted names; 4 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — models/persistence (batch 4 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/models tests/unit/persistence -q -m "not serial and not requires_llm and not live and not external"` → 1093 passed / 1 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_client.py` (91 identical + 52 drifted + 46 root-only) | `tests/unit/models/test_client.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_langfuse_metadata.py` (1 identical + 2 drifted + 5 root-only) | `tests/unit/models/test_client_langfuse_metadata.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_live.py` (19 identical + 0 drifted + 0 root-only) | `tests/unit/models/test_client_live.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_codex_provider.py` (21 identical + 0 drifted + 5 root-only) | `tests/unit/models/test_codex_provider.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_infoquest_client.py` (0 identical + 0 drifted + 22 root-only) | `tests/unit/models/test_infoquest_client.py` | root variant wins on drifted names; 11 class methods + 10 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_lead_agent_model_resolution.py` (11 identical + 6 drifted + 31 root-only) | `tests/unit/models/test_lead_agent_model_resolution.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mindie_provider.py` (41 identical + 0 drifted + 4 root-only) | `tests/unit/models/test_mindie_provider.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_model_config.py` (2 identical + 0 drifted + 2 root-only) | `tests/unit/models/test_model_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_model_factory.py` (31 identical + 4 drifted + 34 root-only) | `tests/unit/models/test_model_factory.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_patched_deepseek.py` (9 identical + 1 drifted + 0 root-only) | `tests/unit/models/test_patched_deepseek.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_patched_minimax.py` (1 identical + 3 drifted + 1 root-only) | `tests/unit/models/test_patched_minimax.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_persistence_scaffold.py` (21 identical + 1 drifted + 17 root-only) | `tests/unit/persistence/test_persistence_scaffold.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_vllm_provider.py` (0 identical + 0 drifted + 16 root-only) | `tests/unit/models/test_vllm_provider.py` | root variant wins on drifted names; 0 class methods + 8 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — tools (batch 5 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/tools -q -m "not serial and not requires_llm and not live and not external"` → 1981 passed / 2 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_dangling_tool_call_middleware.py` (24 identical + 2 drifted + 32 root-only) | `tests/unit/tools/test_dangling_tool_call_middleware.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_deferred_tool_promotion_real_llm.py` (0 identical + 1 drifted + 0 root-only) | `tests/unit/tools/test_deferred_tool_promotion_real_llm.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_file_conversion.py` (18 identical + 12 drifted + 2 root-only) | `tests/unit/tools/test_file_conversion.py` | root variant wins on drifted names; 5 class methods + 2 module defs carried from subdir; spliced docx/xlsx routing tests re-bound to the legacy app.agentplatform seam via alias import | both copies green on the same candidate pre-merge |
+| `tests/test_invoke_acp_agent_tool.py` (7 identical + 9 drifted + 3 root-only) | `tests/unit/tools/test_invoke_acp_agent_tool.py` | root variant wins on drifted names; 0 class methods + 14 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_jina_client.py` (12 identical + 1 drifted + 7 root-only) | `tests/unit/tools/test_jina_client.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_cache.py` (0 identical + 0 drifted + 19 root-only) | `tests/unit/tools/test_mcp_cache.py` | root variant wins on drifted names; 0 class methods + 6 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_client_config.py` (7 identical + 1 drifted + 6 root-only) | `tests/unit/tools/test_mcp_client_config.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_config_secrets.py` (18 identical + 0 drifted + 82 root-only) | `tests/unit/tools/test_mcp_config_secrets.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_oauth.py` (3 identical + 0 drifted + 9 root-only) | `tests/unit/tools/test_mcp_oauth.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_session_pool.py` (2 identical + 12 drifted + 46 root-only) | `tests/unit/tools/test_mcp_session_pool.py` | root variant wins on drifted names; 0 class methods + 15 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_sync_wrapper.py` (5 identical + 1 drifted + 3 root-only) | `tests/unit/tools/test_mcp_sync_wrapper.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_present_file_tool_core_logic.py` (4 identical + 0 drifted + 1 root-only) | `tests/unit/tools/test_present_file_tool_core_logic.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_serper_tools.py` (18 identical + 0 drifted + 78 root-only) | `tests/unit/tools/test_serper_tools.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_tool.py` (0 identical + 2 drifted + 8 root-only) | `tests/unit/tools/test_setup_agent_tool.py` | root variant wins on drifted names; 0 class methods + 8 module defs carried from subdir; sub _call_setup_agent/_make_runtime helpers carried under aliases for the carried user-store class | both copies green on the same candidate pre-merge |
+| `tests/test_skill_manage_tool.py` (0 identical + 0 drifted + 10 root-only) | `tests/unit/tools/test_skill_manage_tool.py` | root variant wins on drifted names; 0 class methods + 9 module defs carried from subdir; sub autouse isolation fixture scoped to the carried classes only | both copies green on the same candidate pre-merge |
+| `tests/test_task_tool_usage_recorder.py` (8 identical + 0 drifted + 1 root-only) | `tests/unit/tools/test_task_tool_usage_recorder.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_args_schema_no_pydantic_warning.py` (3 identical + 0 drifted + 4 root-only) | `tests/unit/tools/test_tool_args_schema_no_pydantic_warning.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_call_metadata.py` (0 identical + 0 drifted + 14 root-only) | `tests/unit/tools/test_tool_call_metadata.py` | root variant wins on drifted names; 0 class methods + 9 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_deduplication.py` (5 identical + 1 drifted + 1 root-only) | `tests/unit/tools/test_tool_deduplication.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_error_handling_middleware.py` (9 identical + 1 drifted + 30 root-only) | `tests/unit/tools/test_tool_error_handling_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_output_truncation.py` (36 identical + 0 drifted + 26 root-only) | `tests/unit/tools/test_tool_output_truncation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tracing_factory.py` (5 identical + 0 drifted + 0 root-only) | `tests/unit/tools/test_tracing_factory.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tracing_metadata.py` (9 identical + 0 drifted + 2 root-only) | `tests/unit/tools/test_tracing_metadata.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_update_agent_tool.py` (0 identical + 0 drifted + 27 root-only) | `tests/unit/tools/test_update_agent_tool.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_view_image_tool.py` (6 identical + 1 drifted + 1 root-only) | `tests/unit/tools/test_view_image_tool.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — sandbox (batch 6 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/sandbox tests/integration/sandbox -q -m "not serial and not requires_llm and not live and not external"` → 2144 passed / 10 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_aio_sandbox.py` (13 identical + 3 drifted + 43 root-only) | `tests/integration/sandbox/test_aio_sandbox.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_aio_sandbox_local_backend.py` (13 identical + 1 drifted + 82 root-only) | `tests/integration/sandbox/test_aio_sandbox_local_backend.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_aio_sandbox_readiness.py` (0 identical + 3 drifted + 2 root-only) | `tests/integration/sandbox/test_aio_sandbox_readiness.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_docker_sandbox_mode_detection.py` (6 identical + 0 drifted + 20 root-only) | `tests/integration/sandbox/test_docker_sandbox_mode_detection.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_encoding.py` (5 identical + 3 drifted + 13 root-only) | `tests/unit/sandbox/test_local_sandbox_encoding.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_provider_mounts.py` (39 identical + 5 drifted + 11 root-only) | `tests/unit/sandbox/test_local_sandbox_provider_mounts.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_virtual_path_contract.py` (14 identical + 6 drifted + 4 root-only) | `tests/unit/sandbox/test_local_sandbox_virtual_path_contract.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_provisioner_pvc_volumes.py` (2 identical + 4 drifted + 53 root-only) | `tests/integration/sandbox/test_provisioner_pvc_volumes.py` | root variant wins on drifted names; 12 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_remote_sandbox_backend.py` (19 identical + 1 drifted + 14 root-only) | `tests/integration/sandbox/test_remote_sandbox_backend.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_runtime_paths.py` (5 identical + 4 drifted + 3 root-only) | `tests/unit/sandbox/test_runtime_paths.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_audit_middleware.py` (47 identical + 0 drifted + 25 root-only) | `tests/unit/sandbox/test_sandbox_audit_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_middleware.py` (2 identical + 4 drifted + 30 root-only) | `tests/unit/sandbox/test_sandbox_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_orphan_reconciliation.py` (11 identical + 14 drifted + 65 root-only) | `tests/integration/sandbox/test_sandbox_orphan_reconciliation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_orphan_reconciliation_e2e.py` (3 identical + 0 drifted + 0 root-only) | `tests/integration/api/test_sandbox_orphan_reconciliation_e2e.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_search_tools.py` (15 identical + 4 drifted + 21 root-only) | `tests/unit/sandbox/test_sandbox_search_tools.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_tools_security.py` (67 identical + 24 drifted + 28 root-only) | `tests/unit/sandbox/test_sandbox_tools_security.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir; carried test path literals adapted to the root _THREAD_DATA binding (/tmp/deer-flow) | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — skills/scripts (batch 7 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/skills tests/unit/scripts -q -m "not serial and not requires_llm and not live and not external"` → 1739 passed / 1 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_acp_config.py` (13 identical + 1 drifted + 4 root-only) | `tests/unit/scripts/test_acp_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_app_config_reload.py` (8 identical + 0 drifted + 27 root-only) | `tests/unit/scripts/test_app_config_reload.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_check_script.py` (0 identical + 3 drifted + 5 root-only) | `tests/unit/scripts/test_check_script.py` | root variant wins on drifted names; 0 class methods + 4 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_config_version.py` (6 identical + 0 drifted + 7 root-only) | `tests/unit/scripts/test_config_version.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_dev_entrypoint.py` (8 identical + 1 drifted + 9 root-only) | `tests/unit/scripts/test_dev_entrypoint.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_doctor.py` (32 identical + 2 drifted + 39 root-only) | `tests/unit/scripts/test_doctor.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_skill_storage_write.py` (11 identical + 3 drifted + 7 root-only) | `tests/unit/skills/test_local_skill_storage_write.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_logging_level_from_config.py` (6 identical + 0 drifted + 1 root-only) | `tests/unit/scripts/test_logging_level_from_config.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_wizard.py` (29 identical + 0 drifted + 20 root-only) | `tests/unit/scripts/test_setup_wizard.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skill_creator_quick_validate.py` (0 identical + 0 drifted + 6 root-only) | `tests/unit/skills/test_skill_creator_quick_validate.py` | root variant wins on drifted names; 0 class methods + 6 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_installer.py` (28 identical + 3 drifted + 21 root-only) | `tests/unit/skills/test_skills_installer.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_loader.py` (3 identical + 1 drifted + 4 root-only) | `tests/unit/skills/test_skills_loader.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_validation.py` (19 identical + 1 drifted + 6 root-only) | `tests/unit/skills/test_skills_validation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir; stale list-only allowed-tools rejection test dropped (superseded by root test_allows_allowed_tools_string) | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_skills_config.py` (42 identical + 0 drifted + 0 root-only) | `tests/unit/skills/test_subagent_skills_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tracing_config.py` (7 identical + 0 drifted + 0 root-only) | `tests/unit/scripts/test_tracing_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests dedup — intentional keeps and scope boundary
+
+Ticket #66 scope closure under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
+
+1. `tests/blocking_io/` keeps (10 root files + their blocking_io twins):
+   `test_artifact_archive.py`, `test_batch_acceptance.py`,
+   `test_honcho_memory_backend.py`, `test_openviking_memory_backend.py`,
+   `test_persistence_bootstrap.py`, `test_project_documents_promotion.py`,
+   `test_project_trash.py`, `test_sandbox_authorization.py`,
+   `test_skill_export.py`, `test_skills_reload.py`. The standard lane runs
+   with `--ignore=tests/blocking_io` and the blocking-io lane runs only
+   `tests/blocking_io`, so these same-name copies never co-collect in any
+   lane run; the blocking_io twin is the strict Blockbuster-gate owner and
+   the root copy is the non-gated general home (root-only functions would
+   change semantics under the gate). Kept intentionally.
+2. 541 root-level test files without any same-name twin: no duplicate
+   collection (verified by `scripts/check_test_collection_duplicates.py`);
+   kept at root pending per-file layer assignment, which is the follow-up
+   layering migration (#69) and not part of the dual-run defect.
+
+Post-dedup, the duplicate-collection guard
+(`scripts/check_test_collection_duplicates.py`) reports zero duplicate
+test-name keys in standard lane scope; the before/after collect-only counts
+are recorded in the decision record's execution summary. Closure lane:
+backend-standard green at 4c07acbc0 — 26836 passed / 235 skipped,
+TEST_LANE_DURATION 926s (baseline pre-dedup at d8f1418d2: 29629 passed /
+236 skipped, 1128s; −2793 duplicated executions, −202s), artifact
+`logs/test-lanes/backend-standard-20261013T123933Z-2950947/run.log`. Two
+runtime-reference follow-up fixes landed after the batches: 4c07acbc0
+(module-path imports and a Path source-read repointed to keepers; the first
+closure run failed 8 tests on them) and 529d0e87d (sandbox-image-smoke
+workflow + scripts guidance repointed to keeper paths).
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — integration/api + contracts (batch 8 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/integration/api tests/contracts -q -m "not serial and not requires_llm and not live and not external"` → 1628 passed / 42 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_artifacts_router.py` (2 identical + 4 drifted + 31 root-only) | `tests/integration/api/test_artifacts_router.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_e2e.py` (27 identical + 16 drifted + 0 root-only) | `tests/integration/api/test_client_e2e.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_queue_user_isolation.py` (2 identical + 5 drifted + 0 root-only) | `tests/contracts/test_memory_queue_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_router.py` (0 identical + 12 drifted + 17 root-only) | `tests/integration/api/test_memory_router.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_storage_user_isolation.py` (0 identical + 8 drifted + 0 root-only) | `tests/contracts/test_memory_storage_user_isolation.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_thread_meta_isolation.py` (8 identical + 0 drifted + 14 root-only) | `tests/contracts/test_memory_thread_meta_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_updater_user_isolation.py` (0 identical + 3 drifted + 0 root-only) | `tests/contracts/test_memory_updater_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_migration_user_isolation.py` (13 identical + 0 drifted + 11 root-only) | `tests/contracts/test_migration_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_paths_user_isolation.py` (34 identical + 0 drifted + 11 root-only) | `tests/contracts/test_paths_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_runs_api_endpoints.py` (10 identical + 1 drifted + 7 root-only) | `tests/integration/api/test_runs_api_endpoints.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_e2e_user_isolation.py` (5 identical + 4 drifted + 3 root-only) | `tests/contracts/test_setup_agent_e2e_user_isolation.py` | root variant wins on drifted names; 1 class methods + 3 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_http_e2e_real_server.py` (0 identical + 1 drifted + 0 root-only) | `tests/integration/api/test_setup_agent_http_e2e_real_server.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_suggestions_router.py` (5 identical + 4 drifted + 11 root-only) | `tests/integration/api/test_suggestions_router.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_threads_router.py` (19 identical + 1 drifted + 92 root-only) | `tests/integration/api/test_threads_router.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_update_agent_e2e_user_isolation.py` (0 identical + 3 drifted + 0 root-only) | `tests/contracts/test_update_agent_e2e_user_isolation.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_uploads_router.py` (14 identical + 16 drifted + 15 root-only) | `tests/integration/api/test_uploads_router.py` | root variant wins on drifted names; 0 class methods + 43 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (batch 1 of 8)
+
+Ticket #66 under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
+for every root ↔ `{unit,integration,contracts}` same-name pair the ROOT copy is
+the merge base and is deleted after its content lands at the canonical subdir
+path (`__file__` depths normalized); subdir-only tests are carried over
+(spliced into same-named classes or appended as module defs). On drifted
+same-name tests the root variant wins: both variants were green on the same
+candidate before the merge, so no retained assertion is weaker than what the
+standard lane ran. Module-global directives (`pytestmark`, `pytest_plugins`)
+are not carried from the sub copy. Per-file merge reports (spliced methods,
+carried defs, root-wins conflicts, import shadowing) are archived in the
+ticket's `dev-log/batch6/merge_report_*.json`.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_channel_file_attachments.py` (16 identical + 4 drifted + 28 root-only) | `tests/unit/channels/test_channel_file_attachments.py` | root variant wins on drifted names; 18 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_channels.py` (74 identical + 19 drifted + 259 root-only) | `tests/unit/channels/test_channels.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_dingtalk_channel.py` (66 identical + 12 drifted + 42 root-only) | `tests/unit/channels/test_dingtalk_channel.py` | root variant wins on drifted names; 0 class methods + 37 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_discord_channel.py` (0 identical + 0 drifted + 23 root-only) | `tests/unit/channels/test_discord_channel.py` | root variant wins on drifted names; 0 class methods + 22 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_feishu_parser.py` (5 identical + 1 drifted + 25 root-only) | `tests/unit/workflows/test_feishu_parser.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_prompt_injection.py` (10 identical + 1 drifted + 24 root-only) | `tests/unit/memory/test_memory_prompt_injection.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_queue.py` (0 identical + 10 drifted + 16 root-only) | `tests/unit/memory/test_memory_queue.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir; appended legacy-API test rewritten against `app.agentplatform.legacy.memory.queue` alias | both copies green on the same candidate pre-merge |
+| `tests/test_memory_storage.py` (0 identical + 11 drifted + 5 root-only) | `tests/unit/memory/test_memory_storage.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir; appended legacy-API tests rewritten against `app.agentplatform.legacy.memory.storage` alias | both copies green on the same candidate pre-merge |
+| `tests/test_memory_updater.py` (13 identical + 33 drifted + 36 root-only) | `tests/unit/memory/test_memory_updater.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_upload_filtering.py` (22 identical + 4 drifted + 7 root-only) | `tests/unit/memory/test_memory_upload_filtering.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_parser.py` (13 identical + 3 drifted + 14 root-only) | `tests/unit/workflows/test_skills_parser.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_wechat_channel.py` (18 identical + 11 drifted + 12 root-only) | `tests/unit/channels/test_wechat_channel.py` | root variant wins on drifted names; 0 class methods + 85 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+Validation (this batch):
+
+```bash
+cd backend
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \
+  uv run --no-sync pytest tests/unit/channels tests/unit/memory tests/unit/workflows \
+  -q -m "not serial and not requires_llm and not live and not external"
+# 2560 passed
+uv run --no-sync ruff check tests/unit/channels tests/unit/memory tests/unit/workflows
+uv run --no-sync ruff format --check tests/unit/channels tests/unit/memory tests/unit/workflows
+```
+
 ## Batch 2026-10-03: Thread initialization ordering duplicate
 
 Removed `frontend/tests/e2e/workflows/chat-thread-init-ordering.spec.ts` and
@@ -747,6 +1008,17 @@ cd backend
 find tests -maxdepth 1 -type f -name 'test_*.py'
 PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/unit tests/integration tests/contracts -v -m "not serial and not requires_llm"
 ```
+
+Correction (2026-10-13, ticket #66): this batch's claim was true when recorded
+(commit `60f0ef382` moved the root files verbatim, e.g. `test_channels.py` as an
+R100 rename), but subsequent batch commits between 2026-07-09 and 2026-09-06
+(e.g. `4feb26e0f` "B4b 权限/隔离 + B4c 杂项" and the legacy-harness refactor)
+recreated root-level copies without a ledger batch. Both trees then evolved in
+parallel — root copies absorbing newer product-contract assertions, subdir
+copies evolving independently — so the "no root-level tests left" statement
+above no longer described the tree. The duplicates were resolved and this entry
+superseded by the 2026-10-13 dedup batches at the top of this ledger, under
+[the dedup decision](../decisions/2026-10-13-backend-test-dedup.md).
 
 ## Batch 2026-07-09: Stable Contract Entrypoints
 

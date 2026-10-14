@@ -44,7 +44,7 @@ def isolated_paths(monkeypatch, tmp_path):
     """Redirect ``get_paths().base_dir`` to ``tmp_path`` and reset its singleton.
 
     Without this, per-thread directories would be created under the developer's
-    real ``.ideer/`` tree.
+    real ``.deer-flow/`` tree.
     """
     monkeypatch.setenv("DEER_FLOW_HOME", str(tmp_path))
     from deerflow.config import paths as paths_module
@@ -70,11 +70,12 @@ def provider(isolated_paths, tmp_path):
 
 
 def test_acquire_with_thread_id_returns_per_thread_id(provider):
-    sandbox_id = provider.acquire("alpha")
-    # Upstream scopes per-thread sandbox ids by the effective user id
-    # (local:<user_id>:<thread_id>); the conftest autouse fixture injects
-    # "test-user-autouse".
-    assert sandbox_id == "local:test-user-autouse:alpha"
+    sandbox_id = provider.acquire("alpha", user_id="default")
+    assert sandbox_id == "local:default:alpha"
+
+
+def test_acquire_with_thread_id_uses_uniform_user_scoped_id(provider):
+    assert provider.acquire("alpha", user_id="alice") == "local:alice:alpha"
 
 
 def test_acquire_without_thread_id_remains_legacy_local_id(provider):
@@ -142,6 +143,31 @@ def test_execute_command_lists_aggregate_user_data_root(provider):
     assert "outputs" in output
 
 
+def test_list_dir_on_user_data_root_does_not_duplicate_subdir_mounts(provider):
+    """Regression: ``list_dir``'s virtual sub-directory overlay must not
+    double-list a mount that the underlying scan already found.
+
+    The overlay compared a bare child name (e.g. "workspace") against
+    ``existing_dirs``, which holds full container paths (e.g.
+    "/mnt/user-data/workspace") -- so the containment guard never matched and
+    each of workspace/uploads/outputs (real nested subdirectories the plain
+    scan already discovers) was appended a second time.
+    """
+    sandbox_id = provider.acquire("alpha")
+    sbx = provider.get(sandbox_id)
+    # Touch all three subdirs so they materialise on disk and are found by the
+    # underlying (non-overlay) directory scan.
+    sbx.write_file("/mnt/user-data/workspace/.keep", "")
+    sbx.write_file("/mnt/user-data/uploads/.keep", "")
+    sbx.write_file("/mnt/user-data/outputs/.keep", "")
+
+    entries = sbx.list_dir("/mnt/user-data")
+
+    for subdir in ("workspace", "uploads", "outputs"):
+        matches = [e for e in entries if e.rstrip("/") == f"/mnt/user-data/{subdir}"]
+        assert len(matches) == 1, f"{subdir} listed {len(matches)} time(s), expected exactly 1: {entries}"
+
+
 def test_update_file_with_virtual_path_for_remote_sync_scenario(provider):
     """This is the exact code path used by ``uploads.py:282`` and ``feishu.py:389``.
 
@@ -183,6 +209,21 @@ def test_per_thread_user_data_mapping_isolated(provider, isolated_paths):
         sbx_b.read_file("/mnt/user-data/workspace/secret.txt")
 
 
+def test_same_thread_different_users_are_isolated(provider):
+    """Channel/user-scoped mounts must not reuse another user's local mapping."""
+    sid_alice = provider.acquire("alpha", user_id="alice")
+    sid_bob = provider.acquire("alpha", user_id="bob")
+    assert sid_alice != sid_bob
+
+    sbx_alice = provider.get(sid_alice)
+    sbx_bob = provider.get(sid_bob)
+    assert sbx_alice is not sbx_bob
+
+    sbx_alice.write_file("/mnt/user-data/outputs/report.md", "alice-only")
+    with pytest.raises(FileNotFoundError):
+        sbx_bob.read_file("/mnt/user-data/outputs/report.md")
+
+
 def test_agent_written_paths_per_thread_isolation(provider):
     """``_agent_written_paths`` tracks files this sandbox wrote so reverse-resolve
     runs on read. The set must not leak across threads."""
@@ -206,7 +247,7 @@ def test_get_returns_cached_instance_for_known_id(provider):
 
 
 def test_get_unknown_id_returns_none(provider):
-    assert provider.get("local:nonexistent") is None
+    assert provider.get("local:default:nonexistent") is None
 
 
 def test_release_is_noop_keeps_instance_available(provider):
@@ -231,19 +272,19 @@ def test_reset_clears_both_generic_and_per_thread_caches(provider):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 4. is_local_sandbox detects both legacy and per-thread ids
+# 4. is_local_sandbox detects both generic and per-thread ids
 # ──────────────────────────────────────────────────────────────────────────
 
 
-def test_is_local_sandbox_accepts_both_id_formats():
+def test_is_local_sandbox_accepts_generic_and_per_thread_id_formats():
     from deerflow.sandbox.tools import is_local_sandbox
 
-    legacy = SimpleNamespace(state={"sandbox": {"sandbox_id": "local"}}, context={})
-    per_thread = SimpleNamespace(state={"sandbox": {"sandbox_id": "local:alpha"}}, context={})
+    generic = SimpleNamespace(state={"sandbox": {"sandbox_id": "local"}}, context={})
+    per_thread = SimpleNamespace(state={"sandbox": {"sandbox_id": "local:default:alpha"}}, context={})
     foreign = SimpleNamespace(state={"sandbox": {"sandbox_id": "aio-12345"}}, context={})
     unset = SimpleNamespace(state={}, context={})
 
-    assert is_local_sandbox(legacy) is True
+    assert is_local_sandbox(generic) is True
     assert is_local_sandbox(per_thread) is True
     assert is_local_sandbox(foreign) is False
     assert is_local_sandbox(unset) is False
@@ -280,7 +321,7 @@ def test_concurrent_acquire_same_thread_yields_single_instance(provider):
 
     def racer():
         barrier.wait()
-        sid = provider.acquire("alpha")
+        sid = provider.acquire("alpha", user_id="default")
         with results_lock:
             results.append(sid)
 
@@ -294,8 +335,6 @@ def test_concurrent_acquire_same_thread_yields_single_instance(provider):
     # Every racer must observe the same ``sandbox_id``…
     assert len(set(results)) == 1, f"Racers saw different ids: {results}"
     # …and the cache must hold exactly one instance for ``alpha``.
-    # Cache keys are (user_id, thread_id); the racer threads have no user
-    # contextvar, so the effective user falls back to "default".
     assert len(provider._thread_sandboxes) == 1
     assert ("default", "alpha") in provider._thread_sandboxes
 
@@ -310,7 +349,7 @@ def test_concurrent_acquire_distinct_threads_yields_distinct_instances(provider)
 
     def racer(name: str):
         barrier.wait()
-        sid = provider.acquire(name)
+        sid = provider.acquire(name, user_id="default")
         with lock:
             sids[name] = sid
 
@@ -341,12 +380,12 @@ def test_thread_sandbox_cache_is_bounded(isolated_paths, tmp_path):
         provider = LocalSandboxProvider(max_cached_threads=3)
 
     for i in range(5):
-        provider.acquire(f"t{i}")
+        provider.acquire(f"t{i}", user_id="default")
 
-    # Only the 3 most-recent (user, thread) entries should be retained.
-    assert set(provider._thread_sandboxes.keys()) == {("test-user-autouse", f"t{i}") for i in (2, 3, 4)}
-    assert provider.get("local:test-user-autouse:t0") is None
-    assert provider.get("local:test-user-autouse:t4") is not None
+    # Only the 3 most-recent thread_ids should be retained.
+    assert set(provider._thread_sandboxes.keys()) == {("default", "t2"), ("default", "t3"), ("default", "t4")}
+    assert provider.get("local:default:t0") is None
+    assert provider.get("local:default:t4") is not None
 
 
 def test_lru_promotes_recently_used_thread(isolated_paths, tmp_path):
@@ -360,12 +399,27 @@ def test_lru_promotes_recently_used_thread(isolated_paths, tmp_path):
         provider = LocalSandboxProvider(max_cached_threads=3)
 
     for name in ["a", "b", "c"]:
-        provider.acquire(name)
+        provider.acquire(name, user_id="default")
     # Touch "a" via ``get`` so it becomes most-recently used.
-    provider.get("local:test-user-autouse:a")
+    provider.get("local:default:a")
     # Adding a fourth thread should evict "b" (the new LRU), not "a".
-    provider.acquire("d")
+    provider.acquire("d", user_id="default")
 
-    assert ("test-user-autouse", "a") in provider._thread_sandboxes
-    assert ("test-user-autouse", "b") not in provider._thread_sandboxes
-    assert {("test-user-autouse", n) for n in ("a", "c", "d")} == set(provider._thread_sandboxes.keys())
+    assert ("default", "a") in provider._thread_sandboxes
+    assert ("default", "b") not in provider._thread_sandboxes
+    assert {("default", "a"), ("default", "c"), ("default", "d")} == set(provider._thread_sandboxes.keys())
+
+
+# --- merged from test_local_sandbox_virtual_path_contract.py (subdir-only tests; root copy is the dedup base) ---
+def test_is_local_sandbox_accepts_both_id_formats():
+    from deerflow.sandbox.tools import is_local_sandbox
+
+    legacy = SimpleNamespace(state={"sandbox": {"sandbox_id": "local"}}, context={})
+    per_thread = SimpleNamespace(state={"sandbox": {"sandbox_id": "local:alpha"}}, context={})
+    foreign = SimpleNamespace(state={"sandbox": {"sandbox_id": "aio-12345"}}, context={})
+    unset = SimpleNamespace(state={}, context={})
+
+    assert is_local_sandbox(legacy) is True
+    assert is_local_sandbox(per_thread) is True
+    assert is_local_sandbox(foreign) is False
+    assert is_local_sandbox(unset) is False

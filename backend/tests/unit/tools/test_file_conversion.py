@@ -9,12 +9,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.agentplatform.utils.file_conversion import (
+from app.agentplatform.utils.file_conversion import _do_convert as _do_convert_legacy
+from app.agentplatform.utils.file_conversion import _get_docx_converter
+from deerflow.utils.file_conversion import (
     _ASYNC_THRESHOLD_BYTES,
     _MIN_CHARS_PER_PAGE,
     MAX_OUTLINE_ENTRIES,
     _do_convert,
-    _get_docx_converter,
     _get_pdf_converter,
     _pymupdf_output_too_sparse,
     convert_file_to_markdown,
@@ -100,6 +101,123 @@ class TestPymupdfOutputTooSparse:
 class TestDoConvert:
     """Verify that _do_convert routes to the right sub-converter."""
 
+    def test_non_pdf_always_uses_markitdown(self, tmp_path):
+        """DOCX / XLSX / PPTX always go through MarkItDown regardless of setting."""
+        docx = tmp_path / "report.docx"
+        docx.write_bytes(b"PK fake docx")
+
+        with patch(
+            "deerflow.utils.file_conversion._convert_with_markitdown",
+            return_value="# Markdown from MarkItDown",
+        ) as mock_md:
+            result = _do_convert(docx, "auto")
+
+        mock_md.assert_called_once_with(docx)
+        assert result == "# Markdown from MarkItDown"
+
+    def test_pdf_auto_uses_pymupdf4llm_when_dense(self, tmp_path):
+        """auto mode: use pymupdf4llm output when it's dense enough."""
+        pdf = tmp_path / "report.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
+
+        dense_text = "# Heading\n" + "word " * 2000  # clearly dense
+
+        with (
+            patch(
+                "deerflow.utils.file_conversion._convert_pdf_with_pymupdf4llm",
+                return_value=dense_text,
+            ),
+            patch(
+                "deerflow.utils.file_conversion._pymupdf_output_too_sparse",
+                return_value=False,
+            ),
+            patch("deerflow.utils.file_conversion._convert_with_markitdown") as mock_md,
+        ):
+            result = _do_convert(pdf, "auto")
+
+        mock_md.assert_not_called()
+        assert result == dense_text
+
+    def test_pdf_auto_falls_back_when_sparse(self, tmp_path):
+        """auto mode: fall back to MarkItDown when pymupdf4llm output is sparse."""
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
+
+        with (
+            patch(
+                "deerflow.utils.file_conversion._convert_pdf_with_pymupdf4llm",
+                return_value="x" * 612,  # 19.7 chars/page for 31-page doc
+            ),
+            patch(
+                "deerflow.utils.file_conversion._pymupdf_output_too_sparse",
+                return_value=True,
+            ),
+            patch(
+                "deerflow.utils.file_conversion._convert_with_markitdown",
+                return_value="OCR result via MarkItDown",
+            ) as mock_md,
+        ):
+            result = _do_convert(pdf, "auto")
+
+        mock_md.assert_called_once_with(pdf)
+        assert result == "OCR result via MarkItDown"
+
+    def test_pdf_explicit_pymupdf4llm_skips_sparsity_check(self, tmp_path):
+        """'pymupdf4llm' mode: use output as-is even if sparse."""
+        pdf = tmp_path / "explicit.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
+
+        sparse_text = "x" * 10  # very short
+
+        with (
+            patch(
+                "deerflow.utils.file_conversion._convert_pdf_with_pymupdf4llm",
+                return_value=sparse_text,
+            ),
+            patch("deerflow.utils.file_conversion._convert_with_markitdown") as mock_md,
+        ):
+            result = _do_convert(pdf, "pymupdf4llm")
+
+        mock_md.assert_not_called()
+        assert result == sparse_text
+
+    def test_pdf_explicit_markitdown_skips_pymupdf4llm(self, tmp_path):
+        """'markitdown' mode: never attempt pymupdf4llm."""
+        pdf = tmp_path / "force_md.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
+
+        with (
+            patch("deerflow.utils.file_conversion._convert_pdf_with_pymupdf4llm") as mock_pymu,
+            patch(
+                "deerflow.utils.file_conversion._convert_with_markitdown",
+                return_value="MarkItDown result",
+            ),
+        ):
+            result = _do_convert(pdf, "markitdown")
+
+        mock_pymu.assert_not_called()
+        assert result == "MarkItDown result"
+
+    def test_pdf_auto_falls_back_when_pymupdf4llm_not_installed(self, tmp_path):
+        """auto mode: if pymupdf4llm is not installed, use MarkItDown directly."""
+        pdf = tmp_path / "no_pymupdf.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
+
+        with (
+            patch(
+                "deerflow.utils.file_conversion._convert_pdf_with_pymupdf4llm",
+                return_value=None,  # None signals not installed
+            ),
+            patch(
+                "deerflow.utils.file_conversion._convert_with_markitdown",
+                return_value="MarkItDown fallback",
+            ) as mock_md,
+        ):
+            result = _do_convert(pdf, "auto")
+
+        mock_md.assert_called_once_with(pdf)
+        assert result == "MarkItDown fallback"
+
     def test_xlsx_pptx_always_use_markitdown(self, tmp_path):
         """XLSX / PPTX always go through MarkItDown regardless of setting."""
         xlsx = tmp_path / "book.xlsx"
@@ -112,7 +230,7 @@ class TestDoConvert:
                 return_value="# Markdown from MarkItDown",
             ) as mock_md,
         ):
-            result = _do_convert(xlsx, "auto", "auto")
+            result = _do_convert_legacy(xlsx, "auto", "auto")
 
         mock_rich.assert_not_called()
         mock_md.assert_called_once_with(xlsx)
@@ -130,7 +248,7 @@ class TestDoConvert:
                 return_value="# Markdown from MarkItDown",
             ) as mock_md,
         ):
-            result = _do_convert(docx, "auto", "markitdown")
+            result = _do_convert_legacy(docx, "auto", "markitdown")
 
         mock_rich.assert_not_called()
         mock_md.assert_called_once_with(docx)
@@ -148,7 +266,7 @@ class TestDoConvert:
             ) as mock_rich,
             patch("app.agentplatform.utils.file_conversion._convert_with_markitdown") as mock_md,
         ):
-            result = _do_convert(docx, "auto", "auto")
+            result = _do_convert_legacy(docx, "auto", "auto")
 
         mock_rich.assert_called_once_with(docx)
         mock_md.assert_not_called()
@@ -169,7 +287,7 @@ class TestDoConvert:
                 return_value="MarkItDown fallback",
             ) as mock_md,
         ):
-            result = _do_convert(docx, "auto", "auto")
+            result = _do_convert_legacy(docx, "auto", "auto")
 
         mock_md.assert_called_once_with(docx)
         assert result == "MarkItDown fallback"
@@ -187,7 +305,7 @@ class TestDoConvert:
             patch("app.agentplatform.utils.file_conversion._convert_with_markitdown") as mock_md,
         ):
             try:
-                _do_convert(docx, "auto", "rich")
+                _do_convert_legacy(docx, "auto", "rich")
                 raised = False
             except RuntimeError:
                 raised = True
@@ -195,219 +313,28 @@ class TestDoConvert:
         assert raised
         mock_md.assert_not_called()
 
-    def test_pdf_auto_uses_pymupdf4llm_when_dense(self, tmp_path):
-        """auto mode: use pymupdf4llm output when it's dense enough."""
-        pdf = tmp_path / "report.pdf"
-        pdf.write_bytes(b"%PDF-1.4 fake")
-
-        dense_text = "# Heading\n" + "word " * 2000  # clearly dense
-
-        with (
-            patch(
-                "app.agentplatform.utils.file_conversion._convert_pdf_with_pymupdf4llm",
-                return_value=dense_text,
-            ),
-            patch(
-                "app.agentplatform.utils.file_conversion._pymupdf_output_too_sparse",
-                return_value=False,
-            ),
-            patch("app.agentplatform.utils.file_conversion._convert_with_markitdown") as mock_md,
-        ):
-            result = _do_convert(pdf, "auto")
-
-        mock_md.assert_not_called()
-        assert result == dense_text
-
-    def test_pdf_auto_falls_back_when_sparse(self, tmp_path):
-        """auto mode: fall back to MarkItDown when pymupdf4llm output is sparse."""
-        pdf = tmp_path / "scanned.pdf"
-        pdf.write_bytes(b"%PDF-1.4 fake")
-
-        with (
-            patch(
-                "app.agentplatform.utils.file_conversion._convert_pdf_with_pymupdf4llm",
-                return_value="x" * 612,  # 19.7 chars/page for 31-page doc
-            ),
-            patch(
-                "app.agentplatform.utils.file_conversion._pymupdf_output_too_sparse",
-                return_value=True,
-            ),
-            patch(
-                "app.agentplatform.utils.file_conversion._convert_with_markitdown",
-                return_value="OCR result via MarkItDown",
-            ) as mock_md,
-        ):
-            result = _do_convert(pdf, "auto")
-
-        mock_md.assert_called_once_with(pdf)
-        assert result == "OCR result via MarkItDown"
-
-    def test_pdf_explicit_pymupdf4llm_skips_sparsity_check(self, tmp_path):
-        """'pymupdf4llm' mode: use output as-is even if sparse."""
-        pdf = tmp_path / "explicit.pdf"
-        pdf.write_bytes(b"%PDF-1.4 fake")
-
-        sparse_text = "x" * 10  # very short
-
-        with (
-            patch(
-                "app.agentplatform.utils.file_conversion._convert_pdf_with_pymupdf4llm",
-                return_value=sparse_text,
-            ),
-            patch("app.agentplatform.utils.file_conversion._convert_with_markitdown") as mock_md,
-        ):
-            result = _do_convert(pdf, "pymupdf4llm")
-
-        mock_md.assert_not_called()
-        assert result == sparse_text
-
-    def test_pdf_explicit_markitdown_skips_pymupdf4llm(self, tmp_path):
-        """'markitdown' mode: never attempt pymupdf4llm."""
-        pdf = tmp_path / "force_md.pdf"
-        pdf.write_bytes(b"%PDF-1.4 fake")
-
-        with (
-            patch("app.agentplatform.utils.file_conversion._convert_pdf_with_pymupdf4llm") as mock_pymu,
-            patch(
-                "app.agentplatform.utils.file_conversion._convert_with_markitdown",
-                return_value="MarkItDown result",
-            ),
-        ):
-            result = _do_convert(pdf, "markitdown")
-
-        mock_pymu.assert_not_called()
-        assert result == "MarkItDown result"
-
-    def test_pdf_auto_falls_back_when_pymupdf4llm_not_installed(self, tmp_path):
-        """auto mode: if pymupdf4llm is not installed, use MarkItDown directly."""
-        pdf = tmp_path / "no_pymupdf.pdf"
-        pdf.write_bytes(b"%PDF-1.4 fake")
-
-        with (
-            patch(
-                "app.agentplatform.utils.file_conversion._convert_pdf_with_pymupdf4llm",
-                return_value=None,  # None signals not installed
-            ),
-            patch(
-                "app.agentplatform.utils.file_conversion._convert_with_markitdown",
-                return_value="MarkItDown fallback",
-            ) as mock_md,
-        ):
-            result = _do_convert(pdf, "auto")
-
-        mock_md.assert_called_once_with(pdf)
-        assert result == "MarkItDown fallback"
-
 
 class TestGetPdfConverter:
     def test_reads_dict_backed_uploads_config(self):
         cfg = MagicMock()
         cfg.uploads = {"pdf_converter": "markitdown"}
 
-        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
+        with patch("deerflow.utils.file_conversion.get_app_config", return_value=cfg):
             assert _get_pdf_converter() == "markitdown"
 
     def test_reads_attribute_backed_uploads_config(self):
         cfg = MagicMock()
         cfg.uploads = MagicMock(pdf_converter="pymupdf4llm")
 
-        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
+        with patch("deerflow.utils.file_conversion.get_app_config", return_value=cfg):
             assert _get_pdf_converter() == "pymupdf4llm"
 
     def test_invalid_value_falls_back_to_auto(self):
         cfg = MagicMock()
         cfg.uploads = {"pdf_converter": "not-a-real-converter"}
 
-        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
+        with patch("deerflow.utils.file_conversion.get_app_config", return_value=cfg):
             assert _get_pdf_converter() == "auto"
-
-
-class TestGetDocxConverter:
-    def test_reads_dict_backed_uploads_config(self):
-        cfg = MagicMock()
-        cfg.uploads = {"docx_converter": "markitdown"}
-
-        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
-            assert _get_docx_converter() == "markitdown"
-
-    def test_reads_attribute_backed_uploads_config(self):
-        cfg = MagicMock()
-        cfg.uploads = MagicMock(docx_converter="rich")
-
-        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
-            assert _get_docx_converter() == "rich"
-
-    def test_invalid_value_falls_back_to_auto(self):
-        cfg = MagicMock()
-        cfg.uploads = {"docx_converter": "not-a-real-converter"}
-
-        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
-            assert _get_docx_converter() == "auto"
-
-
-class TestConvertWordWithRich:
-    """Integration-style tests for the rich Word branch (real .docx fixtures)."""
-
-    @staticmethod
-    def _build_docx_with_image_and_prose(path):
-        """docx with an embedded image AND prose text containing '(images/'."""
-        import io
-        import struct
-        import zlib
-
-        from docx import Document
-        from docx.shared import Inches
-
-        # Minimal valid 1x1 red PNG
-        def chunk(tag, data):
-            payload = tag + data
-            return struct.pack(">I", len(data)) + payload + struct.pack(">I", zlib.crc32(payload))
-
-        ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
-        png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00")) + chunk(b"IEND", b"")
-
-        doc = Document()
-        doc.add_paragraph("标题一", style="Heading 1")
-        para = doc.add_paragraph()
-        para.add_run().add_picture(io.BytesIO(png), width=Inches(0.5))
-        # Prose that literally contains "(images/" — must NOT be rewritten
-        doc.add_paragraph("参见路径 (images/keep.png 获取原图)")
-        doc.save(str(path))
-
-    def test_relocates_artifacts_and_rewrites_refs(self, tmp_path):
-        from app.agentplatform.utils.file_conversion import _convert_word_with_rich
-
-        src = tmp_path / "report.docx"
-        self._build_docx_with_image_and_prose(src)
-
-        text = _convert_word_with_rich(src)
-
-        assert text is not None
-        # Image reference rewritten to the relocated directory
-        assert "](report_files/images/" in text
-        assert "](images/" not in text
-        # Prose containing "(images/" is left untouched
-        assert "(images/keep.png" in text
-        # Intermediate markdown removed; artifacts live under <stem>_files/
-        assert not (tmp_path / "report_files" / "report.md").exists()
-        assert (tmp_path / "report_files" / "images").is_dir()
-
-    def test_guard_rail_runtime_error_propagates(self, tmp_path):
-        """Deliberate RuntimeErrors (e.g. .doc without soffice) are not masked."""
-        from app.agentplatform.utils.file_conversion import _convert_word_with_rich
-
-        src = tmp_path / "legacy.doc"
-        src.write_bytes(b"\xd0\xcf\x11\xe0 fake OLE")
-
-        with (
-            patch("app.agentplatform.utils.docx_rich.is_available", return_value=True),
-            patch(
-                "app.agentplatform.utils.docx_rich.convert_docx",
-                side_effect=RuntimeError("LibreOffice (soffice) is required"),
-            ),
-        ):
-            with pytest.raises(RuntimeError, match="LibreOffice"):
-                _convert_word_with_rich(src)
 
 
 class TestConvertFileToMarkdown:
@@ -417,9 +344,9 @@ class TestConvertFileToMarkdown:
         pdf.write_bytes(b"%PDF-1.4 " + b"x" * 100)  # well under 1 MB
 
         with (
-            patch("app.agentplatform.utils.file_conversion._get_pdf_converter", return_value="auto"),
+            patch("deerflow.utils.file_conversion._get_pdf_converter", return_value="auto"),
             patch(
-                "app.agentplatform.utils.file_conversion._do_convert",
+                "deerflow.utils.file_conversion._do_convert",
                 return_value="# Small PDF",
             ) as mock_convert,
             patch("asyncio.to_thread") as mock_thread,
@@ -442,9 +369,9 @@ class TestConvertFileToMarkdown:
             return fn(*args, **kwargs)
 
         with (
-            patch("app.agentplatform.utils.file_conversion._get_pdf_converter", return_value="auto"),
+            patch("deerflow.utils.file_conversion._get_pdf_converter", return_value="auto"),
             patch(
-                "app.agentplatform.utils.file_conversion._do_convert",
+                "deerflow.utils.file_conversion._do_convert",
                 return_value="# Large PDF",
             ),
             patch("asyncio.to_thread", side_effect=fake_to_thread) as mock_thread,
@@ -461,9 +388,9 @@ class TestConvertFileToMarkdown:
         pdf.write_bytes(b"%PDF-1.4 fake")
 
         with (
-            patch("app.agentplatform.utils.file_conversion._get_pdf_converter", return_value="auto"),
+            patch("deerflow.utils.file_conversion._get_pdf_converter", return_value="auto"),
             patch(
-                "app.agentplatform.utils.file_conversion._do_convert",
+                "deerflow.utils.file_conversion._do_convert",
                 side_effect=RuntimeError("conversion failed"),
             ),
         ):
@@ -478,9 +405,9 @@ class TestConvertFileToMarkdown:
         chinese_content = "# 中文报告\n\n这是测试内容。"
 
         with (
-            patch("app.agentplatform.utils.file_conversion._get_pdf_converter", return_value="auto"),
+            patch("deerflow.utils.file_conversion._get_pdf_converter", return_value="auto"),
             patch(
-                "app.agentplatform.utils.file_conversion._do_convert",
+                "deerflow.utils.file_conversion._do_convert",
                 return_value=chinese_content,
             ),
         ):
@@ -594,6 +521,15 @@ class TestExtractOutline:
         assert len(outline) == 5
         assert not any(e.get("truncated") for e in outline)
 
+    def test_no_truncation_sentinel_at_exact_limit(self, tmp_path):
+        """A document with exactly MAX_OUTLINE_ENTRIES headings is not truncated."""
+        lines = [f"# Heading {i}" for i in range(MAX_OUTLINE_ENTRIES)]
+        md = tmp_path / "exact.md"
+        md.write_text("\n".join(lines), encoding="utf-8")
+        outline = extract_outline(md)
+        assert len(outline) == MAX_OUTLINE_ENTRIES
+        assert not any(e.get("truncated") for e in outline)
+
     def test_blank_lines_and_whitespace_ignored(self, tmp_path):
         """Blank lines between headings do not produce empty entries."""
         md = tmp_path / "spaced.md"
@@ -648,3 +584,92 @@ class TestExtractOutline:
         assert len(outline) == 1
         # Title must be clean — no ** ** artefacts
         assert outline[0]["title"] == "UNITED STATES SECURITIES AND EXCHANGE COMMISSION"
+
+
+# --- merged from test_file_conversion.py (subdir-only tests; root copy is the dedup base) ---
+class TestGetDocxConverter:
+    def test_reads_dict_backed_uploads_config(self):
+        cfg = MagicMock()
+        cfg.uploads = {"docx_converter": "markitdown"}
+
+        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
+            assert _get_docx_converter() == "markitdown"
+
+    def test_reads_attribute_backed_uploads_config(self):
+        cfg = MagicMock()
+        cfg.uploads = MagicMock(docx_converter="rich")
+
+        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
+            assert _get_docx_converter() == "rich"
+
+    def test_invalid_value_falls_back_to_auto(self):
+        cfg = MagicMock()
+        cfg.uploads = {"docx_converter": "not-a-real-converter"}
+
+        with patch("app.agentplatform.utils.file_conversion.get_app_config", return_value=cfg):
+            assert _get_docx_converter() == "auto"
+
+
+class TestConvertWordWithRich:
+    """Integration-style tests for the rich Word branch (real .docx fixtures)."""
+
+    @staticmethod
+    def _build_docx_with_image_and_prose(path):
+        """docx with an embedded image AND prose text containing '(images/'."""
+        import io
+        import struct
+        import zlib
+
+        from docx import Document
+        from docx.shared import Inches
+
+        # Minimal valid 1x1 red PNG
+        def chunk(tag, data):
+            payload = tag + data
+            return struct.pack(">I", len(data)) + payload + struct.pack(">I", zlib.crc32(payload))
+
+        ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+        png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00")) + chunk(b"IEND", b"")
+
+        doc = Document()
+        doc.add_paragraph("标题一", style="Heading 1")
+        para = doc.add_paragraph()
+        para.add_run().add_picture(io.BytesIO(png), width=Inches(0.5))
+        # Prose that literally contains "(images/" — must NOT be rewritten
+        doc.add_paragraph("参见路径 (images/keep.png 获取原图)")
+        doc.save(str(path))
+
+    def test_relocates_artifacts_and_rewrites_refs(self, tmp_path):
+        from app.agentplatform.utils.file_conversion import _convert_word_with_rich
+
+        src = tmp_path / "report.docx"
+        self._build_docx_with_image_and_prose(src)
+
+        text = _convert_word_with_rich(src)
+
+        assert text is not None
+        # Image reference rewritten to the relocated directory
+        assert "](report_files/images/" in text
+        assert "](images/" not in text
+        # Prose containing "(images/" is left untouched
+        assert "(images/keep.png" in text
+        # Intermediate markdown removed; artifacts live under <stem>_files/
+        assert not (tmp_path / "report_files" / "report.md").exists()
+        assert (tmp_path / "report_files" / "images").is_dir()
+
+    def test_guard_rail_runtime_error_propagates(self, tmp_path):
+        """Deliberate RuntimeErrors (e.g. .doc without soffice) are not masked."""
+        from app.agentplatform.utils.file_conversion import _convert_word_with_rich
+
+        src = tmp_path / "legacy.doc"
+        src.write_bytes(b"\xd0\xcf\x11\xe0 fake OLE")
+
+        with (
+            patch("app.agentplatform.utils.docx_rich.is_available", return_value=True),
+            patch(
+                "app.agentplatform.utils.docx_rich.convert_docx",
+                side_effect=RuntimeError("LibreOffice (soffice) is required"),
+            ),
+        ):
+            with pytest.raises(RuntimeError, match="LibreOffice"):
+                _convert_word_with_rich(src)

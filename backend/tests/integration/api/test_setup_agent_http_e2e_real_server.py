@@ -55,10 +55,10 @@ def _build_fake_create_chat_model(agent_name: str):
 
 @pytest.fixture
 def isolated_deer_flow_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Stand up an isolated iDeer data root + config under tmp_path.
+    """Stand up an isolated DeerFlow data root + config under tmp_path.
 
     - Sets ``DEER_FLOW_HOME`` so paths land under tmp_path, not the real
-      ``.ideer`` directory.
+      ``.deer-flow`` directory.
     - Stages a copy of the project's ``config.yaml`` (or ``config.example.yaml``
       on a fresh CI checkout where ``config.yaml`` is gitignored) and pins
       ``DEER_FLOW_CONFIG_PATH`` to it, so lifespan boot doesn't depend on the
@@ -67,7 +67,7 @@ def isolated_deer_flow_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
       ``$OPENAI_API_KEY`` that gets resolved at parse time; the LLM itself is
       mocked, so any non-empty value works.
     """
-    home = tmp_path / "ideer-home"
+    home = tmp_path / "deer-flow-home"
     home.mkdir()
     monkeypatch.setenv("DEER_FLOW_HOME", str(home))
     monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-key-not-used-because-llm-is-mocked")
@@ -129,6 +129,7 @@ def _reset_process_singletons(monkeypatch: pytest.MonkeyPatch) -> None:
     to call ``get_app_config()``/``get_paths()`` will surface the real
     incompatibility loudly.
     """
+    from app.gateway import deps as deps_module
     from deerflow.config import app_config as app_config_module
     from deerflow.config import paths as paths_module
     from deerflow.persistence import engine as engine_module
@@ -140,6 +141,8 @@ def _reset_process_singletons(monkeypatch: pytest.MonkeyPatch) -> None:
         (paths_module, "_paths_singleton"),
         (engine_module, "_engine"),
         (engine_module, "_session_factory"),
+        (deps_module, "_cached_local_provider"),
+        (deps_module, "_cached_repo"),
     ):
         monkeypatch.setattr(module, attr, None, raising=False)
 
@@ -153,7 +156,7 @@ def isolated_app(isolated_deer_flow_home: Path, monkeypatch: pytest.MonkeyPatch)
     """
     _reset_process_singletons(monkeypatch)
 
-    # Re-resolve the config from the test-only IDEER_HOME and pin its
+    # Re-resolve the config from the test-only DEER_FLOW_HOME and pin its
     # sqlite path into tmp_path so the lifespan-time engine init lands there.
     from deerflow.config import app_config as app_config_module
 
@@ -306,17 +309,11 @@ def test_real_http_create_agent_lands_in_authenticated_user_dir(
         assert "event:" in transcript, f"no SSE events in response: {transcript[:500]!r}"
 
         # --- 4. Verify filesystem outcome ---
-        # The setup_agent tool runs inside the background asyncio task spawned
-        # by start_run; SSE-drain typically waits for it, but we add a bounded
-        # poll to be robust against scheduler jitter.
         soul_files = sorted(str(p.relative_to(isolated_deer_flow_home)) for p in isolated_deer_flow_home.rglob("SOUL.md"))
         assert _wait_for_file(Path(soul_files[0]) if soul_files else isolated_deer_flow_home / "resources", timeout=15.0) is not None or soul_files, (
-            f"SOUL.md did not appear under resources/agents/<id>/versions/. tmp tree: {soul_files}. SSE transcript tail: {transcript[-1000:]!r}"
+            f"SOUL.md did not appear under resources/agents/<id>/versions/. SSE transcript tail: {transcript[-1000:]!r}"
         )
 
-        # The smoking-gun assertion (canonical semantics): the agent must be a
-        # catalog resource owned by the authenticated user, with the published
-        # SOUL file on disk — never a per-user legacy directory, never default/.
         import asyncio
 
         from sqlalchemy import select
@@ -332,13 +329,8 @@ def test_real_http_create_agent_lands_in_authenticated_user_dir(
 
         owner_id, resource_id, latest_version = asyncio.run(_fetch_catalog_agent())
         assert owner_id == auth_uid, f"REGRESSION: agent owned by {owner_id!r}, expected authenticated user {auth_uid!r}"
-
         published_dir = isolated_deer_flow_home / "resources" / "agents" / resource_id / "versions" / str(latest_version)
-        assert (published_dir / "SOUL.md").exists(), f"published SOUL missing at {published_dir / 'SOUL.md'}. tmp tree: {sorted(str(p.relative_to(isolated_deer_flow_home)) for p in isolated_deer_flow_home.rglob('SOUL.md'))}"
-        soul_text = (published_dir / "SOUL.md").read_text()
-        assert agent_name in soul_text, f"unexpected SOUL content: {soul_text!r}"
-
-        legacy_dir = isolated_deer_flow_home / "users" / auth_uid / "agents" / agent_name
-        assert not legacy_dir.exists(), f"REGRESSION: legacy per-user dir created at {legacy_dir}"
-        default_dir = isolated_deer_flow_home / "users" / "default" / "agents" / agent_name
-        assert not default_dir.exists(), f"REGRESSION: agent landed under users/default/{agent_name}"
+        assert (published_dir / "SOUL.md").exists()
+        assert agent_name in (published_dir / "SOUL.md").read_text()
+        assert not (isolated_deer_flow_home / "users" / auth_uid / "agents" / agent_name).exists()
+        assert not (isolated_deer_flow_home / "users" / "default" / "agents" / agent_name).exists()
