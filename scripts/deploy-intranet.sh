@@ -827,25 +827,39 @@ compose_update_args() {
 
 # POST a JSON body and print the HTTP status code.  Uses curl when available
 # and falls back to python3 so machines without curl can still bootstrap.
+json_escape() {
+    # Escape a string for inclusion in a JSON document (08-M11): the super
+    # admin initialize payload was previously interpolated raw, so a password
+    # containing a double quote or backslash produced an invalid request body
+    # and an opaque gateway error.
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    printf '%s' "$value"
+}
+
 http_post_json() {
     local url="$1"
     local json="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl -sS -o /dev/null -w '%{http_code}' -X POST "$url" \
-            -H 'Content-Type: application/json' --data "$json"
+        # The body flows through stdin (--data @-): passing it as a curl
+        # argument exposed the super admin password in the process list (ps)
+        # for the duration of the request (08-M11).
+        printf '%s' "$json" | curl -sS -o /dev/null -w '%{http_code}' -X POST "$url" \
+            -H 'Content-Type: application/json' --data @-
         return 0
     fi
     if command -v python3 >/dev/null 2>&1; then
         python3 -c '
 import json, sys, urllib.request
-url, payload = sys.argv[1], sys.argv[2].encode()
+url, payload = sys.argv[1], sys.stdin.buffer.read()
 req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
 try:
     with urllib.request.urlopen(req, timeout=15):
         print(200)
 except urllib.error.HTTPError as exc:
     print(exc.code)
-' "$url" "$json"
+' "$url" <<<"$json"
         return 0
     fi
     die "curl or python3 is required to initialize the super admin"
@@ -881,7 +895,7 @@ initialize_super_admin() {
     local status
     status="$(http_post_json \
         "http://127.0.0.1:${port}/api/v1/auth/initialize" \
-        "{\"email\":\"${email}\",\"password\":\"${password}\"}")" || die "failed to reach the gateway for admin initialization"
+        "{\"email\":\"$(json_escape "$email")\",\"password\":\"$(json_escape "$password")\"}")" || die "failed to reach the gateway for admin initialization"
     case "$status" in
         201)
             log "super admin account created"

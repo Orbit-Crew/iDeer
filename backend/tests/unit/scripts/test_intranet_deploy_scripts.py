@@ -414,7 +414,8 @@ def test_deploy_script_ships_no_plaintext_default_admin_password():
 def _install_fake_curl(env: dict[str, str], tmp_path: Path, status_code: str) -> Path:
     """Add a fake curl to the fake-docker bin dir.  Health checks succeed; the
     /initialize POST body is appended to a log file and `status_code` is
-    reported as the HTTP status."""
+    reported as the HTTP status.  Supports ``--data @-`` (body from stdin),
+    which is how deploy-intranet.sh keeps the payload out of argv (08-M11)."""
     bin_dir = Path(env["PATH"].split(":", 1)[0])
     log_path = tmp_path / "curl-calls.log"
     env["FAKE_CURL_LOG"] = str(log_path)
@@ -436,6 +437,9 @@ while [ "$#" -gt 0 ]; do
     *) shift ;;
   esac
 done
+if [ "$body" = "@-" ]; then
+  body="$(cat)"
+fi
 if [ -n "$body" ]; then
   printf '%s\n' "$body" >> "${FAKE_CURL_LOG:?}"
 fi
@@ -512,6 +516,29 @@ def test_up_uses_explicit_admin_password_without_persisting_or_displaying(tmp_pa
     assert posted[0]["password"] == "operator-supplied-strong-pass"
     assert not (bundle_root / "runtime" / "data" / ".super-admin-password").exists()
     assert "operator-supplied-strong-pass" not in proc.stdout
+
+
+def test_up_initialize_body_survives_quotes_and_backslashes_in_password(tmp_path: Path):
+    """08-M11: the initialize payload must stay valid JSON for any password.
+
+    The body was previously interpolated raw into the JSON document, so an
+    operator password containing a double quote or backslash produced an
+    invalid request body and an opaque gateway error.  It must round-trip
+    exactly, and travel via stdin (``--data @-``) rather than argv so it does
+    not appear in the process list.
+    """
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    password = 'he said "hi"\\bye'
+    env["IDEER_ADMIN_PASSWORD"] = password
+    log_path = _install_fake_curl(env, tmp_path, status_code="201")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert "super admin account created" in proc.stdout, proc.stderr
+    posted = _posted_initialize_bodies(log_path)
+    assert len(posted) == 1
+    assert posted[0] == {"email": "super_admin@test.com", "password": password}
 
 
 def test_up_reads_env_values_without_executing_the_env_file(tmp_path: Path):
