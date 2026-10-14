@@ -1337,3 +1337,43 @@ exit 99
     assert "docker-compose.intranet.yaml" in aio_invocations
     assert "docker-compose.dood.yaml" in aio_invocations
     assert "sandbox mode: aio" in proc.stdout
+
+
+def test_package_exclude_skills_warning_fires_for_preinstall_conflict(tmp_path: Path, monkeypatch):
+    """08-L1: the preinstall/--exclude-skills conflict warning must be reachable.
+
+    EXCLUDED_SKILLS was only split from --exclude-skills during the pack phase
+    (step 6/7), so the conflict warning in the preinstall validation always
+    tested an empty array and never fired.
+    """
+    skill = "officecli"
+    bundled = (REPO_ROOT / "bundled-skills.txt").read_text(encoding="utf-8")
+    assert re.search(rf"^\s*{re.escape(skill)}\b", bundled, re.MULTILINE), "fixture skill must be on the preinstall list"
+    assert (REPO_ROOT / "resources" / "skills" / skill).is_dir()
+
+    output_dir = tmp_path / "bundle"
+    env = _env_with_fake_docker(tmp_path)
+
+    proc = subprocess.run(
+        [
+            "bash",
+            str(PACKAGE_SCRIPT),
+            "--version",
+            "test",
+            "--output-dir",
+            str(output_dir),
+            "--exclude-skills",
+            skill,
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert f"warning: skill '{skill}' is both preinstall-listed and --exclude-skills; exclusion wins" in proc.stdout
+    with tarfile.open(output_dir / "ideer-source-test.tar.gz", "r:gz") as tar:
+        names = set(tar.getnames())
+    assert f"resources/skills/{skill}" not in names, "the excluded skill must not enter the source archive"

@@ -151,6 +151,13 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+# Split --exclude-skills once, before any consumer runs: the preinstall
+# conflict warning reads the array during validation, so filling it during
+# the pack phase made that warning unreachable (08-L1).
+if [ -n "$EXCLUDE_SKILLS" ]; then
+    IFS=',' read -r -a EXCLUDED_SKILLS <<< "$EXCLUDE_SKILLS"
+fi
+
 if [ -z "$VERSION" ]; then
     if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         VERSION="$(date +%Y%m%d)-$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
@@ -421,8 +428,8 @@ fi
 
 log "[6/7] packing source archive..."
 TAR_EXCLUDES=()
-if [ -n "$EXCLUDE_SKILLS" ]; then
-    IFS=',' read -r -a EXCLUDED_SKILLS <<< "$EXCLUDE_SKILLS"
+# EXCLUDED_SKILLS was split right after argument parsing (08-L1); reuse it here.
+if [ "${#EXCLUDED_SKILLS[@]}" -gt 0 ]; then
     for skill in "${EXCLUDED_SKILLS[@]}"; do
         [ -n "$skill" ] || continue
         TAR_EXCLUDES+=(--exclude="resources/skills/${skill}")
