@@ -147,6 +147,14 @@ def test_view_image_sanitizes_read_errors(tmp_path: Path, monkeypatch: pytest.Mo
     def _open(*args, **kwargs):
         raise PermissionError(f"permission denied: {image_path}")
 
+    # Pre-warm mimetypes before hijacking builtins.open: the first
+    # guess_type() in a worker lazily runs mimetypes.init(), which opens the
+    # system mime tables and would surface the fake PermissionError from
+    # stdlib internals instead of the sanitized tool error (shard-order flake).
+    import mimetypes
+
+    mimetypes.guess_type("sample.png")
+
     monkeypatch.setattr("builtins.open", _open)
 
     result = view_image_tool.func(
