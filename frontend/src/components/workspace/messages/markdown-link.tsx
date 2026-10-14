@@ -5,7 +5,9 @@ import { cn } from "@/lib/utils";
 
 import { CitationLink, extractReactNodeText } from "../citations/citation-link";
 
-export { isSafeHref } from "./is-safe-href";
+import { isSafeHref } from "./is-safe-href";
+
+export { isSafeHref };
 
 function isExternalUrl(href: string | undefined): boolean {
   if (typeof href !== "string") {
