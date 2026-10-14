@@ -23,7 +23,9 @@ async def create_auth_user_with_rbac(
     oauth_id: str | None = None,
 ) -> User:
     """Create matching rows in ``users`` and ``users_ext`` in one transaction."""
-    password_hash = await hash_password_async(password)
+    # OAuth-provisioned users carry no local password; guard like
+    # local_provider.create_user does instead of hashing None.
+    password_hash = await hash_password_async(password) if password else None
     user = User(
         email=email,
         password_hash=password_hash,
