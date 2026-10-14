@@ -152,6 +152,20 @@ exit 0
     assert "down" in docker_calls
 
 
+def test_pre_commit_validation_script_does_not_reference_archived_validators() -> None:
+    """08-L12: the script header must not claim to call the archived validator skills.
+
+    AGENTS.md: frontend-validator / backend-validator are historical proposals
+    and not callable skills; the script actually runs pnpm typecheck/lint/format
+    and ruff.
+    """
+    script = (REPO_ROOT / "scripts" / "pre-commit-validation.sh").read_text(encoding="utf-8")
+    assert "frontend-validator" not in script
+    assert "backend-validator" not in script
+    assert "pnpm typecheck" in script
+    assert "ruff check" in script
+
+
 def test_config_upgrade_current_version_prints_no_upgrade_banner(tmp_path: Path) -> None:
     """08-L10: an already-current config must not also print 'version X -> X'."""
     config = tmp_path / "config.yaml"

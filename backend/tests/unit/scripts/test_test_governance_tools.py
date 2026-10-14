@@ -11,6 +11,7 @@ from test_inventory import (
     _matching_lanes,
     _node_lanes,
     _pytest_collected_nodes,
+    _typescript_inventory,
     build_inventory,
     compare_inventory,
 )
@@ -110,6 +111,24 @@ def test_inventory_marker_probe_ignores_mid_line_at_words(tmp_path: Path) -> Non
     decorated.write_text("@requires_llm\ndef test_llm(): pass\n", encoding="utf-8")
     assert _markers(decorated) == ["requires_llm"]
     assert _lanes(decorated) == ["backend-llm"]
+
+
+def test_inventory_typescript_names_with_embedded_quotes(tmp_path: Path) -> None:
+    """08-L11: TS test names are extracted by matching the opening quote character.
+
+    The old pick-a-quote-then-split logic truncated a name that itself
+    contains a double quote (display-only tests list, but still wrong).
+    """
+    path = tmp_path / "frontend/tests/unit/sample.test.ts"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "describe('say \"hi\" there', () => {});\ntest('single', () => {});\n",
+        encoding="utf-8",
+    )
+
+    tests, _imports = _typescript_inventory(path)
+
+    assert tests == ['say "hi" there', "single"], tests
 
 
 def test_inventory_survives_broken_test_files_with_parse_error_rows(tmp_path: Path) -> None:

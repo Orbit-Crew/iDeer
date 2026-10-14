@@ -69,6 +69,19 @@ def test_compose_files_default_the_gate_closed_for_prod_and_open_for_dev() -> No
         assert declared == f"${{IDEER_EXPOSE_API_DOCS:-{expected_default}}}", f"{variant} nginx must default IDEER_EXPOSE_API_DOCS to {expected_default}; got {declared!r}"
 
 
+def test_every_container_nginx_stack_carries_the_ipv6_fallback() -> None:
+    """08-L8: prod/intranet nginx commands need the dev stack's no-IPv6 sed fallback.
+
+    Without it, nginx on an IPv6-disabled kernel fails to bind [::]:2026 and
+    the container restart-loops; only docker-compose-dev.yaml had the guard.
+    """
+    for name in ("docker-compose.yaml", "docker-compose-dev.yaml", "docker-compose.intranet.yaml"):
+        compose = yaml.safe_load((REPO_ROOT / "docker" / name).read_text(encoding="utf-8"))
+        command = _nginx_command_text(compose["services"]["nginx"])
+        assert "/proc/net/if_inet6" in command, f"{name} nginx command must keep the IPv6-disabled-host fallback that strips the 'listen [::]:2026' line (08-L8)"
+        assert "\\[::\\]:2026" in command, f"{name} must reference the exact [::]:2026 listen pattern"
+
+
 def test_rendered_template_resolves_the_gate_for_both_settings() -> None:
     """Substituting the rendered value must produce a concrete map for 'false' and 'true'."""
     config = NGINX_TEMPLATE.read_text(encoding="utf-8")

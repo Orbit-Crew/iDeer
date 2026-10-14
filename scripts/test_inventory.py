@@ -100,11 +100,11 @@ def _typescript_inventory(path: Path) -> tuple[list[str], list[str]]:
     imports: set[str] = set()
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
-        if stripped.startswith(("test(", "test.describe(", "describe(")):
-            quote = '"' if '"' in stripped else "'"
-            parts = stripped.split(quote)
-            if len(parts) > 1:
-                tests.append(parts[1])
+        # 08-L11: extract the name by matching the opening quote character, so
+        # a name that itself contains a double quote no longer truncates.
+        name_match = re.match(r"(?:test\.describe|describe|test)\(\s*([\"'`])(.+?)\1", stripped)
+        if name_match:
+            tests.append(name_match.group(2))
         if stripped.startswith("import ") and " from " in stripped:
             module = stripped.rsplit(" from ", 1)[1].strip().strip(";").strip("'\"")
             if module.startswith(("@/", "./src", "../../src", "../src")):
