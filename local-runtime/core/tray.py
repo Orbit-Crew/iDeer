@@ -20,6 +20,7 @@ import asyncio
 import base64
 import json
 import threading
+import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,6 +58,10 @@ from .transport import ConsentDecisionError, LocalRuntimeClient, RePairRequired
 RECONNECT_BACKOFF_SECONDS = 1.0
 MAX_RECONNECT_BACKOFF_SECONDS = 30.0
 READY_TIMEOUT_SECONDS = 5.0
+# status() is polled every second by the tray UI; walking the full audit
+# hash chain per poll is O(history) on a display field (05-M7), so the
+# integrity verdict is refreshed at most once per interval.
+AUDIT_VERIFY_INTERVAL_SECONDS = 30.0
 
 
 class TrayError(RuntimeError):
@@ -417,6 +422,7 @@ class TrayController:
         # single question with one answer per call.
         self._lifecycle = threading.Lock()
         self._last_audit_seq = 0
+        self._integrity_cache: tuple[float, AuditIntegrity] | None = None
 
     def _remember_session_id(self, session_id: str) -> None:
         self.settings.session_id = session_id
@@ -620,7 +626,7 @@ class TrayController:
                 (name, supervisor.state_of(name)) for name in supervisor.server_names()
             )
         recent = self.audit.recent(limit=1, kind=AuditKind.EXECUTION)
-        integrity = self.audit.verify()
+        integrity = self._verified_integrity()
         return TrayStatus(
             connection=connection,
             server_url=self.settings.server_url,
@@ -641,6 +647,19 @@ class TrayController:
             audit_entries=integrity.entries,
             audit_integrity="ok" if integrity.ok else integrity.problem or "broken",
         )
+
+    def _verified_integrity(self) -> AuditIntegrity:
+        """The audit-chain verdict, refreshed at most once per interval (05-M7).
+
+        A rewritten or spliced row surfaces within the interval instead of
+        instantly; record()/clear() semantics are unchanged.
+        """
+        now = time.monotonic()
+        cached = self._integrity_cache
+        if cached is None or now - cached[0] >= AUDIT_VERIFY_INTERVAL_SECONDS:
+            cached = (now, self.audit.verify())
+            self._integrity_cache = cached
+        return cached[1]
 
     # --- controls --------------------------------------------------------
 
