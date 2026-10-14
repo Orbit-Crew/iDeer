@@ -7,7 +7,7 @@ from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from core.audit import AuditKind
-from core.consent import request_hash
+from core.consent import ConsentExchange, ConsentStore, request_hash
 from core.file_service import LocalFileService
 from core.files import LocalFileStore, RootConfig
 from core.protocol import MessageType, public_key_text, sign_envelope, verify_envelope
@@ -433,3 +433,111 @@ def test_disconnecting_while_a_local_prompt_is_open_fails_that_request_closed(
     ]
     assert recent[0].detail["reason"] == "the local runtime disconnected"
     assert recent[0].capability == "local.files.write"
+
+
+def test_expired_relayed_consent_is_denied_and_not_leaked(tmp_path: Path) -> None:
+    """05-M9: relayed consents the server never answers must expire."""
+    import time as time_module
+
+    from core.consent_coord import _RelayedConsent
+
+    client = LocalRuntimeClient(
+        server_url="ws://unused",
+        device_id="device-1",
+        session_token="token",
+        private_key=Ed25519PrivateKey.generate(),
+        session_id="session-1",
+        file_service=LocalFileService(
+            LocalFileStore([RootConfig("/projects", tmp_path)])
+        ),
+    )
+    client.connection = FakeConnection()
+    client.consent_coord._relayed_consents["task-stale"] = _RelayedConsent(
+        ConsentExchange(ConsentStore()).create_request(
+            "local.files.write",
+            {
+                "operation": "local.files.write",
+                "path": "/projects/stale.txt",
+                "content": "stale",
+                "run_id": "run-1",
+            },
+        ),
+        time_module.monotonic() - 10_000,
+    )
+
+    expired = asyncio.run(client.expire_consents())
+
+    assert "task-stale" in expired
+    assert "task-stale" not in client.consent_coord._relayed_consents
+    assert client.consent_coord.pending_consents() == ()
+    denial = json.loads(client.connection.sent[-1])
+    assert denial["type"] == MessageType.ERROR
+    assert denial["payload"]["error_code"] == "DENIED"
+
+
+def test_cancel_marker_is_consumed_once_the_late_decision_arrives(
+    tmp_path: Path,
+) -> None:
+    """05-M9: the cancel marker set may not grow without bound."""
+    server_key = Ed25519PrivateKey.generate()
+    client = LocalRuntimeClient(
+        server_url="ws://unused",
+        device_id="device-1",
+        session_token="token",
+        private_key=Ed25519PrivateKey.generate(),
+        session_id="session-1",
+        file_service=LocalFileService(
+            LocalFileStore([RootConfig("/projects", tmp_path)])
+        ),
+    )
+    client.connection = FakeConnection()
+    payload = {
+        "operation": "local.files.write",
+        "path": "/projects/b.txt",
+        "content": "must-not-write",
+        "run_id": "run-1",
+    }
+    task = sign_envelope(
+        private_key=server_key,
+        message_type=MessageType.TASK,
+        device_id="device-1",
+        session_id="session-1",
+        task_id="task-cancel-marks",
+        payload=payload,
+    )
+    verified_task = verify_envelope(
+        task,
+        server_public_key=public_key_text(server_key),
+        expected_device_id="device-1",
+        expected_session_id="session-1",
+    )
+
+    async def cancel_then_decide() -> None:
+        await client._handle_task(verified_task)
+        request = client._relayed_consents["task-cancel-marks"].request
+        await client._handle_task_cancel("task-cancel-marks")
+        assert "task-cancel-marks" in client._cancelled_tasks
+        decision = sign_envelope(
+            private_key=server_key,
+            message_type=MessageType.CONSENT_DECISION,
+            device_id="device-1",
+            session_id="session-1",
+            task_id="task-cancel-marks",
+            payload={
+                "approved": True,
+                "actor_id": "alice",
+                "request_hash": request.request_hash,
+            },
+        )
+        await client._handle_consent_decision(
+            verify_envelope(
+                decision,
+                server_public_key=public_key_text(server_key),
+                expected_device_id="device-1",
+                expected_session_id="session-1",
+            )
+        )
+        assert "task-cancel-marks" not in client._cancelled_tasks
+
+    asyncio.run(cancel_then_decide())
+    assert not (tmp_path / "b.txt").exists()

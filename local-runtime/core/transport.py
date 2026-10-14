@@ -371,6 +371,7 @@ class LocalRuntimeClient:
         # the broker's HELLO so UI status cannot race the server acknowledgement.
         self.connected = True
         assert self.connection is not None
+        expiry_task = asyncio.create_task(self._expire_consents_periodically())
         try:
             server_hello = json.loads(await self.connection.recv())
             pinned_before_hello = bool(self.server_public_key)
@@ -411,6 +412,8 @@ class LocalRuntimeClient:
                 ) from exc
             raise
         finally:
+            expiry_task.cancel()
+            await asyncio.gather(expiry_task, return_exceptions=True)
             # Reached on every exit: a clean close, an aborted socket and a
             # verification failure all end here. Without this the next run()
             # finds self.connection still set and "sends" hello to a socket
@@ -448,6 +451,9 @@ class LocalRuntimeClient:
 
     def _task_finished(self, task_id: str, task: asyncio.Task[None]) -> None:
         self._running_tasks.pop(task_id, None)
+        # The cancel marker is only meaningful while the task can still run;
+        # a finished task must not leave an entry behind (05-M9).
+        self._cancelled_tasks.discard(task_id)
         if not task.cancelled():
             task.exception()
 
@@ -800,9 +806,19 @@ class LocalRuntimeClient:
             task_id, approved=approved, actor_id=actor_id, always=always
         )
 
-    def expire_consents(self, *, now: float | None = None) -> tuple[str, ...]:
+    async def expire_consents(self, *, now: float | None = None) -> tuple[str, ...]:
         """Auto-deny prompts nobody answered, so nothing hangs indefinitely."""
-        return self.consent_coord.expire_consents(now=now)
+        return await self.consent_coord.expire_consents(now=now)
+
+    async def _expire_consents_periodically(self) -> None:
+        """Drive consent expiry while the session is live (05-M9).
+
+        Without a production caller, prompts the server never answered stayed
+        in ``_relayed_consents`` (and in pending_consents()) forever.
+        """
+        while True:
+            await asyncio.sleep(max(CONSENT_TIMEOUT_SECONDS / 4, 1.0))
+            await self.consent_coord.expire_consents()
 
     async def _request_consent(
         self, envelope: Any, payload: dict[str, Any], store: ConsentStore
