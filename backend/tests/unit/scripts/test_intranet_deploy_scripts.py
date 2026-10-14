@@ -514,6 +514,91 @@ def test_up_uses_explicit_admin_password_without_persisting_or_displaying(tmp_pa
     assert "operator-supplied-strong-pass" not in proc.stdout
 
 
+def test_up_reads_env_values_without_executing_the_env_file(tmp_path: Path):
+    """08-M2: env.intranet is Docker dotenv syntax and must never be sourced.
+
+    The file carries secrets and lives in an operator-writable bundle
+    directory. The deploy script must extract the few keys it needs
+    line-by-line (the way deploy.sh reads UV_EXTRAS) instead of `. "$ENV_FILE"`:
+    a command-substitution payload must not execute, an unbound variable
+    reference must not abort the script under `set -u`, and real assignments
+    (PORT) must still drive the health checks and admin initialization.
+    """
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    bin_dir = Path(env["PATH"].split(":", 1)[0])
+    url_log = tmp_path / "curl-urls.log"
+    env["FAKE_URL_LOG"] = str(url_log)
+    env["IDEER_ADMIN_EMAIL"] = "super_admin@test.com"
+    env["IDEER_ADMIN_PASSWORD"] = "operator-supplied-strong-pass"
+    _write_executable(
+        bin_dir / "curl",
+        r"""#!/usr/bin/env sh
+set -eu
+url=""
+body=""
+print_code=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -o) shift 2 ;;
+    -w) print_code=1; shift 2 ;;
+    -X|-H) shift 2 ;;
+    --data) body="$2"; shift 2 ;;
+    -*) shift ;;
+    *) url="$1"; shift ;;
+  esac
+done
+if [ -n "$url" ]; then
+  printf '%s\n' "$url" >> "${FAKE_URL_LOG:?}"
+fi
+if [ -n "$print_code" ] && [ "$print_code" -eq 1 ]; then
+  printf '%s' "201"
+fi
+exit 0
+""",
+    )
+
+    marker = tmp_path / "payload-ran"
+    (bundle_root / "env.intranet").write_text(
+        f"PORT=2999\nIDEER_PAYLOAD=$(touch {marker})\nIDEER_UNBOUND=$IDEER_UNDEFINED_VARIABLE_UNDER_SET_U\n",
+        encoding="utf-8",
+    )
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    # The pipeline consumed the real assignments: verify_services health-checked
+    # and the admin initialize POST both targeted the env-file PORT.
+    assert "initializing super admin account (super_admin@test.com)..." in proc.stdout, proc.stderr
+    urls = url_log.read_text(encoding="utf-8").splitlines()
+    assert "http://127.0.0.1:2999/health" in urls, urls
+    assert "http://127.0.0.1:2999/api/v1/auth/setup-status" in urls, urls
+    assert "http://127.0.0.1:2999/api/v1/auth/initialize" in urls, urls
+    # ...while the payload lines stayed inert data:
+    assert not marker.exists(), "the env file was sourced: the command-substitution payload executed"
+    assert "unbound variable" not in proc.stderr, "the env file was sourced: `set -u` aborted on its unbound reference"
+
+
+def test_failed_extraction_does_not_mint_the_version_marker(tmp_path: Path):
+    """08-M3: a failed source extraction must fail loudly, not mint the marker.
+
+    up/restart call prepare_bundle inside ``if !``, which suppresses errexit
+    for the whole call tree, so a failed ``tar`` used to be swallowed and the
+    ``.bundle-version`` marker was still written — later invocations then
+    skipped re-extraction (marker matches) and kept deploying the broken or
+    empty source tree until an operator removed source/ by hand.
+    """
+    bundle_root = _make_bundle(tmp_path)
+    (bundle_root / "ideer-source-test.tar.gz").write_bytes(b"not-a-gzip-archive")
+    env = _env_with_fake_docker(tmp_path)
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert proc.returncode != 0
+    marker = bundle_root / "source" / ".bundle-version"
+    assert not marker.exists(), "extract_source wrote the version marker although the source tar failed; the lying marker makes later runs skip re-extracting the broken tree (08-M3)"
+    assert "failed to extract source archive" in proc.stderr, proc.stderr
+
+
 def test_prepare_reuses_persisted_auth_secrets_when_env_file_is_recreated(tmp_path: Path):
     bundle_root = _make_bundle(tmp_path)
     env = _env_with_fake_docker(tmp_path)

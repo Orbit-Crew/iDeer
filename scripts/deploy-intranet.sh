@@ -256,6 +256,22 @@ SOURCE_DELETED="$BUNDLE_ROOT/source-deletions.txt"
 BUNDLE_MANIFEST_TOOL="$BUNDLE_ROOT/intranet_bundle_manifest.py"
 [ -f "$BUNDLE_MANIFEST_TOOL" ] || BUNDLE_MANIFEST_TOOL="$SOURCE_DIR/scripts/intranet_bundle_manifest.py"
 
+# Read a single KEY=value assignment out of the intranet env file without
+# sourcing it (08-M2). The file carries secrets and lives in an
+# operator-writable bundle directory, so arbitrary shell expressions in it
+# must never be executed (a `FOO=$(rm -rf ...)` line would run at source
+# time, and an unbound variable reference would abort the script under
+# `set -u`). Mirrors the line-based extraction deploy.sh uses for UV_EXTRAS;
+# compose keeps consuming the file through `--env-file` (dotenv syntax).
+env_value() {
+    local key="$1"
+    local default="${2:-}"
+    local line=""
+    [ -f "$ENV_FILE" ] || { printf '%s' "$default"; return 0; }
+    line="$(grep -E "^${key}=" "$ENV_FILE" | tail -1 | cut -d= -f2- || true)"
+    printf '%s' "${line:-$default}"
+}
+
 validate_bundle_platform() {
     [ -f "$BUNDLE_MANIFEST" ] || return 0
     local bundle_platform docker_arch expected
@@ -315,8 +331,18 @@ PY
     log "extracting source tar..."
     run_cmd rm -rf "$SOURCE_DIR"
     run_cmd mkdir -p "$SOURCE_DIR"
-    run_cmd tar -xzf "$SOURCE_TAR" -C "$SOURCE_DIR"
-    run_cmd printf '%s\n' "$VERSION" > "$marker"
+    # up/restart invoke prepare_bundle inside `if !`, which suppresses errexit
+    # for this whole call tree (08-M3): a plain `run_cmd tar` failure would be
+    # swallowed and the marker below would still be written, making later
+    # invocations skip re-extracting the broken tree. Fail explicitly instead,
+    # and mint the version marker only after the archive fully extracted.
+    if [ "$DRY_RUN" -eq 1 ]; then
+        log "[dry-run] tar -xzf $SOURCE_TAR -C $SOURCE_DIR"
+        log "[dry-run] write $marker = $VERSION"
+    else
+        tar -xzf "$SOURCE_TAR" -C "$SOURCE_DIR" || die "failed to extract source archive: $SOURCE_TAR"
+        printf '%s\n' "$VERSION" > "$marker"
+    fi
     if [ -f "$BUNDLE_MANIFEST" ]; then
         run_cmd cp "$BUNDLE_MANIFEST" "$SOURCE_DIR/.bundle-manifest.json"
     fi
@@ -460,13 +486,14 @@ load_or_create_secret_file() {
 validate_runtime() {
     require_file "$ENV_FILE"
 
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-
-    local config_path="${IDEER_CONFIG_PATH:-$RUNTIME_DIR/config.yaml}"
-    local backend_env_path="${IDEER_ENV_FILE:-$RUNTIME_DIR/.env}"
-    local frontend_env_path="${IDEER_FRONTEND_ENV_FILE:-$RUNTIME_DIR/frontend.env}"
-    local extensions_config_path="${IDEER_EXTENSIONS_CONFIG_PATH:-$RUNTIME_DIR/extensions_config.json}"
+    local config_path
+    config_path="$(env_value IDEER_CONFIG_PATH "$RUNTIME_DIR/config.yaml")"
+    local backend_env_path
+    backend_env_path="$(env_value IDEER_ENV_FILE "$RUNTIME_DIR/.env")"
+    local frontend_env_path
+    frontend_env_path="$(env_value IDEER_FRONTEND_ENV_FILE "$RUNTIME_DIR/frontend.env")"
+    local extensions_config_path
+    extensions_config_path="$(env_value IDEER_EXTENSIONS_CONFIG_PATH "$RUNTIME_DIR/extensions_config.json")"
 
     require_file "$config_path"
     require_file "$backend_env_path"
@@ -670,12 +697,9 @@ load_images() {
 # nginx:alpine and ideer-sandbox:* are never touched (the sandbox tag shares
 # its image with every version, so removing old tags frees no space).
 prune_old_images() {
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-
     local current_version=""
     local img
-    img="$(grep -E '^IDEER_GATEWAY_IMAGE=' "$ENV_FILE" | tail -1 | cut -d= -f2- || true)"
+    img="$(env_value IDEER_GATEWAY_IMAGE)"
     case "$img" in
         ideer-gateway:*) current_version="${img#ideer-gateway:}" ;;
     esac
@@ -733,7 +757,8 @@ prune_old_images() {
 # Mirror scripts/deploy.sh detect_sandbox_mode: the runtime config decides
 # whether the opt-in DooD overlay is appended to compose invocations.
 detect_sandbox_mode() {
-    local config_path="${IDEER_CONFIG_PATH:-$RUNTIME_DIR/config.yaml}"
+    local config_path
+    config_path="$(env_value IDEER_CONFIG_PATH "$RUNTIME_DIR/config.yaml")"
     local sandbox_use=""
     local provisioner_url=""
 
@@ -849,9 +874,8 @@ initialize_super_admin() {
         fi
     fi
 
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    local port="${PORT:-2026}"
+    local port
+    port="$(env_value PORT 2026)"
 
     log "initializing super admin account ($email)..."
     local status
@@ -880,12 +904,11 @@ initialize_super_admin() {
 # Resolve the active super admin user id from the runtime database.  Prints
 # nothing when no admin exists yet (e.g. first boot before initialization).
 find_super_admin_id() {
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
     # The DeerFlow convergence renamed the runtime DB file (ideer.db ->
     # deerflow.db); prefer the new name and fall back to the legacy one so
     # pre-convergence bundles still upgrade cleanly.
-    local base="${IDEER_HOME:-$RUNTIME_DIR/data}/data"
+    local base
+    base="$(env_value IDEER_HOME "$RUNTIME_DIR/data")/data"
     local db="$base/deerflow.db"
     [ -f "$db" ] || db="$base/ideer.db"
     [ -f "$db" ] || return 0
@@ -913,8 +936,6 @@ install_admin_bundled_resources() {
     }
 
     require_file "$ENV_FILE"
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
 
     # The env file is the source of truth for the data dir: only trust the
     # IDEER_HOME it explicitly declares.  A pre-existing env file (e.g. from a
@@ -922,9 +943,10 @@ install_admin_bundled_resources() {
     # IDEER_HOME from the surrounding shell, which would relocate the agents.
     local runtime_home="$RUNTIME_DIR/data"
     if grep -qE '^IDEER_HOME=' "$ENV_FILE"; then
-        runtime_home="${IDEER_HOME:-$runtime_home}"
+        runtime_home="$(env_value IDEER_HOME "$runtime_home")"
     fi
-    local config_path="${IDEER_CONFIG_PATH:-$RUNTIME_DIR/config.yaml}"
+    local config_path
+    config_path="$(env_value IDEER_CONFIG_PATH "$RUNTIME_DIR/config.yaml")"
     require_file "$config_path"
 
     local admin_id
@@ -995,11 +1017,11 @@ wait_for_http() {
 }
 
 verify_services() {
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    wait_for_http "http://127.0.0.1:${PORT:-2026}/health" "gateway"
-    wait_for_http "http://127.0.0.1:${PORT:-2026}/api/v1/auth/setup-status" "auth setup-status"
-    wait_for_http "http://127.0.0.1:${PORT:-2026}/" "frontend"
+    local port
+    port="$(env_value PORT 2026)"
+    wait_for_http "http://127.0.0.1:${port}/health" "gateway"
+    wait_for_http "http://127.0.0.1:${port}/api/v1/auth/setup-status" "auth setup-status"
+    wait_for_http "http://127.0.0.1:${port}/" "frontend"
 }
 
 print_rollback_instructions() {
