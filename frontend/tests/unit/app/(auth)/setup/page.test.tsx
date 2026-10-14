@@ -355,6 +355,41 @@ describe("SetupPage", () => {
     });
   });
 
+  test("init_admin mode shows short password error", async () => {
+    // The init-admin branch must apply the same 8-character minimum as the
+    // change-password branch (report 07-L2).
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ needs_setup: true }),
+    });
+
+    render(<SetupPage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "admin@test.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "short" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirm Password"), {
+      target: { value: "short" },
+    });
+
+    const form = screen.getByLabelText("Email").closest("form")!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Password must be at least 8 characters"),
+      ).toBeInTheDocument();
+    });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   test("init_admin successful submission redirects to /workspace", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/v1/auth/setup-status") {
