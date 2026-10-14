@@ -498,8 +498,25 @@ class ResourceService:
             raise ValueError(f"Invalid visibility: {target_visibility}")
         if target_visibility == "department" and scope_department_id is None:
             raise ValueError("scope_department_id is required for department visibility")
+        return await self._compute_reduction_impact(resource, target_visibility, scope_department_id=scope_department_id)
+
+    async def _compute_reduction_impact(
+        self,
+        resource: Resource,
+        target_visibility: str,
+        *,
+        scope_department_id: str | None,
+    ) -> dict[str, object]:
+        """Simulation core of ``visibility_reduction_impact`` without the
+        owner-only guards, so governance flows that legitimately move a
+        resource they do not own (visibility application review) reuse it."""
+        ranks = {"private": 0, "department": 1, "public": 2}
         empty = {"resource_id": resource.id, "target_visibility": target_visibility, "direct": [], "transitive": [], "impacted": [], "total": 0, "blocked_count": 0}
-        if ranks[target_visibility] >= ranks[resource.visibility]:
+        # A department re-point keeps the rank but changes who can see the
+        # resource, so dependents may violate the closure just like after a
+        # rank reduction (report 02-M3).
+        rescope = target_visibility == "department" and resource.visibility == "department" and scope_department_id != resource.scope_department_id
+        if ranks[target_visibility] >= ranks[resource.visibility] and not rescope:
             return empty
 
         resources_by_id: dict[str, Resource] = {resource.id: resource}
@@ -822,9 +839,35 @@ class ResourceService:
                     ),
                     violations,
                 )
+            ranks = {"private": 0, "department": 1, "public": 2}
+            reduction = ranks[application.target_visibility] < ranks[resource.visibility]
+            rescope = application.target_visibility == "department" and resource.scope_department_id != application.department_id
+            repaired_ids: set[str] = set()
+            if reduction or rescope:
+                # An approved narrowing or department re-point changes who can
+                # see the resource just like a direct reduction: cascade-repair
+                # the impacted dependents so the visibility closure invariant
+                # survives the write path (report 02-M3).
+                impact = await self._compute_reduction_impact(
+                    resource,
+                    application.target_visibility,
+                    scope_department_id=application.department_id,
+                )
+                repaired_ids = await self._repair_cascade_dependents(resource.id, impact)
             resource.visibility = application.target_visibility
             resource.scope_department_id = application.department_id if application.target_visibility == "department" else None
             resource.authz_revision += 1
+            if reduction or rescope:
+                await self._notify_dependent_owners(
+                    resource,
+                    event="visibility_reduced",
+                    detail={
+                        "visibility": application.target_visibility,
+                        "previous_visibility": application.current_visibility,
+                        "scope_department_id": resource.scope_department_id,
+                    },
+                    exclude_resource_ids=repaired_ids,
+                )
             application.status = "approved"
         else:
             application.status = "rejected"
