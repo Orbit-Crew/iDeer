@@ -26,6 +26,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_PATHS = {
     "prod": REPO_ROOT / "docker" / "docker-compose.yaml",
     "dev": REPO_ROOT / "docker" / "docker-compose-dev.yaml",
+    # 08-M1: the intranet stack published "${PORT:-2026}:2026" and the
+    # openviking overlay "${OPENVIKING_PORT:-1933}:1933" — the bare
+    # two-segment form Docker resolves to 0.0.0.0 — so those deployments
+    # could not state a bind address even explicitly.
+    "intranet": REPO_ROOT / "docker" / "docker-compose.intranet.yaml",
+    "openviking": REPO_ROOT / "docker" / "docker-compose.openviking.yaml",
 }
 
 EXPECTED_NGINX_PORT_MAPPING = "${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"
@@ -43,12 +49,19 @@ def _published_ports(compose_path: Path) -> dict[str, list[str]]:
     return published
 
 
+def _nginx_mapping(variant: str) -> list[str] | None:
+    """The nginx entry mapping for a variant, or None when it has no nginx service."""
+    return _published_ports(COMPOSE_PATHS[variant]).get("nginx")
+
+
 @pytest.mark.parametrize("variant", sorted(COMPOSE_PATHS))
 def test_nginx_entry_defaults_to_loopback(variant: str):
     """With BIND_HOST unset, the entry port must bind 127.0.0.1, not 0.0.0.0."""
-    published = _published_ports(COMPOSE_PATHS[variant])
+    mapping = _nginx_mapping(variant)
+    if mapping is None:
+        pytest.skip(f"{variant} compose has no nginx service")
 
-    assert published.get("nginx") == [EXPECTED_NGINX_PORT_MAPPING], f"{variant} compose must publish nginx as {EXPECTED_NGINX_PORT_MAPPING!r}; got: {published.get('nginx')!r}"
+    assert mapping == [EXPECTED_NGINX_PORT_MAPPING], f"{variant} compose must publish nginx as {EXPECTED_NGINX_PORT_MAPPING!r}; got: {mapping!r}"
 
 
 @pytest.mark.parametrize("variant", sorted(COMPOSE_PATHS))
@@ -75,9 +88,11 @@ def test_no_service_publishes_on_all_interfaces(variant: str):
 @pytest.mark.parametrize("variant", sorted(COMPOSE_PATHS))
 def test_bind_address_remains_overridable(variant: str):
     """Operators fronting the stack themselves must be able to widen the bind."""
-    mapping = _published_ports(COMPOSE_PATHS[variant])["nginx"][0]
+    mapping = _nginx_mapping(variant)
+    if mapping is None:
+        pytest.skip(f"{variant} compose has no nginx service")
 
-    assert _bind_address(mapping) == "${BIND_HOST:-127.0.0.1}", f"{variant} compose must keep the bind address overridable via BIND_HOST; got: {mapping!r}"
+    assert _bind_address(mapping[0]) == "${BIND_HOST:-127.0.0.1}", f"{variant} compose must keep the bind address overridable via BIND_HOST; got: {mapping[0]!r}"
 
 
 def test_dev_frontend_allows_default_loopback_origins():

@@ -4,7 +4,9 @@ services:
     pull_policy: never
     container_name: ideer-nginx
     ports:
-      - "${PORT:-2026}:2026"
+      # Nginx on loopback is the single public entry; set BIND_HOST explicitly
+      # (e.g. BIND_HOST=0.0.0.0) when the intranet host must serve other hosts.
+      - "${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf.template:ro
     command: >
