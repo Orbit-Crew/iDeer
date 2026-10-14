@@ -40,9 +40,9 @@ services:
       # Rendered into nginx.conf by the command below (08-M10): the API docs
       # gate. Docs/redoc/openapi.json expose the full OpenAPI structure, so the
       # published entry defaults to 404 for them; set true to opt in.
-      IDEER_EXPOSE_API_DOCS: ${IDEER_EXPOSE_API_DOCS:-false}
+      NGINX_EXPOSE_API_DOCS: ${NGINX_EXPOSE_API_DOCS:-false}
     command: >
-      sh -c "envsubst '$$IDEER_EXPOSE_API_DOCS' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+      sh -c "envsubst '$$NGINX_EXPOSE_API_DOCS' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
       && { test -e /proc/net/if_inet6 || sed -i '/^[[:space:]]*listen[[:space:]]\+\[::\]:2026[[:space:]]/d' /etc/nginx/nginx.conf; }
       && nginx -g 'daemon off;'"
     depends_on:

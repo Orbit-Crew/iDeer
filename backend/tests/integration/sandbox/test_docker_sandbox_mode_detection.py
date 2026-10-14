@@ -470,6 +470,8 @@ def _setup_deploy_worktree(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (worktree / "extensions_config.json").write_text("{}\n", encoding="utf-8")
+    (worktree / "frontend").mkdir(exist_ok=True)
+    (worktree / "frontend" / ".env.example").write_text("# frontend env\n", encoding="utf-8")
     (worktree / ".env").write_text("TEST=1\n", encoding="utf-8")
     return worktree
 

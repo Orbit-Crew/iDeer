@@ -131,13 +131,13 @@ services:
     environment:
       # Dev stack: the API docs gate (08-M10) defaults open for local
       # debugging; prod/intranet default to 404 unless explicitly opted in.
-      IDEER_EXPOSE_API_DOCS: ${IDEER_EXPOSE_API_DOCS:-true}
+      NGINX_EXPOSE_API_DOCS: ${NGINX_EXPOSE_API_DOCS:-true}
     command:
       - sh
       - -c
       - |
         set -e
-        envsubst '$$IDEER_EXPOSE_API_DOCS' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+        envsubst '$$NGINX_EXPOSE_API_DOCS' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
         test -e /proc/net/if_inet6 || sed -i '/^[[:space:]]*listen[[:space:]]\+\[::\]:2026[[:space:]]/d' /etc/nginx/nginx.conf
         exec nginx -g 'daemon off;'
     depends_on:

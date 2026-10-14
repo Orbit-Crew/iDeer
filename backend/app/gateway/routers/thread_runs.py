@@ -1092,9 +1092,16 @@ async def _stream_existing_run(
             except (asyncio.CancelledError, Exception):
                 # 01-L4: the cancellation used to be absorbed silently; leave a
                 # trace when the awaited run task itself was cancelled so the
-                # 204 does not hide a cancelled wait from operations.
-                if record.task.done() and record.task.cancelled():
-                    logger.warning("stream wait for run %s ended by run-task cancellation; returning 204", run_id)
+                # 204 does not hide a cancelled wait from operations. The wait
+                # target may be a bare coroutine in embedded compositions, so
+                # probe the Task API defensively.
+                probe_cancelled = getattr(record.task, "cancelled", None)
+                if callable(probe_cancelled):
+                    try:
+                        if probe_cancelled():
+                            logger.warning("stream wait for run %s ended by run-task cancellation; returning 204", run_id)
+                    except Exception:
+                        pass
             return Response(status_code=204)
 
     if bridge is None:
