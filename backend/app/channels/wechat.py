@@ -31,6 +31,13 @@ from app.channels.message_bus import InboundMessage, InboundMessageType, Message
 logger = logging.getLogger(__name__)
 
 
+def _redact_qrcode(qrcode: str) -> str:
+    """Return a non-scannable fingerprint of a QR payload for logs (03-L1)."""
+    if len(qrcode) <= 8:
+        return "***"
+    return f"{qrcode[:4]}...{qrcode[-4:]}({len(qrcode)} chars)"
+
+
 class MessageItemType(IntEnum):
     NONE = 0
     TEXT = 1
@@ -777,9 +784,18 @@ class WechatChannel(Channel):
             raise RuntimeError("iLink get_bot_qrcode did not return qrcode")
 
         qrcode_img_content = str(qrcode_data.get("qrcode_img_content") or "").strip()
-        logger.warning("[WeChat] QR login required. qrcode=%s", qrcode)
+        # 03-L1: the QR payload grants binding to whoever scans it within the
+        # poll window; persist it only in the 0600-protected auth-state file
+        # and log a redacted fingerprint, never the scannable content.
+        logger.warning(
+            "[WeChat] QR login required. qrcode=%s (full value persisted to the auth-state file)",
+            _redact_qrcode(qrcode),
+        )
         if qrcode_img_content:
-            logger.warning("[WeChat] qrcode_img_content=%s", qrcode_img_content)
+            logger.warning(
+                "[WeChat] qrcode_img_content received (%d chars, persisted to the auth-state file)",
+                len(qrcode_img_content),
+            )
 
         await asyncio.to_thread(
             self._save_auth_state,

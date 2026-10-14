@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from functools import partial
 
@@ -25,6 +26,8 @@ from deerflow.persistence.engine import (
 
 from .run_session import execute
 
+logger = logging.getLogger(__name__)
+
 
 async def run_worker() -> None:
     config = get_app_config()
@@ -36,10 +39,19 @@ async def run_worker() -> None:
         raise RuntimeError("workflow-worker could not initialize persistence")
     store = WorkflowV2Store(sf)
     writers: dict[str, RunRecordWriter] = {}
+    # 03-L8: entries only pop on terminal events, so runs that never reach one
+    # (worker crash aside) would grow the map without bound. The soft limit
+    # evicts the oldest writers FIFO — a subsequent event for an evicted run
+    # simply reopens a writer.
+    writers_soft_limit = 4096
 
     async def record_sink(run, event) -> None:
         writer = writers.get(run.run_id)
         if writer is None:
+            if len(writers) >= writers_soft_limit:
+                for stale_run_id in list(writers)[: len(writers) - writers_soft_limit + 1]:
+                    logger.warning("evicting workflow writer for non-terminal run %s (soft limit %d)", stale_run_id, writers_soft_limit)
+                    writers.pop(stale_run_id, None)
             writer = RunRecordWriter(
                 make_host_resolver(
                     run.run_id,
