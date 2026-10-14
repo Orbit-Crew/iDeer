@@ -16,12 +16,20 @@ behavior; the tool is read-only and never executes file content.
 Everything here drives the tool coroutine directly (the builtin-tool test
 convention) against seeded uploads on a temporary filesystem home plus the
 committed synthetic samples under ``backend/tests/fixtures/telemetry/``.
+
+Ticket 76 adds ``mode="scan"``: the whole file is decoded server-side in one
+call and only aggregates come back (total frames, per-status counts, a capped
+bad-frame location list with an explicit "more exist" flag, per-field
+min/max/mean) — never raw frame data — so a single call yields a whole-file
+verdict on a ~hundred-MB file.  Scan caps and the per-frame deadline are code
+constants; scan aggregates reconcile exactly with the windowed decodes.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -406,6 +414,10 @@ def test_caps_are_binding_code_constants() -> None:
     assert tool_module.DAT_PARSE_MAX_FRAMES == 100
     assert tool_module.DAT_PARSE_SCAN_MAX_FRAMES == 100_000
     assert tool_module.DEFAULT_FRAME_COUNT == 25
+    # Ticket 76：扫描模式的限额同样是代码常量（审计语义不被运行时改口）。
+    assert tool_module.DAT_SCAN_MAX_BAD_FRAME_LIST == 50
+    assert tool_module.DAT_PARSE_SCAN_TIMEOUT_SECONDS == 60
+    assert tool_module.DAT_SCAN_MEAN_DECIMALS == 6
 
 
 @pytest.mark.asyncio
@@ -441,6 +453,303 @@ async def test_scan_cap_stops_the_scan_with_visible_flags(env, monkeypatch) -> N
 @pytest.mark.asyncio
 async def test_rejections_carry_the_shared_allowed_pattern(env) -> None:
     payload = await _call(_runtime(env), "/mnt/user-data/uploads/missing.dat", LAYOUT_EXACT)
+
+    assert payload["reason_code"] == "file_not_found"
+    assert payload["allowed_pattern"] == dat_access.UPLOADS_DAT_FILE_PATTERN
+
+
+# --- 整文件扫描模式（#76 AC1）：只回聚合，绝不回原始帧 ------------------------
+
+
+@pytest.mark.asyncio
+async def test_scan_mode_returns_aggregates_without_any_raw_frames(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT, mode="scan")
+
+    assert "error" not in payload
+    assert payload["mode"] == "scan"
+    assert payload["file_size"] == len(NORMAL_FRAMES)
+    assert payload["total_frames"] == 64
+    assert payload["status_counts"] == {"ok": 64, "checksum_failed": 0, "truncated": 0}
+    assert payload["bad_frames"] == []
+    assert payload["bad_frames_truncated"] is False
+    assert "bad_frame_count_total" not in payload
+    assert payload["skipped_bytes"] == 0
+    assert payload["scanned_bytes"] == len(NORMAL_FRAMES)
+    assert payload["scan_truncated"] is False
+    assert "frames" not in payload  # 绝不返回原始帧（AC1）
+    # 工程值统计（缩放后）：frame_counter = 0..63（scale 1 保持整数）；
+    # ch0 = 7×i×0.1（i=0..63），ch1 = (7×i+937)×0.1。
+    assert payload["field_stats"]["frame_counter"] == {"min": 0, "max": 63, "mean": 31.5}
+    assert payload["field_stats"]["ch0"]["min"] == 0 * 0.1
+    assert payload["field_stats"]["ch0"]["max"] == 441 * 0.1
+    assert payload["field_stats"]["ch0"]["mean"] == pytest.approx(22.05)
+    assert payload["field_stats"]["ch1"]["min"] == 937 * 0.1
+    assert payload["field_stats"]["ch1"]["max"] == 1378 * 0.1
+    for entry in payload["field_stats"].values():
+        assert set(entry) == {"min", "max", "mean"}  # 只有聚合键，没有逐帧值数组
+    assert "共 64 帧" in payload["summary"]
+
+
+@pytest.mark.asyncio
+async def test_scan_mode_reports_mixed_statuses_and_bad_frame_locations(env) -> None:
+    # 固定样例的真实字节：仅第 17 帧校验和坏、第 20 帧同步字被毁（间隙 32
+    # 字节）；第 5/40 帧只翻转了填充字节，校验和仍然正确（README 原注释与
+    # 字节不符，测试以真实字节为准）。
+    _seed_upload(env, "corrupted.dat", CORRUPTED_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/corrupted.dat", LAYOUT_EXACT, mode="scan")
+
+    assert payload["total_frames"] == 63
+    assert payload["status_counts"] == {"ok": 62, "checksum_failed": 1, "truncated": 0}
+    assert payload["bad_frames"] == [{"index": 17, "offset": 17 * 32, "status": "checksum_failed"}]
+    assert payload["bad_frames_truncated"] is False
+    assert payload["skipped_bytes"] == 32
+    # field_stats 覆盖 ok 与 checksum_failed 帧（截断帧解不出值、不参与）：
+    # 可解码帧的 frame_counter = {0..63} − {20}（同步字被毁的那帧无值）。
+    assert payload["field_stats"]["frame_counter"]["min"] == 0
+    assert payload["field_stats"]["frame_counter"]["max"] == 63
+    assert payload["field_stats"]["frame_counter"]["mean"] == pytest.approx((2016 - 20) / 63)
+
+
+@pytest.mark.asyncio
+async def test_scan_mode_marks_truncated_tail_in_bad_frames(env) -> None:
+    _seed_upload(env, "cut.dat", TRUNCATED_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/cut.dat", LAYOUT_EXACT, mode="scan")
+
+    assert payload["total_frames"] == 41
+    assert payload["status_counts"] == {"ok": 40, "checksum_failed": 0, "truncated": 1}
+    assert payload["bad_frames"] == [{"index": 40, "offset": 40 * 32, "status": "truncated"}]
+    assert payload["field_stats"]["frame_counter"] == {"min": 0, "max": 39, "mean": 19.5}
+
+
+def _stream_with_bad_frames(total: int, bad_indexes: list[int]) -> bytes:
+    # 与 LAYOUT_EXACT 同构的 32 字节定长帧流：body=4B 计数 + 8×u16 通道
+    # （置零），校验和 = bytes 4..24 求和（u16 大端，偏移 24），尾部零填充。
+    frames = []
+    for index in range(total):
+        body = index.to_bytes(4, "big") + b"\x00" * 16
+        checksum = sum(body) % 0x10000
+        frames.append(b"\x1a\xcf\xfc\x1d" + body + checksum.to_bytes(2, "big") + b"\x00" * 6)
+    for index in bad_indexes:
+        mutable = bytearray(frames[index])
+        mutable[8] ^= 0xFF  # 破坏覆盖区内的通道字节且不更新校验和 → checksum_failed
+        frames[index] = bytes(mutable)
+    return b"".join(frames)
+
+
+@pytest.mark.asyncio
+async def test_bad_frame_list_is_capped_by_a_code_constant_with_more_exist_flags(env, monkeypatch) -> None:
+    _seed_upload(env, "many-bad.dat", _stream_with_bad_frames(6, [1, 3, 4]))
+    monkeypatch.setattr(tool_module, "DAT_SCAN_MAX_BAD_FRAME_LIST", 2)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/many-bad.dat", LAYOUT_EXACT, mode="scan")
+
+    assert [item["index"] for item in payload["bad_frames"]] == [1, 3]  # 按帧序限量
+    assert payload["bad_frames_truncated"] is True
+    assert payload["bad_frame_count_total"] == 3
+    assert "坏帧仅列出前 2 个（共 3 个）" in payload["summary"]
+
+
+@pytest.mark.asyncio
+async def test_bad_frame_list_under_cap_carries_no_total_flag(env) -> None:
+    _seed_upload(env, "many-bad.dat", _stream_with_bad_frames(6, [1, 3, 4]))
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/many-bad.dat", LAYOUT_EXACT, mode="scan")
+
+    assert payload["status_counts"] == {"ok": 3, "checksum_failed": 3, "truncated": 0}
+    assert [item["index"] for item in payload["bad_frames"]] == [1, 3, 4]
+    assert payload["bad_frames_truncated"] is False
+    assert "bad_frame_count_total" not in payload
+
+
+@pytest.mark.asyncio
+async def test_scan_of_syncless_file_is_an_honest_zero_frame_aggregate(env) -> None:
+    _seed_upload(env, "noise.dat", NO_SYNC_ENTROPY)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/noise.dat", LAYOUT_EXACT, mode="scan")
+
+    assert payload["total_frames"] == 0
+    assert payload["status_counts"] == {"ok": 0, "checksum_failed": 0, "truncated": 0}
+    assert payload["bad_frames"] == []
+    assert payload["field_stats"] == {}  # 无帧则无字段统计
+    assert payload["skipped_bytes"] == len(NO_SYNC_ENTROPY)
+    assert "共 0 帧" in payload["summary"]
+
+
+@pytest.mark.asyncio
+async def test_scan_cap_reports_honest_total_frames(env, monkeypatch) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    monkeypatch.setattr(tool_module, "DAT_PARSE_SCAN_MAX_FRAMES", 3)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT, mode="scan")
+
+    assert payload["total_frames"] == 3  # 上限内的帧数，绝不假装全量
+    assert payload["scan_truncated"] is True
+    assert payload["scanned_bytes"] == 96  # 3 × 32 字节帧
+    assert "未完整扫描" in payload["summary"]
+
+
+# --- 对账（#76 AC2）：扫描聚合 == 逐窗解码求和 --------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("name", "stream", "total", "counts"),
+    [
+        ("frames.dat", NORMAL_FRAMES, 64, {"ok": 64, "checksum_failed": 0, "truncated": 0}),
+        ("corrupted.dat", CORRUPTED_FRAMES, 63, {"ok": 62, "checksum_failed": 1, "truncated": 0}),
+        ("cut.dat", TRUNCATED_FRAMES, 41, {"ok": 40, "checksum_failed": 0, "truncated": 1}),
+    ],
+)
+async def test_scan_aggregates_reconcile_with_windowed_decodes(env, name: str, stream: bytes, total: int, counts: dict) -> None:
+    _seed_upload(env, name, stream)
+    runtime = _runtime(env)
+
+    scan = await _call(runtime, f"/mnt/user-data/uploads/{name}", LAYOUT_EXACT, mode="scan")
+    windowed = await _call(runtime, f"/mnt/user-data/uploads/{name}", LAYOUT_EXACT, frame_count=100)
+
+    reconciled = Counter(frame["status"] for frame in windowed["frames"])
+    assert scan["total_frames"] == total == windowed["total_frames_scanned"]
+    assert scan["status_counts"] == counts
+    assert scan["status_counts"] == {status: reconciled.get(status, 0) for status in ("ok", "checksum_failed", "truncated")}
+    assert scan["skipped_bytes"] == windowed["skipped_bytes"]
+
+
+# --- 超时（#76 AC3）：代码常量时限，逐帧检查，回报部分进度 ---------------------
+
+
+@pytest.mark.asyncio
+async def test_scan_timeout_returns_structured_partial_progress(env, monkeypatch) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    monkeypatch.setattr(tool_module, "DAT_PARSE_SCAN_TIMEOUT_SECONDS", 0.0)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT, mode="scan")
+
+    assert payload["reason_code"] == "scan_timeout"
+    assert "frames" not in payload
+    assert "scanned_bytes" in payload
+    assert "frames_scanned_so_far" in payload
+    assert payload["frames_scanned_so_far"] == 0  # 逐帧检查：第一帧前即触发
+    assert payload["layout"] == LAYOUT_EXACT  # 审计回执仍原样保存布局
+
+
+@pytest.mark.asyncio
+async def test_frames_mode_is_not_subject_to_the_scan_deadline(env, monkeypatch) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    monkeypatch.setattr(tool_module, "DAT_PARSE_SCAN_TIMEOUT_SECONDS", 0.0)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT)
+
+    assert "error" not in payload
+    assert payload["total_frames_scanned"] == 64
+
+
+# --- mode 参数校验：frames 默认不变，其余值拒绝 --------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unknown_mode_is_rejected_invalid_mode(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT, mode="aggregate")
+
+    assert payload["reason_code"] == "invalid_mode"
+    assert "frames" in payload["error"] and "scan" in payload["error"]
+    assert "frames" not in payload
+
+
+@pytest.mark.asyncio
+async def test_mode_validation_wins_over_invalid_layout(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", "{not json", mode="bogus")
+
+    assert payload["reason_code"] == "invalid_mode"
+
+
+@pytest.mark.asyncio
+async def test_explicit_frames_mode_matches_the_default_byte_for_byte(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    runtime = _runtime(env)
+
+    default = await _call_raw(runtime, "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT)
+    explicit = await _call_raw(runtime, "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT, mode="frames")
+
+    assert explicit == default
+    assert "frames" in json.loads(explicit)
+
+
+# --- scan 忽略分页/筛选参数（整文件语义，不做校验） ----------------------------
+
+
+@pytest.mark.asyncio
+async def test_scan_ignores_paging_and_filter_arguments_entirely(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(
+        _runtime(env),
+        "/mnt/user-data/uploads/frames.dat",
+        LAYOUT_EXACT,
+        start_frame=5,
+        frame_count=2,
+        fields_filter="ch0",
+        mode="scan",
+    )
+
+    assert payload["total_frames"] == 64
+    assert set(payload["field_stats"]) == {"frame_counter", "ch0", "ch1"}  # fields_filter 被忽略
+
+
+@pytest.mark.asyncio
+async def test_scan_does_not_validate_the_ignored_arguments(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+
+    payload = await _call(
+        _runtime(env),
+        "/mnt/user-data/uploads/frames.dat",
+        LAYOUT_EXACT,
+        start_frame=-1,
+        frame_count=-1,
+        fields_filter="not_a_declared_field",
+        mode="scan",
+    )
+
+    assert "error" not in payload
+    assert payload["total_frames"] == 64
+
+
+# --- scan 的确定性、只读与围栏 -------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scan_of_same_layout_and_file_is_byte_identical(env) -> None:
+    _seed_upload(env, "corrupted.dat", CORRUPTED_FRAMES)
+    runtime = _runtime(env)
+
+    first = await _call_raw(runtime, "/mnt/user-data/uploads/corrupted.dat", LAYOUT_EXACT, mode="scan")
+    second = await _call_raw(runtime, "/mnt/user-data/uploads/corrupted.dat", LAYOUT_EXACT, mode="scan")
+
+    assert first == second
+
+
+@pytest.mark.asyncio
+async def test_scan_calls_leave_source_file_unchanged(env) -> None:
+    _seed_upload(env, "frames.dat", NORMAL_FRAMES)
+    target = env.paths.sandbox_uploads_dir("thread-1", user_id="owner-1") / "frames.dat"
+    before = (target.stat().st_size, target.stat().st_mtime_ns, hashlib.sha256(target.read_bytes()).hexdigest())
+
+    await _call(_runtime(env), "/mnt/user-data/uploads/frames.dat", LAYOUT_EXACT, mode="scan")
+
+    after = (target.stat().st_size, target.stat().st_mtime_ns, hashlib.sha256(target.read_bytes()).hexdigest())
+    assert after == before
+
+
+@pytest.mark.asyncio
+async def test_scan_rejections_still_carry_the_fence(env) -> None:
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/missing.dat", LAYOUT_EXACT, mode="scan")
 
     assert payload["reason_code"] == "file_not_found"
     assert payload["allowed_pattern"] == dat_access.UPLOADS_DAT_FILE_PATTERN

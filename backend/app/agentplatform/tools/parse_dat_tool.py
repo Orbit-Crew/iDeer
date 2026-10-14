@@ -48,6 +48,17 @@ before any byte is decoded; no partial results):
 "未完整扫描"，绝不假装做过全量。路径围栏与拒绝原因码与 ``read_dat`` 完全
 一致（:mod:`app.agentplatform.tools.dat_access`）。工具只读、绝不执行文件
 内容，全部实现仅用标准库。
+
+整文件扫描模式（``mode="scan"``，ticket 76）：全量解码在服务端一次完成，
+只返回聚合——总帧数、各状态计数、限量坏帧位置列表（附"还有更多"标志）、
+各字段 min/max/mean（缩放后工程值，均值按 ``DAT_SCAN_MEAN_DECIMALS`` 位小
+数舍入）——绝不返回任何原始帧数据，百 MB 级文件一次调用即得全文件结论而
+不撑爆上下文。扫描忽略分页/筛选参数（整文件语义）。坏帧清单限量
+（``DAT_SCAN_MAX_BAD_FRAME_LIST``）与单次调用时限
+（``DAT_PARSE_SCAN_TIMEOUT_SECONDS``，解码循环逐帧检查单调时钟）同样是代
+码常量：触限即以结构化拒绝 ``reason_code=scan_timeout`` 回报已扫描的部分
+进度，审计语义不被运行时改口。扫描聚合与逐窗解码确定性对账：同一布局同
+一文件，两种模式的帧数/状态计数必然一致。
 """
 
 from __future__ import annotations
@@ -57,6 +68,7 @@ import json
 import math
 import mmap
 import struct
+import time
 from collections import Counter
 
 from langchain.tools import tool
@@ -71,6 +83,15 @@ DAT_PARSE_MAX_FRAMES = 100
 # 全量扫描的帧数上限：~100 MB / 32 B 帧的文件约 300 万帧，不设上限会让最坏
 # 情形延迟与内存失控；触顶即停，并以 scan_truncated 明示未完整扫描。
 DAT_PARSE_SCAN_MAX_FRAMES = 100_000
+# 整文件扫描（mode="scan"）的审计常量：坏帧清单限量、单次调用时限、均值小数
+# 位——与分页/扫描上限一样是代码常量，绝不做成配置项（运行时改口会让"全文件
+# 结论"的审计语义失真）。
+DAT_SCAN_MAX_BAD_FRAME_LIST = 50
+# 扫描时限（秒）：解码循环逐帧检查单调时钟，触限即停并以 scan_timeout 回报
+# 部分进度——模型学到"已查到哪里"，而不是得到一个看似完整的半成品。
+DAT_PARSE_SCAN_TIMEOUT_SECONDS = 60
+# field_stats 均值的固定小数位（缩放后工程值的算术平均；确定性舍入）。
+DAT_SCAN_MEAN_DECIMALS = 6
 _MAX_FRAME_BYTES = 65536
 _MAX_SYNC_BYTES = 16
 
@@ -94,6 +115,15 @@ _STATUS_TRUNCATED = "truncated"
 
 class _LayoutInvalid(ValueError):
     """帧布局声明含词汇表外条目或非法值；message 指明 JSON 位置。"""
+
+
+class _ScanTimeout(Exception):
+    """整文件扫描超出代码常量时限；携带部分进度供结构化回报。"""
+
+    def __init__(self, spans: list, scanned_bytes: int) -> None:
+        super().__init__("scan deadline exceeded")
+        self.spans = spans
+        self.scanned_bytes = scanned_bytes
 
 
 def _format_for(type_name: str, endian: str) -> str:
@@ -316,12 +346,14 @@ def _read_derived_size(data, start: int, size_field: dict, sync_len: int) -> int
     return size
 
 
-def _scan_frames(data, layout: dict) -> tuple[list[tuple[int, int, str]], int, bool]:
+def _scan_frames(data, layout: dict, deadline: float | None = None) -> tuple[list[tuple[int, int, str]], int, bool]:
     """有界确定性扫描：返回 ``(帧跨度列表, 已扫描字节数, 是否触顶截断)``。
 
     帧跨度为 ``(起始字节, 申报帧覆盖到的字节, 状态)``（截断帧的覆盖按文件
     末尾收敛）。坏帧只标注不中断：定长/派生帧按布局推进，截断帧在同步字
-    模式下从下一字节重新搜索同步字。
+    模式下从下一字节重新搜索同步字。``deadline`` 非空时逐帧检查单调时钟
+    （不是入口一次性检查），触限抛出 ``_ScanTimeout`` 携带部分进度；帧模
+    式不传时限，行为不变。
     """
 
     total = len(data)
@@ -336,6 +368,8 @@ def _scan_frames(data, layout: dict) -> tuple[list[tuple[int, int, str]], int, b
     scan_truncated = False
     pos = 0
     while pos < total:
+        if deadline is not None and time.monotonic() >= deadline:
+            raise _ScanTimeout(spans, pos)
         if len(spans) >= DAT_PARSE_SCAN_MAX_FRAMES:
             scan_truncated = True
             break
@@ -444,6 +478,78 @@ def _decode_payload(data, file_size: int, layout: dict, selected: list[dict], st
     }
 
 
+def _scan_summary(total: int, counts: Counter, skipped: int, bad_listed: int, bad_total: int, scan_truncated: bool) -> str:
+    text = f"共 {total} 帧：{counts.get(_STATUS_OK, 0)} 正常、{counts.get(_STATUS_CHECKSUM_FAILED, 0)} 校验和失败、{counts.get(_STATUS_TRUNCATED, 0)} 截断；跳过非帧字节 {skipped} 字节。"
+    if bad_listed < bad_total:
+        text += f"坏帧仅列出前 {bad_listed} 个（共 {bad_total} 个）。"
+    if scan_truncated:
+        text += f"扫描在第 {DAT_PARSE_SCAN_MAX_FRAMES} 帧上限处停止，文件未完整扫描。"
+    return text
+
+
+def _scan_payload(data, file_size: int, layout: dict) -> dict:
+    """整文件扫描聚合（mode="scan"）：全量解码在服务端一次完成，只回聚合。
+
+    field_stats 覆盖每一个能解出字段值的帧——ok 与 checksum_failed 都参与
+    （坏帧的值可疑但仍是全量结论的一部分），truncated 帧解不出任何字段值、
+    不参与。mean 是缩放后工程值的算术平均，按 DAT_SCAN_MEAN_DECIMALS 位小数
+    确定性舍入。逐帧只累积 min/max/sum/count，绝不保留逐帧值数组——内存与
+    返回负载都不含任何原始帧数据。
+    """
+    deadline = time.monotonic() + DAT_PARSE_SCAN_TIMEOUT_SECONDS
+    spans, scanned_bytes, scan_truncated = _scan_frames(data, layout, deadline=deadline)
+    counts = Counter(status for _start, _end, status in spans)
+    claimed = sum(end - start for start, end, _status in spans)
+    skipped = max(0, scanned_bytes - claimed)
+    bad_total = counts.get(_STATUS_CHECKSUM_FAILED, 0) + counts.get(_STATUS_TRUNCATED, 0)
+    bad_frames = []
+    for index, (start, _end, status) in enumerate(spans):
+        if status == _STATUS_OK:
+            continue
+        if len(bad_frames) >= DAT_SCAN_MAX_BAD_FRAME_LIST:
+            break
+        bad_frames.append({"index": index, "offset": start, "status": status})
+    # 逐帧聚合（entry = [min, max, sum, count]），坏帧值一并参与。
+    agg: dict[str, list] = {field["name"]: [None, None, 0, 0] for field in layout["fields"]}
+    for start, _end, status in spans:
+        if status == _STATUS_TRUNCATED:
+            continue
+        for name, value in _frame_values(data, start, layout["fields"]).items():
+            entry = agg[name]
+            if entry[3] == 0:
+                entry[0] = entry[1] = value
+            else:
+                if value < entry[0]:
+                    entry[0] = value
+                if value > entry[1]:
+                    entry[1] = value
+            entry[2] += value
+            entry[3] += 1
+    field_stats = {name: {"min": entry[0], "max": entry[1], "mean": round(entry[2] / entry[3], DAT_SCAN_MEAN_DECIMALS)} for name, entry in agg.items() if entry[3]}
+    payload = {
+        "mode": "scan",
+        "file_size": file_size,
+        # total_frames 是扫描上限内的帧数：触顶时由 scan_truncated 明示
+        # "未完整扫描"，绝不假装做过全量。
+        "total_frames": len(spans),
+        "status_counts": {
+            _STATUS_OK: counts.get(_STATUS_OK, 0),
+            _STATUS_CHECKSUM_FAILED: counts.get(_STATUS_CHECKSUM_FAILED, 0),
+            _STATUS_TRUNCATED: counts.get(_STATUS_TRUNCATED, 0),
+        },
+        "bad_frames": bad_frames,
+        "bad_frames_truncated": bad_total > len(bad_frames),
+        "field_stats": field_stats,
+        "skipped_bytes": skipped,
+        "scanned_bytes": scanned_bytes,
+        "scan_truncated": scan_truncated,
+        "summary": _scan_summary(len(spans), counts, skipped, len(bad_frames), bad_total, scan_truncated),
+    }
+    if payload["bad_frames_truncated"]:
+        payload["bad_frame_count_total"] = bad_total
+    return payload
+
+
 def _rejection(reason_code: str, message: str, layout_raw: str | None = None) -> str:
     payload: dict = {"error": message, "reason_code": reason_code, "allowed_pattern": dat_access.UPLOADS_DAT_FILE_PATTERN}
     if layout_raw is not None:
@@ -451,17 +557,20 @@ def _rejection(reason_code: str, message: str, layout_raw: str | None = None) ->
     return json.dumps(payload, ensure_ascii=False)
 
 
-def _parse_dat_sync(runtime: Runtime, declared_path: str, layout_raw: str, start_frame: int, frame_count: int, fields_filter: str) -> str:
+def _parse_dat_sync(runtime: Runtime, declared_path: str, layout_raw: str, start_frame: int, frame_count: int, fields_filter: str, mode: str) -> str:
+    if mode not in ("frames", "scan"):
+        return _rejection("invalid_mode", f"mode 只支持 frames（分页帧表）或 scan（整文件扫描聚合），收到: {mode!r}")
     try:
         target = dat_access.resolve_uploads_dat_file(runtime, declared_path)
     except dat_access.DatAccessRejected as exc:
         return _rejection(exc.reason_code, str(exc))
     try:
         layout = _parse_layout(layout_raw)
-        selected = _select_fields(layout, fields_filter)
+        # scan 是整文件语义：fields_filter 与分页参数一样被忽略（也不校验）。
+        selected = _select_fields(layout, fields_filter) if mode == "frames" else layout["fields"]
     except _LayoutInvalid as exc:
         return _rejection("invalid_layout", str(exc), layout_raw)
-    if isinstance(start_frame, bool) or isinstance(frame_count, bool) or start_frame < 0 or frame_count < 0:
+    if mode == "frames" and (isinstance(start_frame, bool) or isinstance(frame_count, bool) or start_frame < 0 or frame_count < 0):
         return _rejection("invalid_paging", f"start_frame/frame_count 必须为非负整数，收到 start_frame={start_frame}, frame_count={frame_count}", layout_raw)
 
     file_size = target.stat().st_size
@@ -472,7 +581,23 @@ def _parse_dat_sync(runtime: Runtime, declared_path: str, layout_raw: str, start
         except (ValueError, OSError):
             data = handle.read()
         try:
-            result = _decode_payload(data, file_size, layout, selected, start_frame, frame_count)
+            if mode == "scan":
+                result = _scan_payload(data, file_size, layout)
+            else:
+                result = _decode_payload(data, file_size, layout, selected, start_frame, frame_count)
+        except _ScanTimeout as exc:
+            return json.dumps(
+                {
+                    "error": (f"整文件扫描超出单次调用时限（{DAT_PARSE_SCAN_TIMEOUT_SECONDS} 秒，代码常量），已按已扫描部分停止；请改用更小的文件或与上游约定分段上传。"),
+                    "reason_code": "scan_timeout",
+                    "allowed_pattern": dat_access.UPLOADS_DAT_FILE_PATTERN,
+                    "path": (declared_path or "").strip(),
+                    "layout": layout_raw,
+                    "scanned_bytes": exc.scanned_bytes,
+                    "frames_scanned_so_far": len(exc.spans),
+                },
+                ensure_ascii=False,
+            )
         finally:
             if isinstance(data, mmap.mmap):
                 data.close()
@@ -490,29 +615,38 @@ async def parse_dat_tool(
     start_frame: int = 0,
     frame_count: int = DEFAULT_FRAME_COUNT,
     fields_filter: str = "",
+    mode: str = "frames",
 ) -> str:
-    """按帧布局参数（Frame Layout Spec）确定性解码输入区 .dat 遥测的指定帧区间。
+    """按帧布局参数（Frame Layout Spec）确定性解码输入区 .dat 遥测：分页帧表或整文件扫描聚合。
 
     遥测常规解析入口（固定能力）：模型把遥测格式文档翻译成封闭词汇表的帧
     布局 JSON（同步字、帧长：定长或经长度字段派生、字段：名称/偏移/基本
     类型/字节序/线性缩放、校验和算法枚举 sum16/sum32/none）传入，工具确定
-    性扫描同步字并解码指定帧区间，分页返回帧表（每帧：全局帧号/文件偏移/
-    状态/工程值）；坏帧逐帧标注（checksum_failed/truncated）并计数，不打断
-    好帧解码。fields_filter 可只返回关注的字段/通道子集，未选字段不进返回，
-    上下文成本可控。布局解析失败、词汇表外声明或非法值会被结构化拒绝（
-    reason_code=invalid_layout 并指明位置），绝不产出半成品结果；回执原样
-    记录传入的布局参数以便审计。路径围栏与原因码与 read_dat 完全一致；解
-    码是确定性的：同一布局重解同一文件必然逐字节一致；本工具只读，绝不执
-    行文件内容。
+    性扫描同步字并解码。mode=frames（默认）分页返回帧表（每帧：全局帧号/
+    文件偏移/状态/工程值）；坏帧逐帧标注（checksum_failed/truncated）并计
+    数，不打断好帧解码；fields_filter 可只返回关注的字段/通道子集。mode=
+    scan 做整文件扫描聚合：服务端一次解码全文件（约百 MB 级文件一次调用即
+    可），只返回总帧数、各状态计数、限量坏帧位置列表（附"还有更多"标志与
+    坏帧总数）、各字段 min/max/mean（缩放后工程值），绝不返回任何原始帧数
+    据——分页与筛选参数被忽略；扫描时限为代码常量，触限以
+    reason_code=scan_timeout 回报已扫描的部分进度。布局解析失败、词汇表外
+    声明或非法值会被结构化拒绝（reason_code=invalid_layout 并指明位置），
+    绝不产出半成品结果；回执原样记录传入的布局参数以便审计。路径围栏与原
+    因码与 read_dat 完全一致；解码是确定性的：同一布局重解同一文件必然逐
+    字节一致（扫描聚合与逐窗解码的帧数/状态计数也对账一致）；本工具只读，
+    绝不执行文件内容。
 
     Args:
         file_path: 输入区内的 .dat 遥测文件路径，必须是 /mnt/user-data/uploads/<file>。
         layout: 帧布局参数 JSON 字符串（Frame Layout Spec，封闭词汇表，语法见
             模块 docstring：sync_word/frame/fields/checksum）；回执会原样保存。
-        start_frame: 起始全局帧号（从 0 开始），默认 0。
+        start_frame: 起始全局帧号（从 0 开始），默认 0；仅 frames 模式使用。
         frame_count: 本次返回的帧数上限，默认 25；超过单次上限（100）会被截断
-            并以 frames_truncated 标记。
+            并以 frames_truncated 标记；仅 frames 模式使用。
         fields_filter: 逗号分隔的字段名子集，默认空（返回全部字段）；出现布局
-            未声明的字段名会被拒绝（invalid_layout）。
+            未声明的字段名会被拒绝（invalid_layout）；仅 frames 模式使用。
+        mode: 输出模式：frames（默认，分页帧表）或 scan（整文件扫描聚合：只
+            回总帧数/各状态计数/限量坏帧位置/各字段 min-max-mean，忽略
+            start_frame/frame_count/fields_filter）；其他值会被拒绝。
     """
-    return await asyncio.to_thread(_parse_dat_sync, runtime, file_path, layout, start_frame, frame_count, fields_filter)
+    return await asyncio.to_thread(_parse_dat_sync, runtime, file_path, layout, start_frame, frame_count, fields_filter, mode)

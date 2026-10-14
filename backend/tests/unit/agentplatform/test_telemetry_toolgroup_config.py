@@ -69,10 +69,13 @@ def test_parse_dat_exposes_layout_and_frame_window_parameters(config_example: Ap
     tools = get_available_tools(groups=["telemetry"], include_mcp=False, app_config=config_example)
     parse_dat = next(tool for tool in tools if tool.name == "parse_dat")
 
-    assert set(parse_dat.args) == {"file_path", "layout", "start_frame", "frame_count", "fields_filter"}
+    # Ticket 76: the surface grows by exactly one optional `mode` switch
+    # (frames/scan) next to read_dat's own mode switch.
+    assert set(parse_dat.args) == {"file_path", "layout", "start_frame", "frame_count", "fields_filter", "mode"}
     assert parse_dat.args["start_frame"].get("default") == 0
     assert parse_dat.args["frame_count"].get("default") == 25
     assert parse_dat.args["fields_filter"].get("default") == ""
+    assert parse_dat.args["mode"].get("default") == "frames"
     assert "default" not in parse_dat.args["layout"]  # 布局是必填参数
 
 
