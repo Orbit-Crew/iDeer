@@ -41,10 +41,14 @@ def normal_stream() -> bytes:
 
 def corrupted_stream() -> bytes:
     frames = [bytearray(frame(index)) for index in range(FRAME_COUNT)]
-    frames[5][-1] ^= 0xFF  # checksum no longer matches the body
-    frames[17][10] ^= 0x01  # channel byte flipped, checksum left stale
-    frames[20][0] ^= 0xFF  # sync word destroyed
-    frames[40][-1] ^= 0x55  # second checksum failure
+    # 校验和覆盖的字节区间是 body（offset 4..23）：翻转帧 5/40 的填充字节
+    # 不会改变校验和——这两帧仍然校验通过（status ok）。真正的坏帧只有
+    # 帧 17（通道字节翻转、校验和未更新 → checksum_failed）与帧 20（同步
+    # 字被毁 → 不成帧，其 32 字节成为非帧间隙）。
+    frames[5][-1] ^= 0xFF  # padding byte flipped: checksum still valid → status ok
+    frames[17][10] ^= 0x01  # channel byte flipped, checksum left stale → checksum_failed
+    frames[20][0] ^= 0xFF  # sync word destroyed → 32-byte non-frame gap
+    frames[40][-1] ^= 0x55  # padding byte flipped: checksum still valid → status ok
     return b"".join(bytes(item) for item in frames)
 
 
