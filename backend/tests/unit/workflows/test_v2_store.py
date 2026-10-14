@@ -1,12 +1,26 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.agentplatform.workflows.v2.store import WorkflowConcurrencyExceeded, WorkflowV2Store
+from deerflow.persistence.base import Base
 from deerflow.persistence.models.workflow_v2 import WorkflowCommandRow, WorkflowDefinitionVersionRow, WorkflowTaskRow, WorkflowV2RunRow
+
+
+@pytest_asyncio.fixture
+async def store_factory(tmp_path) -> AsyncIterator[async_sessionmaker]:
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'store.db'}")
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    yield factory
+    await engine.dispose()
 
 
 class _Context:
@@ -113,6 +127,44 @@ async def test_create_run_rejects_user_concurrency_limit() -> None:
             user_concurrency=3,
             department_concurrency=10,
         )
+
+
+@pytest.mark.asyncio
+async def test_list_latest_definitions_returns_latest_version_per_workflow_with_sql_paging(
+    store_factory,
+) -> None:
+    """Pagination and totals are computed in SQL, not by loading every
+    definition version into memory (report 02-M4)."""
+    store = WorkflowV2Store(store_factory)
+    for name in ("alpha", "beta"):
+        for version in (1, 2, 3):
+            await store.save_definition(name, {"name": name, "version": version}, f"hash-{name}-{version}", "user-1")
+
+    full, total = await store.list_latest_definitions(limit=10, offset=0)
+    page, total_paged = await store.list_latest_definitions(limit=1, offset=1)
+
+    assert total == total_paged == 2
+    assert [(row.workflow_name, row.version) for row in full] == [("alpha", 3), ("beta", 3)]
+    assert [(row.workflow_name, row.version) for row in page] == [("beta", 3)]
+
+
+@pytest.mark.asyncio
+async def test_list_runs_paginates_in_sql_with_total(store_factory) -> None:
+    """Run listing slices in SQL and reports the full total (report 02-M4)."""
+    store = WorkflowV2Store(store_factory)
+    for index in range(5):
+        await store.create_run(f"run-{index}", "approval", 1, {}, "user-1")
+    await store.create_run("run-other", "approval", 1, {}, "user-2")
+
+    full, total = await store.list_runs("approval", limit=50)
+    page, total_paged = await store.list_runs("approval", limit=2, offset=2)
+    mine, total_mine = await store.list_runs("approval", limit=50, created_by="user-1")
+
+    assert total == total_paged == 6
+    assert total_mine == 5
+    ordered = [row.run_id for row in full]
+    assert [row.run_id for row in page] == ordered[2:4]
+    assert set(row.run_id for row in mine) == {f"run-{index}" for index in range(5)}
 
 
 @pytest.mark.asyncio

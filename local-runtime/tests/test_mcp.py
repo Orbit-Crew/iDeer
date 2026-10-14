@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import textwrap
+import time
 from pathlib import Path
 
 import pytest
@@ -52,7 +53,9 @@ def test_stdio_client_initializes_discovers_and_calls_tools(tmp_path: Path) -> N
             assert result.is_error is False
             assert result.content[0]["text"] == "from the device"
         finally:
+            print('PRE-CLOSE', flush=True)
             await connection.close()
+            print('POST-CLOSE', flush=True)
 
     asyncio.run(scenario())
 
@@ -90,7 +93,9 @@ def test_stdio_call_timeout_is_contained_and_connection_stays_usable(
             assert result.is_error is False
             assert result.content[0]["text"] == "late"
         finally:
+            print('PRE-CLOSE', flush=True)
             await connection.close()
+            print('POST-CLOSE', flush=True)
 
     asyncio.run(scenario())
 
@@ -116,7 +121,9 @@ def test_stdio_tool_error_and_unknown_method_surface_as_structured_failures(
                 await connection.request("no/such/method", {}, timeout=10)
             assert exc_info.value.code == "MCP_REQUEST_FAILED"
         finally:
+            print('PRE-CLOSE', flush=True)
             await connection.close()
+            print('POST-CLOSE', flush=True)
 
     asyncio.run(scenario())
 
@@ -160,7 +167,9 @@ def test_http_client_completes_initialize_list_and_call(tmp_path: Path) -> None:
                 connection, "read_file", {"path": "hello.txt"}, timeout=10
             )
             assert result.content[0]["text"] == "over localhost"
+            print('PRE-CLOSE', flush=True)
             await connection.close()
+            print('POST-CLOSE', flush=True)
         finally:
             server.close()
             await server.wait_closed()
@@ -1124,3 +1133,56 @@ def test_load_mcp_specs_reads_a_config_file(tmp_path: Path) -> None:
     )
     specs = load_mcp_specs(config)
     assert [spec.name for spec in specs] == ["fs"]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group reaping is POSIX-specific")
+def test_stdio_close_reaps_grandchildren_of_the_server_process(
+    tmp_path: Path,
+) -> None:
+    """05-M5: close() must tear down the whole process group, not just the
+    direct child, and must return even with grandchildren keeping pipes open."""
+    marker = tmp_path / "grandchild.pid"
+    script = (
+        "import subprocess, sys, time\n"
+        "p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(300)'])\n"
+        f"open({str(marker)!r}, 'w').write(str(p.pid))\n"
+        "time.sleep(300)\n"
+    )
+    connection = StdioMCPConnection([sys.executable, "-c", script])
+
+    async def scenario() -> None:
+        await connection.start()
+        deadline = asyncio.get_running_loop().time() + 10
+        while not marker.exists():
+            assert (
+                asyncio.get_running_loop().time() < deadline
+            ), "grandchild never started"
+            await asyncio.sleep(0.05)
+        child_pid = connection.process.pid
+        grandchild_pid = int(marker.read_text())
+        completed = False
+        try:
+            await asyncio.wait_for(connection.close(), timeout=15)
+            # The grandchild belongs to the child's process group, which
+            # close() now signals as a whole; a bare kill() would leave it.
+            deadline = asyncio.get_running_loop().time() + 5
+            while True:
+                try:
+                    os.kill(grandchild_pid, 0)
+                except ProcessLookupError:
+                    completed = True
+                    return
+                assert (
+                    asyncio.get_running_loop().time() < deadline
+                ), "the grandchild survived close()"
+                await asyncio.sleep(0.1)
+        finally:
+            if not completed:
+                # Never leave sleepers behind to wedge the shutdown.
+                for pid in (child_pid, grandchild_pid):
+                    try:
+                        os.kill(pid, 9)
+                    except ProcessLookupError:
+                        pass
+
+    asyncio.run(scenario())

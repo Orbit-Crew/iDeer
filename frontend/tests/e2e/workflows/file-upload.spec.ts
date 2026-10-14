@@ -16,7 +16,6 @@ test.describe("File Upload", () => {
 
   test("upload button is visible on workspace page", async ({ page }) => {
     await page.goto("/workspace");
-    await page.waitForLoadState("networkidle");
 
     // The upload trigger may be a button, icon, or hidden input.
     // Look for common patterns.
@@ -25,16 +24,18 @@ test.describe("File Upload", () => {
         '[data-testid="upload-button"], [data-testid="file-upload"], button:has-text("upload"), button:has-text("上传")',
       )
       .first();
-
-    // At least one upload entry-point should exist
     const fileInput = page.locator('input[type="file"]');
-    const hasTrigger = (await uploadTrigger.count()) > 0;
-    const hasInput = (await fileInput.count()) > 0;
 
-    expect(
-      hasTrigger || hasInput,
-      "Expected an upload button or file input on the workspace page",
-    ).toBe(true);
+    // At least one upload entry-point should exist; poll with a bounded
+    // window instead of a networkidle gate so the wait is on the observable
+    // signal itself (count() does not auto-wait).
+    await expect
+      .poll(
+        async () =>
+          (await uploadTrigger.count()) > 0 || (await fileInput.count()) > 0,
+        { timeout: 10_000 },
+      )
+      .toBe(true);
   });
 
   test("file can be selected via file input", async ({ page }) => {
@@ -42,7 +43,6 @@ test.describe("File Upload", () => {
     // input) is mounted.  Going through /workspace triggers a redirect and
     // may race with the conditional mount of the InputBox component.
     await page.goto("/workspace/chats/new");
-    await page.waitForLoadState("networkidle");
 
     // The PromptInput component renders a hidden <input type="file"> with
     // data-testid="file-input".

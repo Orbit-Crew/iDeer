@@ -1,6 +1,10 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { GET, PUT } from "@/app/mock/api/mcp/config/route";
+
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "true" },
+}));
 
 describe("mock MCP config route", () => {
   beforeEach(async () => {

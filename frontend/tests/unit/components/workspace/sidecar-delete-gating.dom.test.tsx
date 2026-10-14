@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from "@/core/auth/AuthProvider";
 import type { User } from "@/core/auth/types";
 import { DEFAULT_LOCALE } from "@/core/i18n";
 import { I18nProvider } from "@/core/i18n/context";
+import { SubtasksProvider } from "@/core/tasks/context";
 
 // AuthProvider and the panel both reach into next/navigation. Keep it inert
 // under happy-dom (banner-test pattern).
@@ -91,19 +92,21 @@ function buildTree(
     <I18nProvider initialLocale={DEFAULT_LOCALE}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider initialUser={initialUser}>
-          {withFlip && <FlipUserProbe to={flipTo} />}
-          <ThreadContext.Provider
-            value={{ thread: { messages: [] } as never, isMock: true }}
-          >
-            <SidecarProvider
-              parentThreadId="parent-1"
-              isMock
-              context={{ thread_id: "parent-1" } as never}
+          <SubtasksProvider>
+            {withFlip && <FlipUserProbe to={flipTo} />}
+            <ThreadContext.Provider
+              value={{ thread: { messages: [] } as never, isMock: true }}
             >
-              <SidecarThreadProbe />
-              <SidecarPanel />
-            </SidecarProvider>
-          </ThreadContext.Provider>
+              <SidecarProvider
+                parentThreadId="parent-1"
+                isMock
+                context={{ thread_id: "parent-1" } as never}
+              >
+                <SidecarThreadProbe />
+                <SidecarPanel />
+              </SidecarProvider>
+            </ThreadContext.Provider>
+          </SubtasksProvider>
         </AuthProvider>
       </QueryClientProvider>
     </I18nProvider>

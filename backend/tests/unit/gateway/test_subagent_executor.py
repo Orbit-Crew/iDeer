@@ -21,7 +21,6 @@ import inspect
 import logging
 import sys
 import threading
-import time
 from concurrent.futures import Future
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import UTC, datetime
@@ -31,6 +30,7 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _eventual import wait_until
 from packaging.version import Version
 
 from deerflow.agents.middlewares.tool_receipt_middleware import ToolReceiptMiddleware
@@ -3470,10 +3470,11 @@ class TestCooperativeCancellation:
                 executor_module._background_tasks[task_id].error = "Cancelled by user"
                 executor_module._background_tasks[task_id].completed_at = datetime.now()
 
-            deadline = time.monotonic() + 5
-            while task_id in executor_module._background_futures and time.monotonic() < deadline:
-                time.sleep(0.01)
-            assert task_id not in executor_module._background_futures, "background coroutine did not finish"
+            wait_until(
+                lambda: task_id not in executor_module._background_futures,
+                timeout=5,
+                message="background coroutine did not finish",
+            )
 
         result = executor_module._background_tasks.get(task_id)
         assert result is not None
@@ -4776,9 +4777,11 @@ class TestToolReceiptHarvest:
                 task_id = executor.execute_async("Do something")
                 assert chunk_seen.wait(timeout=3)
                 executor_module.request_cancel_background_task(task_id)
-                deadline = time.monotonic() + 3
-                while not executor_module._background_tasks[task_id].status.is_terminal and time.monotonic() < deadline:
-                    time.sleep(0.01)
+                wait_until(
+                    lambda: executor_module._background_tasks[task_id].status.is_terminal,
+                    timeout=3,
+                    message="cancelled background task never became terminal",
+                )
         finally:
             submitter.close()
 
@@ -4835,9 +4838,11 @@ class TestToolReceiptHarvest:
             ):
                 task_id = executor.execute_async("Do something")
                 assert chunk_seen.wait(timeout=3)
-                deadline = time.monotonic() + 3
-                while task_id in executor_module._background_futures and time.monotonic() < deadline:
-                    time.sleep(0.01)
+                wait_until(
+                    lambda: task_id not in executor_module._background_futures,
+                    timeout=3,
+                    message="background task never left the futures map",
+                )
         finally:
             submitter.close()
 
@@ -6532,11 +6537,11 @@ class TestExecuteAsync:
         # a fresh uuid execution_id and records the caller id as external_task_id.
         with patch.object(executor, "_aexecute", side_effect=fake_aexecute):
             tid = executor.execute_async("T", task_id="custom-id")
-            for _ in range(50):
-                r = executor_module.get_background_task_result(tid)
-                if r and r.status.is_terminal:
-                    break
-                time.sleep(0.1)
+            wait_until(
+                lambda: (res := executor_module.get_background_task_result(tid)) is not None and res.status.is_terminal,
+                timeout=5,
+                message="background task tid never reached a terminal status",
+            )
 
         result = executor_module.get_background_task_result(tid)
         assert result is not None
@@ -6558,11 +6563,11 @@ class TestExecuteAsync:
 
         with patch.object(executor, "_aexecute", side_effect=fake_aexecute):
             tid = executor.execute_async("T")
-            for _ in range(50):
-                r = executor_module.get_background_task_result(tid)
-                if r and r.status.is_terminal:
-                    break
-                time.sleep(0.1)
+            wait_until(
+                lambda: (res := executor_module.get_background_task_result(tid)) is not None and res.status.is_terminal,
+                timeout=5,
+                message="background task tid never reached a terminal status",
+            )
 
         result = executor_module.get_background_task_result(tid)
         assert result is not None
@@ -6878,11 +6883,11 @@ class TestExecuteAsyncTimeout:
         executor_module._background_tasks.clear()
 
         tid = executor.execute_async("T")
-        for _ in range(50):
-            result = executor_module.get_background_task_result(tid)
-            if result and result.status.is_terminal:
-                break
-            time.sleep(0.1)
+        wait_until(
+            lambda: (res := executor_module.get_background_task_result(tid)) is not None and res.status.is_terminal,
+            timeout=5,
+            message="background task tid never reached a terminal status",
+        )
 
         result = executor_module.get_background_task_result(tid)
         assert result is not None
@@ -6926,13 +6931,11 @@ class TestExecuteAsyncIntegration:
         with patch.object(executor, "_create_agent", return_value=mock_agent):
             tid = executor.execute_async("T")
             # Wait for background task to complete
-            import time
-
-            for _ in range(50):
-                time.sleep(0.1)
-                r = executor_module.get_background_task_result(tid)
-                if r and r.status.is_terminal:
-                    break
+            wait_until(
+                lambda: (r := executor_module.get_background_task_result(tid)) is not None and r.status.is_terminal,
+                timeout=5,
+                message="background task never reached a terminal status",
+            )
 
         result = executor_module.get_background_task_result(tid)
         assert result is not None

@@ -445,7 +445,7 @@ describe("WorkflowDetailPage", () => {
       const backButton = backButtons.find(
         (b) => b.getAttribute("data-variant") === "ghost",
       );
-      expect(backButton).toBeDefined();
+      expect(backButton).toBeInTheDocument();
       fireEvent.click(backButton!);
       expect(mockPush).toHaveBeenCalledWith("/workspace/workflows");
     });
@@ -915,7 +915,7 @@ describe("WorkflowDetailPage", () => {
       // The label contains "topic" and a required span with "*"
       const labels = within(dialog).getAllByTestId("label");
       const topicLabel = labels.find((l) => l.textContent?.includes("topic"));
-      expect(topicLabel).toBeDefined();
+      expect(topicLabel).toBeInTheDocument();
       expect(topicLabel?.textContent).toContain("*");
     });
 
@@ -975,7 +975,7 @@ describe("WorkflowDetailPage", () => {
       const submitBtn = buttons.find(
         (b) => b.textContent?.includes("Starting") || b.textContent === "Run",
       );
-      expect(submitBtn).toBeDefined();
+      expect(submitBtn).toBeInTheDocument();
       expect(submitBtn).toHaveAttribute("disabled");
     });
 

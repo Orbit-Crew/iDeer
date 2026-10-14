@@ -1,5 +1,9 @@
 import type { NextRequest } from "next/server";
 
+import {
+  MOCK_API_UNAVAILABLE,
+  mockApiDisabled,
+} from "@/app/mock/api/mock-api-gate";
 import type { MCPConfig } from "@/core/mcp/types";
 
 const defaultConfig: MCPConfig = {
@@ -39,10 +43,12 @@ const defaultConfig: MCPConfig = {
 let storedConfig: MCPConfig = structuredClone(defaultConfig);
 
 export function GET() {
+  if (mockApiDisabled()) return MOCK_API_UNAVAILABLE;
   return Response.json(storedConfig);
 }
 
 export async function PUT(request: NextRequest) {
+  if (mockApiDisabled()) return MOCK_API_UNAVAILABLE;
   const config = (await request.json()) as MCPConfig;
   storedConfig = config;
   return Response.json(storedConfig);

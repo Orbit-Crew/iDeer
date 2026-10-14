@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, call
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
@@ -220,3 +220,43 @@ async def test_delete_user_rows_keeps_disabled_rbac_history_anchor() -> None:
     session.delete.assert_awaited_once_with(auth_record)
     assert rbac_record.disabled is True
     assert rbac_record.department_id is None
+
+
+@pytest.mark.asyncio
+async def test_validate_preconditions_blocks_super_admin_deletion_when_none_active(monkeypatch):
+    """01-M1: the last-super-admin guard must be reachable for disabled targets.
+
+    The old branch re-checked ``not rbac_user.disabled`` — always False after
+    the disabled-before-deletion precondition — so a deleted super_admin could
+    leave zero active admins, with only the initialize bootstrap as recovery.
+    """
+    rbac = SimpleNamespace(id="target", disabled=True, role=UserRole.SUPER_ADMIN)
+
+    async def fake_exists(_session, _user_id):
+        return rbac, SimpleNamespace(id="target")
+
+    monkeypatch.setattr(user_deletion, "_check_user_exists", fake_exists)
+    count_result = MagicMock()
+    count_result.scalar.return_value = 0
+    session = AsyncMock()
+    session.execute.return_value = count_result
+
+    with pytest.raises(ValueError, match="no active super_admin would remain"):
+        await user_deletion._validate_preconditions(session, "target", "admin", "delete", None)
+
+
+@pytest.mark.asyncio
+async def test_validate_preconditions_allows_disabled_super_admin_when_active_exists(monkeypatch):
+    """01-M1: with an active super_admin remaining, the disabled one deletes fine."""
+    rbac = SimpleNamespace(id="target", disabled=True, role=UserRole.SUPER_ADMIN)
+
+    async def fake_exists(_session, _user_id):
+        return rbac, SimpleNamespace(id="target")
+
+    monkeypatch.setattr(user_deletion, "_check_user_exists", fake_exists)
+    count_result = MagicMock()
+    count_result.scalar.return_value = 1
+    session = AsyncMock()
+    session.execute.return_value = count_result
+
+    await user_deletion._validate_preconditions(session, "target", "admin", "delete", None)

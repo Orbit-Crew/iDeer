@@ -16,7 +16,6 @@ test.describe("Login — visual regression", () => {
 
   test("default viewport screenshot", async ({ page }) => {
     await page.goto("/login");
-    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
 
     await expect(page).toHaveScreenshot("login-default.png", {

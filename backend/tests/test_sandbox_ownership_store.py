@@ -21,6 +21,7 @@ import time
 import uuid
 
 import pytest
+from _eventual import wait_until
 
 from deerflow.community.aio_sandbox.ownership import (
     MemoryOwnershipStore,
@@ -138,9 +139,7 @@ def test_claim_succeeds_once_a_lease_expires(stores):
     assert a.claim("s1") is True
     assert b.claim("s1") is False
 
-    time.sleep(0.35)
-
-    assert a.owner("s1") is None
+    wait_until(lambda: a.owner("s1") is None, timeout=5, message="lease never lapsed past its TTL")
     assert b.claim("s1") is True
 
 
@@ -212,9 +211,9 @@ def test_a_stale_teardown_marker_expires(stores):
     a.claim("s1", for_destroy=True)
     assert b.take("s1") is False
 
-    time.sleep(0.35)
-
-    assert b.take("s1") is True
+    # take() only mutates once the marker has lapsed, so polling it is
+    # side-effect-free until the transition this test waits for.
+    wait_until(lambda: b.take("s1") is True, timeout=5, message="stale teardown marker never expired")
 
 
 def test_renew_does_not_keep_a_teardown_alive(stores):
@@ -238,7 +237,7 @@ def test_renew_reports_lapsed_not_lost_for_an_expired_lease(stores):
     a = stores.make("A", ttl_seconds=0.2)
     a.claim("s1")
 
-    time.sleep(0.35)
+    wait_until(lambda: a.owner("s1") is None, timeout=5, message="lease never lapsed past its TTL")
 
     assert a.renew("s1") is RenewOutcome.LAPSED
     assert a.owner("s1") is None
@@ -248,7 +247,7 @@ def test_renew_does_not_reacquire_on_its_own(stores):
     """The caller decides; renew() never silently re-takes."""
     a = stores.make("A", ttl_seconds=0.2)
     a.claim("s1")
-    time.sleep(0.35)
+    wait_until(lambda: a.owner("s1") is None, timeout=5, message="lease never lapsed past its TTL")
 
     a.renew("s1")
 

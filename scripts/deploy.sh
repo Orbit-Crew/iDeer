@@ -84,7 +84,9 @@ if  [ "$CMD" != "down" ] && [ ! -f "$IDEER_CONFIG_PATH" ]; then
         echo "  or 'make config' for the full template, then set the required model API keys."
         exit 1
     fi
-else
+elif [ "$CMD" != "down" ]; then
+    # 08-L9: 'down' never checks config.yaml; printing a green check mark here
+    # implied a verification that did not happen.
     echo -e "${GREEN}✓ config.yaml: $IDEER_CONFIG_PATH${NC}"
 fi
 
@@ -150,6 +152,21 @@ fi
 # the deploy script. The file is never sourced by the shell.
 if [ -f "$REPO_ROOT/.env" ]; then
     COMPOSE_CMD+=(--env-file "$REPO_ROOT/.env")
+fi
+
+# ── frontend/.env ─────────────────────────────────────────────────────────────
+# docker-compose.yaml declares ../frontend/.env as a REQUIRED env_file for the
+# frontend service, so a fresh checkout without it failed compose parsing with
+# an opaque error. Mirror docker.sh's ensure-from-example behavior (08-L7).
+if [ "$CMD" != "down" ] && [ ! -f "$REPO_ROOT/frontend/.env" ]; then
+    if [ -f "$REPO_ROOT/frontend/.env.example" ]; then
+        cp "$REPO_ROOT/frontend/.env.example" "$REPO_ROOT/frontend/.env"
+        echo -e "${GREEN}✓ Created frontend/.env from frontend/.env.example${NC}"
+    else
+        echo -e "${RED}✗ frontend/.env not found and no frontend/.env.example to copy from.${NC}"
+        echo "  Create $REPO_ROOT/frontend/.env before deploying."
+        exit 1
+    fi
 fi
 
 

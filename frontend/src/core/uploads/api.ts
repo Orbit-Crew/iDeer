@@ -60,7 +60,7 @@ export async function uploadFiles(
   });
 
   const response = await fetch(
-    `${getBackendBaseURL()}/api/threads/${threadId}/uploads`,
+    `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/uploads`,
     {
       method: "POST",
       body: formData,
@@ -80,7 +80,7 @@ export async function uploadFiles(
  */
 export async function getUploadLimits(threadId: string): Promise<UploadLimits> {
   const response = await fetch(
-    `${getBackendBaseURL()}/api/threads/${threadId}/uploads/limits`,
+    `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/uploads/limits`,
   );
 
   if (!response.ok) {
@@ -97,7 +97,7 @@ export async function listUploadedFiles(
   threadId: string,
 ): Promise<ListFilesResponse> {
   const response = await fetch(
-    `${getBackendBaseURL()}/api/threads/${threadId}/uploads/list`,
+    `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/uploads/list`,
   );
 
   if (!response.ok) {
@@ -116,7 +116,7 @@ export async function deleteUploadedFile(
 ): Promise<{ success: boolean; message: string }> {
   const encodedFilename = encodeURIComponent(filename);
   const response = await fetch(
-    `${getBackendBaseURL()}/api/threads/${threadId}/uploads/${encodedFilename}`,
+    `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/uploads/${encodedFilename}`,
     {
       method: "DELETE",
     },

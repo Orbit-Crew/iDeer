@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from sqlalchemy import DDL, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, String, Text, event, func, text
 from sqlalchemy.orm import validates
 
 from deerflow.persistence.base import Base
+
+
+def _now() -> datetime:
+    """UTC-aware clock, matching the canonical resource models (report 02-L2)."""
+    return datetime.now(UTC)
 
 
 class VisibilityApplicationStatus(StrEnum):
@@ -35,7 +40,7 @@ class VisibilityApplication(Base):
     department_id = Column(String(64), ForeignKey("departments.id"), nullable=True)
     reason = Column(Text, nullable=False, default="", server_default=text("''"))
     status = Column(String(20), nullable=False, default="pending", server_default=text("'pending'"))
-    submitted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    submitted_at = Column(DateTime, nullable=False, default=_now)
     reviewed_by = Column(String(64), ForeignKey("users_ext.id"), nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
     review_comment = Column(Text, nullable=False, default="", server_default=text("''"))

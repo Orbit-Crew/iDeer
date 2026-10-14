@@ -165,6 +165,9 @@ vi.mock("streamdown", () => ({
 
 vi.mock("@/core/streamdown/plugins", () => ({
   streamdownPlugins: {},
+  // SafeStreamdown's default-prop import; unused here because the page passes
+  // streamdownPlugins explicitly.
+  streamdownRenderingPlugins: {},
 }));
 
 vi.mock("@/core/utils/datetime", () => ({

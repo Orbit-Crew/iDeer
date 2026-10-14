@@ -14,7 +14,7 @@ import { fetch } from "@/core/api/fetcher";
 
 import { isStaticWebsiteOnly } from "../static-mode";
 
-import { type User, buildLoginUrl } from "./types";
+import { type User, buildLoginUrl, userSchema } from "./types";
 
 // Re-export for consumers
 export type { User };
@@ -71,8 +71,15 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setUser(data);
+        const parsed = userSchema.safeParse(await res.json());
+        if (!parsed.success) {
+          // Same contract as the SSR path (auth/server.ts): a malformed
+          // /auth/me payload is treated as gateway-unavailable, not injected
+          // into the context unvalidated (report 06-L7).
+          console.error("[auth] Malformed /auth/me response:", parsed.error);
+          return;
+        }
+        setUser(parsed.data);
       } else if (res.status === 401) {
         // Session expired or invalid
         setUser(null);

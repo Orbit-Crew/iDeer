@@ -414,7 +414,8 @@ def test_deploy_script_ships_no_plaintext_default_admin_password():
 def _install_fake_curl(env: dict[str, str], tmp_path: Path, status_code: str) -> Path:
     """Add a fake curl to the fake-docker bin dir.  Health checks succeed; the
     /initialize POST body is appended to a log file and `status_code` is
-    reported as the HTTP status."""
+    reported as the HTTP status.  Supports ``--data @-`` (body from stdin),
+    which is how deploy-intranet.sh keeps the payload out of argv (08-M11)."""
     bin_dir = Path(env["PATH"].split(":", 1)[0])
     log_path = tmp_path / "curl-calls.log"
     env["FAKE_CURL_LOG"] = str(log_path)
@@ -436,6 +437,9 @@ while [ "$#" -gt 0 ]; do
     *) shift ;;
   esac
 done
+if [ "$body" = "@-" ]; then
+  body="$(cat)"
+fi
 if [ -n "$body" ]; then
   printf '%s\n' "$body" >> "${FAKE_CURL_LOG:?}"
 fi
@@ -512,6 +516,114 @@ def test_up_uses_explicit_admin_password_without_persisting_or_displaying(tmp_pa
     assert posted[0]["password"] == "operator-supplied-strong-pass"
     assert not (bundle_root / "runtime" / "data" / ".super-admin-password").exists()
     assert "operator-supplied-strong-pass" not in proc.stdout
+
+
+def test_up_initialize_body_survives_quotes_and_backslashes_in_password(tmp_path: Path):
+    """08-M11: the initialize payload must stay valid JSON for any password.
+
+    The body was previously interpolated raw into the JSON document, so an
+    operator password containing a double quote or backslash produced an
+    invalid request body and an opaque gateway error.  It must round-trip
+    exactly, and travel via stdin (``--data @-``) rather than argv so it does
+    not appear in the process list.
+    """
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    password = 'he said "hi"\\bye'
+    env["IDEER_ADMIN_PASSWORD"] = password
+    log_path = _install_fake_curl(env, tmp_path, status_code="201")
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert "super admin account created" in proc.stdout, proc.stderr
+    posted = _posted_initialize_bodies(log_path)
+    assert len(posted) == 1
+    assert posted[0] == {"email": "super_admin@test.com", "password": password}
+
+
+def test_up_reads_env_values_without_executing_the_env_file(tmp_path: Path):
+    """08-M2: env.intranet is Docker dotenv syntax and must never be sourced.
+
+    The file carries secrets and lives in an operator-writable bundle
+    directory. The deploy script must extract the few keys it needs
+    line-by-line (the way deploy.sh reads UV_EXTRAS) instead of `. "$ENV_FILE"`:
+    a command-substitution payload must not execute, an unbound variable
+    reference must not abort the script under `set -u`, and real assignments
+    (PORT) must still drive the health checks and admin initialization.
+    """
+    bundle_root = _make_bundle(tmp_path)
+    env = _env_with_fake_docker(tmp_path)
+    bin_dir = Path(env["PATH"].split(":", 1)[0])
+    url_log = tmp_path / "curl-urls.log"
+    env["FAKE_URL_LOG"] = str(url_log)
+    env["IDEER_ADMIN_EMAIL"] = "super_admin@test.com"
+    env["IDEER_ADMIN_PASSWORD"] = "operator-supplied-strong-pass"
+    _write_executable(
+        bin_dir / "curl",
+        r"""#!/usr/bin/env sh
+set -eu
+url=""
+body=""
+print_code=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -o) shift 2 ;;
+    -w) print_code=1; shift 2 ;;
+    -X|-H) shift 2 ;;
+    --data) body="$2"; shift 2 ;;
+    -*) shift ;;
+    *) url="$1"; shift ;;
+  esac
+done
+if [ -n "$url" ]; then
+  printf '%s\n' "$url" >> "${FAKE_URL_LOG:?}"
+fi
+if [ -n "$print_code" ] && [ "$print_code" -eq 1 ]; then
+  printf '%s' "201"
+fi
+exit 0
+""",
+    )
+
+    marker = tmp_path / "payload-ran"
+    (bundle_root / "env.intranet").write_text(
+        f"PORT=2999\nIDEER_PAYLOAD=$(touch {marker})\nIDEER_UNBOUND=$IDEER_UNDEFINED_VARIABLE_UNDER_SET_U\n",
+        encoding="utf-8",
+    )
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    # The pipeline consumed the real assignments: verify_services health-checked
+    # and the admin initialize POST both targeted the env-file PORT.
+    assert "initializing super admin account (super_admin@test.com)..." in proc.stdout, proc.stderr
+    urls = url_log.read_text(encoding="utf-8").splitlines()
+    assert "http://127.0.0.1:2999/health" in urls, urls
+    assert "http://127.0.0.1:2999/api/v1/auth/setup-status" in urls, urls
+    assert "http://127.0.0.1:2999/api/v1/auth/initialize" in urls, urls
+    # ...while the payload lines stayed inert data:
+    assert not marker.exists(), "the env file was sourced: the command-substitution payload executed"
+    assert "unbound variable" not in proc.stderr, "the env file was sourced: `set -u` aborted on its unbound reference"
+
+
+def test_failed_extraction_does_not_mint_the_version_marker(tmp_path: Path):
+    """08-M3: a failed source extraction must fail loudly, not mint the marker.
+
+    up/restart call prepare_bundle inside ``if !``, which suppresses errexit
+    for the whole call tree, so a failed ``tar`` used to be swallowed and the
+    ``.bundle-version`` marker was still written — later invocations then
+    skipped re-extraction (marker matches) and kept deploying the broken or
+    empty source tree until an operator removed source/ by hand.
+    """
+    bundle_root = _make_bundle(tmp_path)
+    (bundle_root / "ideer-source-test.tar.gz").write_bytes(b"not-a-gzip-archive")
+    env = _env_with_fake_docker(tmp_path)
+
+    proc = _run_deploy(bundle_root, "--no-load", "up", env=env)
+
+    assert proc.returncode != 0
+    marker = bundle_root / "source" / ".bundle-version"
+    assert not marker.exists(), "extract_source wrote the version marker although the source tar failed; the lying marker makes later runs skip re-extracting the broken tree (08-M3)"
+    assert "failed to extract source archive" in proc.stderr, proc.stderr
 
 
 def test_prepare_reuses_persisted_auth_secrets_when_env_file_is_recreated(tmp_path: Path):
@@ -1225,3 +1337,43 @@ exit 99
     assert "docker-compose.intranet.yaml" in aio_invocations
     assert "docker-compose.dood.yaml" in aio_invocations
     assert "sandbox mode: aio" in proc.stdout
+
+
+def test_package_exclude_skills_warning_fires_for_preinstall_conflict(tmp_path: Path, monkeypatch):
+    """08-L1: the preinstall/--exclude-skills conflict warning must be reachable.
+
+    EXCLUDED_SKILLS was only split from --exclude-skills during the pack phase
+    (step 6/7), so the conflict warning in the preinstall validation always
+    tested an empty array and never fired.
+    """
+    skill = "officecli"
+    bundled = (REPO_ROOT / "bundled-skills.txt").read_text(encoding="utf-8")
+    assert re.search(rf"^\s*{re.escape(skill)}\b", bundled, re.MULTILINE), "fixture skill must be on the preinstall list"
+    assert (REPO_ROOT / "resources" / "skills" / skill).is_dir()
+
+    output_dir = tmp_path / "bundle"
+    env = _env_with_fake_docker(tmp_path)
+
+    proc = subprocess.run(
+        [
+            "bash",
+            str(PACKAGE_SCRIPT),
+            "--version",
+            "test",
+            "--output-dir",
+            str(output_dir),
+            "--exclude-skills",
+            skill,
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert f"warning: skill '{skill}' is both preinstall-listed and --exclude-skills; exclusion wins" in proc.stdout
+    with tarfile.open(output_dir / "ideer-source-test.tar.gz", "r:gz") as tar:
+        names = set(tar.getnames())
+    assert f"resources/skills/{skill}" not in names, "the excluded skill must not enter the source archive"

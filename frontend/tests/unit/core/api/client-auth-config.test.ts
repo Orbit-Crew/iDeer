@@ -110,61 +110,6 @@ describe("core api client", () => {
   });
 });
 
-describe("auth provider api helpers", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.restoreAllMocks();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.unstubAllEnvs();
-  });
-
-  test("fetchCurrentUser returns user for ok responses and null otherwise", async () => {
-    const user = { id: "u1", email: "user@example.com", role: "user" };
-    vi.doMock("@/core/api/client", () => ({
-      clientFetch: vi
-        .fn()
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(user), { status: 200 }),
-        )
-        .mockResolvedValueOnce(new Response("Unauthorized", { status: 401 }))
-        .mockResolvedValueOnce(new Response("Server error", { status: 500 })),
-    }));
-    const { fetchCurrentUser } = await import("@/core/api/auth-provider");
-
-    await expect(fetchCurrentUser()).resolves.toEqual(user);
-    await expect(fetchCurrentUser()).resolves.toBeNull();
-    await expect(fetchCurrentUser()).resolves.toBeNull();
-  });
-
-  test("fetchCurrentUser and performLogout handle thrown fetch errors", async () => {
-    vi.doMock("@/core/api/client", () => ({
-      clientFetch: vi.fn().mockRejectedValue(new Error("network")),
-    }));
-    const { fetchCurrentUser, performLogout } =
-      await import("@/core/api/auth-provider");
-
-    await expect(fetchCurrentUser()).resolves.toBeNull();
-    await expect(performLogout()).resolves.toBe(false);
-  });
-
-  test("performLogout returns true when logout request completes", async () => {
-    const clientFetch = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { status: 204 }));
-    vi.doMock("@/core/api/client", () => ({ clientFetch }));
-    const { performLogout } = await import("@/core/api/auth-provider");
-
-    await expect(performLogout()).resolves.toBe(true);
-    expect(clientFetch).toHaveBeenCalledWith("/api/v1/auth/logout", {
-      method: "POST",
-      redirectOn401: false,
-    });
-  });
-});
-
 describe("api config urls", () => {
   beforeEach(() => {
     vi.resetModules();

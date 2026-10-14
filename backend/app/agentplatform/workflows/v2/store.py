@@ -242,12 +242,28 @@ class WorkflowV2Store:
 
     async def list_latest_definitions(self, limit: int = 100, offset: int = 0) -> tuple[list[WorkflowDefinitionVersionRow], int]:
         async with self.session_factory() as session:
-            result = await session.execute(select(WorkflowDefinitionVersionRow).order_by(WorkflowDefinitionVersionRow.workflow_name, WorkflowDefinitionVersionRow.version.desc()))
-            latest: dict[str, WorkflowDefinitionVersionRow] = {}
-            for row in result.scalars().all():
-                latest.setdefault(row.workflow_name, row)
-            values = list(latest.values())
-            return values[offset : offset + limit], len(values)
+            # Latest-version selection runs in SQL (report 02-M4): loading every
+            # version row and deduplicating in memory degrades to a full-table
+            # scan once definition versions accumulate.
+            latest = (
+                select(
+                    WorkflowDefinitionVersionRow.workflow_name,
+                    func.max(WorkflowDefinitionVersionRow.version).label("max_version"),
+                )
+                .group_by(WorkflowDefinitionVersionRow.workflow_name)
+                .subquery()
+            )
+            query = (
+                select(WorkflowDefinitionVersionRow)
+                .join(
+                    latest,
+                    (WorkflowDefinitionVersionRow.workflow_name == latest.c.workflow_name) & (WorkflowDefinitionVersionRow.version == latest.c.max_version),
+                )
+                .order_by(WorkflowDefinitionVersionRow.workflow_name)
+            )
+            total = (await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
+            rows = list((await session.execute(query.offset(offset).limit(limit))).scalars())
+            return rows, int(total)
 
     async def delete_definition(self, workflow_name: str) -> int:
         """Hard-delete every definition version of a workflow.
@@ -274,6 +290,15 @@ class WorkflowV2Store:
         user_concurrency: int | None = None,
         department_concurrency: int | None = None,
     ) -> WorkflowV2RunRow:
+        """Enforce the concurrency limits as a documented soft quota (report 02-M7).
+
+        The active-run count and the insert are not serialized against each
+        other: two concurrent creations can both observe headroom and exceed
+        the limit. SQLite's single-writer execution narrows the window to
+        near-zero, and on PostgreSQL no unique constraint exists that could
+        back a hard limit without a dedicated quota row. The limit is
+        therefore advisory under concurrent creation by design.
+        """
         run = WorkflowV2RunRow(
             run_id=run_id,
             workflow_name=workflow_name,
@@ -413,6 +438,9 @@ class WorkflowV2Store:
             )
             knowledge_scope = await _frozen_knowledge_scope(session, snapshots, actor)
 
+            # Soft quota, same semantics as create_run (report 02-M7): the
+            # count and insert are not serialized, so concurrent creations may
+            # exceed the configured limit; see create_run's docstring.
             active = ("queued", "running", "paused")
             if user_concurrency is not None:
                 user_count = (
@@ -690,12 +718,14 @@ class WorkflowV2Store:
         created_by: str | None = None,
     ) -> tuple[list[WorkflowV2RunRow], int]:
         async with self.session_factory() as session:
-            query = select(WorkflowV2RunRow).where(WorkflowV2RunRow.workflow_name == workflow_name)
+            # Count and pagination run in SQL (report 02-M4): slicing a
+            # full load of every run row degrades as runs accumulate.
+            conditions = [WorkflowV2RunRow.workflow_name == workflow_name]
             if created_by is not None:
-                query = query.where(WorkflowV2RunRow.created_by == created_by)
-            query = query.order_by(WorkflowV2RunRow.created_at.desc())
-            rows = list((await session.execute(query)).scalars().all())
-            return rows[offset : offset + limit], len(rows)
+                conditions.append(WorkflowV2RunRow.created_by == created_by)
+            total = (await session.execute(select(func.count()).select_from(WorkflowV2RunRow).where(*conditions))).scalar_one()
+            rows = list((await session.execute(select(WorkflowV2RunRow).where(*conditions).order_by(WorkflowV2RunRow.created_at.desc()).offset(offset).limit(limit))).scalars())
+            return rows, int(total)
 
     async def update_snapshot(self, run_id: str, snapshot: dict, *, worker_id: str) -> bool:
         """Persist recovery state only while the caller still owns its lease."""

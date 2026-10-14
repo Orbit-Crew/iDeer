@@ -536,3 +536,41 @@ def test_lifespan_preserves_flush_budget_when_retrieval_warm_is_still_running() 
     assert shutdown_elapsed < 1.0
     manager.shutdown_flush.assert_called_once_with(5.0)
     manager.close.assert_not_called()
+
+
+def test_lifespan_closes_oidc_service_on_shutdown():
+    """01-M4: the lifespan shutdown section must actually call close_oidc_service.
+
+    The hook existed in routers/auth.py (releasing the shared
+    httpx.AsyncClient), but the lifespan never called it, and the tests only
+    patched the attribute with ``create=True`` without awaiting it — the green
+    light masked the missing wiring.
+    """
+    from app.gateway.app import lifespan
+
+    async def scenario():
+        app = FastAPI()
+        startup_config = SimpleNamespace(
+            log_level="INFO",
+            memory=SimpleNamespace(
+                token_counting="char",
+                enabled=False,
+                shutdown_flush_timeout_seconds=5.0,
+            ),
+        )
+        close_oidc_service = AsyncMock()
+        with (
+            patch("app.gateway.app.get_app_config", return_value=startup_config),
+            patch("app.gateway.app.get_gateway_config", return_value=MagicMock(host="x", port=0)),
+            patch("app.gateway.app.langgraph_runtime", _noop_langgraph_runtime),
+            patch("deerflow.skills.projection.ensure_public_skill_projection"),
+            patch("app.gateway.app.auth.close_oidc_service", close_oidc_service),
+            patch("app.channels.service.start_channel_service", AsyncMock()),
+            patch("app.channels.service.stop_channel_service", AsyncMock()),
+        ):
+            async with lifespan(app):
+                pass
+
+        close_oidc_service.assert_awaited_once()
+
+    asyncio.run(scenario())

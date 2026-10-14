@@ -42,6 +42,11 @@ const terminalEventTypes = new Set<WorkflowEvent["type"]>([
   "run_cancelled",
 ]);
 
+// Bounded retention for the streamed event log (report 06-L3): the backend
+// already fails a run past max_events_per_run; this keeps the viewer's memory
+// and render cost flat by retaining only the newest events past the window.
+const MAX_STREAMED_EVENTS = 1000;
+
 function parseWorkflowEvent(
   message: MessageEvent<string>,
 ): WorkflowEvent | null {
@@ -250,9 +255,13 @@ export function useRunStatus(
         lastEventSeq.current = event.seq;
         setStreamedStatus((current) => {
           const base = current ?? { ...data, events: [] };
+          const events = [...(base.events ?? []), event];
           return {
             ...applyWorkflowEvent(base, event),
-            events: [...(base.events ?? []), event],
+            events:
+              events.length > MAX_STREAMED_EVENTS
+                ? events.slice(-MAX_STREAMED_EVENTS)
+                : events,
           };
         });
         if (terminalEventTypes.has(event.type)) {

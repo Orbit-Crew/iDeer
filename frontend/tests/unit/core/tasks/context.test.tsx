@@ -1,5 +1,5 @@
 import { renderHook, act, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   SubtasksProvider,
@@ -54,38 +54,24 @@ describe("SubtasksProvider", () => {
 });
 
 // ---------------------------------------------------------------------------
-// SubtaskContext default value (accessed via useContext without a Provider)
+// useSubtaskContext outside a Provider
 // ---------------------------------------------------------------------------
 
-describe("SubtaskContext default value", () => {
-  it("provides an empty tasks object as the default value", () => {
-    // When no Provider wraps the consumer, useContext returns the default
-    // value passed to createContext. We can observe this by rendering the
-    // hook without a wrapper.
-    const { result } = renderHook(() => useSubtaskContext());
-    expect(result.current.tasks).toEqual({});
-  });
-
-  it("provides a callable no-op setTasks as the default value", () => {
-    const { result } = renderHook(() => useSubtaskContext());
-    // The default setTasks is a no-op; calling it should not throw.
-    expect(() => result.current.setTasks({})).not.toThrow();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// useSubtaskContext
-// ---------------------------------------------------------------------------
-
-describe("useSubtaskContext", () => {
-  it("returns the context default value when no Provider is present", () => {
-    // Because createContext is called with a default value, useContext never
-    // returns undefined — the guard (`if (context === undefined)`) is dead
-    // code. This test documents that behaviour: the hook returns the default
-    // value silently instead of throwing.
-    const { result } = renderHook(() => useSubtaskContext());
-    expect(result.current.tasks).toEqual({});
-    expect(typeof result.current.setTasks).toBe("function");
+describe("useSubtaskContext without a Provider", () => {
+  it("throws when no Provider is present", () => {
+    // The context has no default value: consuming outside a Provider is a
+    // bug (silent no-op writes would lose subtask updates), so the guard
+    // throws instead of returning a noop context.
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    try {
+      expect(() => renderHook(() => useSubtaskContext())).toThrow(
+        "useSubtaskContext must be used within a SubtaskContext.Provider",
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("returns context value when used inside SubtasksProvider", () => {

@@ -158,9 +158,9 @@ describe("generic tool details", () => {
   it("distinguishes missing, empty and falsy results during updates", () => {
     const { rerender } = render(group([call]));
     expand();
-    expect(screen.getByText("No result received")).toBeTruthy();
+    expect(screen.getByText("No result received")).toBeInTheDocument();
     rerender(group([call, tool("")]));
-    expect(screen.getByText("Empty result")).toBeTruthy();
+    expect(screen.getByText("Empty result")).toBeInTheDocument();
     for (const content of ["null", "false", "0"]) {
       rerender(group([call, tool(content)]));
       expect(
@@ -178,7 +178,9 @@ describe("generic tool details", () => {
     render(group([call, tool("x".repeat(20000))]));
     expand();
     const result = screen.getByRole("region", { name: "Result" });
-    expect(within(result).getByText(enUS.toolCalls.truncated)).toBeTruthy();
+    expect(
+      within(result).getByText(enUS.toolCalls.truncated),
+    ).toBeInTheDocument();
     fireEvent.click(within(result).getByRole("button"));
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(

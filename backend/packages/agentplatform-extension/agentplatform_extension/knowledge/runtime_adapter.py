@@ -102,10 +102,17 @@ class KnowledgeRuntimeAdapter:
                     except Exception:
                         archived = False
                     mark_retrieval_receipt_archive_status(receipt["receipt_id"], "archived" if archived else "failed")
-                    receipt = next(
-                        (item for item in current_run_evidence().retrieval_receipts if item.get("receipt_id") == receipt["receipt_id"]),
-                        receipt,
-                    )
+                    updated = current_run_evidence()
+                    if updated is not None:
+                        # Defensive on purpose: the binding cannot be None in
+                        # the current call sequence, but a structural change
+                        # (e.g. an exiting bind context) must degrade to the
+                        # un-archived receipt instead of an AttributeError
+                        # after a successful search (report 04-M4).
+                        receipt = next(
+                            (item for item in updated.retrieval_receipts if item.get("receipt_id") == receipt["receipt_id"]),
+                            receipt,
+                        )
                 result = model_facing_retrieval_result(result, receipt)
         except (ImportError, KeyError, TypeError, ValueError):
             pass
@@ -202,10 +209,11 @@ def adapt_knowledge_tools(tools: list[Any], scope: KnowledgeScope) -> list[Any]:
             provider = getattr(original, "coroutine", None)
             if provider is None:
                 raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED)
-            try:
-                return await KnowledgeRuntimeAdapter(scope, provider).search_knowledge(query, logical_kb=knowledge_base)
-            except TypeError as exc:
-                raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED) from exc
+            # No blanket TypeError→denied conversion here (report 04-L7): the
+            # adapter resolves and binds arguments itself, so a TypeError past
+            # that point is a provider bug and must surface as one instead of
+            # being masked as a scope denial in the audit trail.
+            return await KnowledgeRuntimeAdapter(scope, provider).search_knowledge(query, logical_kb=knowledge_base)
 
         def _sync_search(query: str, knowledge_base: str) -> Any:
             provider = getattr(original, "func", None)

@@ -19,7 +19,9 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import threading
+import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,6 +58,11 @@ from .transport import ConsentDecisionError, LocalRuntimeClient, RePairRequired
 #: hammers a downed intranet makes the outage worse than the outage does.
 RECONNECT_BACKOFF_SECONDS = 1.0
 MAX_RECONNECT_BACKOFF_SECONDS = 30.0
+READY_TIMEOUT_SECONDS = 5.0
+# status() is polled every second by the tray UI; walking the full audit
+# hash chain per poll is O(history) on a display field (05-M7), so the
+# integrity verdict is refreshed at most once per interval.
+AUDIT_VERIFY_INTERVAL_SECONDS = 30.0
 
 
 class TrayError(RuntimeError):
@@ -416,6 +423,7 @@ class TrayController:
         # single question with one answer per call.
         self._lifecycle = threading.Lock()
         self._last_audit_seq = 0
+        self._integrity_cache: tuple[float, AuditIntegrity] | None = None
 
     def _remember_session_id(self, session_id: str) -> None:
         self.settings.session_id = session_id
@@ -455,7 +463,12 @@ class TrayController:
             finally:
                 _drain_pending(loop)
                 loop.close()
-                self._loop = None
+                # Only clear the published loop if it is still ours: a runner
+                # reaped after a ready timeout must not clobber the loop a
+                # restarted session published in the meantime (05-M1).
+                with self._lifecycle:
+                    if self._loop is loop:
+                        self._loop = None
 
         # One critical section for the whole handoff: _stopping is cleared and
         # both the thread and its loop are published before the lock is
@@ -470,15 +483,37 @@ class TrayController:
                 target=runner, name="ideer-local-runtime", daemon=True
             )
             self._thread.start()
-            if not ready.wait(timeout=5):
-                # The thread exists but its loop never came up: stopping is
-                # already set, so a runner that wakes late will not dial.
-                raise TrayError("the runtime loop did not start")
+            timed_out = not ready.wait(timeout=READY_TIMEOUT_SECONDS)
+            if timed_out:
+                # The thread exists but its loop never came up. The old
+                # comment here claimed "stopping is already set" — nothing
+                # had set it, so a runner that woke late dialed anyway while
+                # start() had already raised, and the stuck _thread made
+                # every later start()/reconnect() fail with "already
+                # started" (05-M1). Fail closed: flip _stopping while the
+                # lock is still held, so the late _supervise exits without
+                # connecting.
+                self._stopping = True
+        if timed_out:
+            # Lock released before joining: the late runner's cleanup takes
+            # _lifecycle to unpublish its loop, so joining under the lock
+            # would deadlock. Reap so the controller is restartable; a thread
+            # that cannot be reaped keeps _thread set — "already started" is
+            # the honest answer while a zombie may still wake.
+            self._thread.join(timeout=10)
+            if not self._thread.is_alive():
+                with self._lifecycle:
+                    self._thread = None
+                    self._serve_task = None
+            raise TrayError("the runtime loop did not start")
 
     async def _supervise(self) -> None:
         """Keep the session up until :meth:`stop`, backing off between attempts."""
         backoff = RECONNECT_BACKOFF_SECONDS
-        if self.mcp_service is not None:
+        # A runner reaped after a ready timeout wakes with _stopping set: it
+        # must not start MCP servers (or dial) for a session that was given
+        # up on (05-M1).
+        if not self._stopping and self.mcp_service is not None:
             await self.mcp_service.supervisor.start_all()
         try:
             while not self._stopping:
@@ -592,7 +627,7 @@ class TrayController:
                 (name, supervisor.state_of(name)) for name in supervisor.server_names()
             )
         recent = self.audit.recent(limit=1, kind=AuditKind.EXECUTION)
-        integrity = self.audit.verify()
+        integrity = self._verified_integrity()
         return TrayStatus(
             connection=connection,
             server_url=self.settings.server_url,
@@ -613,6 +648,19 @@ class TrayController:
             audit_entries=integrity.entries,
             audit_integrity="ok" if integrity.ok else integrity.problem or "broken",
         )
+
+    def _verified_integrity(self) -> AuditIntegrity:
+        """The audit-chain verdict, refreshed at most once per interval (05-M7).
+
+        A rewritten or spliced row surfaces within the interval instead of
+        instantly; record()/clear() semantics are unchanged.
+        """
+        now = time.monotonic()
+        cached = self._integrity_cache
+        if cached is None or now - cached[0] >= AUDIT_VERIFY_INTERVAL_SECONDS:
+            cached = (now, self.audit.verify())
+            self._integrity_cache = cached
+        return cached[1]
 
     # --- controls --------------------------------------------------------
 
@@ -1193,14 +1241,25 @@ def _load_or_create_key(
 
 
 def _write_private_key(path: Path, key: Ed25519PrivateKey) -> None:
-    path.write_bytes(
-        key.private_bytes(
-            encoding=Encoding.PEM,
-            format=PrivateFormat.PKCS8,
-            encryption_algorithm=NoEncryption(),
-        )
+    # Create the file directly at 0600: write_bytes-then-chmod left a short
+    # umask-dependent window where the PEM private key was world-readable
+    # and the write was not atomic (05-L3).
+    descriptor = os.open(
+        path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
     )
-    path.chmod(0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(
+                key.private_bytes(
+                    encoding=Encoding.PEM,
+                    format=PrivateFormat.PKCS8,
+                    encryption_algorithm=NoEncryption(),
+                )
+            )
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
 
 
 def _drain_pending(loop: asyncio.AbstractEventLoop) -> None:

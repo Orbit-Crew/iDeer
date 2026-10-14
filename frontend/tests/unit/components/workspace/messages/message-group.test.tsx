@@ -1026,7 +1026,7 @@ describe("MessageGroup", () => {
     const thinkingButton = buttons.find((btn) =>
       btn.textContent?.includes("Thinking"),
     );
-    expect(thinkingButton).toBeDefined();
+    expect(thinkingButton).toBeInTheDocument();
     fireEvent.click(thinkingButton!);
 
     // Now reasoning should be visible
@@ -1123,7 +1123,7 @@ describe("MessageGroup", () => {
     const thinkingButton = buttons.find((btn) =>
       btn.textContent?.includes("Thinking"),
     );
-    expect(thinkingButton).toBeDefined();
+    expect(thinkingButton).toBeInTheDocument();
     expect(thinkingButton!.textContent).not.toContain("800 tokens");
   });
 
@@ -1205,7 +1205,7 @@ describe("MessageGroup", () => {
     const thinkingButton = buttons.find((btn) =>
       btn.textContent?.includes("Thinking"),
     );
-    expect(thinkingButton).toBeDefined();
+    expect(thinkingButton).toBeInTheDocument();
     expect(thinkingButton!.textContent).not.toContain("300 tokens");
   });
 
@@ -1340,7 +1340,7 @@ describe("MessageGroup", () => {
     const thinkingButton = buttons.find((btn) =>
       btn.textContent?.includes("Thinking"),
     );
-    expect(thinkingButton).toBeDefined();
+    expect(thinkingButton).toBeInTheDocument();
     fireEvent.click(thinkingButton!);
 
     expect(screen.getByText("Only reasoning, no tools")).toBeInTheDocument();
@@ -1988,7 +1988,7 @@ describe("MessageGroup", () => {
     const thinkingButton = buttons.find((btn) =>
       btn.textContent?.includes("Thinking"),
     );
-    expect(thinkingButton).toBeDefined();
+    expect(thinkingButton).toBeInTheDocument();
     expect(thinkingButton!.textContent).not.toContain("400 tokens");
   });
 

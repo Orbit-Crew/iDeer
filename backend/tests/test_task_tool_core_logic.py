@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from _eventual import wait_until
 from langchain_core.callbacks.manager import AsyncCallbackManager
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command
@@ -1923,9 +1924,7 @@ def test_unexpected_poller_error_deferred_cleanup_survives_sync_invocation(monke
         # the registry entry even though the caller loop that scheduled it is
         # gone. A caller-loop asyncio.create_task would have been cancelled at
         # teardown and this would time out.
-        deadline = time.monotonic() + 10.0
-        while time.monotonic() < deadline and not cleanup_calls:
-            time.sleep(0.05)
+        wait_until(lambda: cleanup_calls, timeout=10, message="deferred cleanup never ran after caller-loop teardown")
         assert cleanup_calls == [execution_id], "deferred cleanup must run after caller-loop teardown"
         assert result.status is FakeSubagentStatus.COMPLETED
     finally:
@@ -2010,9 +2009,7 @@ def test_unexpected_error_with_failing_status_accessor_preserves_exception_and_a
         # The deferred cleaner keeps hitting the broken accessor and, once its
         # poll budget is exhausted, force-removes the entry instead of leaking
         # it forever.
-        deadline = time.monotonic() + 10.0
-        while time.monotonic() < deadline and not force_cleanup_calls:
-            time.sleep(0.05)
+        wait_until(lambda: force_cleanup_calls, timeout=10, message="deferred cleaner never force-removed the unreadable entry")
         assert force_cleanup_calls == [execution_id], "deferred cleaner must force-remove an unreadable registry entry"
         assert cleanup_calls == [], "terminal-gated cleanup must not run for an unreadable entry"
     finally:
@@ -2216,9 +2213,7 @@ def test_deferred_cleanup_drops_final_usage_when_parent_loop_closed(monkeypatch)
         # present (resolved at unwind time), so an empty journal proves the
         # drop is loop-based — a worker-thread report would have recorded
         # with no running loop instead.
-        deadline = time.monotonic() + 10.0
-        while time.monotonic() < deadline and not cleanup_calls:
-            time.sleep(0.05)
+        wait_until(lambda: cleanup_calls, timeout=10, message="deferred cleanup never removed the terminal entry")
         assert cleanup_calls == [execution_id], "deferred cleanup must remove the terminal entry"
         assert journal.calls == [], "closed parent loop must drop the final report, not deliver it cross-thread"
     finally:
@@ -2354,12 +2349,8 @@ def test_deferred_final_usage_reported_on_parent_loop_with_real_recorder(monkeyp
         # final report onto the still-live parent loop, and removes the entry.
         # Wait for the report to be OBSERVED on the parent loop, not merely
         # scheduled — the journal only records once the callback actually ran.
-        deadline = time.monotonic() + 10.0
-        while time.monotonic() < deadline and not journal.calls:
-            time.sleep(0.05)
-        deadline = time.monotonic() + 10.0
-        while time.monotonic() < deadline and not cleanup_calls:
-            time.sleep(0.05)
+        wait_until(lambda: journal.calls, timeout=10, message="final report never observed on the parent loop")
+        wait_until(lambda: cleanup_calls, timeout=10, message="deferred cleanup never removed the terminal entry")
         assert cleanup_calls == [execution_id], "deferred cleanup must remove the terminal entry"
 
         assert len(journal.calls) == 1, "exactly one final usage report must be delivered"

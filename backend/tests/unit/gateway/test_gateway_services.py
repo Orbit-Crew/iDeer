@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from contextlib import suppress
 from types import SimpleNamespace
 
@@ -1113,7 +1114,6 @@ def test_state_accessor_graph_serializes_same_key_cold_construction():
     serialization, PR #5224 review), while a changed factory identity still
     rebuilds instead of reusing the stored graph."""
     import threading
-    import time
     from typing import Any
 
     from app.gateway import services as gateway_services
@@ -1146,7 +1146,9 @@ def test_state_accessor_graph_serializes_same_key_cold_construction():
         assert first_inside.wait(timeout=5)
         second.start()
         # The second reader blocks on the per-key lock while the first is
-        # still inside the factory: no duplicate construction.
+        # still inside the factory: no duplicate construction. This is a
+        # duration monitor, not a completion wait — the point is that after
+        # a full monitor window `second` must STILL be blocked.
         deadline = time.monotonic() + 5
         while second.is_alive() and time.monotonic() < deadline:
             time.sleep(0.01)

@@ -95,6 +95,10 @@ function ensureBaseSettingsLoaded() {
 }
 
 function ensureStorageListenerRegistered() {
+  // Intentionally never unregistered (report 06-L6): the settings store is an
+  // application-lifetime singleton, so the window "storage" listener lives for
+  // the page session. Unlike favorites-store there is no subscriber-count
+  // lifecycle to attach a removal path to.
   if (storageListenerRegistered || typeof window === "undefined") {
     return;
   }

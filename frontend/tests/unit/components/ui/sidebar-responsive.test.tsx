@@ -72,7 +72,7 @@ describe("Sidebar responsive behavior", () => {
       );
 
       const sidebar = screen.getByTestId("test-sidebar");
-      expect(sidebar).toBeTruthy();
+      expect(sidebar).toBeInTheDocument();
       expect(sidebar.getAttribute("data-slot")).toBe("sidebar-container");
       // The wrapper (parent) carries data-state
       const wrapper = sidebar.parentElement;
@@ -191,7 +191,7 @@ describe("Sidebar responsive behavior", () => {
       fireEvent.click(screen.getByTestId("trigger"));
 
       const dialog = screen.getByRole("dialog");
-      expect(dialog).toBeTruthy();
+      expect(dialog).toBeInTheDocument();
     });
 
     it("mobile sidebar has data-mobile attribute when open", () => {
@@ -207,7 +207,7 @@ describe("Sidebar responsive behavior", () => {
       fireEvent.click(screen.getByTestId("trigger"));
 
       const dialog = screen.getByRole("dialog");
-      expect(dialog).toBeTruthy();
+      expect(dialog).toBeInTheDocument();
       expect(dialog.getAttribute("data-mobile")).toBe("true");
       expect(dialog.getAttribute("data-slot")).toBe("sidebar");
     });
@@ -240,7 +240,7 @@ describe("Sidebar responsive behavior", () => {
 
       // Open
       fireEvent.click(screen.getByTestId("trigger"));
-      expect(screen.getByRole("dialog")).toBeTruthy();
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
 
       // Close
       fireEvent.click(screen.getByTestId("trigger"));

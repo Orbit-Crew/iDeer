@@ -26,7 +26,6 @@ import {
   isClarificationToolMessage,
   isHiddenFromUIMessage,
   parseUploadedFiles,
-  removeReasoningContentFromMessage,
   stripInternalMarkers,
   stripUploadedFilesTag,
 } from "@/core/messages/utils";
@@ -695,35 +694,6 @@ describe("extractReasoningContentFromMessage", () => {
       content: [null],
     } as unknown as Message;
     expect(extractReasoningContentFromMessage(msg)).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// removeReasoningContentFromMessage
-// ---------------------------------------------------------------------------
-
-describe("removeReasoningContentFromMessage", () => {
-  test("deletes reasoning_content from additional_kwargs", () => {
-    const msg = aiMessage("content", {
-      additional_kwargs: { reasoning_content: "thought" },
-    });
-    removeReasoningContentFromMessage(msg);
-    expect(msg.additional_kwargs).not.toHaveProperty("reasoning_content");
-  });
-
-  test("does nothing for non-AI messages", () => {
-    const msg = humanMessage("hi", {
-      additional_kwargs: { reasoning_content: "thought" },
-    });
-    removeReasoningContentFromMessage(msg);
-    // Additional kwargs should still have the property since we didn't process it
-    expect(msg.additional_kwargs?.reasoning_content).toBe("thought");
-  });
-
-  test("does nothing when additional_kwargs is undefined", () => {
-    const msg = aiMessage("content");
-    delete msg.additional_kwargs;
-    expect(() => removeReasoningContentFromMessage(msg)).not.toThrow();
   });
 });
 

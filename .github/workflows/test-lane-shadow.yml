@@ -30,7 +30,12 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
-        run: python3 scripts/select_test_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+        run: python3 scripts/select_test_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT" --plan-file plan.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lane-plan-${{ github.run_id }}
+          path: plan.json
+          if-no-files-found: error
 
   test-contracts:
     needs: select
@@ -357,16 +362,30 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: lane-plan-${{ github.run_id }}
       - name: Validate required results and report selected lanes
-        env:
-          PLAN_JSON: ${{ needs.select.outputs.plan }}
-          NEEDS_JSON: ${{ toJSON(needs) }}
+        # The plan travels as an artifact file and the needs input is a small
+        # hand-built results map: both used to ride through env vars, and on
+        # large stacked diffs the plan blew past the OS argument size limit
+        # ("Argument list too long" killed the gate before the script ran).
         run: |
           START_SECONDS=$SECONDS
           set +e
+          cat > needs.json <<NEEDS
+          {
+            "test-contracts": {"result": "${{ needs.test-contracts.result }}"},
+            "backend-unit-tests": {"result": "${{ needs.backend-unit-tests.result }}"},
+            "frontend-unit-tests": {"result": "${{ needs.frontend-unit-tests.result }}"},
+            "local-runtime": {"result": "${{ needs.local-runtime.result }}"},
+            "e2e-tests": {"result": "${{ needs.e2e-tests.result }}"},
+            "lint": {"result": "${{ needs.lint.result }}"}
+          }
+          NEEDS
           python3 scripts/report_test_lane_summary.py \
-            --plan-json "$PLAN_JSON" \
-            --needs-json "$NEEDS_JSON" \
+            --plan-file plan.json \
+            --needs-file needs.json \
             --summary-file "$GITHUB_STEP_SUMMARY"
           STATUS=$?
           set -e

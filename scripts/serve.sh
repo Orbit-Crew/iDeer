@@ -386,6 +386,14 @@ fi
 DEERFLOW_PNPM_RUNNER="$REPO_ROOT/scripts/pnpm.py"
 export DEERFLOW_PNPM_PYTHON DEERFLOW_PNPM_RUNNER
 
+# 08-M12: nginx remains the single entry of the local stack on loopback. The
+# gateway used to bind 0.0.0.0, so LAN hosts could bypass nginx and hit the
+# API directly; it now follows BIND_HOST (default 127.0.0.1). Set BIND_HOST
+# explicitly (e.g. 0.0.0.0) when LAN devices must reach the gateway. The
+# frontend dev/preview server and nginx.local.conf still listen on all
+# interfaces for LAN debugging; route sensitive traffic through nginx:2026.
+BIND_HOST="${BIND_HOST:-127.0.0.1}"
+
 # Frontend command
 if $DEV_MODE; then
     FRONTEND_CMD='env PORT=3000 "$DEERFLOW_PNPM_PYTHON" "$DEERFLOW_PNPM_RUNNER" run dev'
@@ -566,7 +574,7 @@ echo "✓ Database migrations completed"
 
 # 1. Gateway API
 run_service "Gateway" \
-    "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
+    "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host '$BIND_HOST' --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
     8001 30
 
 # 2. Frontend

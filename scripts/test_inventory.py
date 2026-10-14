@@ -79,9 +79,19 @@ def _python_inventory(path: Path) -> tuple[list[str], list[str]]:
 
 
 def _markers(path: Path) -> list[str]:
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        # 08-M8: a non-UTF-8/unreadable test file must not crash the whole
+        # inventory; treat its markers as unknown instead.
+        return []
     found = set(re.findall(r"(?:pytest\.mark\.|@pytest\.mark\.)([A-Za-z_]+)", text))
-    found.update(re.findall(r"@([A-Za-z_]+)", text))
+    # Bare decorators (`@requires_llm`) count only at decorator position. A
+    # loose `@word` scan also swallowed docstring/comment/e-mail text such as
+    # `user@serial.example` and silently re-attributed the file's static lane
+    # (08-M7); the line-start anchor keeps real bare decorators working while
+    # ignoring mid-line @words.
+    found.update(re.findall(r"(?m)^\s*@([A-Za-z_]+)", text))
     return sorted(item for item in found if item in {"serial", "live", "requires_llm", "external", "smoke", "skip", "skipif"})
 
 
@@ -90,11 +100,11 @@ def _typescript_inventory(path: Path) -> tuple[list[str], list[str]]:
     imports: set[str] = set()
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
-        if stripped.startswith(("test(", "test.describe(", "describe(")):
-            quote = '"' if '"' in stripped else "'"
-            parts = stripped.split(quote)
-            if len(parts) > 1:
-                tests.append(parts[1])
+        # 08-L11: extract the name by matching the opening quote character, so
+        # a name that itself contains a double quote no longer truncates.
+        name_match = re.match(r"(?:test\.describe|describe|test)\(\s*([\"'`])(.+?)\1", stripped)
+        if name_match:
+            tests.append(name_match.group(2))
         if stripped.startswith("import ") and " from " in stripped:
             module = stripped.rsplit(" from ", 1)[1].strip().strip(";").strip("'\"")
             if module.startswith(("@/", "./src", "../../src", "../src")):
@@ -274,20 +284,51 @@ def build_inventory(root: Path, *, collect: bool = False) -> list[dict[str, obje
     root = root.resolve()
     collected_nodes, skipped_nodes, collection_error = _pytest_collected_nodes(root) if collect else ({}, {}, None)
     for path in _iter_test_files(root):
-        if path.suffix == ".py":
-            tests, imports = _python_inventory(path)
-        else:
-            tests, imports = _typescript_inventory(path)
-        lanes = _lanes(path)
-        markers = _markers(path)
-        if path.suffix == ".py":
-            runner = "pytest"
-        elif "e2e" in path.parts or any(part.startswith("e2e-") for part in path.parts):
-            runner = "playwright"
-        elif "frontend" in path.parts and "tests" in path.parts:
-            runner = "rstest" if "@rstest/core" in path.read_text(encoding="utf-8") else "vitest"
-        else:
-            runner = "pytest" if path.suffix == ".ts" else "unknown"
+        try:
+            if path.suffix == ".py":
+                tests, imports = _python_inventory(path)
+                runner = "pytest"
+            else:
+                tests, imports = _typescript_inventory(path)
+                if "e2e" in path.parts or any(part.startswith("e2e-") for part in path.parts):
+                    runner = "playwright"
+                elif "frontend" in path.parts and "tests" in path.parts:
+                    runner = "rstest" if "@rstest/core" in path.read_text(encoding="utf-8") else "vitest"
+                else:
+                    runner = "pytest" if path.suffix == ".ts" else "unknown"
+            lanes = _lanes(path)
+            markers = _markers(path)
+        except (SyntaxError, UnicodeDecodeError, OSError) as exc:
+            # 08-M8: one committed-half syntax error or undecodable byte sequence
+            # used to crash build_inventory (and the CI lanes that consume it)
+            # with a bare traceback; report the file as a parse-error row so the
+            # inventory stays producible and the offender stays visible.
+            rows.append(
+                {
+                    "path": path.relative_to(root).as_posix(),
+                    "tests": [],
+                    "production_imports": [],
+                    "is_patch_coverage_file": False,
+                    "suggested_bucket": _target_bucket(path),
+                    "lanes": _lanes(path),
+                    "base_lane": None,
+                    "aggregate_lanes": [],
+                    "runner": "pytest" if path.suffix == ".py" else "unknown",
+                    "node_ids": [],
+                    "nodes": [],
+                    "node_ownership_status": "unverified-file-static",
+                    "entry": None,
+                    "markers": [],
+                    "skip": False,
+                    "discovery_status": "parse-error",
+                    "parse_error": f"{type(exc).__name__}: {exc}",
+                    "framework_collection_status": "not-checked",
+                    "execution_status": "not-observed",
+                    "collection_status": "static-only",
+                    "collection_skip_reason": None,
+                }
+            )
+            continue
         relative_path = path.relative_to(root).as_posix()
         static_nodes = [f"{relative_path}::{name}" for name in tests]
         node_details: list[dict[str, object]] = []

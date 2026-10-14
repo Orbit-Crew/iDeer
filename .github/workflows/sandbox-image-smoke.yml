@@ -29,7 +29,9 @@ permissions:
 jobs:
   sandbox-image-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The CN registry pull of the multi-GB sandbox image intermittently
+    # exceeds 25 minutes; two PR-gate runs died at exactly 25m on 2026-10-14.
+    timeout-minutes: 40
     env:
       SANDBOX_SMOKE_IMAGE_REF: ${{ vars.SANDBOX_SMOKE_IMAGE || 'enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest' }}
       FOWNER_SMOKE_IMAGE_REF: ${{ vars.SANDBOX_FOWNER_SMOKE_IMAGE || 'enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:1.11.0' }}

@@ -8,6 +8,7 @@ import { I18nContext } from "@/core/i18n/context";
 import { enUS } from "@/core/i18n/locales/en-US";
 import { isHiddenFromUIMessage } from "@/core/messages/utils";
 import { DEFAULT_LOCAL_SETTINGS } from "@/core/settings/local";
+import { SubtasksProvider } from "@/core/tasks/context";
 import type { RunMessage } from "@/core/threads/types";
 
 const streamMockState = rs.hoisted(() => ({
@@ -136,7 +137,7 @@ function createWrapper(queryClient: QueryClient) {
             t: enUS,
           },
         },
-        children,
+        createElement(SubtasksProvider, null, children),
       ),
     );
   };

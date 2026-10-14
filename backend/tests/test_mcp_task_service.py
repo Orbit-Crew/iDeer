@@ -1417,3 +1417,28 @@ async def test_stop_cancels_a_hung_driver_poll():
     await asyncio.wait_for(service.stop(), timeout=1)
 
     assert driver.cancelled is True
+
+
+@pytest.mark.asyncio
+async def _make_service_with_pending_compensation():
+    """Build a started service holding one never-ending compensation task."""
+    svc = McpTaskService.__new__(McpTaskService)
+    svc._stop = asyncio.Event()
+    svc._task = None
+    svc._compensation_tasks = set()
+
+    async def never_finishes() -> None:
+        await asyncio.Event().wait()
+
+    pending = asyncio.create_task(never_finishes(), name="pending-compensation")
+    svc._compensation_tasks.add(pending)
+    return svc, pending
+
+
+@pytest.mark.asyncio
+async def test_stop_cancels_pending_compensation_tasks():
+    """03-L8: stop() must not leave background compensation tasks running."""
+    svc, pending = await _make_service_with_pending_compensation()
+    await asyncio.wait_for(svc.stop(), timeout=5)
+    assert pending.done() and pending.cancelled()
+    assert svc._compensation_tasks == set()

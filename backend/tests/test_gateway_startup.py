@@ -28,6 +28,8 @@ def _deploy_fixture(tmp_path: Path, *, docker_script: str) -> tuple[Path, dict[s
     shutil.copytree(REPO_ROOT / "docker", worktree / "docker")
     (worktree / "backend").mkdir()
     (worktree / "config.yaml").write_text("sandbox:\n  use: deerflow.sandbox:LocalSandboxProvider\n", encoding="utf-8")
+    (worktree / "frontend").mkdir(exist_ok=True)
+    (worktree / "frontend" / ".env.example").write_text("# frontend env\n", encoding="utf-8")
     (worktree / "extensions_config.json").write_text('{"mcpServers":{},"skills":{}}\n', encoding="utf-8")
 
     bin_dir = tmp_path / "bin"

@@ -387,8 +387,10 @@ class TestPromptGetMemoryContext:
         assert result == ""
 
     def test_returns_empty_on_exception(self):
+        # Memory resolution goes through deerflow's MemoryManager; a manager
+        # failure must degrade to an empty section (non fail_closed policy).
         config = SimpleNamespace(memory=SimpleNamespace(enabled=True, injection_enabled=True, max_injection_tokens=2000))
-        with patch("app.agentplatform.legacy.memory.get_memory_data", side_effect=RuntimeError("boom")):
+        with patch("deerflow.agents.memory.get_memory_manager", side_effect=RuntimeError("boom")):
             result = prompt_mod._get_memory_context(app_config=config)
         assert result == ""
 

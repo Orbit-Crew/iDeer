@@ -22,8 +22,12 @@ test("hides background tasks and sends no task request when the feature is unava
 
   await page.goto(`/workspace/chats/${MOCK_THREAD_ID}`);
   await expect(page.getByTestId("background-tasks-trigger")).toHaveCount(0);
-  await page.waitForTimeout(500);
-  expect(taskRequests).toBe(0);
+  // Negative window: give a spurious task fetch the whole span to misfire
+  // before asserting none happened (the poll samples at the window edge, so
+  // the guard covers the same span the fixed sleep did).
+  await expect
+    .poll(() => taskRequests, { timeout: 500, intervals: [500] })
+    .toBe(0);
 });
 
 test("shows, refreshes, and cancels current-chat background tasks", async ({

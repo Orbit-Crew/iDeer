@@ -6,6 +6,7 @@ import {
   MOCK_THREAD_ID,
   MOCK_THREAD_ID_2,
 } from "./utils/mock-api";
+import { waitForAnimationsSettled } from "./utils/settle";
 
 function textFromContent(content: unknown) {
   if (typeof content === "string") {
@@ -317,7 +318,31 @@ async function expectSidecarScrollDoesNotAnimateAfterOpen(page: Page) {
     return Math.round(scrollElement.scrollTop);
   });
 
-  await page.waitForTimeout(220);
+  // Wait until the scroll offset is observably at rest (two consecutive
+  // animation frames agree) instead of sleeping a fixed 220ms.
+  await page.waitForFunction(
+    () => {
+      const root = document.querySelector(
+        '[data-testid="sidecar-message-list"]',
+      );
+      const scrollElement = root?.firstElementChild;
+      if (!(scrollElement instanceof HTMLElement)) {
+        return false;
+      }
+      const targetWindow = window as Window & {
+        __prevSampledScrollTop?: number;
+      };
+      const current = Math.round(scrollElement.scrollTop);
+      if (current === targetWindow.__prevSampledScrollTop) {
+        targetWindow.__prevSampledScrollTop = undefined;
+        return true;
+      }
+      targetWindow.__prevSampledScrollTop = current;
+      return false;
+    },
+    undefined,
+    { timeout: 5_000 },
+  );
 
   const secondScrollTop = await page.evaluate(() => {
     const root = document.querySelector('[data-testid="sidecar-message-list"]');
@@ -364,21 +389,45 @@ async function openSidecarAndExpectNoAnimatedScroll(page: Page) {
 
   await page.getByTestId("sidecar-header-trigger").click();
   await expect(page.getByTestId("sidecar-message-list")).toBeVisible();
-  for (let index = 0; index < 20; index += 1) {
-    await page.waitForTimeout(25);
-    await page.evaluate(() => {
-      const targetWindow = window as Window & {
-        __sidecarPanelTransforms?: string[];
+  // Sample the panel transform every animation frame instead of 20 blind
+  // 25ms sleeps, and stop at the observable end of the open transition (no
+  // running animations). Capped at ~240 frames so a persistent animation
+  // elsewhere on the page cannot wedge the sampling loop.
+  await page.evaluate(() => {
+    const targetWindow = window as Window & {
+      __sidecarPanelTransforms?: string[];
+    };
+    const panel = document.querySelector('[data-testid="sidecar-panel"]');
+    const shell = panel?.parentElement;
+    if (!shell) {
+      return Promise.resolve();
+    }
+    const pushSample = () => {
+      targetWindow.__sidecarPanelTransforms?.push(
+        window.getComputedStyle(shell).transform,
+      );
+    };
+    return new Promise<void>((resolve) => {
+      let frames = 0;
+      const sample = () => {
+        pushSample();
+        frames += 1;
+        const animating = document
+          .getAnimations()
+          .some((a) => a.playState === "running");
+        if (animating && frames < 240) {
+          requestAnimationFrame(sample);
+          return;
+        }
+        // One extra frame after animations stop to catch the final one.
+        requestAnimationFrame(() => {
+          pushSample();
+          resolve();
+        });
       };
-      const panel = document.querySelector('[data-testid="sidecar-panel"]');
-      const shell = panel?.parentElement;
-      if (shell) {
-        targetWindow.__sidecarPanelTransforms?.push(
-          window.getComputedStyle(shell).transform,
-        );
-      }
+      requestAnimationFrame(sample);
     });
-  }
+  });
 
   const { distinctScrollTops, panelTransforms } = await page.evaluate(() => {
     const targetWindow = window as Window & {
@@ -1210,7 +1259,9 @@ test.describe("Side chat", () => {
     await expectSidecarScrollDoesNotAnimateAfterOpen(page);
     await page.getByTestId("sidecar-header-trigger").click();
     await expect(page.getByTestId("sidecar-panel")).toBeHidden();
-    await page.waitForTimeout(350);
+    // Let the close teardown finish observably (no running animations)
+    // instead of sleeping a fixed 350ms before reopening.
+    await waitForAnimationsSettled(page);
     await openSidecarAndExpectNoAnimatedScroll(page);
   });
 

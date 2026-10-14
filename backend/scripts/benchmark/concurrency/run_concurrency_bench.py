@@ -24,9 +24,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import selectors
 import shutil
 import subprocess
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -153,8 +155,27 @@ def run_workers(backend: str, n_workers: int, ops_per_worker: int, read_ratio: f
     # that per-worker). A worker that crashes before printing READY closes
     # its stdout, so readline() returns "" rather than hanging; the loop
     # below reports that same worker as crashed via its nonzero returncode.
+    # A worker that HANGS before READY keeps its stdout open, so the wait is
+    # bounded with a shared deadline; a timed-out worker is killed and falls
+    # into the same crashed-worker reporting path (05-L10).
+    READY_TIMEOUT_SECONDS = 300
+    selector = selectors.DefaultSelector()
     for _wid, p in procs:
-        p.stdout.readline()
+        selector.register(p.stdout, selectors.EVENT_READ)
+    try:
+        deadline = time.monotonic() + READY_TIMEOUT_SECONDS
+        for wid, p in procs:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not selector.select(max(remaining, 0)):
+                print(
+                    f"--- worker {wid} never printed READY within {READY_TIMEOUT_SECONDS}s; killing ---",
+                    file=sys.stderr,
+                )
+                p.kill()
+            else:
+                p.stdout.readline()
+    finally:
+        selector.close()
 
     for _wid, p in procs:
         try:

@@ -119,10 +119,13 @@ test.describe("Thread list infinite scroll (issue #3482)", () => {
     await expect(page.getByTestId("chats-page-sentinel")).toHaveCount(0);
     await expect(page.getByTestId("chats-page-load-more")).toBeVisible();
 
-    // Give the IntersectionObserver a couple of frames to misbehave if the
-    // guard regresses.  No additional /threads/search calls should fire.
-    await page.waitForTimeout(500);
-    expect(searchRequestCount).toBe(baselineRequests);
+    // Negative window: give the IntersectionObserver a couple of frames to
+    // misbehave if the guard regresses — the poll samples at the window
+    // edge, covering the same span the fixed sleep did.  No additional
+    // /threads/search calls should fire.
+    await expect
+      .poll(() => searchRequestCount, { timeout: 500, intervals: [500] })
+      .toBe(baselineRequests);
 
     // The explicit button still works as an escape hatch.
     await page.getByTestId("chats-page-load-more").click();

@@ -9,6 +9,10 @@ vi.mock("@/core/threads/static-demo", () => ({
 
 import { POST } from "@/app/mock/api/threads/[thread_id]/history/route";
 
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_STATIC_WEBSITE_ONLY: "true" },
+}));
+
 function makeParams(threadId: string) {
   return { params: Promise.resolve({ thread_id: threadId }) };
 }

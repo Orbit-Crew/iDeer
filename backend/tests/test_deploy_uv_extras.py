@@ -111,6 +111,8 @@ def test_deploy_build_auto_detects_postgres_extra_when_other_extras_are_enabled(
         "database:\n  backend: postgres\nchannels:\n  discord:\n    enabled: true\n",
         encoding="utf-8",
     )
+    (worktree / "frontend").mkdir(exist_ok=True)
+    (worktree / "frontend" / ".env.example").write_text("# frontend env\n", encoding="utf-8")
     (worktree / "extensions_config.json").write_text('{"mcpServers":{},"skills":{}}\n', encoding="utf-8")
 
     capture = tmp_path / "uv_extras.txt"
@@ -150,6 +152,8 @@ def test_deploy_uses_dotenv_without_sourcing_shell_syntax(tmp_path):
         "database:\n  backend: postgres\n",
         encoding="utf-8",
     )
+    (worktree / "frontend").mkdir(exist_ok=True)
+    (worktree / "frontend" / ".env.example").write_text("# frontend env\n", encoding="utf-8")
     (worktree / "extensions_config.json").write_text('{"mcpServers":{},"skills":{}}\n', encoding="utf-8")
     marker = tmp_path / "sourced-marker"
     (worktree / ".env").write_text(
@@ -211,6 +215,8 @@ def test_deploy_build_auto_detects_postgres_extra_with_python_fallback(tmp_path)
         "database:\n  backend: postgres\n",
         encoding="utf-8",
     )
+    (worktree / "frontend").mkdir(exist_ok=True)
+    (worktree / "frontend" / ".env.example").write_text("# frontend env\n", encoding="utf-8")
     (worktree / "extensions_config.json").write_text('{"mcpServers":{},"skills":{}}\n', encoding="utf-8")
 
     capture = tmp_path / "uv_extras.txt"

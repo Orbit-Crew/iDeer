@@ -700,13 +700,6 @@ export function extractReasoningContentFromMessage(message: Message) {
   return null;
 }
 
-export function removeReasoningContentFromMessage(message: Message) {
-  if (message.type !== "ai" || !message.additional_kwargs) {
-    return;
-  }
-  delete message.additional_kwargs.reasoning_content;
-}
-
 export function extractURLFromImageURLContent(
   content:
     | string

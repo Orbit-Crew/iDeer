@@ -2,10 +2,15 @@
 # pre-commit-validation.sh — 提交前自动验证
 # 用法: 作为 git pre-commit hook 使用，或手动运行
 #
-# 根据暂存的变更文件自动触发对应的 validator:
-# - 前端文件变更 → frontend-validator (quick)
-# - 后端文件变更 → backend-validator (quick)
+# 根据暂存的变更文件运行仓库标准检查（08-L12：本脚本不调用已归档的
+# 历史 validator 提案 skill——它们不可调用；此处实际执行的是
+# pnpm typecheck/lint/format 与 ruff）:
+# - 前端文件变更 → pnpm typecheck && pnpm lint && pnpm format
+# - 后端文件变更 → ruff check && ruff format --check
 # - 无代码变更 → 跳过验证
+#
+# 注意: 本脚本未接入 .pre-commit-config.yaml（该配置文件已有等价
+# 检查）；仅作为可选的手动 hook 使用。
 #
 # 安装为 git hook:
 #   cp scripts/pre-commit-validation.sh .git/hooks/pre-commit

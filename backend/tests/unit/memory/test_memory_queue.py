@@ -2,10 +2,10 @@ import threading
 import time
 from unittest.mock import MagicMock, call, patch
 
-from app.agentplatform.legacy.memory.queue import MemoryUpdateQueue as _LegacyMemoryUpdateQueue
+from _eventual import wait_until
+
 from deerflow.agents.memory.backends.deermem.deermem.config import DeerMemConfig
 from deerflow.agents.memory.backends.deermem.deermem.core.queue import ConversationContext, MemoryUpdateQueue
-from deerflow.config.memory_config import MemoryConfig
 
 
 def _queue(updater: MagicMock | None = None) -> MemoryUpdateQueue:
@@ -335,8 +335,7 @@ def _run_inflight_worker(queue: MemoryUpdateQueue, release: threading.Event) -> 
     thread = threading.Thread(target=_inflight, name="fake-inflight-worker", daemon=True)
     thread.start()
     # Wait until the fake worker has claimed _processing.
-    while not queue.is_processing:
-        time.sleep(0.005)
+    wait_until(lambda: queue.is_processing, timeout=5, message="fake worker never claimed _processing")
     return thread
 
 
@@ -506,24 +505,3 @@ def test_cancel_by_agent_does_not_touch_in_flight_batch() -> None:
         bypass_watermark=False,
     )
     mock_updater.update_memory.assert_called_once()
-
-
-# --- merged from test_memory_queue.py (subdir-only tests; root copy is the dedup base) ---
-def _memory_config(**overrides: object) -> MemoryConfig:
-    config = MemoryConfig()
-    for key, value in overrides.items():
-        setattr(config, key, value)
-    return config
-
-
-def test_process_queue_reschedules_immediately_when_already_processing() -> None:
-    queue = _LegacyMemoryUpdateQueue()
-    queue._processing = True
-    created_timer = MagicMock()
-
-    with patch("app.agentplatform.legacy.memory.queue.threading.Timer", return_value=created_timer) as timer_cls:
-        queue._process_queue()
-
-    timer_cls.assert_called_once_with(0, queue._process_queue)
-    assert created_timer.daemon is True
-    created_timer.start.assert_called_once_with()

@@ -749,6 +749,51 @@ async def test_fork_creates_private_v1_and_keeps_shallow_dependencies(session: A
 
 
 @pytest.mark.asyncio
+async def test_fork_copies_dependency_declaration_options(session: AsyncSession) -> None:
+    """A pinned KB dependency must stay pinned after a fork instead of
+    silently drifting with the KB's latest revision (report 02-M1)."""
+    source = _resource("pinned-source", visibility="public", owner_id="source-owner")
+    dependency = _resource("pinned-kb", resource_type="knowledge_base", visibility="public", owner_id="source-owner")
+    session.add_all([source, dependency])
+    session.add(
+        ResourceVersion(
+            id="source-version",
+            resource_id=source.id,
+            version=1,
+            content_hash="f" * 64,
+            storage_key="agents/source/versions/1",
+            scan_result={"status": "clean"},
+            created_by="source-owner",
+        )
+    )
+    source.latest_version = 1
+    session.add(
+        ResourceDependency(
+            id="source-dependency",
+            source_resource_id=source.id,
+            target_resource_id=dependency.id,
+            dependency_mode="pinned",
+            revision_id="rev-1",
+            required=True,
+            purpose="anchor",
+        )
+    )
+    await session.commit()
+
+    forked = await ResourceService(session, _actor("fork-owner")).fork(
+        source.id,
+        slug="forked-pinned",
+        display_name="Forked Pinned",
+        copied_storage_key="agents/forked-pinned/versions/1",
+    )
+
+    fork_edges = list((await session.execute(select(ResourceDependency).where(ResourceDependency.source_resource_id == forked.id))).scalars())
+    assert len(fork_edges) == 1
+    edge = fork_edges[0]
+    assert (edge.dependency_mode, edge.revision_id, edge.required, edge.purpose) == ("pinned", "rev-1", True, "anchor")
+
+
+@pytest.mark.asyncio
 async def test_fork_of_bundled_resource_is_user_provenance(session: AsyncSession) -> None:
     source = _resource("bundled-source", resource_type="workflow", visibility="public", owner_id="source-owner")
     source.provenance = "bundled"

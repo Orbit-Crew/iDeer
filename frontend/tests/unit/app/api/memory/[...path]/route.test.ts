@@ -113,6 +113,47 @@ describe("memory catch-all API route", () => {
     expect(options.headers.get("connection")).toBeNull();
   });
 
+  test("strips client-forged x-forwarded headers", async () => {
+    const request = createRequest("GET");
+    const headers = request.headers;
+    headers.set("x-forwarded-for", "203.0.113.9");
+    headers.set("x-forwarded-host", "evil.example");
+    headers.set("x-forwarded-proto", "https");
+    const mockResponse = new Response("", { status: 200 });
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    await GET(request, mockParams);
+
+    const [, options] = mockFetch.mock.calls[0]!;
+    expect(options.headers.get("x-forwarded-for")).toBeNull();
+    expect(options.headers.get("x-forwarded-host")).toBeNull();
+    expect(options.headers.get("x-forwarded-proto")).toBeNull();
+  });
+
+  test("drops stale transfer headers from the decoded backend response", async () => {
+    // undici already decoded the body; forwarding content-encoding/length
+    // verbatim would make the browser double-decode once the gateway enables
+    // compression (report 07-M3).
+    const mockResponse = new Response("decoded", {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "content-encoding": "gzip",
+        "content-length": "42",
+        "transfer-encoding": "chunked",
+      },
+    });
+    mockFetch.mockResolvedValueOnce(mockResponse);
+
+    const proxied = await GET(createRequest("GET"), mockParams);
+
+    expect(proxied.headers.get("content-encoding")).toBeNull();
+    expect(proxied.headers.get("content-length")).toBeNull();
+    expect(proxied.headers.get("transfer-encoding")).toBeNull();
+    expect(proxied.headers.get("content-type")).toBe("application/json");
+    await expect(proxied.text()).resolves.toBe("decoded");
+  });
+
   test("forwards body for POST requests", async () => {
     const mockResponse = new Response("", { status: 200 });
     mockFetch.mockResolvedValueOnce(mockResponse);

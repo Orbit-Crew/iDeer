@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 import pytest
 
-import app.agentplatform.legacy.memory.storage as _legacy_memory_storage
 from deerflow.agents.memory.backends.deermem.deermem.config import DeerMemConfig
 from deerflow.agents.memory.backends.deermem.deermem.core.paths import validate_agent_name
 from deerflow.agents.memory.backends.deermem.deermem.core.storage import (
@@ -14,7 +13,6 @@ from deerflow.agents.memory.backends.deermem.deermem.core.storage import (
     create_empty_memory,
     create_storage,
 )
-from deerflow.config.memory_config import MemoryConfig
 
 
 def _storage_at(memory_file) -> FileMemoryStorage:
@@ -180,71 +178,3 @@ class TestCreateStorage:
     def test_dotted_storage_class_resolves(self):
         storage = create_storage(DeerMemConfig(storage_class="deerflow.agents.memory.backends.deermem.deermem.core.storage.FileMemoryStorage"))
         assert isinstance(storage, FileMemoryStorage)
-
-
-# --- merged from test_memory_storage.py (subdir-only tests; root copy is the dedup base) ---
-class TestGetMemoryStorage:
-    """Test get_memory_storage function."""
-
-    @pytest.fixture(autouse=True)
-    def reset_storage_instance(self):
-        """Reset the global storage instance before and after each test."""
-        import app.agentplatform.legacy.memory.storage as storage_mod
-
-        storage_mod._storage_instance = None
-        yield
-        storage_mod._storage_instance = None
-
-    def test_returns_file_memory_storage_by_default(self):
-        """Should return FileMemoryStorage by default."""
-        with patch("app.agentplatform.legacy.memory.storage.get_memory_config", return_value=MemoryConfig(backend_config={"storage_class": "app.agentplatform.legacy.memory.storage.FileMemoryStorage"})):
-            storage = _legacy_memory_storage.get_memory_storage()
-            assert isinstance(storage, _legacy_memory_storage.FileMemoryStorage)
-
-    def test_falls_back_to_file_memory_storage_on_error(self):
-        """Should fall back to FileMemoryStorage if configured storage fails to load."""
-        with patch("app.agentplatform.legacy.memory.storage.get_memory_config", return_value=MemoryConfig(backend_config={"storage_class": "non.existent.StorageClass"})):
-            storage = _legacy_memory_storage.get_memory_storage()
-            assert isinstance(storage, _legacy_memory_storage.FileMemoryStorage)
-
-    def test_returns_singleton_instance(self):
-        """Should return the same instance on subsequent calls."""
-        with patch("app.agentplatform.legacy.memory.storage.get_memory_config", return_value=MemoryConfig(backend_config={"storage_class": "app.agentplatform.legacy.memory.storage.FileMemoryStorage"})):
-            storage1 = _legacy_memory_storage.get_memory_storage()
-            storage2 = _legacy_memory_storage.get_memory_storage()
-            assert storage1 is storage2
-
-    def test_get_memory_storage_thread_safety(self):
-        """Should safely initialize the singleton even with concurrent calls."""
-        results = []
-
-        def get_storage():
-            # get_memory_storage is called concurrently from multiple threads while
-            # get_memory_config is patched once around thread creation. This verifies
-            # that the singleton initialization remains thread-safe.
-            results.append(_legacy_memory_storage.get_memory_storage())
-
-        with patch("app.agentplatform.legacy.memory.storage.get_memory_config", return_value=MemoryConfig(backend_config={"storage_class": "app.agentplatform.legacy.memory.storage.FileMemoryStorage"})):
-            threads = [threading.Thread(target=get_storage) for _ in range(10)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-
-        # All results should be the exact same instance
-        assert len(results) == 10
-        assert all(r is results[0] for r in results)
-
-    def test_get_memory_storage_invalid_class_fallback(self):
-        """Should fall back to FileMemoryStorage if the configured class is not actually a class."""
-        # Using a built-in function instead of a class
-        with patch("app.agentplatform.legacy.memory.storage.get_memory_config", return_value=MemoryConfig(backend_config={"storage_class": "os.path.join"})):
-            storage = _legacy_memory_storage.get_memory_storage()
-            assert isinstance(storage, _legacy_memory_storage.FileMemoryStorage)
-
-    def test_get_memory_storage_non_subclass_fallback(self):
-        """Should fall back to FileMemoryStorage if the configured class is not a subclass of MemoryStorage."""
-        # Using 'dict' as a class that is not a MemoryStorage subclass
-        with patch("app.agentplatform.legacy.memory.storage.get_memory_config", return_value=MemoryConfig(backend_config={"storage_class": "builtins.dict"})):
-            storage = _legacy_memory_storage.get_memory_storage()
-            assert isinstance(storage, _legacy_memory_storage.FileMemoryStorage)

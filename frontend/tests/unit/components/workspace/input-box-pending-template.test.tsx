@@ -154,14 +154,6 @@ vi.mock("@/components/ai-elements/suggestion", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/confetti-button", () => ({
-  ConfettiButton: ({ children, onClick, ...props }: any) => (
-    <button data-testid="confetti-button" onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-}));
-
 vi.mock("@/components/workspace/mode-hover-guide", () => ({
   ModeHoverGuide: ({ children }: any) => (
     <div data-testid="mode-hover-guide">{children}</div>
@@ -412,7 +404,7 @@ describe("InputBox pendingTemplate", () => {
     });
 
     const textarea = document.querySelector("textarea[name='message']");
-    expect(textarea).toBeTruthy();
+    expect(textarea).toBeInTheDocument();
   });
 
   it("pendingTemplate + non-empty input → asks before replacing", () => {
@@ -479,7 +471,7 @@ describe("InputBox pendingTemplate", () => {
     });
 
     const textarea = document.querySelector("textarea[name='message']");
-    expect(textarea).toBeTruthy();
+    expect(textarea).toBeInTheDocument();
   });
 
   it("confirmReplace(followup) → requestFormSubmit called (regression)", async () => {
@@ -569,6 +561,6 @@ describe("InputBox pendingTemplate", () => {
     const textarea = document.querySelector<HTMLTextAreaElement>(
       "textarea[name='message']",
     );
-    expect(textarea).toBeTruthy();
+    expect(textarea).toBeInTheDocument();
   });
 });

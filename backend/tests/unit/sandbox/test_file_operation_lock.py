@@ -157,7 +157,8 @@ class TestConcurrency:
             t.start()
         # Wait until at least one thread holds the lock
         started.wait(timeout=2)
-        # Give other threads time to try (and fail) to acquire
+        # Duration monitor: hold long enough that every queued worker has
+        # attempted (and failed) to acquire before the holder releases.
         time.sleep(0.05)
         stop.set()
         for t in threads:

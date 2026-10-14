@@ -68,6 +68,14 @@ class TestValidatePath:
         with pytest.raises(PermissionError):
             _validate_path("/tmp/../etc/hostname")
 
+    def test_prefix_boundary_without_segment_rejected(self):
+        """A path sharing the prefix string but not the path segment must be
+        rejected instead of passing the startswith check (report 02-M9)."""
+        with pytest.raises(PermissionError, match="Access denied"):
+            _validate_path("/mnt/user-data-evil/secret.csv")
+        with pytest.raises(PermissionError, match="Access denied"):
+            _validate_path("/tmp-evil/secret.csv")
+
 
 # ── _check_pandas ────────────────────────────────────────────────────────
 

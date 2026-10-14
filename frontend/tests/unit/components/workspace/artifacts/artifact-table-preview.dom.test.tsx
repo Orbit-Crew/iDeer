@@ -46,14 +46,18 @@ beforeEach(() => {
 describe("ArtifactTablePreview", () => {
   it("preserves literal data and lets the first row become data", () => {
     const { container } = mount();
-    expect(screen.getByRole("columnheader", { name: "ID" })).toBeTruthy();
-    expect(screen.getByText("00123")).toBeTruthy();
+    expect(
+      screen.getByRole("columnheader", { name: "ID" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("00123")).toBeInTheDocument();
     expect(container.querySelector("script")).toBeNull();
     fireEvent.click(
       screen.getByRole("checkbox", { name: "First row as header" }),
     );
-    expect(screen.getByRole("columnheader", { name: "Column 1" })).toBeTruthy();
-    expect(screen.getByRole("cell", { name: "ID" })).toBeTruthy();
+    expect(
+      screen.getByRole("columnheader", { name: "Column 1" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "ID" })).toBeInTheDocument();
   });
   it("paginates locally and labels bounded samples honestly", () => {
     state.result.rows = [
@@ -61,11 +65,11 @@ describe("ArtifactTablePreview", () => {
       ...Array.from({ length: 202 }, (_, i) => [String(i + 1), "note"]),
     ];
     mount();
-    expect(screen.getByText("Preview of first 200 rows")).toBeTruthy();
-    expect(screen.getByText("1–50 of preview")).toBeTruthy();
+    expect(screen.getByText("Preview of first 200 rows")).toBeInTheDocument();
+    expect(screen.getByText("1–50 of preview")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
-    expect(screen.getByText("51–100 of preview")).toBeTruthy();
-    expect(screen.getByRole("cell", { name: "51" })).toBeTruthy();
+    expect(screen.getByText("51–100 of preview")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "51" })).toBeInTheDocument();
     expect(screen.queryByRole("cell", { name: "1" })).toBeNull();
   });
   it("keeps long fields available without enlarging every row", () => {

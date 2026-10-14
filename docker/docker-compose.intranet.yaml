@@ -4,11 +4,19 @@ services:
     pull_policy: never
     container_name: ideer-nginx
     ports:
-      - "${PORT:-2026}:2026"
+      # Nginx on loopback is the single public entry; set BIND_HOST explicitly
+      # (e.g. BIND_HOST=0.0.0.0) when the intranet host must serve other hosts.
+      - "${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf.template:ro
+    environment:
+      # Rendered into nginx.conf by the command below (08-M10): the API docs
+      # gate. Docs/redoc/openapi.json expose the full OpenAPI structure, so the
+      # published entry defaults to 404 for them; set true to opt in.
+      NGINX_EXPOSE_API_DOCS: ${NGINX_EXPOSE_API_DOCS:-false}
     command: >
-      sh -c "cp /etc/nginx/nginx.conf.template /etc/nginx/nginx.conf
+      sh -c "envsubst '$$NGINX_EXPOSE_API_DOCS' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+      && { test -e /proc/net/if_inet6 || sed -i '/^[[:space:]]*listen[[:space:]]\+\[::\]:2026[[:space:]]/d' /etc/nginx/nginx.conf; }
       && nginx -g 'daemon off;'"
     depends_on:
       - frontend

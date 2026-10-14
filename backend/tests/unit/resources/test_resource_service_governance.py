@@ -317,6 +317,52 @@ async def test_department_admin_queries_and_approves_only_own_department(session
 
 
 @pytest.mark.asyncio
+async def test_approved_department_rescope_triggers_closure_impact_and_repair(
+    session: AsyncSession,
+) -> None:
+    """A department→department re-point keeps the rank but changes who can see
+    the resource, so it must trigger the reduction impact analysis and cascade
+    repair like any narrowing instead of silently breaking dependents
+    (report 02-M3)."""
+    resource = _resource("shared-agent", visibility="department", department_id="dept-a")
+    dependent = _resource("dept-a-flow", owner_id="upstream", visibility="department", department_id="dept-a")
+    session.add_all(
+        [
+            resource,
+            dependent,
+            _version(resource),
+            ResourceDependency(id="dep-edge", source_resource_id=dependent.id, target_resource_id=resource.id),
+        ]
+    )
+    await session.commit()
+
+    owner = ResourceService(session, _actor("owner", department_id="dept-b"))
+    impact = await owner.visibility_reduction_impact(resource.id, "department", scope_department_id="dept-b")
+    assert impact["total"] == 1, "same-rank department re-point skipped the impact analysis"
+
+    application = await owner.request_visibility(
+        resource.id,
+        target_visibility="department",
+        scope_department_id="dept-b",
+        reason="move to dept-b",
+    )
+    reviewer = ResourceService(
+        session,
+        _actor(
+            "admin",
+            role="super_admin",
+            permissions={ResourceAction.READ, ResourceAction.APPROVE, ResourceAction.WRITE},
+        ),
+    )
+    await reviewer.review_visibility_application(application.id, approve=True, comment="rescope", expected_version=application.version)
+
+    repaired = await session.get(Resource, dependent.id)
+    assert (repaired.visibility, repaired.scope_department_id) == ("private", None)
+    notifications = list((await session.execute(select(ResourceNotification).where(ResourceNotification.recipient_id == "upstream"))).scalars())
+    assert any(notification.event == "visibility_reduced_cascade" for notification in notifications)
+
+
+@pytest.mark.asyncio
 async def test_super_admin_can_restore_suspended_resource_without_editing_content(session: AsyncSession) -> None:
     resource = _resource("restore", lifecycle_status="suspended")
     session.add(resource)

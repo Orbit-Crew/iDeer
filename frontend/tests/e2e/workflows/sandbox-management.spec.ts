@@ -30,9 +30,9 @@ test.describe("Sandbox Management", () => {
 
   test("workspace page loads without sandbox errors", async ({ page }) => {
     await page.goto("/workspace");
-    await page.waitForLoadState("networkidle");
 
-    // The workspace should render without crashing
+    // The workspace should render without crashing (goto already settles
+    // the load event; the visibility assert is the observable gate).
     await expect(page.locator("body")).toBeVisible();
 
     // Check that no uncaught sandbox-related errors appear

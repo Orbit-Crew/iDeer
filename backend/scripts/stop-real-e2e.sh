@@ -48,7 +48,10 @@ if kill -0 "$PID" 2>/dev/null; then
     sleep 0.25
   done
   if kill -0 "$PID" 2>/dev/null; then
-    kill -TERM "$PID"
+    # Escalation must change the signal: a second SIGTERM to a wedged
+    # backend is a no-op and the state dir below would be deleted under a
+    # still-running process (05-M6).
+    kill -KILL "$PID"
   fi
 fi
 

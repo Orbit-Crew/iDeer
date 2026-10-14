@@ -70,3 +70,37 @@ def test_rewriting_a_row_after_a_clear_is_still_detected(tmp_path) -> None:
 
     assert result.ok is False
     assert "chain broken" in (result.problem or "")
+
+
+def test_recent_pushes_kind_filter_and_limit_into_sql(
+    tmp_path, monkeypatch
+) -> None:
+    """05-M7: the tray polls recent(limit=1) every second, so the poll must
+    not load the whole audit table per call."""
+    import sqlite3
+
+    path = tmp_path / "audit.db"
+    log = LocalAuditLog(db_path=path)
+    log.record(AuditKind.TASK, "received", capability="local.files.write")
+    log.record(AuditKind.EXECUTION, "completed", capability="local.files.write")
+    log.record(AuditKind.EXECUTION, "failed", capability="local.python")
+
+    statements: list[str] = []
+    real_connect = sqlite3.connect
+
+    def tracing_connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        connection.set_trace_callback(statements.append)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", tracing_connect)
+
+    recent = log.recent(limit=1, kind=AuditKind.EXECUTION)
+
+    assert [(entry.kind, entry.action) for entry in recent] == [
+        (AuditKind.EXECUTION, "failed")
+    ]
+    polled = [sql for sql in statements if "audit_entries" in sql]
+    assert polled, "the poll must hit the audit_entries table"
+    assert any("LIMIT 1" in sql for sql in polled), polled
+    assert any("kind" in sql.lower() and "where" in sql.lower() for sql in polled), polled

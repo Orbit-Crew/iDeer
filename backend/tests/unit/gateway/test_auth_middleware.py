@@ -534,3 +534,37 @@ def test_unknown_endpoint_with_junk_cookie_rejected(client):
     client.cookies.set("access_token", "tok")
     res = client.get("/api/future-endpoint")
     assert res.status_code == 401
+
+
+# ── 01-L1: prefix matches respect the segment boundary ────────────────────
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/healthcheck-xyz",
+        "/healthcheck",
+        "/docsify-app",
+        "/openapi.json.bak",
+        "/api/webhooks-evil",
+        "/api/v1/auth/oauth-evil",
+    ],
+)
+def test_lookalike_paths_are_not_public(path: str):
+    """A bare startswith would exempt any path merely beginning with a public prefix."""
+    assert _is_public(path) is False
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/health",
+        "/health/",
+        "/docs",
+        "/openapi.json",
+        "/api/webhooks/github",
+        "/api/v1/auth/oauth/google",
+    ],
+)
+def test_segment_boundary_still_matches_public_prefixes(path: str):
+    assert _is_public(path) is True

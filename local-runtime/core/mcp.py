@@ -873,7 +873,10 @@ class StdioMCPConnection:
                 break
             await asyncio.sleep(0.02)
         if process.returncode is None:
-            process.kill()
+            # The child was spawned with start_new_session, so a bare kill()
+            # would orphan the grandchildren an npx-style wrapper spawned;
+            # _terminate() signals the whole process group instead (05-M5).
+            _terminate(process)
         await process.wait()
         if self._reader_task is not None:
             self._reader_task.cancel()
@@ -1140,11 +1143,12 @@ def _parse_http_url(url: str) -> tuple[str, str, int, str] | None:
     # plain HTTP, so https URLs would silently downgrade if accepted here.
     if parts.scheme != "http" or not parts.hostname:
         return None
-    default_port = 443 if parts.scheme == "https" else 80
+    # Only http can reach this point, so the default port is always 80; the
+    # former 443 https arm here was dead code (05-L7).
     return (
         parts.scheme,
         parts.hostname,
-        parts.port if parts.port is not None else default_port,
+        parts.port if parts.port is not None else 80,
         parts.path or "/",
     )
 

@@ -19,8 +19,14 @@ import { useLarkIntegrationStatus } from "@/core/integrations/lark";
 import { CapabilityCard, CapabilityIcon } from "./capability-card";
 import { MCPPluginManager } from "./mcp-plugin-manager";
 
+// The integrations settings page is shared with settings-dialog.tsx; the
+// dynamic import keeps the 1100-line Lark device-auth flow out of the
+// gallery's initial chunk (#68: the former byte-identical
+// lark-plugin-settings.tsx copy was removed).
 const LarkPluginSettings = dynamic(() =>
-  import("./lark-plugin-settings").then((module) => module.LarkPluginSettings),
+  import("@/components/workspace/settings/integrations-settings-page").then(
+    (module) => module.IntegrationsSettingsPage,
+  ),
 );
 
 export function PluginGallery({ query }: { query: string }) {

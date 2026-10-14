@@ -26,7 +26,13 @@ test.describe("Admin Panel - Stagehand", () => {
     try {
       await page.goto("http://localhost:3000/workspace/admin");
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      // Wait for the workspace shell (sidebar/nav) to mount instead of a
+      // fixed 2s sleep (stagehand lane is not locally runnable; static
+      // equivalent).
+      await page
+        .locator('[data-testid="sidebar"], nav, aside, main')
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
 
       const content = await stagehandExtract(
         stagehand,
@@ -43,7 +49,13 @@ test.describe("Admin Panel - Stagehand", () => {
     try {
       await page.goto("http://localhost:3000/workspace/admin/users");
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      // Wait for the workspace shell (sidebar/nav) to mount instead of a
+      // fixed 2s sleep (stagehand lane is not locally runnable; static
+      // equivalent).
+      await page
+        .locator('[data-testid="sidebar"], nav, aside, main')
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
 
       const content = await stagehandExtract(
         stagehand,
@@ -60,7 +72,13 @@ test.describe("Admin Panel - Stagehand", () => {
     try {
       await page.goto("http://localhost:3000/workspace/admin/departments");
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      // Wait for the workspace shell (sidebar/nav) to mount instead of a
+      // fixed 2s sleep (stagehand lane is not locally runnable; static
+      // equivalent).
+      await page
+        .locator('[data-testid="sidebar"], nav, aside, main')
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
 
       const content = await stagehandExtract(
         stagehand,
@@ -77,7 +95,13 @@ test.describe("Admin Panel - Stagehand", () => {
     try {
       await page.goto("http://localhost:3000/workspace/admin/tools");
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      // Wait for the workspace shell (sidebar/nav) to mount instead of a
+      // fixed 2s sleep (stagehand lane is not locally runnable; static
+      // equivalent).
+      await page
+        .locator('[data-testid="sidebar"], nav, aside, main')
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
 
       const content = await stagehandExtract(
         stagehand,

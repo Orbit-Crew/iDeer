@@ -90,10 +90,12 @@ test.describe("Project-scoped submit staleness", () => {
     await expect(page).toHaveURL(new RegExp(`/chats/${MOCK_THREAD_ID}$`));
     releaseCreate();
     // Let any stale continuation run to completion before asserting: a goal
-    // PUT that fires late must still be caught.
-    await page.waitForTimeout(1500);
+    // PUT that fires late must still be caught. The poll samples at the
+    // window edge, so the guard covers the same span the fixed sleep did.
+    await expect
+      .poll(() => goalPuts.length, { timeout: 1_500, intervals: [1_500] })
+      .toBe(0);
     await expect(page.getByText("finish all tests")).toBeHidden();
-    await expect.poll(() => goalPuts.length).toBe(0);
     await expect.poll(() => runStreams.length).toBe(0);
     await expect(page).toHaveURL(new RegExp(`/chats/${MOCK_THREAD_ID}$`));
   });
@@ -130,9 +132,11 @@ test.describe("Project-scoped submit staleness", () => {
     releaseCreate();
 
     // The stale submission must not start a run for the previous scope's
-    // identity, nor rewrite the URL to it.
-    await page.waitForTimeout(1500);
-    await expect.poll(() => runStreams.length).toBe(0);
+    // identity, nor rewrite the URL to it. The poll samples at the window
+    // edge, so the guard covers the same span the fixed sleep did.
+    await expect
+      .poll(() => runStreams.length, { timeout: 1_500, intervals: [1_500] })
+      .toBe(0);
     await expect(page).toHaveURL(/\/workspace\/chats\/new$/);
   });
 });
@@ -836,12 +840,15 @@ test.describe("Chat workspace", () => {
     await textarea.fill("Send this immediately");
     await textarea.press("Enter");
 
-    await page.waitForTimeout(500);
-    expect(
-      await page.evaluate(() =>
-        Object.values(window.sessionStorage).join("\n"),
-      ),
-    ).not.toContain("Send this immediately");
+    // Negative window: the draft must never be re-persisted after send;
+    // sample at the window edge instead of sleeping a fixed 500ms.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => Object.values(window.sessionStorage).join("\n")),
+        { timeout: 500, intervals: [500] },
+      )
+      .not.toContain("Send this immediately");
 
     releaseUpload();
     await expect
@@ -1642,9 +1649,11 @@ test.describe("Chat workspace", () => {
     );
 
     await textarea.press("Enter");
-    await page.waitForTimeout(500);
-
-    expect(streamCalled).toBe(false);
+    // Negative window: a deep-dive prompt must not stream directly; sample
+    // at the window edge instead of sleeping a fixed 500ms.
+    await expect
+      .poll(() => streamCalled, { timeout: 500, intervals: [500] })
+      .toBe(false);
     await expect(textarea).toHaveValue(
       "Conduct a deep dive research on [topic], and summarize the findings.",
     );
@@ -2070,7 +2079,10 @@ test.describe("Chat workspace", () => {
     await expect(page.getByText("Hello from iDeer!")).toBeVisible({
       timeout: 10_000,
     });
-    await page.waitForTimeout(1000);
-    expect(suggestionsFetched).toBe(false);
+    // Negative window: followup suggestions must not be fetched eagerly
+    // after the reply; sample at the window edge instead of a fixed 1s sleep.
+    await expect
+      .poll(() => suggestionsFetched, { timeout: 1_000, intervals: [1_000] })
+      .toBe(false);
   });
 });

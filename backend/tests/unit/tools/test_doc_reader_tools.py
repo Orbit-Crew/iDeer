@@ -82,6 +82,14 @@ class TestValidatePath:
         result = _validate_path("/tmp/../tmp/test.pdf")
         assert ".." not in str(result)
 
+    def test_prefix_boundary_without_segment_rejected(self):
+        """A path sharing the prefix string but not the path segment must be
+        rejected instead of passing the startswith check (report 02-M9)."""
+        with pytest.raises(PermissionError, match="Access denied"):
+            _validate_path("/mnt/user-data-evil/secret.pdf")
+        with pytest.raises(PermissionError, match="Access denied"):
+            _validate_path("/tmp-evil/secret.pdf")
+
 
 # ============================================================================
 # _truncate_output

@@ -7,10 +7,11 @@ fork and cross the boundary through small, serializable projections.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Any
 
-from deerflow_extension_api import ExtensionRegistry, extension
+from deerflow_extension_api import API_VERSION, ExtensionRegistry, extension
 
 from agentplatform_extension.evidence import (
     AuthorizationContext,
@@ -37,8 +38,10 @@ from agentplatform_extension.local_runtime import (
 )
 from agentplatform_extension.network_policy import NetworkPolicy
 
+logger = logging.getLogger(__name__)
 
-@extension(api="0.2", name="agentplatform")
+
+@extension(api=API_VERSION, name="agentplatform")
 def install(registry: ExtensionRegistry, config: Mapping[str, Any]) -> None:
     """Install the enterprise boundary.
 
@@ -49,6 +52,12 @@ def install(registry: ExtensionRegistry, config: Mapping[str, Any]) -> None:
 
     authorization = config.get("authorization")
     if config.get("dynamic_context") is True:
+        ignored = sorted(set(config) - {"dynamic_context"})
+        if ignored:
+            # The dynamic-context shortcut consumes the whole config; surface
+            # silently dropped keys instead of letting operators misconfigure
+            # unnoticed (report 04-L2).
+            logger.warning("agentplatform extension: dynamic_context=True ignores config keys %s", ignored)
         registry.runtime_evidence(RuntimeEvidenceHooks())
         registry.task_lifecycle(EvidenceLifecycleContributor())
         return

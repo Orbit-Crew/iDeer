@@ -147,7 +147,6 @@ class _GraphState(TypedDict, total=False):
     run_id: str
     model_name: str | None
     inputs: dict[str, Any]
-    model_name: str | None
     state: Annotated[dict[str, Any], _merge_maps]
     outputs: Annotated[dict[str, Any], _merge_maps]
     edge_iterations: Annotated[dict[str, int], _merge_maps]
@@ -347,6 +346,10 @@ class WorkflowGraphCompiler:
                             # policy and get their own backoff budget below
                             last_error = exc
                             break
+                        except WorkflowCancelled:
+                            # Cancellation is not a node failure: it must never
+                            # consume the node retry budget (report 02-M2).
+                            raise
                         except Exception as exc:  # retry policy is deliberately node-local
                             last_error = exc
                             if isinstance(exc, WorkflowSchemaViolation) and attempt + 1 < node.retry.max_attempts and node.action is not None and node.action.kind == "agent":
@@ -379,6 +382,11 @@ class WorkflowGraphCompiler:
                         return {"interrupt": interrupt({"type": "transient_error", "node_id": node.id, "error": str(last_error)})}
                     break
             except GraphInterrupt:
+                raise
+            except WorkflowCancelled:
+                # The terminal run_cancelled event is emitted by the run
+                # session; emitting node_failed here would contradict the
+                # event stream's cancelled classification (report 02-M2).
                 raise
             except Exception as exc:
                 await self._emit(

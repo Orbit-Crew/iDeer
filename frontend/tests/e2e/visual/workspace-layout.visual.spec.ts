@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import { mockLangGraphAPI } from "../utils/mock-api";
+import { waitForAnimationsSettled } from "../utils/settle";
 
 test.describe("Workspace layout — visual regression", () => {
   test.beforeEach(async ({ page }) => {
@@ -10,9 +11,10 @@ test.describe("Workspace layout — visual regression", () => {
 
   test("default viewport screenshot", async ({ page }) => {
     await page.goto("/workspace");
-    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("workbench-home")).toBeVisible();
-    await page.waitForTimeout(1000);
+    // Let animations finish observably before the pixel capture
+    // (bounded: persistent animations degrade to the fixed wait).
+    await waitForAnimationsSettled(page, 5_000);
 
     await expect(page).toHaveScreenshot("workspace-default.png", {
       fullPage: true,
@@ -22,9 +24,10 @@ test.describe("Workspace layout — visual regression", () => {
   test("mobile viewport screenshot", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/workspace");
-    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("workbench-home")).toBeVisible();
-    await page.waitForTimeout(1000);
+    // Let animations finish observably before the pixel capture
+    // (bounded: persistent animations degrade to the fixed wait).
+    await waitForAnimationsSettled(page, 5_000);
 
     await expect(page).toHaveScreenshot("workspace-mobile.png", {
       fullPage: true,
@@ -34,9 +37,10 @@ test.describe("Workspace layout — visual regression", () => {
   test("dark mode screenshot", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/workspace");
-    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("workbench-home")).toBeVisible();
-    await page.waitForTimeout(1000);
+    // Let animations finish observably before the pixel capture
+    // (bounded: persistent animations degrade to the fixed wait).
+    await waitForAnimationsSettled(page, 5_000);
 
     await expect(page).toHaveScreenshot("workspace-dark.png", {
       fullPage: true,

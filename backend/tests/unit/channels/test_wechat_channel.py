@@ -5043,3 +5043,48 @@ class TestPollLoopCancelledError:
                 await task
 
         _run(go())
+
+
+class TestQrcodeLoggingRedaction:
+    """03-L1: the scannable QR payload never reaches the log."""
+
+    def test_bind_via_qrcode_logs_redacted_fingerprint_only(self, tmp_path: Path, caplog):
+        import logging as _logging
+
+        from app.channels.wechat import WechatChannel, _redact_qrcode
+
+        assert _redact_qrcode("short") == "***"
+        assert _redact_qrcode("abcdefgh12345678") == "abcd...5678(16 chars)"
+
+        async def go():
+            def _client_factory(*args, **kwargs):
+                return _MockAsyncClient(
+                    get_responses=[
+                        {"qrcode": "qrcode-secret-abcdef-123456"},
+                        {"status": "expired"},
+                    ],
+                    **kwargs,
+                )
+
+            with (
+                patch("app.channels.wechat.httpx.AsyncClient", _client_factory),
+                caplog.at_level(_logging.WARNING, logger="app.channels.wechat"),
+                pytest.raises(RuntimeError, match="expired"),
+            ):
+                channel = WechatChannel(
+                    bus=MessageBus(),
+                    config={
+                        "state_dir": str(tmp_path),
+                        "qrcode_login_enabled": True,
+                        "qrcode_poll_interval": 0.01,
+                        "qrcode_poll_timeout": 1,
+                    },
+                )
+                await channel._bind_via_qrcode()
+
+        _run(go())
+
+        logged = "\n".join(record.getMessage() for record in caplog.records)
+        assert "qrcode-secret-abcdef-123456" not in logged, "the scannable qrcode must not be logged (03-L1)"
+        assert "qrco...3456(27 chars)" in logged
+        assert "qrcode_img_content=" not in logged

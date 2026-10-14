@@ -49,6 +49,14 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
+  // The client must not be able to forge origin metadata at the gateway.
+  for (const header of [
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+  ]) {
+    headers.delete(header);
+  }
 
   const hasBody = !["GET", "HEAD"].includes(request.method);
   const response = await fetch(backendUrl, {
@@ -57,9 +65,18 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
     body: hasBody ? await request.arrayBuffer() : undefined,
   });
 
-  return new Response(await response.arrayBuffer(), {
+  const body = await response.arrayBuffer();
+  const responseHeaders = new Headers(response.headers);
+  // undici already decoded the body, so stale transfer headers would make
+  // the browser double-decode or mismatch lengths once the gateway enables
+  // compression (report 07-M3).
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
+  responseHeaders.delete("transfer-encoding");
+
+  return new Response(body, {
     status: response.status,
-    headers: response.headers,
+    headers: responseHeaders,
   });
 }
 

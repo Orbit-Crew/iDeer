@@ -986,7 +986,7 @@ describe("FeedbackButtons edge cases", () => {
     // Find buttons with svg (feedback buttons)
     const buttons = screen.getAllByRole("button");
     const thumbsUp = buttons.find((b) => b.querySelector("svg"));
-    expect(thumbsUp).toBeTruthy();
+    expect(thumbsUp).toBeInTheDocument();
     if (thumbsUp) {
       fireEvent.click(thumbsUp);
       await waitFor(() => {

@@ -338,8 +338,8 @@ describe("ResourcesPage", () => {
       .getAllByTestId("resource-row")
       .find((row) => row.textContent?.includes("legacy-agent-1"));
 
-    expect(canonicalRow).toBeTruthy();
-    expect(legacyRow).toBeTruthy();
+    expect(canonicalRow).toBeInTheDocument();
+    expect(legacyRow).toBeInTheDocument();
     expect(
       within(canonicalRow!).getByRole("button", { name: "归档" }),
     ).toBeInTheDocument();

@@ -334,6 +334,31 @@ class TestMigrateMetaJson:
         assert report["imported"] == 0
         assert report["failed"] == 0
 
+    async def test_failed_commit_does_not_claim_persisted_records(self, base_dir: Path, skills_path: Path):
+        """A commit failure must move the pre-commit ``imported`` count into
+        ``failed`` instead of reporting rows that were never persisted
+        (report 02-L5)."""
+        from app.agentplatform.persistence.scripts.migrate_meta_json import migrate_meta_json
+
+        _write_skill_meta(skills_path, "commit-fail-skill", {"name": "commit-fail-skill", "owner_id": "u1", "visibility": "private"})
+
+        mock_session = _make_mock_session(owner_rows=[("u1",)])
+        mock_session.commit = AsyncMock(side_effect=RuntimeError("database is locked"))
+        mock_sf = _make_mock_sf(mock_session)
+
+        with (
+            patch("app.agentplatform.persistence.scripts.migrate_meta_json.get_session_factory", return_value=mock_sf),
+            patch("app.agentplatform.persistence.scripts.migrate_meta_json.get_paths") as mock_get_paths,
+            patch("app.agentplatform.persistence.scripts.migrate_meta_json.SkillsConfig") as mock_skills_config,
+        ):
+            mock_get_paths.return_value.base_dir = base_dir
+            mock_skills_config.return_value.get_skills_path.return_value = skills_path
+
+            report = await migrate_meta_json(dry_run=False)
+
+        assert report["imported"] == 0
+        assert report["failed"] == 1
+
     async def test_skips_missing_owner_instead_of_defaulting_to_super_admin(self, base_dir: Path, skills_path: Path):
         from app.agentplatform.persistence.scripts.migrate_meta_json import migrate_meta_json
 
@@ -488,7 +513,7 @@ class TestOwnerLoadingAndSampleValidation:
         mock_session.execute = AsyncMock(side_effect=[_Result(scalar=20), _Result(scalar_rows=[valid, invalid])])
 
         with patch("app.agentplatform.persistence.scripts.migrate_meta_json.get_session_factory", return_value=_make_mock_sf(mock_session)):
-            await _sample_validate(imported=2, skipped=0)
+            await _sample_validate()
 
         assert mock_session.execute.await_count == 2
 
@@ -496,7 +521,7 @@ class TestOwnerLoadingAndSampleValidation:
         from app.agentplatform.persistence.scripts.migrate_meta_json import _sample_validate
 
         with patch("app.agentplatform.persistence.scripts.migrate_meta_json.get_session_factory", return_value=None):
-            await _sample_validate(imported=1, skipped=0)
+            await _sample_validate()
 
 
 @pytest.mark.asyncio

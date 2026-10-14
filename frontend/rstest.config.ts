@@ -47,6 +47,8 @@ export default defineConfig({
       name: "dom",
       testEnvironment: "happy-dom",
       include: rstestDomFiles,
+      // jest-dom matchers + cleanup, mirroring vitest's tests/setup.ts.
+      setupFiles: [resolve(__dirname, "tests/setup-rstest-dom.ts")],
     },
   ],
 });

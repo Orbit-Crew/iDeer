@@ -812,7 +812,7 @@ describe("PromptInputAttachments", () => {
       </PromptInput>,
     );
     // No files means null return
-    expect(container.firstChild).toBeTruthy(); // The form is still there
+    expect(container.firstChild).toBeInTheDocument(); // The form is still there
   });
 });
 

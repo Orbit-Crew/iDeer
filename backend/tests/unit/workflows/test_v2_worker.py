@@ -65,6 +65,26 @@ async def test_worker_stops_heartbeat_before_finishing_task() -> None:
 
 
 @pytest.mark.asyncio
+async def test_worker_finishes_cancelled_run_as_cancelled() -> None:
+    """WorkflowCancelled escaping the graph must land the run in the
+    ``cancelled`` terminal state, not ``failed`` (report 02-M2)."""
+    from app.agentplatform.workflows.v2.compiler import WorkflowCancelled
+
+    store = MagicMock()
+    task = MagicMock(task_id="task-1")
+    store.claim_next_task = AsyncMock(return_value=task)
+    store.renew_lease = AsyncMock(return_value=True)
+    store.finish_task = AsyncMock(return_value=True)
+
+    async def execute(_task) -> None:
+        raise WorkflowCancelled("workflow cancelled during node 'task'")
+
+    worker = WorkflowWorker(store, execute, worker_id="worker-1", heartbeat_seconds=0.01)
+    assert await worker.run_once() is True
+    store.finish_task.assert_awaited_with("task-1", "cancelled", None, "worker-1")
+
+
+@pytest.mark.asyncio
 async def test_worker_aborts_execution_when_lease_is_lost() -> None:
     store = MagicMock()
     task = MagicMock(task_id="task-1")

@@ -1,4 +1,9 @@
+import {
+  MOCK_API_UNAVAILABLE,
+  mockApiDisabled,
+} from "@/app/mock/api/mock-api-gate";
 export function GET() {
+  if (mockApiDisabled()) return MOCK_API_UNAVAILABLE;
   return Response.json({
     skills: [
       {

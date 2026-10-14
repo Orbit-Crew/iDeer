@@ -287,12 +287,15 @@ def _create_canonical_agent(tmp_path: Path, catalog_db: async_sessionmaker, name
     and never wrap it in another asyncio.run. The catalog user owning the
     agent is seeded here so setup_agent's owner check passes.
     """
-    from app.agentplatform.tools.setup_agent_tool import setup_agent
+    from app.agentplatform.agent_bootstrap import setup_agent
 
     asyncio.run(_seed_user(catalog_db, owner_id))
     with (
-        patch("app.agentplatform.tools.setup_agent_tool.get_session_factory", return_value=catalog_db),
-        patch("app.agentplatform.tools.setup_agent_tool.get_paths", return_value=_make_paths_mock(tmp_path)),
+        patch("app.agentplatform.agent_bootstrap.get_session_factory", return_value=catalog_db),
+        # The wrapper resolves get_paths through the host tool module's
+        # namespace at call time (agent_bootstrap docstring documents this
+        # seam split).
+        patch("deerflow.tools.builtins.setup_agent_tool.get_paths", return_value=_make_paths_mock(tmp_path)),
     ):
         runtime = SimpleNamespace(context={"agent_name": name, "user_id": owner_id}, tool_call_id="tool-setup")
         result = setup_agent.func(soul=soul, description=description, runtime=runtime)

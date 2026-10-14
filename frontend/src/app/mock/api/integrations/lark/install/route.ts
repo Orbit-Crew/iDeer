@@ -1,6 +1,11 @@
+import {
+  MOCK_API_UNAVAILABLE,
+  mockApiDisabled,
+} from "@/app/mock/api/mock-api-gate";
 const installedSkills = ["lark-doc", "lark-im", "lark-shared", "lark-sheets"];
 
 export function POST() {
+  if (mockApiDisabled()) return MOCK_API_UNAVAILABLE;
   return Response.json({
     success: true,
     installed_skills: installedSkills,
