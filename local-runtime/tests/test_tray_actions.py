@@ -1,6 +1,7 @@
 """Tests for tray control surface actions (spec requirement)."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -295,6 +296,7 @@ def test_status_caches_audit_integrity_between_polls(
     assert len(calls) == 2, "an expired interval must re-verify"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits do not exist on Windows")
 def test_written_private_key_is_never_world_readable(tmp_path: Path) -> None:
     """05-L3: the key file is created at 0600, not written wide then chmodded."""
     import os
@@ -307,4 +309,16 @@ def test_written_private_key_is_never_world_readable(tmp_path: Path) -> None:
     _write_private_key(path, key)
     mode = stat.S_IMODE(os.stat(path).st_mode)
     assert mode == 0o600
+    assert b"PRIVATE KEY" in path.read_bytes()
+
+
+def test_written_private_key_contents_round_trip_on_windows(tmp_path: Path) -> None:
+    """The Windows half of the 05-L3 seam: os.open creation-mode is ignored by
+    Windows, so assert the write contract (valid PEM at the path) instead of
+    POSIX mode bits there."""
+    from core.tray import _write_private_key
+
+    path = tmp_path / "device.pem"
+    key = Ed25519PrivateKey.generate()
+    _write_private_key(path, key)
     assert b"PRIVATE KEY" in path.read_bytes()
