@@ -813,6 +813,16 @@ tools:
     group: telemetry
     use: app.agentplatform.tools.read_dat_tool:read_dat_tool
 
+  # 遥测 .dat 帧解码（ticket 75）：parse_dat 接受模型传入 Frame Layout Spec
+  # （封闭词汇表：同步字、帧长（定长或经长度字段派生）、字段（名称/偏移/
+  # 基本类型/字节序/线性缩放）、校验和算法枚举），确定性解码指定帧区间并
+  # 分页返回帧表，支持按字段/通道子集筛选；布局词汇表外声明或非法值结构化
+  # 拒绝（reason_code=invalid_layout 并指明位置），围栏与原因码与 read_dat
+  # 一致，只读、绝不执行文件内容。
+  - name: parse_dat
+    group: telemetry
+    use: app.agentplatform.tools.parse_dat_tool:parse_dat_tool
+
   # 结构化数据分析（只读）：仅可读取 /mnt/user-data 与 /tmp 下的文件。
   - name: data_analyzer
     group: knowledge

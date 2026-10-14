@@ -15,6 +15,7 @@ allowed-tools:
   - read_binary_hex
   - code_interpreter
   - read_dat
+  - parse_dat
   - start_zeroing_run
   - confirm_zeroing_run
   - check_zeroing_run
