@@ -514,6 +514,10 @@ class LocalRuntimeClient:
         )
         try:
             if operation == "echo":
+                # Echo is its own contract: whatever the broker signed is
+                # reflected back verbatim as the result, with the same
+                # policy authorization every other operation goes through;
+                # there is no extra capability semantics to apply (05-L13).
                 result = envelope.payload.get("value")
                 receipt = await self.handle_echo_task(envelope)
             elif operation in {"local.files.list", "local.files.read"}:

@@ -1143,11 +1143,12 @@ def _parse_http_url(url: str) -> tuple[str, str, int, str] | None:
     # plain HTTP, so https URLs would silently downgrade if accepted here.
     if parts.scheme != "http" or not parts.hostname:
         return None
-    default_port = 443 if parts.scheme == "https" else 80
+    # Only http can reach this point, so the default port is always 80; the
+    # former 443 https arm here was dead code (05-L7).
     return (
         parts.scheme,
         parts.hostname,
-        parts.port if parts.port is not None else default_port,
+        parts.port if parts.port is not None else 80,
         parts.path or "/",
     )
 

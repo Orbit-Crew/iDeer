@@ -85,21 +85,6 @@ class AuditIntegrity:
     problem: str | None = None
 
 
-def _redacted(detail: dict[str, Any] | None, redactor: Any) -> dict[str, Any]:
-    if not detail:
-        return {}
-    if redactor is None:
-        return dict(detail)
-    scrubbed = redactor.redact(
-        json.dumps(detail, ensure_ascii=False, sort_keys=True, default=str)
-    )
-    try:
-        parsed = json.loads(scrubbed)
-    except (TypeError, ValueError):
-        return {"detail": scrubbed}
-    return parsed if isinstance(parsed, dict) else {"detail": parsed}
-
-
 def _paged(entries: list[AuditEntry], limit: int) -> list[AuditEntry]:
     """First ``limit`` entries; 0 means the whole list, the reading default."""
     return entries[:limit] if limit > 0 else entries

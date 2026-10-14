@@ -411,6 +411,10 @@ class LocalPythonService:
             raise TypeError("working_root is required")
         if not isinstance(payload.get("script"), str):
             raise TypeError("script is required")
+        # The payload's "runtime" field is a compatibility filter, not a
+        # selector: execution is always pinned to this runtime's own
+        # interpreter (sys.executable), so an unknown value is rejected
+        # early, and any accepted value runs the same binary (05-L7).
         if payload.get("runtime", "python") not in {"python", "python3"}:
             raise ValueError("unsupported Python runtime")
         # 05-M3: the broker-chosen timeout is bounded and must be a positive
