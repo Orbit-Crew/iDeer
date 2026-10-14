@@ -579,3 +579,33 @@ def test_oidc_redirect_uri_fallback_plain_host_when_no_proxy_headers():
     result = _resolve_oidc_redirect_uri(req, "keycloak", cfg)
 
     assert result == "http://localhost:8001/api/v1/auth/callback/keycloak"
+
+
+@pytest.mark.asyncio
+async def test_oidc_auto_create_with_session_factory_creates_passwordless_user(tmp_path):
+    """The DB provisioning branch must accept password=None (OAuth users have
+    no local password) instead of hashing None — the crash the sharded CI run
+    exposed when a leaked engine made this path reachable."""
+    from deerflow.persistence.engine import close_engine, get_session_factory, init_engine
+
+    url = f"sqlite+aiosqlite:///{tmp_path / 'oidc.db'}"
+    await init_engine("sqlite", url=url, sqlite_dir=str(tmp_path))
+    try:
+        local_provider = AsyncMock()
+        local_provider.get_user_by_oauth.return_value = None
+        local_provider.get_user_by_email.return_value = None
+
+        result = await get_or_provision_oidc_user(
+            provider_id="keycloak",
+            provider_config=_provider_config(),
+            identity=_identity(subject="db-subject"),
+            local_provider=local_provider,
+        )
+
+        assert result["created"] is True
+        assert result["user"].password_hash is None
+        assert result["user"].email == "user@example.com"
+        local_provider.create_oauth_user.assert_not_awaited()
+        assert get_session_factory() is not None
+    finally:
+        await close_engine()
