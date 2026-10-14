@@ -14,7 +14,7 @@ from test_inventory import (
     build_inventory,
     compare_inventory,
 )
-from test_preflight import LANES, _minimum_python, _mkdir_probe
+from test_preflight import LANES, _minimum_python, _mkdir_probe, _pnpm_versions_match
 
 
 def test_inventory_assigns_exclusive_backend_lanes(tmp_path: Path) -> None:
@@ -196,6 +196,28 @@ def test_inventory_collects_effective_markers_per_pytest_node(
     assert "optional provider is unavailable" in optional["collection_skip_reason"]
     assert _lanes(Path("frontend/tests/e2e-real-backend/real-backend-render.spec.ts")) == ["frontend-real"]
     assert _lanes(Path("frontend/tests/e2e/stagehand/chat-interactions.spec.ts")) == ["frontend-stagehand"]
+
+
+def test_preflight_pnpm_version_contract_fails_closed_when_pinned() -> None:
+    """08-M9: the pnpm lockfile version check must not silently skip.
+
+    The old ``not expected or not actual or actual == expected`` passed when
+    the pinned version was missing OR the installed version failed to parse
+    (empty string), so a broken ``pnpm --version`` output skipped the
+    lockfile contract; a prerelease build false-red against a pinned release.
+    """
+    # unpinned expectation verifies nothing (informational)
+    assert _pnpm_versions_match("", "")
+    assert _pnpm_versions_match("", "9.1.2")
+    # pinned expectation: unparseable/missing actual must FAIL
+    assert not _pnpm_versions_match("10.26.2", "")
+    assert not _pnpm_versions_match("10.26.2", "pnpm: command not found")
+    # exact match and prerelease/integrity suffixes compare by release prefix
+    assert _pnpm_versions_match("10.26.2", "10.26.2")
+    assert _pnpm_versions_match("10.26.2", "10.26.2-beta.1")
+    assert _pnpm_versions_match("10.26.2+sha512.abc", "10.26.2")
+    # a different release still fails
+    assert not _pnpm_versions_match("10.26.2", "9.15.9")
 
 
 def test_preflight_declares_every_runner_lane() -> None:

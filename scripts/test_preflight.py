@@ -130,7 +130,7 @@ def main() -> int:
             )
             expected = _expected_pnpm_version()
             actual = _pnpm_version(pnpm)
-            version_match = not expected or not actual or actual == expected
+            version_match = _pnpm_versions_match(expected, actual)
             failed |= not check(
                 "pnpm lockfile version",
                 version_match,
@@ -381,6 +381,27 @@ def _expected_pnpm_version() -> str:
         return value.removeprefix("pnpm@")
     except (OSError, ValueError, AttributeError):
         return ""
+
+
+def _pnpm_versions_match(expected: str, actual: str) -> bool:
+    """Compare the installed pnpm against the pinned packageManager version.
+
+    08-M9: the previous ``not expected or not actual or actual == expected``
+    silently passed whenever the pinned version was missing OR the installed
+    version failed to parse, so a broken ``pnpm --version`` output skipped the
+    lockfile contract entirely; and a prerelease build (``10.0.0-beta.1``)
+    false-red against a pinned ``10.0.0``. Now: an unpinned expectation
+    verifies nothing, a pinned expectation with an unparseable installed
+    version FAILS, and both sides compare by their ``x.y.z`` release prefix so
+    prerelease/integrity suffixes do not distort the verdict.
+    """
+    expected_release = re.match(r"^\d+\.\d+\.\d+", expected)
+    expected_prefix = expected_release.group(0) if expected_release else ""
+    if not expected_prefix:
+        return True
+    actual_release = re.match(r"^\d+\.\d+\.\d+", actual)
+    actual_prefix = actual_release.group(0) if actual_release else ""
+    return bool(actual_prefix) and actual_prefix == expected_prefix
 
 
 def _mkdir_probe(path: Path) -> bool:
