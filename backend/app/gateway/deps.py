@@ -788,13 +788,9 @@ def get_local_provider() -> LocalAuthProvider:
         from deerflow.persistence.engine import get_session_factory
 
         sf = get_session_factory()
-        if sf is None:
-            try:
-                from deerflow.persistence.engine import get_session_factory as get_deerflow_session_factory
-
-                sf = get_deerflow_session_factory()
-            except ImportError:
-                pass
+        # 01-M3: the previous "fallback" re-imported the same
+        # get_session_factory symbol and called it again — it could only
+        # return the same None. The RuntimeError below is the real contract.
         if sf is None:
             raise RuntimeError("get_local_provider() called before init_engine_from_config(); cannot access users table")
         _cached_repo = SQLiteUserRepository(sf)

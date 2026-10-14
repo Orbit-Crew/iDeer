@@ -176,9 +176,14 @@ async def _validate_preconditions(
     if rbac_user is not None and not rbac_user.disabled:
         raise ValueError("User must be disabled before deletion")
 
-    if rbac_user is not None and rbac_user.role == UserRole.SUPER_ADMIN and not rbac_user.disabled:
-        if await _check_last_super_admin(session):
-            raise ValueError("Cannot delete the last active super_admin")
+    # 01-M1: the target is always disabled here, so deleting it never changes
+    # the active-super-admin count. The guard therefore blocks deleting the
+    # last *restorable* super_admin when no active one exists (previously the
+    # branch was dead code: it re-checked ``not rbac_user.disabled``, which
+    # the precondition above had just excluded, and its ``count <= 1``
+    # helper treated the disabled target as active).
+    if rbac_user is not None and rbac_user.role == UserRole.SUPER_ADMIN and await _check_last_super_admin(session):
+        raise ValueError("Cannot delete the last restorable super_admin: no active super_admin would remain")
 
     if strategy == "transfer" and target_user_id:
         if not await _check_target_user_exists(session, target_user_id):
@@ -198,7 +203,14 @@ async def _check_user_exists(session: AsyncSession, user_id: str) -> tuple[UserM
 
 
 async def _check_last_super_admin(session: AsyncSession) -> bool:
-    """Return True if there is at most one active super_admin left."""
+    """Return True if no active super_admin exists.
+
+    The deletion target is always disabled (enforced above), so its deletion
+    never lowers the active-super-admin count; "at most one active" was
+    therefore unreachable as a protection. Blocking when the active count is
+    zero keeps at least one restorable super_admin instead of relying on the
+    ``/api/v1/auth/initialize`` bootstrap by luck (01-M1).
+    """
     count = (
         await session.execute(
             select(func.count())
@@ -209,7 +221,7 @@ async def _check_last_super_admin(session: AsyncSession) -> bool:
             )
         )
     ).scalar() or 0
-    return count <= 1
+    return count == 0
 
 
 async def _check_target_user_exists(session: AsyncSession, target_user_id: str) -> bool:

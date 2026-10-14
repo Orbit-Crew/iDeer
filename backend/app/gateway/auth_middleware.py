@@ -68,7 +68,10 @@ def _is_public(path: str) -> bool:
     stripped = path.rstrip("/")
     if stripped in _PUBLIC_EXACT_PATHS:
         return True
-    return any(path.startswith(prefix) for prefix in _PUBLIC_PATH_PREFIXES)
+    # 01-L1: prefix matches respect the segment boundary — a bare startswith
+    # would exempt lookalike paths like "/healthcheck-xyz" or
+    # "/api/webhooks-evil" that merely begin with a public prefix.
+    return any(path == prefix or path.startswith(prefix.rstrip("/") + "/") for prefix in _PUBLIC_PATH_PREFIXES)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

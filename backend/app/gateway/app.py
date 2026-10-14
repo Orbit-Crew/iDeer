@@ -816,6 +816,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await knowledge_worker.stop()
         app.state.knowledge_worker_available = False
 
+        # 01-M4: release the OIDC service's shared httpx.AsyncClient. The
+        # close hook existed (routers/auth.py) but lifespan never called it,
+        # so the only cleanup was process exit.
+        try:
+            from app.gateway.routers.auth import close_oidc_service
+
+            await asyncio.wait_for(
+                close_oidc_service(),
+                timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            logger.warning(
+                "OIDC service shutdown exceeded %.1fs; proceeding with worker exit.",
+                _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            logger.exception("Failed to close OIDC service")
+
         # Upstream v2.1.0: the frozen MCP task-server snapshot is owned by one
         # Gateway process lifetime. Clearing it here keeps tool discovery and
         # background calls from validating against a stale process's config
