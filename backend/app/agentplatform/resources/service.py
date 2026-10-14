@@ -1674,6 +1674,13 @@ class ResourceService:
                     id=str(uuid.uuid4()),
                     source_resource_id=resource.id,
                     target_resource_id=edge.target_resource_id,
+                    # Carry the declaration options so a pinned (revision-
+                    # anchored) dependency does not silently become live and
+                    # drift with the target's latest revision after the fork.
+                    dependency_mode=edge.dependency_mode,
+                    revision_id=edge.revision_id,
+                    required=edge.required,
+                    purpose=edge.purpose,
                 )
                 for edge in edges
             ]

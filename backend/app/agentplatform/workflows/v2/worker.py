@@ -9,6 +9,7 @@ from typing import Any
 
 from deerflow.persistence.models.workflow_v2 import WorkflowTaskRow
 
+from .compiler import WorkflowCancelled
 from .errors import run_error_summary
 from .store import WorkflowV2Store
 
@@ -113,6 +114,12 @@ class WorkflowWorker:
         except WorkflowPaused:
             if not lease_lost.is_set():
                 await self.store.finish_task(task.task_id, "paused", None, self.worker_id)
+        except WorkflowCancelled as exc:
+            # The event stream already emitted run_cancelled; the durable
+            # terminal state must agree instead of recording "failed".
+            logger.info("workflow task %s cancelled: %s", task.task_id, exc)
+            if not lease_lost.is_set():
+                await self.store.finish_task(task.task_id, "cancelled", None, self.worker_id)
         except Exception as exc:
             logger.exception("workflow task %s failed", task.task_id)
             if not lease_lost.is_set():

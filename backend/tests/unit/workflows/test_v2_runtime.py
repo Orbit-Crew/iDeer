@@ -810,6 +810,58 @@ edges: [{from: first, to: second}]
 
 
 @pytest.mark.asyncio
+async def test_compiler_does_not_retry_mid_node_cancel() -> None:
+    """A cancel observed while a node streams must short-circuit the node's
+    retry policy: no backoff retries, no node_failed event (report 02-M2)."""
+    definition = parse_workflow_v2(
+        """
+schema_version: 2
+name: cancel-retry
+inputs: {}
+state: {}
+entrypoint: task
+nodes:
+  - id: task
+    type: action
+    retry: {max_attempts: 3, backoff_seconds: 0}
+    action: {kind: agent, name: stream}
+edges: []
+"""
+    )
+    events: list[tuple[str, dict]] = []
+    streams = 0
+
+    class Adapter:
+        async def astream(self, context, params):
+            nonlocal streams
+            streams += 1
+            yield {"type": "token", "text": "hello"}
+
+    async def emit(event_type: str, payload: dict) -> None:
+        events.append((event_type, payload))
+
+    async def is_cancelled() -> bool:
+        # The cancel request arrives only once the node is already streaming,
+        # so the pre-node gate passes and the mid-node check must fire.
+        return streams > 0
+
+    graph = WorkflowGraphCompiler(
+        definition,
+        ActionAdapterRegistry({("agent", "stream"): Adapter()}),
+        emit_event=emit,
+        is_cancelled=is_cancelled,
+    ).compile()
+
+    with pytest.raises(WorkflowCancelled, match="cancelled"):
+        await graph.ainvoke(
+            {"run_id": "run-1", "inputs": {}, "state": {}, "outputs": {}},
+            config={"configurable": {"thread_id": "wf:cancel-retry"}},
+        )
+    assert streams == 1, "mid-node cancel was retried by the node retry policy"
+    assert [event_type for event_type, _ in events] == ["node_started"], "cancel emitted a node_failed event"
+
+
+@pytest.mark.asyncio
 async def test_compiler_fails_node_on_self_referencing_template_input() -> None:
     """A user input shaped like the template referencing it must fail the node
     with the structured render error instead of hanging the event loop."""
