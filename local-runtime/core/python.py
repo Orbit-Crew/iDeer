@@ -16,7 +16,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
-from .artifacts import ArtifactUploader
+from .artifacts import ArtifactUploadError, ArtifactUploader
 from .compat import UTC, StrEnum
 from .consent import ConsentStore, request_hash
 from .files import LocalFileStore
@@ -38,6 +38,11 @@ from .secrets import (
 # other raw Windows constants in this package.
 _CREATE_NEW_PROCESS_GROUP = 0x200
 _CREATE_SUSPENDED = 0x4
+
+# Upper bound for the broker-supplied task timeout (05-M3): without it a
+# single payload could hold an execution slot for as long as the payload
+# asks. Direct PythonExecutor callers keep full control of their own value.
+MAX_TASK_TIMEOUT_SECONDS = 600.0
 
 
 class _WindowsBasicLimit(ctypes.Structure):
@@ -344,6 +349,11 @@ class LocalPythonService:
             refs = []
             for logical_path in payload.get("expected_outputs", []):
                 path = self.files.resolve(str(logical_path))
+                # 05-M4: check the size before reading the whole file into
+                # memory; the uploader's own limit only fires after the read.
+                max_bytes = getattr(self.uploader, "max_bytes", None)
+                if max_bytes is not None and path.stat().st_size > max_bytes:
+                    raise ArtifactUploadError("artifact exceeds configured size limit")
                 refs.append(
                     self.uploader.upload(
                         path.name, self.files.read_bytes(str(logical_path))
@@ -403,6 +413,15 @@ class LocalPythonService:
             raise TypeError("script is required")
         if payload.get("runtime", "python") not in {"python", "python3"}:
             raise ValueError("unsupported Python runtime")
+        # 05-M3: the broker-chosen timeout is bounded and must be a positive
+        # number; a stale or hostile payload cannot pin an execution slot.
+        timeout = payload.get("timeout", 30)
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+            raise TypeError("timeout must be a number")
+        if not 0 < float(timeout) <= MAX_TASK_TIMEOUT_SECONDS:
+            raise ValueError(
+                f"timeout must be within (0, {MAX_TASK_TIMEOUT_SECONDS:.0f}] seconds"
+            )
         for field in ("args", "expected_outputs"):
             value = payload.get(field, [])
             if not isinstance(value, list) or any(

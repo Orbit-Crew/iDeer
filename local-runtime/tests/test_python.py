@@ -437,3 +437,48 @@ def test_python_executor_redacts_sensitive_value_split_across_chunks(
     output = asyncio.run(run_with_output())
     assert "secret-value" not in output
     assert "API_KEY=[REDACTED]" in output
+
+
+def test_local_python_rejects_timeout_outside_allowed_range() -> None:
+    """05-M3: the payload timeout is bounded, not broker-controlled."""
+    service = LocalPythonService(LocalFileStore([RootConfig("/projects", Path("."))]))
+    base = {
+        "working_root": "/projects",
+        "script": "print('hello')",
+        "environment": [],
+    }
+    with pytest.raises(ValueError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": 601}))
+    with pytest.raises(ValueError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": 0}))
+    with pytest.raises(ValueError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": -5}))
+    with pytest.raises(TypeError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": "30"}))
+
+
+def test_local_python_rejects_oversized_expected_output_before_reading(
+    tmp_path: Path,
+) -> None:
+    """05-M4: size is checked before the whole file is read into memory."""
+    payload = {
+        "working_root": "/projects",
+        "script": "open('big.bin', 'wb').write(b'x' * 8)",
+        "expected_outputs": ["/projects/big.bin"],
+        "environment": [],
+        "timeout": 30,
+    }
+    consent = ConsentStore()
+    consent.approve("local.python", request_hash(payload))
+    uploader = MemoryArtifactUploader(max_bytes=4)
+    files = LocalFileStore([RootConfig("/projects", tmp_path)])
+    service = LocalPythonService(files, consent=consent, uploader=uploader)
+
+    def refuse_read(logical_path: str) -> bytes:
+        raise AssertionError("read_bytes must not run past the size check")
+
+    files.read_bytes = refuse_read  # type: ignore[method-assign]
+
+    with pytest.raises(ArtifactUploadError, match="size limit"):
+        asyncio.run(service.execute(payload))
+    assert uploader.items == {}
