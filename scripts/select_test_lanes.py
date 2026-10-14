@@ -74,7 +74,11 @@ def _is_high_risk(path: str) -> str | None:
         return None
     parts = path.lower().split("/")
     for part in parts:
-        if part == "auth" or part.startswith("auth_") or part == "auth.py":
+        # 08-L2: prefix match so authorization variants (authz.py,
+        # authorization.py, auth_middleware/) hit the real-e2e channel too;
+        # the repo carries no non-auth "author*"-shaped modules that would
+        # false-positive on the broad prefix.
+        if part.startswith("auth"):
             return "authentication"
         for risk in RISK_PARTS[1:]:
             singular = risk.rstrip("s")
