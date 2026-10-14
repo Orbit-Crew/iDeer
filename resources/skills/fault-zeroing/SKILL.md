@@ -36,6 +36,7 @@ allowed-tools:
    - `.doc` / `.docx` / `.pdf` / `.xls` / `.xlsx` / `.ppt` / `.pptx`：调用 `read_document` 工具转 Markdown 后读取（分段读取，遇截断标记用 `page_range` 或分段继续）。`read_document` 返回转换失败错误时按失败契约处理并如实记录，不得猜测内容。
    - `.md` / `.txt` / `.log` 等纯文本：直接用 `read_file` 读取。
    - `.c` / `.h` / `.cpp` 等源码文本：直接用 `read_file` 读取（工具自动识别 UTF-8 / GB18030，GBK 兼容），中文注释乱码或读取报错时不要让用户重传，先换 `grep` 按英文关键词定位再分段读。
+   - `.dat` 遥测文件：调用 `read_dat` 裸读或结构摸底，依据遥测格式文档起草 Frame Layout Spec（帧布局参数）后用 `parse_dat` 解帧；解出的数值默认按待验证级（pending_verification）对待（见 `references/evidence_rules.md`）。
 5. 文档读取后检测空文本与工具错误：`read_document` 返回 JSON 错误（文件不存在、转换失败、疑似扫描件等）时，必须记录文件名、精确路径和错误原因，不得把错误 JSON 当作文档内容或猜测内容。对关键资料先调用 `ask_clarification`，向用户提供三种选择：补传/重试后继续、以待验证状态继续、停止分析；在用户确认前不得输出已确认根因或“已归零”结论。用户选择继续时，相关证据、底事件和根因只能标为 `pending_verification`，并写入遗留风险。非关键资料可记录缺失后继续。
 6. 长文档按章节或行号范围读取，不一次性吞入无关内容。
 7. 缺少关键输入时调用 `ask_clarification`，不得用假设替代资料。

@@ -192,13 +192,13 @@ async def _start_through_workflow_entry(env) -> dict:
     return response
 
 
-async def _start_through_chat_entry(env, *, context_extra: dict, tool_call_id: str, code_package_id: str | None = PACKAGE_ID) -> dict:
+async def _start_through_chat_entry(env, *, context_extra: dict, tool_call_id: str, code_package_id: str | None = PACKAGE_ID, upload_name: str = UPLOAD_NAME) -> dict:
     """聊天闭环发起工具协程直调（ticket 04）：物化同一线程证据后经内核发起。"""
 
     result = await zeroing_run_tool.start_zeroing_run_tool.coroutine(
         runtime=_runtime(context_extra),
         problem_description=PROBLEM,
-        upload_paths=[f"/mnt/user-data/uploads/{UPLOAD_NAME}"],
+        upload_paths=[f"/mnt/user-data/uploads/{upload_name}"],
         code_package_id=code_package_id,
         tool_call_id=tool_call_id,
     )
@@ -452,6 +452,48 @@ async def test_chat_entry_single_missing_side_parks_the_same_kernel_pause(env) -
     }
     assert run.snapshot["entry"] == "expert"
     assert run.snapshot["contract_version"] == CONTRACT_VERSION
+
+
+@pytest.mark.asyncio
+async def test_dat_upload_is_accepted_and_materialized_like_any_other_upload(env, monkeypatch) -> None:
+    """遥测 .dat 附件是合法文档证据（ticket 77）：收件决定、输入快照与哈希、
+    五件套完成判定与普通上传逐字一致（收件不读内容、不看扩展名），且声明的
+    .dat 字节级物化进 Run 工作区，供证据收集阶段经 read_dat / parse_dat 读取。"""
+
+    dat_name = "telemetry.dat"
+    dat_bytes = bytes.fromhex("1ACFFC1D") + bytes(range(32))
+    uploads = Paths(env.base).sandbox_uploads_dir(THREAD_ID, user_id=OWNER)
+    (uploads / dat_name).write_bytes(dat_bytes)
+
+    calls: list[str] = []
+    agent = _StubAgent(calls)
+    started = {
+        "log": (await _start_through_chat_entry(env, context_extra={"agent_name": "fault-zeroing"}, tool_call_id="tc-upload-log"))["run_id"],
+        "dat": (await _start_through_chat_entry(env, context_extra={"agent_name": "fault-zeroing"}, tool_call_id="tc-upload-dat", upload_name=dat_name))["run_id"],
+    }
+    for run_id in started.values():
+        _freeze_skill_view(env, run_id)
+    await _drive_queue_to_emptiness(env, monkeypatch, agent)
+
+    runs = {label: await env.store.get_run(run_id) for label, run_id in started.items()}
+    assert all(run is not None and run.status == "completed" for run in runs.values())
+    # 同一声明输入（同描述、同 uploads 目录、同代码包）→ 收件决定逐字一致；
+    # 文档侧快照逐字一致（收件不读内容、不看扩展名）：.dat 不被特殊对待，
+    # 既不拒绝也不改变收件语义。代码侧按 Run 自包含物化（包 id 逐 Run 派生），
+    # 故整体快照哈希不跨 Run 比较。
+    assert _intake_fields(runs["log"]) == _intake_fields(runs["dat"]) == EXPECTED_INTAKE
+    log_intake = runs["log"].snapshot["evidence_intake"]
+    dat_intake = runs["dat"].snapshot["evidence_intake"]
+    assert log_intake["input_snapshot"]["document_evidence"] == dat_intake["input_snapshot"]["document_evidence"]
+    assert log_intake["input_snapshot_hash"] and dat_intake["input_snapshot_hash"]
+    # 两条 Run 都真实执行整图并通过契约门。
+    assert len(calls) == 18
+    for run in runs.values():
+        assert {path.name for path in _outputs_host(run).iterdir() if path.is_file()} == set(REQUIRED_OUTPUTS)
+    # 声明的 .dat 字节级物化进 Run 工作区（Run 自包含），证据收集阶段可读。
+    dat_uploads = Paths(env.base).sandbox_uploads_dir(started["dat"], user_id=OWNER)
+    assert {path.name for path in dat_uploads.iterdir()} == {dat_name}
+    assert (dat_uploads / dat_name).read_bytes() == dat_bytes
 
 
 # ---------------------------------------------------------------------------

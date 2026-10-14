@@ -573,3 +573,22 @@ def test_scan_summary_broken_json_is_structured(tmp_path: Path) -> None:
 
     assert not verdict.ok
     assert "json_invalid" in codes_of(verdict)
+
+
+def test_coverage_matrix_row_may_cite_telemetry_dat_source(tmp_path: Path) -> None:
+    """Ticket 77: telemetry ``.dat`` is a legal evidence input, and the
+    coverage matrix reflects it as-is — a ``试验记录或日志`` row sourced by a
+    ``.dat`` file passes the coverage gate unchanged (no machinery rejects
+    the telemetry source; matrix rows are free-form)."""
+
+    contract = load_contract()
+    report = valid_report().replace(
+        "| 试验记录或日志 | 已覆盖 | 03_test_records.md | 无 |",
+        "| 试验记录或日志 | 已覆盖 | telemetry.dat（parse_dat 解帧） | 无 |",
+    )
+    assert "telemetry.dat" in report
+    output_dir = write_outputs(tmp_path, report=report)
+
+    verdict = contract.evaluate_result_contract(output_dir)
+
+    assert verdict.ok, [finding.code for finding in verdict.findings]

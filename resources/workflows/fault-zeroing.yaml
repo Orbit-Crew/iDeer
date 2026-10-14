@@ -109,8 +109,11 @@ nodes:
                 （遇截断标记用 page_range 分段继续；转换结果为空疑似扫描件时按失败契约处理；
                 read_document 返回 JSON 错误时同样按失败契约处理，不得把错误信息当作内容；
                 .doc 转换失败通常是网关缺少 LibreOffice——记入覆盖矩阵缺失项并建议用户提供 .docx）
-               - .md/.txt/.log/.c/.h 等纯文本与源码文本直接用 read_file 读取
-                 （工具自动识别 UTF-8 / GB18030，GBK 兼容）
+              - .md/.txt/.log/.c/.h 等纯文本与源码文本直接用 read_file 读取
+                （工具自动识别 UTF-8 / GB18030，GBK 兼容）
+              - .dat 遥测文件调用 read_dat 裸读或结构摸底，依据遥测格式文档起草
+                Frame Layout Spec（帧布局参数）后用 parse_dat 解帧；
+                解出的数值默认按待验证级（pending_verification）对待（按 evidence_rules.md 执行）
           3. 读取文件内容，抽取每一条证据
           4. 检查资料覆盖情况：覆盖类别的唯一来源是
              /mnt/skills/fault-zeroing/references/result_contract.md
@@ -423,6 +426,8 @@ nodes:
             在问题清单中记录"来源无法回查"，不得编造核对结论）
           - .md/.txt/.log/.c/.h 等纯文本与源码文本直接用 read_file 读取
             （工具自动识别 UTF-8 / GB18030，GBK 兼容）
+          - .dat 遥测文件用 read_dat / parse_dat 回查；解出的数值按待验证级对待，
+            按 evidence_rules.md 执行
 
           输出：
           ```json
