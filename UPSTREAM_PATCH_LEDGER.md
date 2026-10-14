@@ -24,6 +24,10 @@
 | 2026-10-11 | 批次1治理票 49（04-M7 台账补登记） | 登记对照命令前缀之外的 harness 差异：`backend/packages/harness/pyproject.toml`（2026-10-01 巡检行移交的待登记项，`python-docx` 条款）补登记为 PATCH-036（合并 develop 时因 fault-zeroing 登记 issue #22 撞号，重编为 PATCH-037，内容不变），覆盖该文件全部本地差异（`python-docx>=1.1.2`，引入提交 `7ae6b5907`；`pymupdf4llm>=0.0.17,<2`，引入提交 `44498da80`）。该文件在对照命令 `-- backend/packages/harness/deerflow` 前缀之外，与结构化注册表 `paths` 同 scope，不进注册表、不占 66 文件预算；`python3 scripts/check_upstream_patches.py --base HEAD --upstream-baseline 345f08be0` 复测 pass。同票核对 04-M7 指认的内置工具消息文案一行变更归属：即 `update_agent_tool.py` 迁移脚本路径文案修正，2026-10-11 结构化注册表落地行已登记为 PATCH-034（原因/修改/测试/Owner/移除条件齐全，注册表携 current 验证证据），无重复登记。 |
 | 2026-10-11 | 批次4整改票 59（07-H1 上游 PR 候选登记） | 本地修复 `frontend/src/app/api/memory/[...path]/route.ts` catch-all 代理的路径穿越（07-H1：Next 动态段解码后拼回 pathname，`new URL` 归一化 `..`/`%2e%2e` 使 `/api/memory` 前缀失效，`GET /api/memory/..%2F..%2Fv1%2Fadmin` 可达网关任意路径）。上游 `v2.1.0`（`345f08be0`）内同名文件同病（仅 `BACKEND_BASE_URL` 环境变量回退链不同），整理为上游 PR 候选与 P003/P011/P014/P032 并列进下轮收敛 reassess：目标仓库 `bytedance/deer-flow`，diff 草稿与 PR 正文见 `docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md`（段白名单 + 重编码拼接 + 构造后 `pathname.startsWith("/api/memory/")` 断言，拒绝返回 404）。该文件属前端面（非 `backend/packages/harness/` 差异），不进结构化注册表、不占 66 文件预算；本地验证：`tests/unit/app/api/memory/[...path]/route.test.ts` 新增 6 条穿越用例先红（6/6 失败）后绿，`tests/unit/app/api/memory/route.test.ts` 与登录面共享 `next-path` 校验收敛用例全绿。 |
 | 2026-10-11 | 批次4整改票 61（03 渠道族上游 PR 候选登记） | 本地修复渠道生命周期与循环亲和五件（03-H1/H2/M3/M4/M6+M5）：Telegram/DingTalk 轮询线程死亡后清 `_running` 并覆写 `is_running` 检查线程存活（与既有 Feishu/Discord 覆写对齐）；飞书 stop() 断开 lark WS（`_disconnect` 有界提交 + 停 SDK 循环阻断无限自动重连）并置 `_stopped` 屏蔽旧实例事件；Slack connect Future 保存 + done callback 清 `_running`；Discord 身份附加并入 `_publish_reserved` 以 attach+commit 协程提交网关主循环（对齐 Slack `_publish_inbound_with_connection`）、`/connect` 绑定比照 Telegram 提交主循环；manager 默认 inbound 文件 reader 收敛为白名单式（无注册 reader 的渠道丢弃 URL 附件并告警）。上游 `v2.1.0`（`345f08be0`）内 `slack.py:145`/`feishu.py stop`/`telegram.py`/`dingtalk.py`/`discord.py:578`/`manager.py:1107` 同病，整理为上游 PR 候选进下轮收敛 reassess：目标仓库 `bytedance/deer-flow`，三模式 diff 草稿与验证证据见 `docs/upgrades/upstream-pr-candidates/channel-lifecycle-loop-affinity.md`。适配器与 manager 属 `backend/app/` 控制面（非 harness 差异），不进结构化注册表、不占 66 文件预算；本地验证：`tests/unit/channels/test_channel_lifecycle_contracts.py` 新增 10 条合同测试先红（8/8 目标用例失败）后绿，`backend/tests/unit/channels/` 1480 passed 全绿，邻接面（root tests/test_channels.py 等 6 文件）全绿。 |
+| 2026-10-13 | 批次5整改票 63（04-M5 registry 重复注册语义 + 上游 PR 候选登记） | 补登记 PATCH-038：`extensions/registry.py` 的 `runtime_evidence()` 由无条件 append（重复注册静默 `[-1][1]` 取最后一个、前者被覆盖且无诊断，04-M5）改为单 provider 拒绝重复——桶内已有注册即抛 `ValueError` 并命名既有/被拒 source，经 loader 既有失败路径变为回滚 + error diagnostic + `required` 启动中止；`extensions/__init__.py` 的 `resolve_runtime_evidence_hooks` 行为不变，docstring 由 "the latest" 收敛为单 provider 语义。两文件与 PATCH-024 注册行共享，按 PATCH-004/023 共享文件先例在结构化注册表并列登记（重叠 ownership，不新增差异文件、不占 66 文件预算），PATCH-024 的 current_verification 同步复验刷新（35 passed）。上游比对结论与票面预判相反：`git show deerflow/main`（`81fa17c15ab`）与 `345f08be0`（v2.1.0）内 `extensions/__init__.py`/`registry.py` 均无 `resolve_runtime_evidence_hooks`/`runtime_evidence`——runtime evidence 注册缝为 fork 本地新增（`ef2ed33dd`，PATCH-024 面），上游今日无同病可提；上游 PR 候选按"候选登记+diff 草稿"收口（与 #59/#61 同口径，实际提交由用户决定），语义为：若该注册缝随 PATCH-005 移除条件（runtime 暴露 receipt/evidence contribution callbacks）等路径上提上游，单 provider 确定性语义须随提案原生携带，草稿见 `docs/upgrades/upstream-pr-candidates/registry-duplicate-evidence-hooks.md`，并列进下轮收敛 reassess。本地验证：新增 4 条合同测试（registry 跨源/同源拒绝、loader 双 spec 显式失败/required 中止）先红（4 failed）后绿，三文件合计 75 passed；治理门 `check_upstream_patches.py --base f0a33e741 --upstream-baseline 345f08be0` pass。 |
+| 2026-10-13 | 批次5整改票 64（02-M6 企业定制接缝 expand：monkeypatch→registry 契约，过渡态） | 登记三处新上游接缝面（PATCH-039/040/041）：`tools/tools.py` 的 `get_available_tools` 尾端 consult `resolve_tool_scopes`（工具装配 tool-scope 缝，新差异文件，预算 66→67、代码 45→46）；`subagents/executor.py` `_create_agent` consult `resolve_subagent_middlewares`（子代理组装中间件缝，与 PATCH-028 共享文件）；`agents/lead_agent/agent.py` `_assemble_lead_agent` consult `resolve_builtin_tool_overrides`（builtin 工具覆盖缝，与 PATCH-010 共享文件）。配套注册面在 `extensions/registry.py`/`extensions/__init__.py` 增三桶（`tool_scopes`/`subagent_middlewares`/`builtin_tools`，全部单 provider：重复注册注册期 `ValueError`，语义与 #63 PATCH-038 一致）+ 进程默认 setter（解析链 extensions 参数→进程 loaded 集→进程默认，对照 `resolve_runtime_evidence_hooks` 先例）。**过渡态（expand）**：三处原导入期 monkeypatch（`executor_bridge` 两处 `_install_scope_aware_*`、`agent_bootstrap.install()` 属性改写）保留且默认仍生效；新轨经 env 开关启用（`IDEER_TOOL_SCOPE_SEAM`/`IDEER_SUBAGENT_MIDDLEWARE_SEAM`/`IDEER_BUILTIN_TOOL_SEAM` = `registry`），注册方为 workflows v2 executor_bridge（前两缝，归属：ContextVar 与 FilesystemScopeMiddleware 均在 app 层，agentplatform_extension 不可 import app）与 agent_bootstrap（第三缝，归属：canonical 工具本体所在）；合同测试（`tests/unit/workflows/test_v2_executor_bridge_seam_contract.py`、`tests/unit/agentplatform/test_agent_bootstrap_seam.py`、registry/loader/boundary 增量）证明两轨可独立启用且行为等价（含 #55 先例子进程探针：registry 轨断言上游绑定零改写，legacy 轨探针锁定旧改写仍在）。**移除条件（contract 各批落地后）**：monkeypatch 移除、开关删除后，三缝的移除条件=上游 harness 提供等价扩展点并被采纳（详见各行）；上游均无对应缝（`deerflow/main`/`v2.1.0` 比对），候选文档 `docs/upgrades/upstream-pr-candidates/host-seam-extension-points.md` 并列下轮收敛 reassess。 |
+| 2026-10-13 | 批次5整改票 64 contract（02-M6 移除 monkeypatch，三缝终态） | 按调用方分三批移除全部导入期改写与开关：批 1 删 `executor_bridge` 的 `_install_scope_aware_tool_loading` 与 `IDEER_TOOL_SCOPE_SEAM`；批 2 删 `_install_scope_aware_create_agent`、`IDEER_SUBAGENT_MIDDLEWARE_SEAM` 与 `_seam_track`；批 3 删 `agent_bootstrap.install()` 的属性改写分支（`setup_agent_tool.setup_agent`/`builtins.setup_agent`/tool module 挂 `get_session_factory`）与 `IDEER_BUILTIN_TOOL_SEAM`，gateway 调用点（`app/gateway/services.py` 的 `install()`）不变，catalog session 缝保持 `agent_bootstrap.get_session_factory` 模块命名空间形态（PATCH-041 登记形态）。PATCH-039/040/041 的 **修改/移除条件** 同步由过渡态改写为终态（本缝即唯一轨道），`current_verification` 刷新为 contract 证据。残留清零：全树 grep `_workflow_knowledge_scope_aware`/`_workflow_scope_aware`/三个 `IDEER_*_SEAM` 开关零命中（代码/文档/CI）；harness 三个 consult 消费点本阶段零改动（diff 仅 app 层与测试）。本地验证：seam 合同测试探针翻转为 registry-only 断言（import 后上游绑定全 stock、三 provider 就位），新增 #55 先例总揽探针（`tests/test_agentplatform_extension_boundary.py::test_importing_the_enterprise_composition_rewrites_no_upstream_binding`，同解释器 import executor_bridge + app.gateway.services 断言零进程全局改写）；等价证据：fail-closed 矩阵、无 provider 直通、executor 链后 append 三态、canonical 行为三用例全绿，行为等价矩阵由 expand 阶段双轨合同测试锁定后保留为单轨断言。上游无对应缝结论不变，候选 rider 文档同步终态。**标准 lane（backend-standard）**：首轮 4 个 setup_agent 业务路径用例失败（29624 passed/4 failed）——`agent_bootstrap.install()` 一次性 `_installed` 标志使"seam 测试清理重置进程默认后、gateway 模块已导入"的进程永久回退 stock builtin（legacy 属性改写不受该清理影响故 expand 未暴露）；修复（`d8f1418d2`）：install() 改为同对象幂等可重挂（模块级单 provider 实例，空槽重注册、异 provider 拒绝）、`create_app()` 每次组装重发布、conftest 增 autouse `_preserve_extension_seam_defaults` 逐测试快照/恢复三缝进程默认（同时保护无重挂点的 workflow 两缝）、seam 测试补重挂回归用例；复跑 backend-standard 全绿：29629 passed / 236 skipped（TEST_LANE_DURATION 1128s，产物 `logs/test-lanes/backend-standard-20261013T032048Z-2535601`）；治理门 `--base f0a33e741 --head HEAD --upstream-baseline 345f08be0` pass。 |
+| 2026-10-13 | 批次5整改票 65（04-M3 PATCH-005 退役评估） | reassess 结论：**续期（keep，移除条件改写）**。按 #64 落地后的接缝面逐项复核 receipt→evidence bridge 能否移到扩展边界之后：bridge 三个消费点全在上游 runtime 内部逐调用路径上（`_stamp_message` 的 stamp 时点、`wrap_tool_call`/`awrap_tool_call` 的 handler 包裹、task_tool 子代理终态轮询点），而 #64 三缝（`tool_scopes`/`subagent_middlewares`/`builtin_tools`）均为装配期单 provider 缝（`get_available_tools` 尾端、`_create_agent` 链后 append、bootstrap builtin 绑定），形状不承载逐调用观测，不能承载 bridge。退役所需信息面存在两处硬缺口：① tool-call 身份绑定——`bind_tool_call_evidence` 是企业包内部 `agentplatform_extension/evidence.py` 的 ContextVar 缝，未上 `RuntimeEvidenceHooks` 契约，是全 harness 仅剩的企业包反向 import（04-M3 本体；task_tool 侧 delegation binding/delegated retrieval/verification 三处已全部走注册契约 `bind_delegation_evidence`/`record_delegated_retrieval_receipts`/`record_subagent_verification`，04-M3 方向性风险较 2026-10-01 复评收窄到 middleware 单点）；② 子代理 retrieval receipts——仅经 runtime 内部 `SubagentResult.retrieval_receipts`（executor 终态自 evidence binding 收割）传入 task_tool，从不进入 task ToolMessage additional_kwargs（`make_subagent_additional_kwargs` 无此字段），扩展侧没有任何消息/回调观测面。备选"贡献 middleware 刮消息"路径否决：需在扩展侧重造 `deerflow_tool_meta`/`subagent_receipt_verdict` 消息形状耦合并复制 VERIFIED 派生与 fail-closed adoption 语义，违背 Extension → Adapter → registered minimal runtime patch 归属规则。移除条件按回调形状逐项改写（三条，见详情行）。GitNexus impact：`bind_tool_call_evidence` UNKNOWN（图 0 callers，grep 补证生产消费点仅 middleware :123/:136 与扩展包自身）、`_stamp_message` LOW（直接 caller `_stamp`），无 HIGH/CRITICAL。本地验证：焦点六文件 `tests/test_tool_receipt_middleware.py`+`tests/test_agentplatform_extension_boundary.py`+registry/loader/injection/api_contracts 合计 168 passed；治理门 `--base f0a33e741 --head HEAD --upstream-baseline 345f08be0` pass（67/67 预算），结构化注册表 PATCH-005 行 `current_verification` 同步刷新。 |
 
 ### 2026-09-08 巡检逐项结论（2026-10-01 自历史档案迁入，内容保持原文）
 
@@ -109,7 +113,7 @@
 | PATCH-002 | `deerflow/extensions/notify.py` (`notify_task_start/stop`) | Initialize and finalize the shared Run Evidence Envelope at the runtime task lifecycle boundary | Upstream task lifecycle hooks do not own AgentPlatform's cross-cutting evidence envelope | Remove when the AgentPlatform extension owns this lifecycle binding without a harness patch | `tests/test_extension_task_lifecycle.py`, extension API contract tests | runtime evidence maintainers | open — reassessed 2026-10-01 vs v2.1.0: keep (upstream task lifecycle hooks still have no evidence-envelope ownership; local notify.py adds the `RunEvidenceEnvelope` stamping) |
 | PATCH-003 | `deerflow/config/AGENTS.md` (memory schema guidance) | Document the merged host-shared/pluggable Memory schema and migration boundary | Upstream documentation does not describe AgentPlatform's legacy profile migration | Remove when equivalent guidance is supplied by the extension/config package | `tests/test_memory_manager_pluggable.py` | memory configuration maintainers | open — reassessed 2026-10-01 vs v2.1.0: keep (upstream `config/AGENTS.md` still documents the legacy flat memory schema line; no equivalent host-shared/pluggable guidance exists) |
 | PATCH-004 | `deerflow/config/workflow_runtime_config.py`, `deerflow/config/app_config.py` (`WorkflowRuntimeConfig`) | Move durable workflow admission/lease limits into the DeerFlow-owned configuration schema while preserving AgentPlatform compatibility imports | No upstream workflow-v2 config model covers the AgentPlatform durable workflow limits | Remove compatibility import after all AgentPlatform callers use the DeerFlow symbol directly; retain schema until upstream provides equivalent limits | `tests/unit/workflows/test_v2_runtime_config.py` (3 passed), Ruff check/format | workflow runtime maintainers | open — compatibility-import clause verified satisfied 2026-09-08 (zero AgentPlatform-side compat imports remain; all consumers import the DeerFlow symbol directly), only the schema clause still blocks — reassessed 2026-10-01 vs v2.1.0: keep (upstream has no `workflow_runtime_config.py`/`WorkflowRuntimeConfig`; `subagent_runtime`/`run_ownership` cover different concerns) |
-| PATCH-005 | `deerflow/agents/middlewares/tool_receipt_middleware.py` (`ToolReceiptMiddleware._stamp_message`), `deerflow/tools/builtins/task_tool.py` (`_record_run_evidence_verification`) | Forward runtime-owned tool receipts and sub-agent verification verdicts into the AgentPlatform Run Evidence Envelope when the optional extension is active | Upstream receipt middleware/task tool have no enterprise Run Evidence sink; message-carried receipts remain unchanged without the extension | Remove once the runtime exposes equivalent extension callbacks for receipt contribution | `tests/test_tool_receipt_middleware.py`, extension boundary tests (44 combined), receipt projection tests | runtime evidence maintainers | open — reassessed 2026-10-01 vs v2.1.0: keep (upstream `extensions/run_evidence.py` is a read-only projection reader with no receipt/evidence write seam) |
+| PATCH-005 | `deerflow/agents/middlewares/tool_receipt_middleware.py` (`ToolReceiptMiddleware._stamp_message`), `deerflow/tools/builtins/task_tool.py` (`_record_run_evidence_verification`) | Forward runtime-owned tool receipts and sub-agent verification verdicts into the AgentPlatform Run Evidence Envelope when the optional extension is active | Upstream receipt middleware/task tool have no enterprise Run Evidence sink; message-carried receipts remain unchanged without the extension | Remove once the upstream runtime exposes equivalent callbacks at the bridge's three consumption points: (1) a tool-call identity binding shaped like `bind_tool_call(tool_call_id) -> context manager` on the receipt-contribution hooks contract, consulted by `wrap_tool_call`/`awrap_tool_call`, replacing the harness's last enterprise-internal import (`agentplatform_extension.evidence.bind_tool_call_evidence`); (2) a sub-agent terminal callback carrying the child's retrieval receipts plus delegation identity (`parent_tool_call_id`, `child_task_id`, `child_agent_id`) — today they transit only the runtime-internal `SubagentResult.retrieval_receipts` and never the task ToolMessage kwargs; (3) a post-stamp receipt contribution callback handing the runtime-owned receipt to the registered hooks so `_stamp_message` carries no forwarding code. #64's assembly-time seams (`tool_scopes`/`subagent_middlewares`/`builtin_tools`) do not carry this bridge — its consumers are per-call runtime internals, not assembly seams | `tests/test_tool_receipt_middleware.py`, extension boundary tests (44 combined), receipt projection tests | runtime evidence maintainers | open — reassessed 2026-10-01 vs v2.1.0: keep (upstream `extensions/run_evidence.py` is a read-only projection reader with no receipt/evidence write seam); reassessed 2026-10-13 post #64 (ticket 65): keep — upstream registry still ships no `runtime_evidence` registration or receipt callback (`345f08be0` registers only `middlewares`/`task_lifecycle`/`system_model_observer`/`agent_assembly_observer`/`context_compaction_observer`/`service`/`routers`); the task_tool side already flows exclusively through the registered `RuntimeEvidenceHooks` contract, so the 04-M3 enterprise-internal reverse import has narrowed to the middleware's `bind_tool_call_evidence`; verification refreshed (6 extension-contract focus files, 168 passed) |
 | PATCH-006 | `deerflow/persistence/bootstrap.py`, `deerflow/persistence/migrations/env.py` (`deerflow_alembic_version`) | Isolate DeerFlow migration state from AgentPlatform's control-plane Alembic head during dual runtime | A shared `alembic_version` table cannot represent two independent histories | Remove only after a verified single forward-only migration chain replaces both histories | `tests/unit/persistence/test_unified_chain_adoption.py` (8 passed), Ruff | persistence maintainers | **closed 2026-09-08** — chains unified by merge revision `20260908_unify_migration_chains` (single `alembic_version`, `alembic heads` single-head verified); dedicated table bridged and dropped via `_chain_meta.adopt_unified_version_state`; control-plane `alembic.ini`/`env.py` retired; fresh/existing/dual-recorded/control-plane-only/pre-alembic DB shapes verified — reassessed 2026-10-01 vs v2.1.0: closed unchanged (residual `bootstrap.py`/`env.py` diffs are the P015/P031 unified-chain machinery, not a revival of the dedicated-table bridge) |
 | PATCH-007 | `deerflow/uploads/code_evidence.py` (`package_root`) | Expose only the caller-scoped frozen package path to runtime tools after Code Evidence acceptance moved to AgentPlatform | No upstream Code Evidence contract exists; runtime tools need a neutral path projection | Remove when the runtime provides an equivalent package-root capability through the extension API | `tests/unit/gateway/test_code_evidence_package.py` (13 passed), Ruff | code evidence maintainers | open — reassessed 2026-10-01 vs v2.1.0: keep (upstream `uploads/` ships only `manager.py`; no Code Evidence contract exists) |
 | PATCH-008 | `deerflow/uploads/code_analysis.py` (scanner inventory/normalization/report contract) | Keep deterministic, shell-free C analysis available to the DeerFlow built-in tool while removing the product implementation from `ideer` | No upstream scanner implementation provides AgentPlatform's fixed command and finding contract | Remove when the extension/runtime API supplies the same fixed scanner contract | `tests/unit/gateway/test_code_analysis.py` (5 passed), Ruff | code analysis maintainers | open — reassessed 2026-10-01 vs v2.1.0: keep (upstream `uploads/` has no scanner implementation matching the fixed contract) |
@@ -505,6 +509,163 @@
 - **编号说明**: 原登记为 PATCH-036（2026-10-11 票 49），与 develop 侧 fault-zeroing
   登记（issue #22）撞号，合并时让位重编为 PATCH-037；内容不变。
 
+### PATCH-038: extension registry runtime evidence hooks 重复注册确定性拒绝
+
+- **文件**: `backend/packages/harness/deerflow/extensions/registry.py`
+  （`ExtensionRegistry.runtime_evidence`）、
+  `backend/packages/harness/deerflow/extensions/__init__.py`
+  （`resolve_runtime_evidence_hooks` docstring 单 provider 语义澄清）。两文件与
+  PATCH-024 注册行共享，结构化注册表按 PATCH-004/023 共享文件先例并列登记
+  （重叠 ownership，不新增差异文件、不占 66 文件预算）。
+- **修改**: `runtime_evidence()` 由无条件 append 改为单 provider 拒绝重复：桶内
+  已有注册时抛 `ValueError`，错误消息命名既有注册 source 与被拒 source；异常经
+  install() 传播，由 loader 既有失败路径处置（位置回滚 + error diagnostic，
+  `required: true` 时 `ExtensionLoadError` 启动中止）。`resolve_runtime_evidence_hooks`
+  解析行为不变（注册面保证 loaded 集至多一个 provider，`[-1][1]` 即唯一项），
+  仅 docstring 由 "the latest" 收敛为单 provider 语义。
+- **原因**: 此前重复注册静默按 `extensions.runtime_evidence_hooks[-1][1]` 取最后
+  一个，前者被覆盖且无诊断（发现 04-M5，票 #63）；registry 其它桶为叠加语义，但
+  runtime evidence 的全部消费方（`task_tool`、subagents executor、run worker、
+  tool_receipt middleware）把解析结果当单一 hooks 对象使用，静默覆盖即缺陷本体，
+  该桶只能单 provider。拒绝放在注册缝而非解析缝：错误在扩展装载期归属到具体
+  source，复用 loader 全部既有失败机制，零新增运行时路径。唯一在树内注册方
+  `agentplatform_extension.install` 的两个 `runtime_evidence(...)` 调用分支互斥，
+  单次 install 至多注册一次；全库无其它注册点，合法场景不受影响。
+- **影响**: 无扩展或恰好一个 provider 时行为不变（PATCH-024 验证命令复验
+  35 passed）；第二次注册（同源或异源）显式失败；无扩展时
+  `resolve_runtime_evidence_hooks` 仍回退进程全局默认（`get_runtime_evidence_hooks`）。
+- **测试**: `backend/tests/test_extension_registry.py`
+  （跨源拒绝、同源二次拒绝、首个注册存活）、`backend/tests/test_extension_loader.py`
+  （双 spec 挂载第二个显式失败并回滚、error diagnostic 指认、
+  `resolve_runtime_evidence_hooks` 返回首个 provider、required 中止启动）、
+  `extension_test_fixtures/demo_extensions.py`（`install_evidence_hooks` fixture）。
+  先红（4 条新用例全失败）后绿；三测试文件合计 75 passed。
+- **Owner**: runtime evidence maintainers
+- **移除条件**: 上游 harness registry 提供 runtime evidence 注册缝并内建等价的
+  重复注册确定性语义（或吸收本补丁）并被本仓库采纳后，随 PATCH-024 一体评估
+  移除；上游 applicability 核对比结论见
+  `docs/upgrades/upstream-pr-candidates/registry-duplicate-evidence-hooks.md`
+  （上游 `deerflow/main` 与 v2.1.0 均无该注册缝，候选为条件性 rider）。
+
+### PATCH-039: 工具装配 tool-scope 扩展缝（02-M6，票 #64）
+
+- **文件**: `backend/packages/harness/deerflow/tools/tools.py`
+  （`get_available_tools` 尾端 consult `resolve_tool_scopes`）——新差异文件
+  （预算 66→67、代码 45→46，见结构化注册表修正案）；配套注册/解析面
+  `backend/packages/harness/deerflow/extensions/registry.py`（`tool_scopes` 单
+  provider 桶）与 `extensions/__init__.py`（`resolve_tool_scopes` + 进程默认
+  setter）与 PATCH-024/038 行共享（共享文件先例，不另占预算）。
+- **修改**: `get_available_tools` 完成去重后、返回前 consult
+  `resolve_tool_scopes(None)`；provider 存在时以
+  `apply_tool_scopes(tools, subagent_enabled=...)` 的返回值替换工具列表，
+  无 provider 时原列表原样返回（零行为变化）。注册方（app 层，contract
+  批 1 后唯一轨道）: `app/agentplatform/workflows/v2/executor_bridge.py`
+  导入时经 `set_default_tool_scopes` 注册 `WorkflowKnowledgeToolScopes`
+  （pending scope 为 None 时直通；`subagent_enabled=False`（native 委托）
+  fail-closed 为空 `KnowledgeScope`；其余按 pending scope 收窄
+  knowledge_search）。原导入期包装 `deerflow.tools.get_available_tools`
+  包级绑定的 legacy 轨已随 contract 批 1（2026-10-13）移除。
+- **原因**: 企业 knowledge-scope 工具收窄此前靠导入期改写上游模块属性
+  （02-M6 发现 1），双轨制要求改动集中在分界面：上游工具装配点 consult 注册
+  契约，企业行为经 harness 扩展点注册。桶语义选单 provider：该缝是"对整份
+  工具列表施加一条授权收窄策略"，消费方每次解析恰好一个 adapter；两个
+  provider 组合是顺序敏感的静默交互（与 #63 runtime evidence 同理），注册期
+  显式拒绝优于解析期静默叠加。
+- **上游替代方案**: 上游 harness 今日无任何工具装配定制缝（`deerflow/main`
+  `81fa17c15ab` 与 v2.1.0 `345f08be0` 比对）；若上游未来提供等价的 per-run
+  工具收窄扩展点并被采纳，本缝 consult 调用与本地桶整体让位（见移除条件）。
+- **测试**: `backend/tests/unit/workflows/test_v2_executor_bridge_seam_contract.py`
+  （registry 轨 deny-by-default 矩阵、与 legacy 包装行为等价、无 provider 直通、
+  子进程探针两轨）、`backend/tests/test_extension_registry.py`、
+  `backend/tests/test_extension_loader.py`、
+  `backend/tests/test_agentplatform_extension_boundary.py`（解析链/重复拒绝）。
+- **Owner**: workflow 运行时与企业接缝维护者
+- **移除条件**: contract 批 1（2026-10-13）已移除 `executor_bridge` 的
+  `_install_scope_aware_tool_loading` 与 `IDEER_TOOL_SCOPE_SEAM` 开关，本缝为
+  唯一轨道；上游 harness 在工具装配处提供等价的 per-run 工具收窄扩展点（或
+  等价 capability）并被本仓库采纳时，移除 consult 调用与本地桶。上游比对无
+  对应缝，候选 rider 见
+  `docs/upgrades/upstream-pr-candidates/host-seam-extension-points.md`。
+
+### PATCH-040: 子代理组装 middleware 扩展缝（02-M6，票 #64）
+
+- **文件**: `backend/packages/harness/deerflow/subagents/executor.py`
+  （`SubagentExecutor._create_agent` 在 `build_subagent_runtime_middlewares`
+  之后 consult `resolve_subagent_middlewares` 并 append pending 列表）——与
+  PATCH-028 注册行共享文件（共享文件先例，不新增差异文件、不占预算）。
+- **修改**: `_create_agent` 组装完上游 middleware 链后 consult
+  `resolve_subagent_middlewares(extensions)`（解析链：executor extensions
+  参数→进程 loaded 集→进程默认）；provider 存在且 pending 非空时
+  `middlewares = [*middlewares, *pending]`（追加在链尾，与已移除的 legacy
+  包装对 `create_agent` kwargs 的追加位置一致），否则链原样组装。注册方
+  （contract 批 2 后唯一轨道）: `executor_bridge` 导入时经
+  `set_default_subagent_middlewares` 注册 `WorkflowMiddlewareSource`（读
+  `_PENDING_FILE_SCOPE` ContextVar：workflow 执行上下文返回
+  `RunWorkspacePathsMiddleware`/`FilesystemScopeMiddleware` 列表，其余调用方
+  返回空 = passthrough）。原导入期包装 executor 模块 `create_agent` 绑定的
+  legacy 轨（`_install_scope_aware_create_agent`）已随 contract 批 2
+  （2026-10-13）移除。
+- **原因**: workflow 节点 file-access 中间件注入此前靠导入期包装 executor 模块
+  的 `create_agent` 模块级绑定（02-M6 发现 2），影响一切经该绑定组装的 agent；
+  接缝化后注入点收敛到 `_create_agent` 的显式 consult。桶语义选单 provider：
+  pending 中间件集合是"当前执行上下文"的投影，两个 provider 对同一执行上下文
+  各自声明集合无合并规则，注册期拒绝（同 #63 语义）。
+- **上游替代方案**: 上游 `SubagentExecutor._create_agent` 今日无任何执行上下文
+  middleware 贡献缝（比对同 PATCH-039）；`AgentBuildContext` 只携带注册期信息，
+  无 per-execution 输入。若上游提供等价缝并被采纳，本缝让位（见移除条件）。
+- **测试**: `backend/tests/unit/gateway/test_subagent_executor.py`
+  （`TestCreateAgent::test_registry_seam_appends_pending_middlewares_after_upstream_chain`）、
+  `backend/tests/unit/workflows/test_v2_executor_bridge_seam_contract.py`
+  （provider 单元 + 子进程探针）、registry/loader/boundary 同 PATCH-039 行；
+  端到端等价由 `tests/integration/workflows/test_v2_subagent_receipt_executed_workflow.py`
+  （真实链路经 FilesystemScopeMiddleware 写沙箱产物）持续背书。
+- **Owner**: workflow 运行时与企业接缝维护者
+- **移除条件**: contract 批 2（2026-10-13）已移除
+  `_install_scope_aware_create_agent` 与 `IDEER_SUBAGENT_MIDDLEWARE_SEAM`
+  开关，本缝为唯一轨道；上游 subagent executor 提供等价的执行上下文
+  middleware 贡献扩展点（或 `AgentBuildContext` 携带 per-execution 输入的
+  等价机制）并被采纳时移除。上游无对应缝（比对同 PATCH-039），候选 rider
+  见同文档。
+
+### PATCH-041: builtin 工具覆盖扩展缝（02-M6，票 #64）
+
+- **文件**: `backend/packages/harness/deerflow/agents/lead_agent/agent.py`
+  （`_assemble_lead_agent` 在懒加载 `deerflow.tools.builtins` 后 consult
+  `resolve_builtin_tool_overrides` 覆盖 `setup_agent`）——与 PATCH-010 注册行
+  共享文件（共享文件先例，不新增差异文件、不占预算）。
+- **修改**: bootstrap 装配路径上，`setup_agent` 经
+  `builtin_overrides.resolve_builtin_tool("setup_agent", setup_agent)` 解析；
+  无 provider（或 provider 不管该名）时用上游 stock 工具（零行为变化），
+  非覆盖名恒回退 default。注册方（contract 批 3 后唯一轨道）:
+  `app/agentplatform/agent_bootstrap.py:install()`（gateway 组合点
+  `app/gateway/services.py` 的唯一入口，调用点不变）经
+  `set_default_builtin_tool_overrides` 注册
+  `CanonicalBuiltinToolOverrides`（`setup_agent`→canonical 资源目录工具，
+  其余 builtin 回退 default）；原改写
+  `deerflow.tools.builtins.setup_agent` / `...setup_agent_tool.setup_agent`
+  两处模块属性并在 tool module 挂 `get_session_factory` 的 legacy 轨已随
+  contract 批 3（2026-10-13）移除；canonical 工具的 catalog session 缝统一
+  为 `app.agentplatform.agent_bootstrap.get_session_factory`（模块命名空间，
+  惰性读取；原经 tool module 挂载属性间接可达，树内无其它读取方，测试面
+  无断裂）。
+- **原因**: canonical setup_agent 此前靠导入期改写上游两个模块属性全局生效
+  （02-M6 发现 3）；接缝化后覆盖决策发生在唯一消费点（lead-agent bootstrap
+  装配的 builtin 绑定处）。桶语义选单 provider：builtin 是 host 单例，两个
+  provider 争夺同名 builtin 是组合错误，注册期拒绝（同 #63 语义）。
+- **上游替代方案**: 上游 `_assemble_lead_agent` 今日对 builtin 工具无任何覆盖
+  缝（比对同 PATCH-039）；若上游提供等价 builtin 替换/覆盖扩展点并被采纳，
+  本缝让位（见移除条件）。
+- **测试**: `backend/tests/unit/agentplatform/test_agent_bootstrap_seam.py`
+  （两轨子进程探针、install 幂等、覆盖解析合同、canonical 行为：空 soul 拒绝、
+  默认 agent SOUL 文件写入、无 session factory 回退 agent store）、
+  registry/loader/boundary 同 PATCH-039 行；真实 E2E 由
+  `tests/test_setup_agent_http_e2e_real_server.py`（Real E2E lane）背书。
+- **Owner**: 资源目录（canonical agent）域维护者
+- **移除条件**: contract 批 3（2026-10-13）已移除 `agent_bootstrap.install()`
+  的属性改写分支与 `IDEER_BUILTIN_TOOL_SEAM` 开关，本缝为唯一轨道；上游
+  lead-agent 装配提供等价的 builtin 工具覆盖/替换扩展点并被采纳时移除。上游
+  无对应缝（比对同 PATCH-039），候选 rider 见同文档。
+
 ## Enforcement
 
 每次收敛提交前重跑对照命令并更新本台账；存在未登记差异即门禁失败。
@@ -528,25 +689,25 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
 {
   "schema_version": 1,
   "upstream_baseline": "345f08be00c8a9495079b732a39b46aa9af1584e",
-  "file_budget": 66,
+  "file_budget": 67,
   "budget_basis": {
-    "code_files": 45,
+    "code_files": 46,
     "document_files": 21,
     "previous_code_files": 45,
     "previous_document_files": 21,
-    "amendment": "Initial structured registry allocation measured against the v2.1.0 baseline (345f08be0): 45 code files + 21 documents = 66, superseding the 2026-10-01 allocation of 61 (43 code + 18 documents) recorded before PATCH-033/034/035 were registered; see the 2026-10-11 inspection row."
+    "amendment": "Ticket #64 (02-M6) registers PATCH-039 on a new upstream diff file, deerflow/tools/tools.py (get_available_tools consults the tool-scope seam at the end of assembly): 45+1 code files = 46, total 66->67. PATCH-040 (subagents/executor.py) and PATCH-041 (agents/lead_agent/agent.py) share files already registered by PATCH-028/010 (shared-file precedent PATCH-004/023) and add no budget files; the registry/resolve additions live on the PATCH-024/038 files. See the 2026-10-13 inspection row for ticket 64."
   },
   "patches": [
     {"id": "PATCH-001", "paths": ["backend/packages/harness/deerflow/community/ragflow/client.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-002", "paths": ["backend/packages/harness/deerflow/extensions/notify.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-003", "paths": ["backend/packages/harness/deerflow/config/AGENTS.md"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-004", "paths": ["backend/packages/harness/deerflow/config/workflow_runtime_config.py", "backend/packages/harness/deerflow/config/app_config.py"], "verification_status": "historical", "lifecycle_status": "open"},
-    {"id": "PATCH-005", "paths": ["backend/packages/harness/deerflow/agents/middlewares/tool_receipt_middleware.py", "backend/packages/harness/deerflow/tools/builtins/task_tool.py"], "verification_status": "historical", "lifecycle_status": "open"},
+    {"id": "PATCH-005", "paths": ["backend/packages/harness/deerflow/agents/middlewares/tool_receipt_middleware.py", "backend/packages/harness/deerflow/tools/builtins/task_tool.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest tests/test_tool_receipt_middleware.py tests/test_agentplatform_extension_boundary.py tests/test_extension_registry.py tests/test_extension_loader.py tests/test_extension_injection.py tests/test_extension_api_contracts.py -q", "result": "168 passed (2026-10-13 ticket #65 reassessment: renewed with sharpened removal conditions)"}},
     {"id": "PATCH-006", "paths": ["backend/packages/harness/deerflow/persistence/bootstrap.py", "backend/packages/harness/deerflow/persistence/migrations/env.py"], "verification_status": "historical", "lifecycle_status": "closed"},
     {"id": "PATCH-007", "paths": ["backend/packages/harness/deerflow/uploads/code_evidence.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-008", "paths": ["backend/packages/harness/deerflow/uploads/code_analysis.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/unit/gateway/test_code_analysis.py tests/unit/agentplatform/test_analyze_code_evidence_tool.py tests/test_sandbox_tools_security.py tests/unit/resources/test_canonical_sandbox.py tests/integration/workflows/test_v2_run_record.py -q", "result": "213 passed (candidate incorporating develop cf10c6136)"}},
     {"id": "PATCH-009", "paths": ["backend/packages/harness/deerflow/persistence/models/workflow_v2.py"], "verification_status": "historical", "lifecycle_status": "open"},
-    {"id": "PATCH-010", "paths": ["backend/packages/harness/deerflow/agents/lead_agent/agent.py", "backend/packages/harness/deerflow/agents/lead_agent/prompt.py"], "verification_status": "historical", "lifecycle_status": "open"},
+    {"id": "PATCH-010", "paths": ["backend/packages/harness/deerflow/agents/lead_agent/agent.py", "backend/packages/harness/deerflow/agents/lead_agent/prompt.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/unit/agentplatform/test_frozen_agent_inputs.py tests/unit/agentplatform/test_agent_bootstrap_seam.py -q", "result": "expand phase (ticket #64 builtin seam rides on this file): 12 passed"}},
     {"id": "PATCH-011", "paths": ["backend/packages/harness/deerflow/persistence/engine.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-012", "paths": ["backend/packages/harness/deerflow/sandbox/local/local_sandbox_provider.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-013", "paths": ["backend/packages/harness/deerflow/runtime/runs/manager.py"], "verification_status": "historical", "lifecycle_status": "open"},
@@ -560,18 +721,22 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
     {"id": "PATCH-021", "paths": ["backend/packages/harness/deerflow/community/aio_sandbox/aio_sandbox_provider.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-022", "paths": ["backend/packages/harness/deerflow/community/ragflow/tools.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-023", "paths": ["backend/packages/harness/deerflow/config/app_config.py"], "verification_status": "historical", "lifecycle_status": "open"},
-    {"id": "PATCH-024", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && PYTHONPATH=.:tests uv run pytest tests/test_run_worker_delivery.py::test_retrieval_evidence_is_persisted_with_terminal_run tests/unit/knowledge/test_retrieval_receipts.py tests/test_agentplatform_extension_boundary.py -q", "result": "35 passed (re-verified after issue #55 single-track hook registration touched extensions/__init__.py)"}},
+    {"id": "PATCH-024", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/test_extension_registry.py tests/test_extension_loader.py tests/test_agentplatform_extension_boundary.py tests/test_run_worker_delivery.py::test_retrieval_evidence_is_persisted_with_terminal_run tests/unit/knowledge/test_retrieval_receipts.py -q", "result": "104 passed (expand phase, ticket #64 adds the three host-seam buckets and resolve functions on this file; registry, loader, boundary and PATCH-024 evidence lanes green)"}},
     {"id": "PATCH-025", "paths": ["backend/packages/harness/deerflow/models/openai_codex_provider.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-026", "paths": ["backend/packages/harness/deerflow/runtime/journal.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-027", "paths": ["backend/packages/harness/deerflow/runtime/runs/worker.py", "backend/packages/harness/deerflow/runtime/runs/manager.py"], "verification_status": "historical", "lifecycle_status": "open"},
-    {"id": "PATCH-028", "paths": ["backend/packages/harness/deerflow/subagents/executor.py"], "verification_status": "historical", "lifecycle_status": "open"},
+    {"id": "PATCH-028", "paths": ["backend/packages/harness/deerflow/subagents/executor.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/unit/gateway/test_subagent_executor.py tests/unit/knowledge/test_retrieval_receipts.py -q", "result": "expand phase (ticket #64 assembly seam rides on this file): 124 passed"}},
     {"id": "PATCH-029", "paths": ["backend/packages/harness/deerflow/subagents/registry.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-030", "paths": ["backend/packages/harness/deerflow/agents/middlewares/input_sanitization_middleware.py", "backend/packages/harness/deerflow/client.py", "backend/packages/harness/deerflow/extensions/gateway.py", "backend/packages/harness/deerflow/skills/frontmatter.py", "backend/packages/harness/deerflow/skills/projection.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-031", "paths": ["backend/packages/harness/deerflow/persistence/models/legacy_tables.py", "backend/packages/harness/deerflow/persistence/models/__init__.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-032", "paths": ["backend/packages/harness/deerflow/utils/readability.py"], "verification_status": "historical", "lifecycle_status": "open"},
     {"id": "PATCH-033", "paths": ["backend/packages/harness/deerflow/extensions/ordering.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && PYTHONPATH=.:tests uv run pytest tests/test_extension_ordering.py -q", "result": "12 passed"}},
     {"id": "PATCH-034", "paths": ["backend/packages/harness/deerflow/tools/builtins/update_agent_tool.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && PYTHONPATH=.:tests uv run pytest tests/test_update_agent_tool.py -q", "result": "27 passed"}},
-    {"id": "PATCH-035", "paths": ["backend/packages/harness/deerflow/CLAUDE.md", "backend/packages/harness/deerflow/agents/CLAUDE.md", "backend/packages/harness/deerflow/agents/memory/CLAUDE.md", "backend/packages/harness/deerflow/agents/middlewares/CLAUDE.md", "backend/packages/harness/deerflow/community/tavily/CLAUDE.md", "backend/packages/harness/deerflow/config/CLAUDE.md", "backend/packages/harness/deerflow/extensions/CLAUDE.md", "backend/packages/harness/deerflow/mcp/CLAUDE.md", "backend/packages/harness/deerflow/models/CLAUDE.md", "backend/packages/harness/deerflow/persistence/migrations/CLAUDE.md", "backend/packages/harness/deerflow/persistence/user/CLAUDE.md", "backend/packages/harness/deerflow/reflection/CLAUDE.md", "backend/packages/harness/deerflow/runtime/CLAUDE.md", "backend/packages/harness/deerflow/sandbox/CLAUDE.md", "backend/packages/harness/deerflow/skills/CLAUDE.md", "backend/packages/harness/deerflow/subagents/CLAUDE.md", "backend/packages/harness/deerflow/tools/CLAUDE.md", "backend/packages/harness/deerflow/tracing/CLAUDE.md", "backend/packages/harness/deerflow/tui/CLAUDE.md", "backend/packages/harness/deerflow/utils/CLAUDE.md"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "python3 scripts/sync_agent_guidance.py --check", "result": "mirror consistency check passed (28 pairs)"}}
+    {"id": "PATCH-035", "paths": ["backend/packages/harness/deerflow/CLAUDE.md", "backend/packages/harness/deerflow/agents/CLAUDE.md", "backend/packages/harness/deerflow/agents/memory/CLAUDE.md", "backend/packages/harness/deerflow/agents/middlewares/CLAUDE.md", "backend/packages/harness/deerflow/community/tavily/CLAUDE.md", "backend/packages/harness/deerflow/config/CLAUDE.md", "backend/packages/harness/deerflow/extensions/CLAUDE.md", "backend/packages/harness/deerflow/mcp/CLAUDE.md", "backend/packages/harness/deerflow/models/CLAUDE.md", "backend/packages/harness/deerflow/persistence/migrations/CLAUDE.md", "backend/packages/harness/deerflow/persistence/user/CLAUDE.md", "backend/packages/harness/deerflow/reflection/CLAUDE.md", "backend/packages/harness/deerflow/runtime/CLAUDE.md", "backend/packages/harness/deerflow/sandbox/CLAUDE.md", "backend/packages/harness/deerflow/skills/CLAUDE.md", "backend/packages/harness/deerflow/subagents/CLAUDE.md", "backend/packages/harness/deerflow/tools/CLAUDE.md", "backend/packages/harness/deerflow/tracing/CLAUDE.md", "backend/packages/harness/deerflow/tui/CLAUDE.md", "backend/packages/harness/deerflow/utils/CLAUDE.md"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "python3 scripts/sync_agent_guidance.py --check", "result": "mirror consistency check passed (28 pairs)"}},
+    {"id": "PATCH-038", "paths": ["backend/packages/harness/deerflow/extensions/__init__.py", "backend/packages/harness/deerflow/extensions/registry.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/test_extension_registry.py tests/test_extension_loader.py tests/test_agentplatform_extension_boundary.py -q", "result": "75 passed (new duplicate-registration contract tests red 4/4 before the fix, green after; PATCH-024 lane re-verified 35 passed)"}},
+    {"id": "PATCH-039", "paths": ["backend/packages/harness/deerflow/tools/tools.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/unit/workflows/test_v2_executor_bridge_seam_contract.py tests/unit/workflows/test_v2_agent_adapter.py tests/test_tool_deduplication.py -q", "result": "33 passed (contract terminal state: registry-only since batch 1 - deny-by-default scoping matrix and no-provider passthrough through the real get_available_tools, import probe asserts the deerflow.tools package binding stock and the WorkflowKnowledgeToolScopes provider registered; tool assembly stock behavior re-verified by the dedup suite)"}},
+    {"id": "PATCH-040", "paths": ["backend/packages/harness/deerflow/subagents/executor.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/unit/gateway/test_subagent_executor.py -q", "result": "106 passed (contract terminal state: registry-only since batch 2 - executor suite green incl. the registry seam appending pending middlewares after the upstream chain and the import probe asserting the executor create_agent binding stock; shared file with PATCH-028)"}},
+    {"id": "PATCH-041", "paths": ["backend/packages/harness/deerflow/agents/lead_agent/agent.py"], "verification_status": "current", "lifecycle_status": "open", "current_verification": {"command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/unit/agentplatform/test_agent_bootstrap_seam.py tests/unit/tools/test_setup_agent_tool.py tests/unit/agentplatform/test_frozen_agent_inputs.py -q", "result": "17 passed (contract terminal state: registry-only since batch 3 - gateway import probe asserts both upstream module attributes stock with no get_session_factory leak and the override provider registered; install idempotency, canonical behavior: empty-soul rejection, default SOUL file write, agent-store fallback without a session factory)"}}
   ]
 }
 ```

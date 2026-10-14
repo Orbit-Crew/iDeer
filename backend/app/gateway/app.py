@@ -979,6 +979,14 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
+    # Re-publish the canonical agent bootstrap at every gateway composition
+    # (ticket #64): install() is same-object idempotent, so this is a no-op
+    # after the services-module import and only re-arms the builtin-tool seam
+    # if something (e.g. test hygiene) cleared the process default meanwhile.
+    from app.agentplatform.agent_bootstrap import install as _install_canonical_agent_bootstrap
+
+    _install_canonical_agent_bootstrap()
+
     config = get_gateway_config()
     docs_url = "/docs" if config.enable_docs else None
     redoc_url = "/redoc" if config.enable_docs else None

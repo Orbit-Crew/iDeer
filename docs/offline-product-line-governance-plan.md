@@ -88,7 +88,10 @@ v2.1.0 升级继续由 `docs/upgrades/deerflow-v2.1.0/` 的独立任务处理。
    为唯一权威登记处）移除条件；harness 原始补丁面为 44 文件，本轮规则副本文档增量及明确预算变更见根账本；代码补丁与文档分别报告；可上游化的
    通用修复提 PR 回上游（候选：P003 文档行、P011 SQLite 异步桥、P014 迁移守卫、
    P032 readability 守卫等；前端面候选：07-H1 memory 代理穿越校验，票 59，
-   草稿见 `docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md`）。
+   草稿见 `docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md`；
+   harness 面候选：04-M5 registry runtime evidence hooks 重复注册确定性语义，
+   票 63——上游比对确认该注册缝尚为 fork 本地面，候选为条件性 rider，草稿见
+   `docs/upgrades/upstream-pr-candidates/registry-duplicate-evidence-hooks.md`）。
 
 ### 修复轨（定向 cherry-pick）
 

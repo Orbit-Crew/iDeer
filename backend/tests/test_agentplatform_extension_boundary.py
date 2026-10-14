@@ -21,8 +21,19 @@ from agentplatform_extension.evidence import (
 from agentplatform_extension.network_policy import NetworkPolicy
 from deerflow_extension_api import ExtensionData, RunEvidenceEnvelope, TaskInfo, TaskOutcome
 
-from deerflow.extensions import get_loaded_extensions, resolve_runtime_evidence_hooks, set_loaded_extensions
-from deerflow.extensions.registry import ExtensionRegistry
+from deerflow.extensions import (
+    get_loaded_extensions,
+    reset_default_extension_seams,
+    resolve_builtin_tool_overrides,
+    resolve_runtime_evidence_hooks,
+    resolve_subagent_middlewares,
+    resolve_tool_scopes,
+    set_default_builtin_tool_overrides,
+    set_default_subagent_middlewares,
+    set_default_tool_scopes,
+    set_loaded_extensions,
+)
+from deerflow.extensions.registry import EMPTY_EXTENSIONS, ExtensionRegistry
 
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -372,3 +383,126 @@ def test_run_without_snapshot_resolves_the_host_registry_track() -> None:
         assert resolve_runtime_evidence_hooks(None) is resolve_runtime_evidence_hooks(get_loaded_extensions())
     finally:
         set_loaded_extensions(previous)
+
+
+# --- Host seam resolution chain (02-M6, ticket #64) --------------------------
+
+
+class _RecordingScopes:
+    def __init__(self, tag: str) -> None:
+        self.tag = tag
+
+    def apply_tool_scopes(self, tools, *, subagent_enabled):  # noqa: ANN001
+        return tools
+
+
+class _RecordingMiddlewares:
+    def __init__(self, tag: str) -> None:
+        self.tag = tag
+
+    def pending_middlewares(self) -> tuple:
+        return ()
+
+
+class _RecordingOverrides:
+    def __init__(self, tag: str) -> None:
+        self.tag = tag
+
+    def resolve_builtin_tool(self, name, default):  # noqa: ANN001
+        return default
+
+
+def _snapshot_with(resolve, provider):
+    from deerflow.extensions.registry import ExtensionRegistry
+
+    registry = ExtensionRegistry()
+    with registry.attributed_to("snap:install"):
+        if resolve is resolve_tool_scopes:
+            registry.tool_scopes(provider)
+        elif resolve is resolve_subagent_middlewares:
+            registry.subagent_middlewares(provider)
+        else:
+            registry.builtin_tools(provider)
+    return registry.build()
+
+
+@pytest.mark.parametrize(
+    ("resolve", "register_default", "provider_factory"),
+    [
+        (resolve_tool_scopes, set_default_tool_scopes, _RecordingScopes),
+        (resolve_subagent_middlewares, set_default_subagent_middlewares, _RecordingMiddlewares),
+        (resolve_builtin_tool_overrides, set_default_builtin_tool_overrides, _RecordingOverrides),
+    ],
+    ids=["tool-scopes", "subagent-middlewares", "builtin-tools"],
+)
+def test_host_seam_resolution_prefers_snapshot_then_falls_back_to_process_default(resolve, register_default, provider_factory) -> None:
+    """Same chain the #63 evidence hooks resolve through: an explicit loaded
+    set (run snapshot) wins when it carries the provider; a caller without a
+    snapshot consults the process default loaded set; only a set without the
+    provider falls through to the process default registered by the host
+    composition."""
+    snapshot_provider = provider_factory("snapshot")
+    process_default = provider_factory("process-default")
+    snapshot = _snapshot_with(resolve, snapshot_provider)
+
+    reset_default_extension_seams()
+    previous = get_loaded_extensions()
+    set_loaded_extensions(EMPTY_EXTENSIONS)
+    try:
+        assert resolve(snapshot) is snapshot_provider, "run snapshot provider wins"
+        assert resolve(None) is None, "no provider anywhere resolves None (stock behavior)"
+    finally:
+        set_loaded_extensions(previous)
+
+    reset_default_extension_seams()
+    register_default(process_default)
+    try:
+        assert resolve(None) is process_default, "process default serves hosts without a provider"
+        assert resolve(snapshot) is snapshot_provider, "explicit snapshot still wins over the process default"
+    finally:
+        reset_default_extension_seams()
+
+
+def test_process_default_seam_registration_refuses_a_second_owner() -> None:
+    reset_default_extension_seams()
+    try:
+        first, second = _RecordingScopes("first"), _RecordingScopes("second")
+        set_default_tool_scopes(first)
+        set_default_tool_scopes(first)  # re-registering the identical object is a no-op
+        with pytest.raises(ValueError, match="single-provider"):
+            set_default_tool_scopes(second, owner="other:install")
+        assert resolve_tool_scopes(None) is first
+    finally:
+        reset_default_extension_seams()
+
+
+def test_importing_the_enterprise_composition_rewrites_no_upstream_binding() -> None:
+    """The #64 contract terminal state, #55-style subprocess probe.
+
+    Importing the two enterprise composition modules (workflow executor bridge
+    and the gateway services tree) must leave every upstream binding these
+    seams used to rewrite at import time stock, and must publish the three
+    providers through the process-default seams instead: module rewrites were
+    the pre-contract track (02-M6 findings 1-3).
+    """
+    probe = "\n".join(
+        [
+            "import deerflow.tools, deerflow.tools.tools",
+            "import deerflow.subagents.executor as executor_module",
+            "import deerflow.tools.builtins as builtins_module",
+            "import deerflow.tools.builtins.setup_agent_tool as tool_module",
+            "from langchain.agents import create_agent as langchain_create_agent",
+            "import app.agentplatform.workflows.v2.executor_bridge",
+            "import app.gateway.services",
+            "from deerflow.extensions import resolve_builtin_tool_overrides, resolve_subagent_middlewares, resolve_tool_scopes",
+            "assert deerflow.tools.get_available_tools is deerflow.tools.tools.get_available_tools, 'tools package binding rewritten'",
+            "assert executor_module.create_agent is langchain_create_agent, 'executor binding rewritten'",
+            "assert builtins_module.setup_agent is tool_module.setup_agent, 'builtins re-export rewritten'",
+            "assert not hasattr(tool_module, 'get_session_factory'), 'attribute leaked onto the upstream module'",
+            "assert resolve_tool_scopes(None) is not None, 'tool-scope provider missing'",
+            "assert resolve_subagent_middlewares(None) is not None, 'middleware provider missing'",
+            "assert resolve_builtin_tool_overrides(None) is not None, 'builtin override provider missing'",
+        ]
+    )
+    result = _run_probe(probe)
+    assert result.returncode == 0, result.stderr
