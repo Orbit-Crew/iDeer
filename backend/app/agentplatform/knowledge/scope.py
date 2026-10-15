@@ -3,6 +3,22 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from typing import Any
+
+
+def deployment_allowed_datasets(tool_config: Any | None) -> Iterable[str] | None:
+    """Resolve the deployment layer's dataset veto from the tool config.
+
+    An unconfigured ``knowledge_search`` tool denies: a run carrying KB
+    bindings must not silently shed the deployment veto just because the
+    deployment never declared a retrieval tool.  A configured tool without a
+    ``datasets`` attribute imposes no deployment restriction — the allowlist
+    is an optional operator control (see ``config.example.yaml``).
+    """
+
+    if tool_config is None:
+        return ()
+    return getattr(tool_config, "datasets", None)
 
 
 def calculate_effective_knowledge_scope(

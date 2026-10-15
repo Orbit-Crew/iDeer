@@ -135,6 +135,24 @@ def test_network_policy_defaults_to_intranet_allowlist_and_public_deny() -> None
     assert NetworkPolicy(allow_public=True).allows("https://example.com")
 
 
+def test_network_policy_public_opt_in_still_denies_private_variants_and_metadata_endpoint() -> None:
+    policy = NetworkPolicy(allow_public=True)
+
+    assert not policy.allows("http://172.16.1.1")
+    assert not policy.allows("http://172.31.255.255")
+    assert not policy.allows("http://169.254.169.254/latest/meta-data/")
+    assert not policy.allows("http://100.64.0.1")
+    assert not policy.allows("http://[::1]:8080")
+    assert not policy.allows("http://[fc00::1234]:9000")
+    assert not policy.allows("http://[fe80::1]:8080")
+    assert not policy.allows("http://[::ffff:10.0.0.5]")
+    assert not policy.allows("http://198.18.0.1")
+
+    assert policy.allows("https://8.8.8.8")
+    assert policy.allows("https://example.com")
+    assert NetworkPolicy(allowed_hosts=("169.254.169.254",), allow_public=True).allows("http://169.254.169.254")
+
+
 @pytest.mark.asyncio
 async def test_evidence_lifecycle_contributor_binds_snapshot_and_terminal_outcome() -> None:
     contributor = EvidenceLifecycleContributor(

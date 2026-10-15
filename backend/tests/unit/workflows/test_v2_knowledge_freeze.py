@@ -72,6 +72,22 @@ async def test_frozen_scope_binds_logical_kb_to_revision_dataset(monkeypatch: py
 
 
 @pytest.mark.asyncio
+async def test_frozen_scope_denies_when_knowledge_search_is_unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
+    snapshots = [
+        _agent_snapshot("run-1"),
+        _kb_snapshot("run-1", "kb-1", revision_no=1, dataset_id="published-dataset-1"),
+    ]
+
+    monkeypatch.setattr(
+        "deerflow.config.get_app_config",
+        lambda: SimpleNamespace(get_tool_config=lambda _name: None),
+    )
+    scope = await _frozen_knowledge_scope(MagicMock(), snapshots, _actor())
+
+    assert scope == {}
+
+
+@pytest.mark.asyncio
 async def test_frozen_scope_ignores_snapshots_without_revisions() -> None:
     snapshots = [_agent_snapshot("run-1")]
 

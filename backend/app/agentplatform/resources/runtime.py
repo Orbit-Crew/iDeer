@@ -146,6 +146,12 @@ class CanonicalResourceLoader:
         resource = await self.session.get(Resource, resource_id)
         if resource is None or resource.type != expected_type:
             raise ResourceRuntimeError(f"Snapshot resource {resource_id} is not a {expected_type}")
+        # Deliberate asymmetry (decision 2026-10-15 product-semantics package,
+        # item 02-L6): suspension is a reversible governance action that must
+        # stop in-flight runs immediately; archive is terminal but only blocks
+        # new usage (closure resolution is active-only), so a run already
+        # holding a frozen snapshot still completes against the hash-verified
+        # version it started with.
         if resource.lifecycle_status == "suspended":
             raise ResourceRuntimeError(f"Resource {resource_id} is suspended")
         version = (

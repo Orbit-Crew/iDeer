@@ -58,7 +58,10 @@ async def prepare_canonical_agent_run(
     from agentplatform_extension.knowledge.scope import KnowledgeScope
     from sqlalchemy import select
 
-    from app.agentplatform.knowledge.scope import calculate_effective_knowledge_scope
+    from app.agentplatform.knowledge.scope import (
+        calculate_effective_knowledge_scope,
+        deployment_allowed_datasets,
+    )
     from app.agentplatform.rbac_models import UserModel
     from app.agentplatform.resource_runtime import (
         CanonicalResourceLoader,
@@ -185,7 +188,6 @@ async def prepare_canonical_agent_run(
                     },
                 }
             run_context = diagnostic_context or {}
-            tool_config = None
             try:
                 tool_config = get_app_config().get_tool_config("knowledge_search")
             except Exception:
@@ -193,9 +195,7 @@ async def prepare_canonical_agent_run(
                 # treating it as absent would turn a configuration failure into
                 # an authorization bypass.
                 tool_config = None
-                deployment_allowed = set()
-            else:
-                deployment_allowed = getattr(tool_config, "datasets", None)
+            deployment_allowed = deployment_allowed_datasets(tool_config)
             # The scope is keyed by canonical KB UUIDs. Slugs are display
             # aliases and may collide across owners/departments.
             caller_allowed = set(knowledge_resources)

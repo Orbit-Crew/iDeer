@@ -100,7 +100,10 @@ async def _frozen_knowledge_scope(session, snapshots, actor) -> dict[str, str]:
     retrieving from the revision it started with.
     """
 
-    from app.agentplatform.knowledge.scope import calculate_effective_knowledge_scope
+    from app.agentplatform.knowledge.scope import (
+        calculate_effective_knowledge_scope,
+        deployment_allowed_datasets,
+    )
     from deerflow.config import get_app_config
 
     bindings = {snapshot.resource_id: snapshot.provider_dataset_id for snapshot in snapshots if snapshot.knowledge_revision_id and snapshot.provider_dataset_id}
@@ -108,13 +111,13 @@ async def _frozen_knowledge_scope(session, snapshots, actor) -> dict[str, str]:
         return {}
     try:
         tool_config = get_app_config().get_tool_config("knowledge_search")
-        deployment_allowed = getattr(tool_config, "datasets", None)
     except Exception:
-        deployment_allowed = set()
+        tool_config = None
     return calculate_effective_knowledge_scope(
         bindings,
         caller_allowed=set(bindings),
-        deployment_allowed=deployment_allowed,
+        # Unread policy or undeclared tool denies; see deployment_allowed_datasets.
+        deployment_allowed=deployment_allowed_datasets(tool_config),
     )
 
 
