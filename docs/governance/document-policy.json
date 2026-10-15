@@ -3334,7 +3334,7 @@
     }
   ],
   "supplements": {
-    "count": 54,
+    "count": 55,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3386,6 +3386,16 @@
         "protected": false,
         "role": "nine-domain route index and single definition of source-verification stop conditions",
         "referenced_by": "AGENTS.md"
+      },
+      {
+        "path": "docs/decisions/2026-10-15-product-semantics-decision-package.md",
+        "registration": "post-baseline-addition",
+        "sha256": "c56e84ed7d3b1c5443edca4c4fefca2f205b461b7927fa02b830b191adc86f72",
+        "lines": 99,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "batch-6 product-semantics decision package (ticket 67): archived snapshot loading, knowledge deployment veto defaults, list_devices admin visibility, NetworkPolicy private-range bar",
+        "referenced_by": "docs/decisions/README.md"
       },
       {
         "path": "docs/governance/document-governance.md",
