@@ -442,6 +442,18 @@ async def test_internal_symlink_is_rejected_without_following(env) -> None:
 
 
 @pytest.mark.asyncio
+async def test_fifo_is_rejected_without_blocking(env) -> None:
+    """O_NONBLOCK 让无写端 FIFO 的 open 立即返回：由 S_ISREG 拒绝而不是挂起工作线程。"""
+    _seed_upload(env, "real.dat", NORMAL_FRAMES)
+    uploads = env.paths.sandbox_uploads_dir("thread-1", user_id="owner-1")
+    os.mkfifo(uploads / "hang.dat")
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/hang.dat")
+
+    assert payload["reason_code"] == "not_regular_file"
+
+
+@pytest.mark.asyncio
 async def test_nul_byte_in_declared_path_is_structurally_rejected(env) -> None:
     _seed_upload(env, "telemetry.dat", NORMAL_FRAMES)
 

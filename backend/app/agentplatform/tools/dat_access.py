@@ -91,8 +91,15 @@ def open_uploads_dat_file(runtime: Runtime, declared: str) -> tuple[BinaryIO, in
 
     # 按未解析路径打开：最终分量的符号链接在打开瞬间必然触发 ELOOP，
     # "检查时是真实文件、打开时被换成符号链接"的竞态从根上不可利用。
+    # O_NONBLOCK：uploads 目录对沙箱可写，模型可 mkfifo 植入 FIFO——不带
+    # O_NONBLOCK 的 O_RDONLY open 会阻塞到出现写端，fstat 校验永远执行
+    # 不到，to_thread 工作线程被无限期挂起（跨会话线程池耗尽）。对 FIFO
+    # 立即返回后仍由下方 S_ISREG 拒绝；对普通文件无副作用。
     try:
-        fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0))
+        fd = os.open(
+            target,
+            os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0),
+        )
     except FileNotFoundError as exc:
         raise DatAccessRejected("file_not_found", f"输入区不存在该文件: {relative_str}") from exc
     except OSError as exc:
