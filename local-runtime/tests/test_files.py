@@ -199,3 +199,32 @@ def test_errors_do_not_reveal_physical_paths(tmp_path: Path) -> None:
     with pytest.raises(FileAccessError) as error:
         store.read("/projects/nope.txt")
     assert str(tmp_path) not in str(error.value)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="dir_fd mkstemp path is POSIX-only")
+def test_write_creates_private_temp_file_with_exclusive_name(tmp_path: Path) -> None:
+    """05-L6: the atomic-write temporary is created O_EXCL with 0600 next to
+    the target, and its name comes from a non-private randomness source."""
+    root = tmp_path / "projects"
+    root.mkdir()
+    store = LocalFileStore([RootConfig("/projects", root)])
+    store.write("/projects/report.txt", "hello")
+    assert (root / "report.txt").read_text() == "hello"
+
+    # The write path itself must not leave temporaries behind.
+    leftovers = [p for p in root.iterdir() if p.name != "report.txt"]
+    assert leftovers == []
+
+    # The private-temp contract, driven directly: exclusive create, owner-only
+    # mode, namespaced prefix.
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        temporary_fd, temporary_name = store._mkstemp_at(fd)
+    finally:
+        os.close(fd)
+    try:
+        assert temporary_name.startswith(".local-write-")
+        mode = stat.S_IMODE(os.fstat(temporary_fd).st_mode)
+        assert mode == 0o600
+    finally:
+        os.close(temporary_fd)
