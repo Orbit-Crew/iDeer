@@ -38,7 +38,7 @@ The batch entries below are historical examples. Use only the entry relevant
 to the test being moved; they do not replace validation on the current
 candidate.
 
-## Batch 2026-10-15: backend/tests root-only layering migration — unit/utils+tui+extensions+scripts (batch 1 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/utils+tui+extensions+scripts (layering batch 1 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/unit/utils tests/unit/tui tests/unit/extensions tests/unit/scripts -q -m "not serial and not requires_llm and not live and not external"` → 2282 passed / 7 skipped;
@@ -147,7 +147,7 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_utils_messages.py` | `tests/unit/utils/test_utils_messages.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
 | `tests/test_utils_time.py` | `tests/unit/utils/test_utils_time.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
 | `tests/test_uvicorn_reload_exclude.py` | `tests/unit/scripts/test_uvicorn_reload_exclude.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
-## Batch 2026-10-15: backend/tests root-only layering migration — unit/scheduler+mcp_tasks, integration/scheduler+mcp_tasks (batch 2 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/scheduler+mcp_tasks, integration/scheduler+mcp_tasks (layering batch 2 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/unit/scheduler tests/unit/mcp_tasks tests/integration/scheduler tests/integration/mcp_tasks -q -m "not serial and not requires_llm and not live and not external"` → 407 passed / 54 skipped;
@@ -185,7 +185,7 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_scheduler_completion_consistency.py` | `tests/unit/scheduler/test_scheduler_completion_consistency.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
 | `tests/test_scheduler_config.py` | `tests/unit/scheduler/test_scheduler_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
 | `tests/test_scheduler_occurrence_ordering.py` | `tests/integration/scheduler/test_scheduler_occurrence_ordering.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
-## Batch 2026-10-15: backend/tests root-only layering migration — unit/channels+memory+knowledge (batch 3 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/channels+memory+knowledge (layering batch 3 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/unit/channels tests/unit/memory tests/unit/knowledge -q -m "not serial and not requires_llm and not live and not external"` → 3338 passed / 20 skipped;
@@ -242,7 +242,7 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_updater_watermark.py` | `tests/unit/memory/test_updater_watermark.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
 | `tests/test_wecom_content_limit.py` | `tests/unit/channels/test_wecom_content_limit.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
 | `tests/test_wecom_ws_text.py` | `tests/unit/channels/test_wecom_ws_text.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
-## Batch 2026-10-15: backend/tests root-only layering migration — unit/models+tools (batch 4 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/models+tools (layering batch 4 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/unit/models tests/unit/tools -q -m "not serial and not requires_llm and not live and not external"` → 4050 passed / 10 skipped;
@@ -312,7 +312,7 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_view_image_provider_error_classification.py` | `tests/unit/tools/test_view_image_provider_error_classification.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
 | `tests/test_web_fetch_error_shell_meta.py` | `tests/unit/tools/test_web_fetch_error_shell_meta.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
 | `tests/test_web_search_time_range.py` | `tests/unit/tools/test_web_search_time_range.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
-## Batch 2026-10-15: backend/tests root-only layering migration — unit/runtime+persistence (batch 5 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/runtime+persistence (layering batch 5 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/unit/runtime tests/unit/persistence -q -m "not serial and not requires_llm and not live and not external"` → 2645 passed / 20 skipped;
@@ -388,7 +388,7 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_worker_subagent_persistence.py` | `tests/unit/runtime/test_worker_subagent_persistence.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
 | `tests/test_worker_trace_binding.py` | `tests/unit/runtime/test_worker_trace_binding.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
 | `tests/test_workspace_changes.py` | `tests/unit/runtime/test_workspace_changes.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
-## Batch 2026-10-15: backend/tests root-only layering migration — unit/sandbox+agentplatform+skills (batch 6 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/sandbox+agentplatform+skills (layering batch 6 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/unit/sandbox tests/unit/agentplatform tests/unit/skills -q -m "not serial and not requires_llm and not live and not external"` → 4333 passed / 42 skipped;
@@ -460,7 +460,7 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_view_image_remote_sandbox.py` | `tests/unit/sandbox/test_view_image_remote_sandbox.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
 | `tests/test_view_image_tool_cancellation.py` | `tests/unit/sandbox/test_view_image_tool_cancellation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
 | `tests/test_write_file_tool_size_guard.py` | `tests/unit/sandbox/test_write_file_tool_size_guard.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
-## Batch 2026-10-15: backend/tests root-only layering migration — unit/gateway (batch 7 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/gateway (layering batch 7 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/unit/gateway -q -m "not serial and not requires_llm and not live and not external"` → 5996 passed / 22 skipped;
@@ -599,7 +599,7 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_wait_disconnect_handling.py` | `tests/unit/gateway/test_wait_disconnect_handling.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
 | `tests/test_warm_pool_lifecycle.py` | `tests/unit/gateway/test_warm_pool_lifecycle.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
 | `tests/test_web_fetch_relative_links.py` | `tests/unit/gateway/test_web_fetch_relative_links.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
-## Batch 2026-10-15: backend/tests root-only layering migration — contracts, integration/* (batch 8 of 8)
+## Batch 2026-10-15: backend/tests root-only layering migration — contracts, integration/* (layering batch 8 of 8)
 
 Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
   uv run --no-sync pytest tests/contracts tests/integration/api tests/integration/persistence tests/integration/channels tests/integration/memory tests/integration/runtime tests/integration/skills tests/integration/tools -q -m "not serial and not requires_llm and not live and not external"` → 3100 passed / 95 skipped;
@@ -655,7 +655,27 @@ Pure layering move (issue #85, per the scope note in [the dedup decision](../dec
 | `tests/test_skillscan_native.py` | `tests/integration/skills/test_skillscan_native.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
 | `tests/test_stateless_runs_owner_isolation.py` | `tests/contracts/test_stateless_runs_owner_isolation.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
 | `tests/test_trash_router.py` | `tests/integration/api/test_trash_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
-## Batch 2026-10-13: backend/tests root↔subdir dedup — gateway (batch 2 of 8)
+## Batch 2026-10-15: OpenSandbox fake SDK boundary extracted to tests/support (layering follow-up)
+
+Code-review follow-up to the layering batches: the blocking-io anchor
+`tests/blocking_io/test_opensandbox_acquire.py` imported its fakes from
+`tests/unit/sandbox/test_opensandbox_provider.py` through a bare module import
+plus a `sys.path` insert, so renaming the provider test would silently break
+the blocking-io lane. The shared fake SDK boundary (`_Message`, `_Result`,
+`_Logs`, `_Execution`, `_execution`, `_FakeRunCommandOpts`, `_FakeFiles`,
+`_FakeCommands`, `_FakeRemote`, `_FakeSandboxClass`, `_FakeConnectionConfig`,
+`_stub_config`, `_install`) now lives in `tests/support/opensandbox_fakes.py`
+and both consumers import it via the `tests.support` package; the sys.path
+insert is gone. No assertion moved or changed (`_box` and `_TerminalApiError`
+stay provider-test-local).
+
+| Changed file | Change | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/support/opensandbox_fakes.py` | new shared module (extracted verbatim from the provider test) | pure extraction — no assertion change | `pytest tests/unit/sandbox/test_opensandbox_provider.py tests/blocking_io/test_opensandbox_acquire.py -q` → 52 passed |
+| `tests/unit/sandbox/test_opensandbox_provider.py` | local definitions replaced by `tests.support.opensandbox_fakes` imports | pure extraction — no assertion change | same command |
+| `tests/blocking_io/test_opensandbox_acquire.py` | sys.path insert replaced by `tests.support.opensandbox_fakes` import | import rewiring only — no assertion change | same command; `backend-blocking-io` lane → 146 passed, status=0 |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — gateway (dedup batch 2 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/gateway
 -q -m "not serial and not requires_llm and not live and not external"` →
@@ -696,7 +716,7 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/gatewa
 | `tests/test_user_context.py` (10 identical + 0 drifted + 16 root-only) | `tests/unit/gateway/test_user_context.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_view_image_middleware.py` (22 identical + 5 drifted + 16 root-only) | `tests/unit/gateway/test_view_image_middleware.py` | root variant wins on drifted names; 2 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
-## Batch 2026-10-13: backend/tests root↔subdir dedup — runtime (batch 3 of 8)
+## Batch 2026-10-13: backend/tests root↔subdir dedup — runtime (dedup batch 3 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/runtime -q -m "not serial and not requires_llm and not live and not external"` → 1380 passed / 8 skipped; ruff check/format clean.
 
@@ -722,7 +742,7 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/runtim
 | `tests/test_token_usage.py` (14 identical + 0 drifted + 0 root-only) | `tests/unit/runtime/test_token_usage.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_worker_langfuse_metadata.py` (1 identical + 3 drifted + 2 root-only) | `tests/unit/runtime/test_worker_langfuse_metadata.py` | root variant wins on drifted names; 4 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
-## Batch 2026-10-13: backend/tests root↔subdir dedup — models/persistence (batch 4 of 8)
+## Batch 2026-10-13: backend/tests root↔subdir dedup — models/persistence (dedup batch 4 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/models tests/unit/persistence -q -m "not serial and not requires_llm and not live and not external"` → 1093 passed / 1 skipped; ruff check/format clean.
 
@@ -742,7 +762,7 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/models
 | `tests/test_persistence_scaffold.py` (21 identical + 1 drifted + 17 root-only) | `tests/unit/persistence/test_persistence_scaffold.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_vllm_provider.py` (0 identical + 0 drifted + 16 root-only) | `tests/unit/models/test_vllm_provider.py` | root variant wins on drifted names; 0 class methods + 8 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
-## Batch 2026-10-13: backend/tests root↔subdir dedup — tools (batch 5 of 8)
+## Batch 2026-10-13: backend/tests root↔subdir dedup — tools (dedup batch 5 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/tools -q -m "not serial and not requires_llm and not live and not external"` → 1981 passed / 2 skipped; ruff check/format clean.
 
@@ -774,7 +794,7 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/tools 
 | `tests/test_update_agent_tool.py` (0 identical + 0 drifted + 27 root-only) | `tests/unit/tools/test_update_agent_tool.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_view_image_tool.py` (6 identical + 1 drifted + 1 root-only) | `tests/unit/tools/test_view_image_tool.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
-## Batch 2026-10-13: backend/tests root↔subdir dedup — sandbox (batch 6 of 8)
+## Batch 2026-10-13: backend/tests root↔subdir dedup — sandbox (dedup batch 6 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/sandbox tests/integration/sandbox -q -m "not serial and not requires_llm and not live and not external"` → 2144 passed / 10 skipped; ruff check/format clean.
 
@@ -797,7 +817,7 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/sandbo
 | `tests/test_sandbox_search_tools.py` (15 identical + 4 drifted + 21 root-only) | `tests/unit/sandbox/test_sandbox_search_tools.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_sandbox_tools_security.py` (67 identical + 24 drifted + 28 root-only) | `tests/unit/sandbox/test_sandbox_tools_security.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir; carried test path literals adapted to the root _THREAD_DATA binding (/tmp/deer-flow) | both copies green on the same candidate pre-merge |
 
-## Batch 2026-10-13: backend/tests root↔subdir dedup — skills/scripts (batch 7 of 8)
+## Batch 2026-10-13: backend/tests root↔subdir dedup — skills/scripts (dedup batch 7 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/skills tests/unit/scripts -q -m "not serial and not requires_llm and not live and not external"` → 1739 passed / 1 skipped; ruff check/format clean.
 
@@ -855,7 +875,7 @@ runtime-reference follow-up fixes landed after the batches: 4c07acbc0
 closure run failed 8 tests on them) and 529d0e87d (sandbox-image-smoke
 workflow + scripts guidance repointed to keeper paths).
 
-## Batch 2026-10-13: backend/tests root↔subdir dedup — integration/api + contracts (batch 8 of 8)
+## Batch 2026-10-13: backend/tests root↔subdir dedup — integration/api + contracts (dedup batch 8 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/integration/api tests/contracts -q -m "not serial and not requires_llm and not live and not external"` → 1628 passed / 42 skipped; ruff check/format clean.
 
@@ -878,7 +898,7 @@ Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/integration
 | `tests/test_update_agent_e2e_user_isolation.py` (0 identical + 3 drifted + 0 root-only) | `tests/contracts/test_update_agent_e2e_user_isolation.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
 | `tests/test_uploads_router.py` (14 identical + 16 drifted + 15 root-only) | `tests/integration/api/test_uploads_router.py` | root variant wins on drifted names; 0 class methods + 43 module defs carried from subdir | both copies green on the same candidate pre-merge |
 
-## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (batch 1 of 8)
+## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (dedup batch 1 of 8)
 
 Ticket #66 under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
 for every root ↔ `{unit,integration,contracts}` same-name pair the ROOT copy is
