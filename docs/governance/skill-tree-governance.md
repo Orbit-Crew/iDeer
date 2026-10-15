@@ -55,7 +55,7 @@ backend/.venv/bin/python -m deerflow.skills.review.cli resources/skills/<skill> 
 # 全量门控口径（diff 驱动；--base-ref/--head-ref 或 --before/--after）
 backend/.venv/bin/python scripts/review_changed_public_skills.py --before <old> --after HEAD
 # 测试（全部 86 技能的 frontmatter 目录 + 4 个脚本套件 + 豁免清单契约）
-cd backend && PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/skills tests/test_skill_review_waivers.py tests/test_review_changed_public_skills.py -q
+cd backend && PYTHONPATH=.:tests .venv/bin/python -m pytest tests/unit/skills tests/unit/skills/test_skill_review_waivers.py tests/unit/scripts/test_review_changed_public_skills.py -q
 ```
 
 **第 5 步 — 更新锁定点**：采纳完成后，把 §4 登记行的锁定 SHA 推进到 `skills/public` 的最新提交（`git log -1 --format=%H -- skills/public`），追加一条巡检行写明日期、新 SHA、依据；同时更新 §4 头部的对照命令。锁定点定义：**`skills/public` 树最后一次被提交触碰的提交**——此后任何上游落地的 diff 只显示真正的上游变更，不含企业侧历史修复噪声。

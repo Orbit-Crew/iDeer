@@ -12,7 +12,7 @@ verified-against: worktree docs/agent-doc-disclosure @ c55cd37de
 
 Gate4 的真实验收由两个互补测试组成：
 
-1. `backend/tests/test_knowledge_gate4_live.py` 直接调用真实 RAGFlow，验证上传、解析、索引可搜索、删除以及删除后的无命中。
+1. `backend/tests/unit/knowledge/test_knowledge_gate4_live.py` 直接调用真实 RAGFlow，验证上传、解析、索引可搜索、删除以及删除后的无命中。
 2. `frontend/tests/e2e/real/knowledge-center-gate4.spec.ts` 使用真实登录会话和浏览器 UI，验证创建并绑定 KB、上传文件、看到 `ready`、删除文件以及 UI/API 最终无文档。
 
 ## 运行
@@ -24,7 +24,7 @@ Gate4 的真实验收由两个互补测试组成：
 ```bash
 cd backend
 DEER_FLOW_RUN_LIVE_TESTS=1 RAGFLOW_GATE4_DATASET_ID=<isolated-dataset-id> \
-  uv run pytest tests/test_knowledge_gate4_live.py -q -s
+  uv run pytest tests/unit/knowledge/test_knowledge_gate4_live.py -q -s
 ```
 
 浏览器验收由真实 E2E harness 提供 `E2E_STATE_DIR`、`E2E_RUN_ID`、`IDEER_INTERNAL_GATEWAY_BASE_URL` 和 `PLAYWRIGHT_BASE_URL`，并额外设置：

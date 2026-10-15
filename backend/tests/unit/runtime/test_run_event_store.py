@@ -1074,7 +1074,7 @@ class TestDbRunEventStoreWriteLock:
         # the fence, so it must queue behind the in-flight writer instead of
         # running concurrently with it. The strict ordering guarantee is pinned
         # without wall-clock timing by the Event-driven tests in
-        # tests/test_db_event_store_lock_lifecycle.py; this test covers the real
+        # tests/unit/runtime/test_db_event_store_lock_lifecycle.py; this test covers the real
         # SQLite deletion path and the registry state it leaves behind.
         lock = s._get_write_lock("t1")
         await lock.acquire()

@@ -38,6 +38,623 @@ The batch entries below are historical examples. Use only the entry relevant
 to the test being moved; they do not replace validation on the current
 candidate.
 
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/utils+tui+extensions+scripts (batch 1 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/utils tests/unit/tui tests/unit/extensions tests/unit/scripts -q -m "not serial and not requires_llm and not live and not external"` → 2282 passed / 7 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_assembly_io.py` | `tests/unit/utils/test_assembly_io.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_checkpoint_channels.py` | `tests/unit/scripts/test_bench_checkpoint_channels.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_checkpoint_production.py` | `tests/unit/scripts/test_bench_checkpoint_production.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_concurrency.py` | `tests/unit/scripts/test_bench_concurrency.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_context_snapshot.py` | `tests/unit/scripts/test_bench_context_snapshot.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_contracts.py` | `tests/unit/scripts/test_bench_deermem_eviction_contracts.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_dataset.py` | `tests/unit/scripts/test_bench_deermem_eviction_dataset.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_grading.py` | `tests/unit/scripts/test_bench_deermem_eviction_grading.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_policy.py` | `tests/unit/scripts/test_bench_deermem_eviction_policy.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_protocol.py` | `tests/unit/scripts/test_bench_deermem_eviction_protocol.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_published_results.py` | `tests/unit/scripts/test_bench_deermem_eviction_published_results.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_qa.py` | `tests/unit/scripts/test_bench_deermem_eviction_qa.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_report.py` | `tests/unit/scripts/test_bench_deermem_eviction_report.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_results.py` | `tests/unit/scripts/test_bench_deermem_eviction_results.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_sandbox_provider.py` | `tests/unit/scripts/test_bench_sandbox_provider.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_tool_result_probe_cleanup.py` | `tests/unit/scripts/test_bench_tool_result_probe_cleanup.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_worker.py` | `tests/unit/scripts/test_bench_worker.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_ci_uv_version_pin.py` | `tests/unit/scripts/test_ci_uv_version_pin.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_compose_default_bind_host.py` | `tests/unit/scripts/test_compose_default_bind_host.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_compose_default_workers.py` | `tests/unit/scripts/test_compose_default_workers.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_compose_extensions_config_writable.py` | `tests/unit/scripts/test_compose_extensions_config_writable.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_custom_events.py` | `tests/unit/utils/test_custom_events.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_deploy_uv_extras.py` | `tests/unit/scripts/test_deploy_uv_extras.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_detect_blocking_io_static.py` | `tests/unit/scripts/test_detect_blocking_io_static.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_detect_uv_extras.py` | `tests/unit/scripts/test_detect_uv_extras.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_detector_repo_root.py` | `tests/unit/scripts/test_detector_repo_root.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_dockerignore_excludes_runtime_data.py` | `tests/unit/scripts/test_dockerignore_excludes_runtime_data.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_executor_starvation.py` | `tests/unit/utils/test_executor_starvation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_api_contracts.py` | `tests/unit/extensions/test_extension_api_contracts.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_api_state.py` | `tests/unit/extensions/test_extension_api_state.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_api_surface.py` | `tests/unit/extensions/test_extension_api_surface.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_app_loading.py` | `tests/unit/extensions/test_extension_app_loading.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_config.py` | `tests/unit/extensions/test_extension_config.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_dependency_sync.py` | `tests/unit/extensions/test_extension_dependency_sync.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_gateway_wiring.py` | `tests/unit/extensions/test_extension_gateway_wiring.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_injection.py` | `tests/unit/extensions/test_extension_injection.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_isolation.py` | `tests/unit/extensions/test_extension_isolation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_loader.py` | `tests/unit/extensions/test_extension_loader.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_manager.py` | `tests/unit/extensions/test_extension_manager.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_ordering.py` | `tests/unit/extensions/test_extension_ordering.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_placement_guarantees.py` | `tests/unit/extensions/test_extension_placement_guarantees.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_registry.py` | `tests/unit/extensions/test_extension_registry.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_route_principal.py` | `tests/unit/extensions/test_extension_route_principal.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_stack_wiring.py` | `tests/unit/extensions/test_extension_stack_wiring.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_subagent_lifecycle.py` | `tests/unit/extensions/test_extension_subagent_lifecycle.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extensions_config_atomic_write.py` | `tests/unit/extensions/test_extensions_config_atomic_write.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extensions_config_raw_writes.py` | `tests/unit/extensions/test_extensions_config_raw_writes.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_io.py` | `tests/unit/utils/test_file_io.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_outline.py` | `tests/unit/utils/test_file_outline.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_outline_atx.py` | `tests/unit/utils/test_file_outline_atx.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_outline_text_budget.py` | `tests/unit/utils/test_file_outline_text_budget.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_gateway_startup.py` | `tests/unit/scripts/test_gateway_startup.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_harness_packaging.py` | `tests/unit/scripts/test_harness_packaging.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_helm_extensions_config_writable.py` | `tests/unit/scripts/test_helm_extensions_config_writable.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_intranet_config_contract.py` | `tests/unit/scripts/test_intranet_config_contract.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_logging_config.py` | `tests/unit/scripts/test_logging_config.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_makefile_shell_script_invocation.py` | `tests/unit/scripts/test_makefile_shell_script_invocation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_nginx_api_docs_gate.py` | `tests/unit/scripts/test_nginx_api_docs_gate.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_nginx_compression.py` | `tests/unit/scripts/test_nginx_compression.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_nginx_langgraph_body_size.py` | `tests/unit/scripts/test_nginx_langgraph_body_size.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_pnpm_script.py` | `tests/unit/scripts/test_pnpm_script.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_readability.py` | `tests/unit/utils/test_readability.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_replay_provider.py` | `tests/unit/scripts/test_replay_provider.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_review_changed_public_skills.py` | `tests/unit/scripts/test_review_changed_public_skills.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_run_evidence_reader.py` | `tests/unit/extensions/test_run_evidence_reader.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_sandbox_memory_profile_script.py` | `tests/unit/scripts/test_sandbox_memory_profile_script.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_scan_changed_blocking_io.py` | `tests/unit/scripts/test_scan_changed_blocking_io.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_frontend_skip_build.py` | `tests/unit/scripts/test_serve_frontend_skip_build.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_gateway_bind_host.py` | `tests/unit/scripts/test_serve_gateway_bind_host.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_nginx_stop.py` | `tests/unit/scripts/test_serve_nginx_stop.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_pick_python.py` | `tests/unit/scripts/test_serve_pick_python.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_setup_sandbox.py` | `tests/unit/scripts/test_setup_sandbox.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_summarize_checkpoint_channels.py` | `tests/unit/scripts/test_summarize_checkpoint_channels.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_summarize_checkpoint_production.py` | `tests/unit/scripts/test_summarize_checkpoint_production.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_support_bundle.py` | `tests/unit/scripts/test_support_bundle.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_support_shell.py` | `tests/unit/scripts/test_support_shell.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_support_symlinks.py` | `tests/unit/scripts/test_support_symlinks.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_test_environment.py` | `tests/unit/scripts/test_test_environment.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_testclient_compatibility.py` | `tests/unit/scripts/test_testclient_compatibility.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_thread_id_validation.py` | `tests/unit/utils/test_thread_id_validation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_app.py` | `tests/unit/tui/test_tui_app.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_cli.py` | `tests/unit/tui/test_tui_cli.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_cli_main.py` | `tests/unit/tui/test_tui_cli_main.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_command_registry.py` | `tests/unit/tui/test_tui_command_registry.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_composer.py` | `tests/unit/tui/test_tui_composer.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_input_history.py` | `tests/unit/tui/test_tui_input_history.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_message_format.py` | `tests/unit/tui/test_tui_message_format.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_overlays.py` | `tests/unit/tui/test_tui_overlays.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_palette.py` | `tests/unit/tui/test_tui_palette.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_palette_render.py` | `tests/unit/tui/test_tui_palette_render.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_persistence.py` | `tests/unit/tui/test_tui_persistence.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_render.py` | `tests/unit/tui/test_tui_render.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_runtime.py` | `tests/unit/tui/test_tui_runtime.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_session.py` | `tests/unit/tui/test_tui_session.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_transparent.py` | `tests/unit/tui/test_tui_transparent.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_view_state.py` | `tests/unit/tui/test_tui_view_state.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_upstream_governance.py` | `tests/unit/scripts/test_upstream_governance.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_utils_llm_text.py` | `tests/unit/utils/test_utils_llm_text.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_utils_messages.py` | `tests/unit/utils/test_utils_messages.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_utils_time.py` | `tests/unit/utils/test_utils_time.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_uvicorn_reload_exclude.py` | `tests/unit/scripts/test_uvicorn_reload_exclude.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/scheduler+mcp_tasks, integration/scheduler+mcp_tasks (batch 2 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/scheduler tests/unit/mcp_tasks tests/integration/scheduler tests/integration/mcp_tasks -q -m "not serial and not requires_llm and not live and not external"` → 407 passed / 54 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_mcp_task_config.py` | `tests/unit/mcp_tasks/test_mcp_task_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_models.py` | `tests/unit/mcp_tasks/test_mcp_task_models.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_ordinary_driver.py` | `tests/unit/mcp_tasks/test_mcp_task_ordinary_driver.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_ordinary_e2e.py` | `tests/unit/mcp_tasks/test_mcp_task_ordinary_e2e.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_postgres.py` | `tests/integration/mcp_tasks/test_mcp_task_postgres.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_repository.py` | `tests/unit/mcp_tasks/test_mcp_task_repository.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_runtime_config.py` | `tests/unit/mcp_tasks/test_mcp_task_runtime_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_service.py` | `tests/unit/mcp_tasks/test_mcp_task_service.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_tool_caller.py` | `tests/unit/mcp_tasks/test_mcp_task_tool_caller.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_tool_wrapping.py` | `tests/unit/mcp_tasks/test_mcp_task_tool_wrapping.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_toolset_config.py` | `tests/unit/mcp_tasks/test_mcp_task_toolset_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_tasks_router.py` | `tests/unit/mcp_tasks/test_mcp_tasks_router.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_occurrence_sequence.py` | `tests/unit/scheduler/test_scheduled_occurrence_sequence.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_claims.py` | `tests/unit/scheduler/test_scheduled_task_claims.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_cron_preview.py` | `tests/unit/scheduler/test_scheduled_task_cron_preview.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_dispatch_race.py` | `tests/unit/scheduler/test_scheduled_task_dispatch_race.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_lifecycle.py` | `tests/unit/scheduler/test_scheduled_task_lifecycle.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_models.py` | `tests/unit/scheduler/test_scheduled_task_models.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_postgres.py` | `tests/integration/scheduler/test_scheduled_task_postgres.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_queue.py` | `tests/unit/scheduler/test_scheduled_task_queue.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_repository.py` | `tests/unit/scheduler/test_scheduled_task_repository.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_router.py` | `tests/unit/scheduler/test_scheduled_task_router.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_router_behavior.py` | `tests/unit/scheduler/test_scheduled_task_router_behavior.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_run_status_filter.py` | `tests/unit/scheduler/test_scheduled_task_run_status_filter.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_schedules.py` | `tests/unit/scheduler/test_scheduled_task_schedules.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_service.py` | `tests/unit/scheduler/test_scheduled_task_service.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_completion_atomicity.py` | `tests/unit/scheduler/test_scheduler_completion_atomicity.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_completion_consistency.py` | `tests/unit/scheduler/test_scheduler_completion_consistency.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_config.py` | `tests/unit/scheduler/test_scheduler_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_occurrence_ordering.py` | `tests/integration/scheduler/test_scheduler_occurrence_ordering.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/channels+memory+knowledge (batch 3 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/channels tests/unit/memory tests/unit/knowledge -q -m "not serial and not requires_llm and not live and not external"` → 3338 passed / 20 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_additional_channel_connections.py` | `tests/unit/channels/test_additional_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_buzz_channel.py` | `tests/unit/channels/test_buzz_channel.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_buzz_nostr.py` | `tests/unit/channels/test_buzz_nostr.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_buzz_seen_events.py` | `tests/unit/channels/test_buzz_seen_events.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_channel_connections_config.py` | `tests/unit/channels/test_channel_connections_config.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_channel_intake_backpressure.py` | `tests/unit/channels/test_channel_intake_backpressure.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_deermem_self_contained.py` | `tests/unit/memory/test_deermem_self_contained.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_discord_channel_connections.py` | `tests/unit/channels/test_discord_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_extension_system_model_calls.py` | `tests/unit/memory/test_extension_system_model_calls.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_github_channel.py` | `tests/unit/channels/test_github_channel.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_github_webhooks.py` | `tests/unit/channels/test_github_webhooks.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_honcho_memory_backend.py` | `tests/unit/memory/test_honcho_memory_backend.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_inbound_dedupe.py` | `tests/unit/channels/test_inbound_dedupe.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_knowledge_gate4_live.py` | `tests/unit/knowledge/test_knowledge_gate4_live.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_knowledge_gate7_live.py` | `tests/unit/knowledge/test_knowledge_gate7_live.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_knowledge_gate8_live.py` | `tests/unit/knowledge/test_knowledge_gate8_live.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lark_broker.py` | `tests/unit/channels/test_lark_broker.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lark_cli_integration.py` | `tests/unit/channels/test_lark_cli_integration.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lightrag_client.py` | `tests/unit/knowledge/test_lightrag_client.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lightrag_tools.py` | `tests/unit/knowledge/test_lightrag_tools.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_mem0_memory_backend.py` | `tests/unit/memory/test_mem0_memory_backend.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_cancel_by_agent.py` | `tests/unit/memory/test_memory_cancel_by_agent.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_consolidation.py` | `tests/unit/memory/test_memory_consolidation.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_eviction.py` | `tests/unit/memory/test_memory_eviction.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_fact_dedup.py` | `tests/unit/memory/test_memory_fact_dedup.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_manager_interface.py` | `tests/unit/memory/test_memory_manager_interface.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_manager_pluggable.py` | `tests/unit/memory/test_memory_manager_pluggable.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_markdown_migration_cli.py` | `tests/unit/memory/test_memory_markdown_migration_cli.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_retrieval_adapter.py` | `tests/unit/memory/test_memory_retrieval_adapter.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_scope_gate.py` | `tests/unit/memory/test_memory_scope_gate.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_search.py` | `tests/unit/memory/test_memory_search.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_staleness_review.py` | `tests/unit/memory/test_memory_staleness_review.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_storage_markdown.py` | `tests/unit/memory/test_memory_storage_markdown.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_tools.py` | `tests/unit/memory/test_memory_tools.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_message_processing.py` | `tests/unit/memory/test_message_processing.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_message_processing_signals.py` | `tests/unit/memory/test_message_processing_signals.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_prompt_external.py` | `tests/unit/memory/test_prompt_external.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_ragflow_client.py` | `tests/unit/knowledge/test_ragflow_client.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_ragflow_tools.py` | `tests/unit/knowledge/test_ragflow_tools.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_runtime_channel_config_merge.py` | `tests/unit/channels/test_runtime_channel_config_merge.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_slack_channel_connections.py` | `tests/unit/channels/test_slack_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_slash_skills.py` | `tests/unit/channels/test_slash_skills.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_telegram_channel_connections.py` | `tests/unit/channels/test_telegram_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_tiktoken_cache_and_count_tokens.py` | `tests/unit/memory/test_tiktoken_cache_and_count_tokens.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_trace_entry_points.py` | `tests/unit/channels/test_trace_entry_points.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_updater_truncation.py` | `tests/unit/memory/test_updater_truncation.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_updater_watermark.py` | `tests/unit/memory/test_updater_watermark.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_wecom_content_limit.py` | `tests/unit/channels/test_wecom_content_limit.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_wecom_ws_text.py` | `tests/unit/channels/test_wecom_ws_text.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/models+tools (batch 4 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/models tests/unit/tools -q -m "not serial and not requires_llm and not live and not external"` → 4050 passed / 10 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_assistant_payload_replay.py` | `tests/unit/models/test_assistant_payload_replay.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_background_tasks_tool.py` | `tests/unit/tools/test_background_tasks_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_batch_task_tool.py` | `tests/unit/tools/test_batch_task_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_brave_tools.py` | `tests/unit/tools/test_brave_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browser_automation.py` | `tests/unit/tools/test_browser_automation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browser_close_cancellation.py` | `tests/unit/tools/test_browser_close_cancellation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browser_router.py` | `tests/unit/tools/test_browser_router.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browserless_client.py` | `tests/unit/tools/test_browserless_client.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_claude_provider_oauth_billing.py` | `tests/unit/models/test_claude_provider_oauth_billing.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_claude_provider_prompt_caching.py` | `tests/unit/models/test_claude_provider_prompt_caching.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_cli_auth_providers.py` | `tests/unit/models/test_cli_auth_providers.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_client_live_policy.py` | `tests/unit/models/test_client_live_policy.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_client_message_serialization.py` | `tests/unit/models/test_client_message_serialization.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_crawl4ai_tools.py` | `tests/unit/tools/test_crawl4ai_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_credential_loader.py` | `tests/unit/models/test_credential_loader.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_ddg_search_tools.py` | `tests/unit/tools/test_ddg_search_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_catalog.py` | `tests/unit/tools/test_deferred_catalog.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_promotion_integration.py` | `tests/unit/tools/test_deferred_promotion_integration.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_setup.py` | `tests/unit/tools/test_deferred_setup.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_tool_crosscontext.py` | `tests/unit/tools/test_deferred_tool_crosscontext.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_exa_tools.py` | `tests/unit/tools/test_exa_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_fastcrw_tools.py` | `tests/unit/tools/test_fastcrw_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_file_signature.py` | `tests/unit/tools/test_file_signature.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_firecrawl_tools.py` | `tests/unit/tools/test_firecrawl_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_groundroute_tools.py` | `tests/unit/tools/test_groundroute_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_image_search.py` | `tests/unit/tools/test_image_search.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_infoquest_http_timeout.py` | `tests/unit/tools/test_infoquest_http_timeout.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_list_uploaded_files_tool.py` | `tests/unit/tools/test_list_uploaded_files_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_local_bash_tool_loading.py` | `tests/unit/tools/test_local_bash_tool_loading.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_context_headers.py` | `tests/unit/tools/test_mcp_context_headers.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_custom_interceptors.py` | `tests/unit/tools/test_mcp_custom_interceptors.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_file_migration.py` | `tests/unit/tools/test_mcp_file_migration.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_header_names.py` | `tests/unit/tools/test_mcp_header_names.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_routing_auto_promote.py` | `tests/unit/tools/test_mcp_routing_auto_promote.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_routing_metadata.py` | `tests/unit/tools/test_mcp_routing_metadata.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_routing_prompt.py` | `tests/unit/tools/test_mcp_routing_prompt.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_session_pool_loop_isolation.py` | `tests/unit/tools/test_mcp_session_pool_loop_isolation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_session_timeouts.py` | `tests/unit/tools/test_mcp_session_timeouts.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_tool_name_prefix.py` | `tests/unit/tools/test_mcp_tool_name_prefix.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_tool_name_validation.py` | `tests/unit/tools/test_mcp_tool_name_validation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_user_scoped_auth.py` | `tests/unit/tools/test_mcp_user_scoped_auth.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_model_request_admission.py` | `tests/unit/models/test_model_request_admission.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_model_request_admission_fifo_atomic.py` | `tests/unit/models/test_model_request_admission_fifo_atomic.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_patched_mimo.py` | `tests/unit/models/test_patched_mimo.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_patched_openai.py` | `tests/unit/models/test_patched_openai.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_patched_stepfun.py` | `tests/unit/models/test_patched_stepfun.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_read_conversation_tool.py` | `tests/unit/tools/test_read_conversation_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_review_skill_package_tool.py` | `tests/unit/tools/test_review_skill_package_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_searxng_client.py` | `tests/unit/tools/test_searxng_client.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_serialize_message_content.py` | `tests/unit/models/test_serialize_message_content.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_serply_tools.py` | `tests/unit/tools/test_serply_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_session_pool_singleton_lifecycle.py` | `tests/unit/tools/test_session_pool_singleton_lifecycle.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_skill_policy_deferred_discovery.py` | `tests/unit/tools/test_skill_policy_deferred_discovery.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_sofya_tools.py` | `tests/unit/tools/test_sofya_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_subagent_deferred_promotion_integration.py` | `tests/unit/tools/test_subagent_deferred_promotion_integration.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_task_tool_core_logic.py` | `tests/unit/tools/test_task_tool_core_logic.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_tavily_tools.py` | `tests/unit/tools/test_tavily_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_tencent_wsa_tools.py` | `tests/unit/tools/test_tencent_wsa_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_tool_search.py` | `tests/unit/tools/test_tool_search.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_view_image_provider_error_classification.py` | `tests/unit/tools/test_view_image_provider_error_classification.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_web_fetch_error_shell_meta.py` | `tests/unit/tools/test_web_fetch_error_shell_meta.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_web_search_time_range.py` | `tests/unit/tools/test_web_search_time_range.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/runtime+persistence (batch 5 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/runtime tests/unit/persistence -q -m "not serial and not requires_llm and not live and not external"` → 2645 passed / 20 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_agent_store_sql.py` | `tests/unit/persistence/test_agent_store_sql.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_base_to_dict.py` | `tests/unit/persistence/test_base_to_dict.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_branch_history_seed.py` | `tests/unit/runtime/test_branch_history_seed.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_cached_history_saver.py` | `tests/unit/runtime/test_cached_history_saver.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_cached_history_saver_integration.py` | `tests/unit/runtime/test_cached_history_saver_integration.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_channel_connections_repository.py` | `tests/unit/persistence/test_channel_connections_repository.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_cache_config.py` | `tests/unit/runtime/test_checkpoint_cache_config.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_cache_memory.py` | `tests/unit/runtime/test_checkpoint_cache_memory.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_cache_provider.py` | `tests/unit/runtime/test_checkpoint_cache_provider.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_mode.py` | `tests/unit/runtime/test_checkpoint_mode.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_patches.py` | `tests/unit/runtime/test_checkpoint_patches.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_retention_contract.py` | `tests/unit/runtime/test_checkpoint_retention_contract.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_state.py` | `tests/unit/runtime/test_checkpoint_state.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpointer_none_fix.py` | `tests/unit/runtime/test_checkpointer_none_fix.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_context_compaction.py` | `tests/unit/runtime/test_context_compaction.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_converters.py` | `tests/unit/runtime/test_converters.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_db_event_store_lock_lifecycle.py` | `tests/unit/runtime/test_db_event_store_lock_lifecycle.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_delta_channel_checkpointers.py` | `tests/unit/runtime/test_delta_channel_checkpointers.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_delta_channel_state.py` | `tests/unit/runtime/test_delta_channel_state.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_goal_runtime.py` | `tests/unit/runtime/test_goal_runtime.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_goal_worker.py` | `tests/unit/runtime/test_goal_worker.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_history_batch_queries.py` | `tests/unit/persistence/test_history_batch_queries.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_interrupt_serialization.py` | `tests/unit/runtime/test_interrupt_serialization.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_async_io.py` | `tests/unit/runtime/test_jsonl_event_store_async_io.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_cancellation.py` | `tests/unit/runtime/test_jsonl_event_store_cancellation.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_lock_lifecycle.py` | `tests/unit/runtime/test_jsonl_event_store_lock_lifecycle.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_unicode.py` | `tests/unit/runtime/test_jsonl_event_store_unicode.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_managed_subagent_store.py` | `tests/unit/persistence/test_managed_subagent_store.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_multi_worker_run_ownership.py` | `tests/unit/runtime/test_multi_worker_run_ownership.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_autogen_script.py` | `tests/unit/persistence/test_persistence_autogen_script.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap.py` | `tests/unit/persistence/test_persistence_bootstrap.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_concurrency.py` | `tests/unit/persistence/test_persistence_bootstrap_concurrency.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_pg_lock.py` | `tests/unit/persistence/test_persistence_bootstrap_pg_lock.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_regression.py` | `tests/unit/persistence/test_persistence_bootstrap_regression.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_sqlite_lock.py` | `tests/unit/persistence/test_persistence_bootstrap_sqlite_lock.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_timezone.py` | `tests/unit/persistence/test_persistence_timezone.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_personal_access_tokens_repository.py` | `tests/unit/persistence/test_personal_access_tokens_repository.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_context_injection.py` | `tests/unit/runtime/test_project_context_injection.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_document_tools.py` | `tests/unit/persistence/test_project_document_tools.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_documents_repo.py` | `tests/unit/persistence/test_project_documents_repo.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_shelf_index.py` | `tests/unit/persistence/test_project_shelf_index.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_trash.py` | `tests/unit/persistence/test_project_trash.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_projects_context.py` | `tests/unit/persistence/test_projects_context.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_projects_repo.py` | `tests/unit/persistence/test_projects_repo.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_duration_checkpoint.py` | `tests/unit/runtime/test_run_duration_checkpoint.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_store_by_run_index.py` | `tests/unit/runtime/test_run_event_store_by_run_index.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_store_filter.py` | `tests/unit/runtime/test_run_event_store_filter.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_store_pagination.py` | `tests/unit/runtime/test_run_event_store_pagination.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_stream_contract.py` | `tests/unit/runtime/test_run_event_stream_contract.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_journal.py` | `tests/unit/runtime/test_run_journal.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_metadata_secret_safety.py` | `tests/unit/runtime/test_run_metadata_secret_safety.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_naming.py` | `tests/unit/runtime/test_run_naming.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_worker_delta_resume.py` | `tests/unit/runtime/test_run_worker_delta_resume.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_worker_mcp_tasks.py` | `tests/unit/runtime/test_run_worker_mcp_tasks.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_runtime_keyed_lock.py` | `tests/unit/runtime/test_runtime_keyed_lock.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_subagent_batch_repository.py` | `tests/unit/persistence/test_subagent_batch_repository.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_thread_archive.py` | `tests/unit/persistence/test_thread_archive.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_thread_state_promoted.py` | `tests/unit/runtime/test_thread_state_promoted.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_threads_checkpoint_mode.py` | `tests/unit/runtime/test_threads_checkpoint_mode.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_token_usage_by_model.py` | `tests/unit/persistence/test_token_usage_by_model.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_tool_progress_middleware.py` | `tests/unit/runtime/test_tool_progress_middleware.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_tool_promotion_audit_middleware.py` | `tests/unit/runtime/test_tool_promotion_audit_middleware.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_user_oauth_partial_index.py` | `tests/unit/persistence/test_user_oauth_partial_index.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_user_preferences.py` | `tests/unit/persistence/test_user_preferences.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_worker_stream_subgraph_namespace.py` | `tests/unit/runtime/test_worker_stream_subgraph_namespace.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_worker_subagent_persistence.py` | `tests/unit/runtime/test_worker_subagent_persistence.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_worker_trace_binding.py` | `tests/unit/runtime/test_worker_trace_binding.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_workspace_changes.py` | `tests/unit/runtime/test_workspace_changes.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/sandbox+agentplatform+skills (batch 6 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/sandbox tests/unit/agentplatform tests/unit/skills -q -m "not serial and not requires_llm and not live and not external"` → 4333 passed / 42 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_acceptance_checks.py` | `tests/unit/sandbox/test_acceptance_checks.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_acquire_serialization.py` | `tests/unit/sandbox/test_acquire_serialization.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_aio_sandbox_network_proxy.py` | `tests/unit/sandbox/test_aio_sandbox_network_proxy.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_aio_sandbox_provider.py` | `tests/unit/sandbox/test_aio_sandbox_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_boxlite_provider.py` | `tests/unit/sandbox/test_boxlite_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_e2b_capacity_store_redis.py` | `tests/integration/sandbox/test_e2b_capacity_store_redis.py` (relayered on review — module-level `integration` marker) | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_e2b_sandbox_provider.py` | `tests/unit/sandbox/test_e2b_sandbox_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_ensure_sandbox_initialized.py` | `tests/unit/sandbox/test_ensure_sandbox_initialized.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_extension_task_lifecycle.py` | `tests/unit/agentplatform/test_extension_task_lifecycle.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_gateway_skill_export.py` | `tests/unit/skills/test_gateway_skill_export.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_github_token_plumbing.py` | `tests/unit/sandbox/test_github_token_plumbing.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_runtime_extension.py` | `tests/unit/agentplatform/test_local_runtime_extension.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_runtime_mcp_integration.py` | `tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_sandbox_command_timeout.py` | `tests/unit/sandbox/test_local_sandbox_command_timeout.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_sandbox_path_regex_cache.py` | `tests/unit/sandbox/test_local_sandbox_path_regex_cache.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_opensandbox_provider.py` | `tests/unit/sandbox/test_opensandbox_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_pat_auth.py` | `tests/unit/agentplatform/test_pat_auth.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_provisioner_kubeconfig.py` | `tests/unit/sandbox/test_provisioner_kubeconfig.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_provisioner_mount_contract.py` | `tests/unit/sandbox/test_provisioner_mount_contract.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_provisioner_request_threading.py` | `tests/unit/sandbox/test_provisioner_request_threading.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_before_write_cancellation.py` | `tests/unit/sandbox/test_read_before_write_cancellation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_before_write_middleware.py` | `tests/unit/sandbox/test_read_before_write_middleware.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_file_line_range.py` | `tests/unit/sandbox/test_read_file_line_range.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_file_tool_binary.py` | `tests/unit/sandbox/test_read_file_tool_binary.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_file_truncation_continuation.py` | `tests/unit/sandbox/test_read_file_truncation_continuation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_remote_list_dir.py` | `tests/unit/sandbox/test_remote_list_dir.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_remote_search.py` | `tests/unit/sandbox/test_remote_search.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_run_worker_delivery.py` | `tests/unit/agentplatform/test_run_worker_delivery.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_authorization.py` | `tests/unit/sandbox/test_sandbox_authorization.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_identity.py` | `tests/unit/sandbox/test_sandbox_identity.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_leases.py` | `tests/unit/sandbox/test_sandbox_leases.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_ownership_store.py` | `tests/unit/sandbox/test_sandbox_ownership_store.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_path_patterns.py` | `tests/unit/sandbox/test_sandbox_path_patterns.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_provider_lifecycle.py` | `tests/unit/sandbox/test_sandbox_provider_lifecycle.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_skill_sync_cancellation.py` | `tests/unit/sandbox/test_sandbox_skill_sync_cancellation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_windows_path_normalization.py` | `tests/unit/sandbox/test_sandbox_windows_path_normalization.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_should_ignore_name.py` | `tests/unit/sandbox/test_should_ignore_name.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_catalog.py` | `tests/unit/skills/test_skill_catalog.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_container_path_defaults.py` | `tests/unit/skills/test_skill_container_path_defaults.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_describe.py` | `tests/unit/skills/test_skill_describe.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_export.py` | `tests/unit/skills/test_skill_export.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_metadata_prompt_injection.py` | `tests/unit/skills/test_skill_metadata_prompt_injection.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_permissions.py` | `tests/unit/skills/test_skill_permissions.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_projection.py` | `tests/unit/skills/test_skill_projection.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_request_scoped_secrets.py` | `tests/unit/sandbox/test_skill_request_scoped_secrets.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_review_core.py` | `tests/unit/skills/test_skill_review_core.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_review_waivers.py` | `tests/unit/skills/test_skill_review_waivers.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_reviewer_public_skill.py` | `tests/unit/skills/test_skill_reviewer_public_skill.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_storage_lifecycle.py` | `tests/unit/skills/test_skill_storage_lifecycle.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_tool_policy_middleware.py` | `tests/unit/skills/test_skill_tool_policy_middleware.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_archive_root.py` | `tests/unit/skills/test_skills_archive_root.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_bundled.py` | `tests/unit/skills/test_skills_bundled.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_custom_router.py` | `tests/unit/skills/test_skills_custom_router.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_reload.py` | `tests/unit/skills/test_skills_reload.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_router_authz.py` | `tests/unit/skills/test_skills_router_authz.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_slash_skill_contract.py` | `tests/contracts/test_slash_skill_contract.py` (relayered to contracts on review — cross-stack fixture contract) | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_str_replace_empty_file.py` | `tests/unit/sandbox/test_str_replace_empty_file.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_tenki_provider.py` | `tests/unit/sandbox/test_tenki_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_three_way_skills_mount_e2e.py` | `tests/unit/sandbox/test_three_way_skills_mount_e2e.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_tool_receipt_middleware.py` | `tests/unit/agentplatform/test_tool_receipt_middleware.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_user_scoped_skill_storage.py` | `tests/unit/skills/test_user_scoped_skill_storage.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_view_image_remote_sandbox.py` | `tests/unit/sandbox/test_view_image_remote_sandbox.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_view_image_tool_cancellation.py` | `tests/unit/sandbox/test_view_image_tool_cancellation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_write_file_tool_size_guard.py` | `tests/unit/sandbox/test_write_file_tool_size_guard.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/gateway (batch 7 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/gateway -q -m "not serial and not requires_llm and not live and not external"` → 5996 passed / 22 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_agent_assembly_descriptor.py` | `tests/unit/gateway/test_agent_assembly_descriptor.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agent_display_name.py` | `tests/unit/gateway/test_agent_display_name.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agent_guidance_check.py` | `tests/unit/gateway/test_agent_guidance_check.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agent_model_settings.py` | `tests/unit/gateway/test_agent_model_settings.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agents_router_model_settings.py` | `tests/unit/gateway/test_agents_router_model_settings.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_app_config_name_indexes.py` | `tests/unit/gateway/test_app_config_name_indexes.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_artifact_archive.py` | `tests/unit/gateway/test_artifact_archive.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_assistants_compat.py` | `tests/unit/gateway/test_assistants_compat.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_auth_config.py` | `tests/unit/gateway/test_auth_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_auth_errors.py` | `tests/unit/gateway/test_auth_errors.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_batch_acceptance.py` | `tests/unit/gateway/test_batch_acceptance.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_channel_user_id_env.py` | `tests/unit/gateway/test_channel_user_id_env.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_channels_router.py` | `tests/unit/gateway/test_channels_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_checkpoint_lineage.py` | `tests/unit/gateway/test_checkpoint_lineage.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_clarification_drop_siblings_graph_integration.py` | `tests/unit/gateway/test_clarification_drop_siblings_graph_integration.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_command_tool_result_semantics.py` | `tests/unit/gateway/test_command_tool_result_semantics.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_configured_extensions.py` | `tests/unit/gateway/test_configured_extensions.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_console_router.py` | `tests/unit/gateway/test_console_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_context_compaction_observation.py` | `tests/unit/gateway/test_context_compaction_observation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_access.py` | `tests/unit/gateway/test_conversation_access.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_access_edge_cases.py` | `tests/unit/gateway/test_conversation_access_edge_cases.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_message_continuation.py` | `tests/unit/gateway/test_conversation_message_continuation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_reader.py` | `tests/unit/gateway/test_conversation_reader.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_references_context_channel.py` | `tests/unit/gateway/test_conversation_references_context_channel.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_create_deerflow_agent.py` | `tests/unit/gateway/test_create_deerflow_agent.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_create_deerflow_agent_live.py` | `tests/unit/gateway/test_create_deerflow_agent_live.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_custom_agent.py` | `tests/unit/gateway/test_custom_agent.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_deferred_filter_middleware.py` | `tests/unit/gateway/test_deferred_filter_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_delegation_ledger.py` | `tests/unit/gateway/test_delegation_ledger.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_delegation_ledger_live.py` | `tests/unit/gateway/test_delegation_ledger_live.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_durable_context_middleware.py` | `tests/unit/gateway/test_durable_context_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_ensure_admin.py` | `tests/unit/gateway/test_ensure_admin.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_extension_task_store_runtime.py` | `tests/unit/gateway/test_extension_task_store_runtime.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_features_router.py` | `tests/unit/gateway/test_features_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_checkpoint_mode.py` | `tests/unit/gateway/test_gateway_checkpoint_mode.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_extension_service_lifecycle.py` | `tests/unit/gateway/test_gateway_extension_service_lifecycle.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_health.py` | `tests/unit/gateway/test_gateway_health.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_imports.py` | `tests/unit/gateway/test_gateway_imports.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_path_utils.py` | `tests/unit/gateway/test_gateway_path_utils.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_request_path.py` | `tests/unit/gateway/test_gateway_request_path.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_run_drain_repeated_cancellation.py` | `tests/unit/gateway/test_gateway_run_drain_repeated_cancellation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_run_drain_shutdown.py` | `tests/unit/gateway/test_gateway_run_drain_shutdown.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_agents_config.py` | `tests/unit/gateway/test_github_agents_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_app_auth.py` | `tests/unit/gateway/test_github_app_auth.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_dispatcher.py` | `tests/unit/gateway/test_github_dispatcher.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_identity.py` | `tests/unit/gateway/test_github_identity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_prompts.py` | `tests/unit/gateway/test_github_prompts.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_registry.py` | `tests/unit/gateway/test_github_registry.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_triggers.py` | `tests/unit/gateway/test_github_triggers.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_human_input.py` | `tests/unit/gateway/test_human_input.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_input_polish_router.py` | `tests/unit/gateway/test_input_polish_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_input_sanitization_middleware.py` | `tests/unit/gateway/test_input_sanitization_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_langgraph_graph_entrypoint.py` | `tests/unit/gateway/test_langgraph_graph_entrypoint.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_langgraph_studio_lifespan.py` | `tests/unit/gateway/test_langgraph_studio_lifespan.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_langgraph_studio_routes.py` | `tests/unit/gateway/test_langgraph_studio_routes.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_lead_agent_skills.py` | `tests/unit/gateway/test_lead_agent_skills.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_loop_detection_config.py` | `tests/unit/gateway/test_loop_detection_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_loop_detection_stop_reason.py` | `tests/unit/gateway/test_loop_detection_stop_reason.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_managed_subagent_registry.py` | `tests/unit/gateway/test_managed_subagent_registry.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_mcp_routing_config.py` | `tests/unit/gateway/test_mcp_routing_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_memory_middleware.py` | `tests/unit/gateway/test_memory_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_message_provenance.py` | `tests/unit/gateway/test_message_provenance.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_middleware_documentation.py` | `tests/unit/gateway/test_middleware_documentation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_middleware_release_policy.py` | `tests/unit/gateway/test_middleware_release_policy.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_model_length_finish_reason_middleware.py` | `tests/unit/gateway/test_model_length_finish_reason_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_model_length_termination_detectors.py` | `tests/unit/gateway/test_model_length_termination_detectors.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_monocle_tracing.py` | `tests/unit/gateway/test_monocle_tracing.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_multi_worker_postgres_gate.py` | `tests/unit/gateway/test_multi_worker_postgres_gate.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_multiturn_message_stream_graph_integration.py` | `tests/unit/gateway/test_multiturn_message_stream_graph_integration.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_oidc_auth.py` | `tests/unit/gateway/test_oidc_auth.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_openapi_operation_ids.py` | `tests/unit/gateway/test_openapi_operation_ids.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_projects_config.py` | `tests/unit/gateway/test_projects_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_receipt_verification.py` | `tests/unit/gateway/test_receipt_verification.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_reflection_resolvers.py` | `tests/unit/gateway/test_reflection_resolvers.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_reload_boundary.py` | `tests/unit/gateway/test_reload_boundary.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_run_creation_route_contract.py` | `tests/unit/gateway/test_run_creation_route_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_run_events_endpoint.py` | `tests/unit/gateway/test_run_events_endpoint.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_run_request_validation.py` | `tests/unit/gateway/test_run_request_validation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_safety_termination_detectors.py` | `tests/unit/gateway/test_safety_termination_detectors.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sandbox_network_config.py` | `tests/unit/gateway/test_sandbox_network_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sandbox_network_proxy_workflow.py` | `tests/unit/gateway/test_sandbox_network_proxy_workflow.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_skill_context.py` | `tests/unit/gateway/test_skill_context.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_soul_prompt_injection.py` | `tests/unit/gateway/test_soul_prompt_injection.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sse_format.py` | `tests/unit/gateway/test_sse_format.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sse_observer_disconnect.py` | `tests/unit/gateway/test_sse_observer_disconnect.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_stream_get_action_rejected.py` | `tests/unit/gateway/test_stream_get_action_rejected.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_acceptance_followup.py` | `tests/unit/gateway/test_subagent_acceptance_followup.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_batch_service.py` | `tests/unit/gateway/test_subagent_batch_service.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_batches_router.py` | `tests/unit/gateway/test_subagent_batches_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_capacity.py` | `tests/unit/gateway/test_subagent_capacity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_capacity_config.py` | `tests/unit/gateway/test_subagent_capacity_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_checkpointer_isolation.py` | `tests/unit/gateway/test_subagent_checkpointer_isolation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_context_snapshot.py` | `tests/unit/gateway/test_subagent_context_snapshot.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_description_injection.py` | `tests/unit/gateway/test_subagent_description_injection.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_execution_capacity.py` | `tests/unit/gateway/test_subagent_execution_capacity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_report_contract.py` | `tests/unit/gateway/test_subagent_report_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_routing_prompt.py` | `tests/unit/gateway/test_subagent_routing_prompt.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_runtime.py` | `tests/unit/gateway/test_subagent_runtime.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_status_contract.py` | `tests/unit/gateway/test_subagent_status_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_step_events.py` | `tests/unit/gateway/test_subagent_step_events.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_turn_budget.py` | `tests/unit/gateway/test_subagent_turn_budget.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagents_router.py` | `tests/unit/gateway/test_subagents_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_summarization_middleware.py` | `tests/unit/gateway/test_summarization_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_summarization_summary_text.py` | `tests/unit/gateway/test_summarization_summary_text.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_system_message_coalescing_middleware.py` | `tests/unit/gateway/test_system_message_coalescing_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_task_continuity.py` | `tests/unit/gateway/test_task_continuity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_terminal_response_middleware.py` | `tests/unit/gateway/test_terminal_response_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_id_route_contract.py` | `tests/unit/gateway/test_thread_id_route_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_messages_feedback.py` | `tests/unit/gateway/test_thread_messages_feedback.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_messages_page.py` | `tests/unit/gateway/test_thread_messages_page.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_regenerate_prepare.py` | `tests/unit/gateway/test_thread_regenerate_prepare.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_run_idempotency.py` | `tests/unit/gateway/test_thread_run_idempotency.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_run_query_validation.py` | `tests/unit/gateway/test_thread_run_query_validation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_runs_internal_scope.py` | `tests/unit/gateway/test_thread_runs_internal_scope.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_runs_page.py` | `tests/unit/gateway/test_thread_runs_page.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_todo_middleware.py` | `tests/unit/gateway/test_todo_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_token_budget_middleware.py` | `tests/unit/gateway/test_token_budget_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_token_usage_config.py` | `tests/unit/gateway/test_token_usage_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_call_args.py` | `tests/unit/gateway/test_tool_call_args.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_error_handling_subagent_stamp.py` | `tests/unit/gateway/test_tool_error_handling_subagent_stamp.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_output_budget_middleware.py` | `tests/unit/gateway/test_tool_output_budget_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_receipt.py` | `tests/unit/gateway/test_tool_receipt.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_result_meta.py` | `tests/unit/gateway/test_tool_result_meta.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_result_sanitization_middleware.py` | `tests/unit/gateway/test_tool_result_sanitization_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_transform_meta.py` | `tests/unit/gateway/test_tool_transform_meta.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_trace_context.py` | `tests/unit/gateway/test_trace_context.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_trace_middleware.py` | `tests/unit/gateway/test_trace_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_verification_config.py` | `tests/unit/gateway/test_verification_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_wait_disconnect_handling.py` | `tests/unit/gateway/test_wait_disconnect_handling.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_warm_pool_lifecycle.py` | `tests/unit/gateway/test_warm_pool_lifecycle.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_web_fetch_relative_links.py` | `tests/unit/gateway/test_web_fetch_relative_links.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — contracts, integration/* (batch 8 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/contracts tests/integration/api tests/integration/persistence tests/integration/channels tests/integration/memory tests/integration/runtime tests/integration/skills tests/integration/tools -q -m "not serial and not requires_llm and not live and not external"` → 3100 passed / 95 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_agent_storage_backend.py` | `tests/integration/persistence/test_agent_storage_backend.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_agentplatform_extension_boundary.py` | `tests/contracts/test_agentplatform_extension_boundary.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_auth_me_permissions.py` | `tests/integration/api/test_auth_me_permissions.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_enforcement.py` | `tests/contracts/test_authorization_enforcement.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_outcome.py` | `tests/contracts/test_authorization_outcome.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_principal.py` | `tests/contracts/test_authorization_principal.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_provider.py` | `tests/contracts/test_authorization_provider.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_route_permissions.py` | `tests/contracts/test_authorization_route_permissions.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_runtime.py` | `tests/contracts/test_authorization_runtime.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_tool_filter.py` | `tests/contracts/test_authorization_tool_filter.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_channel_connections_router.py` | `tests/integration/api/test_channel_connections_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_checkpoint_cache_redis.py` | `tests/integration/runtime/test_checkpoint_cache_redis.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_local_registration_gate.py` | `tests/integration/api/test_local_registration_gate.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0004_run_ownership_dedupe.py` | `tests/integration/persistence/test_migration_0004_run_ownership_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0007_scheduled_run_active_dedupe.py` | `tests/integration/persistence/test_migration_0007_scheduled_run_active_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0009_webhook_dedupe.py` | `tests/integration/persistence/test_migration_0009_webhook_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0015_scheduled_task_enqueue.py` | `tests/integration/persistence/test_migration_0015_scheduled_task_enqueue.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0017_personal_access_tokens.py` | `tests/integration/persistence/test_migration_0017_personal_access_tokens.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0018_oauth_identity_pg_partial.py` | `tests/integration/persistence/test_migration_0018_oauth_identity_pg_partial.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0019_0020_projects.py` | `tests/integration/persistence/test_migration_0019_0020_projects.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0019_thread_incarnations.py` | `tests/integration/persistence/test_migration_0019_thread_incarnations.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0021_batch_acceptance.py` | `tests/integration/persistence/test_migration_0021_batch_acceptance.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0022_scheduled_occurrence_seq.py` | `tests/integration/persistence/test_migration_0022_scheduled_occurrence_seq.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0023_run_change_seq.py` | `tests/integration/persistence/test_migration_0023_run_change_seq.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0024_project_documents.py` | `tests/integration/persistence/test_migration_0024_project_documents.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0025_repair_run_change_seq.py` | `tests/integration/persistence/test_migration_0025_repair_run_change_seq.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_models_authorization.py` | `tests/contracts/test_models_authorization.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_multi_pod_inbound_dedupe.py` | `tests/integration/channels/test_multi_pod_inbound_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_openviking_mcp_integration.py` | `tests/integration/tools/test_openviking_mcp_integration.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_openviking_memory_backend.py` | `tests/integration/memory/test_openviking_memory_backend.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_owner_isolation.py` | `tests/contracts/test_owner_isolation.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_parallel_mcp_user_agent.py` | `tests/integration/tools/test_parallel_mcp_user_agent.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_bootstrap_url.py` | `tests/integration/persistence/test_persistence_bootstrap_url.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_engine_postgres_config.py` | `tests/integration/persistence/test_persistence_engine_postgres_config.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_forward_revision_compat.py` | `tests/integration/persistence/test_persistence_forward_revision_compat.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_migrations_env.py` | `tests/integration/persistence/test_persistence_migrations_env.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_pg_schema_integration.py` | `tests/integration/persistence/test_pg_schema_integration.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_postgres_schema_helper.py` | `tests/integration/persistence/test_postgres_schema_helper.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_present_files_e2e_user_isolation.py` | `tests/contracts/test_present_files_e2e_user_isolation.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_project_documents_promotion.py` | `tests/integration/api/test_project_documents_promotion.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_project_documents_router.py` | `tests/integration/api/test_project_documents_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_projects_router.py` | `tests/integration/api/test_projects_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_rbac_authorization_provider.py` | `tests/contracts/test_rbac_authorization_provider.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_replay_golden.py` | `tests/integration/api/test_replay_golden.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_runtime_lifecycle_e2e.py` | `tests/integration/api/test_runtime_lifecycle_e2e.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_skillscan_native.py` | `tests/integration/skills/test_skillscan_native.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_stateless_runs_owner_isolation.py` | `tests/contracts/test_stateless_runs_owner_isolation.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_trash_router.py` | `tests/integration/api/test_trash_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
 ## Batch 2026-10-13: backend/tests root↔subdir dedup — gateway (batch 2 of 8)
 
 Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/gateway
@@ -221,6 +838,9 @@ Ticket #66 scope closure under [the dedup decision](../decisions/2026-10-13-back
    collection (verified by `scripts/check_test_collection_duplicates.py`);
    kept at root pending per-file layer assignment, which is the follow-up
    layering migration (#69) and not part of the dual-run defect.
+   (Resolved 2026-10-15 by the root-only layering migration, batches 1-8
+   above — the root level now holds only conftest and cross-layer support
+   files.)
 
 Post-dedup, the duplicate-collection guard
 (`scripts/check_test_collection_duplicates.py`) reports zero duplicate

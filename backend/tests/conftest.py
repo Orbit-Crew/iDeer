@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Give the ``requires_llm`` marker its skip semantics, globally.
 
-    ``tests/test_client_e2e.py`` defines a local ``requires_llm = pytest.mark.skipif(...)``
+    ``tests/integration/api/test_client_e2e.py`` defines a local ``requires_llm = pytest.mark.skipif(...)``
     decorator, but other files (integration/API e2e, live-model units) annotate with the
     bare ``@pytest.mark.requires_llm`` marker, which without this hook never skips —
     so those tests really called the LLM in every lane run.  Evaluated at run setup

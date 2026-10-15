@@ -113,8 +113,8 @@ anchor, and preserve its conservative over-report-rather-than-infer stance.
 
 Regression tests related to Docker/provisioner behavior:
 - `tests/integration/sandbox/test_docker_sandbox_mode_detection.py` (mode detection from `config.yaml`)
-- `tests/test_provisioner_kubeconfig.py` (kubeconfig file/directory handling)
-- `tests/test_provisioner_request_threading.py` (keeps provisioner sandbox CRUD
+- `tests/unit/sandbox/test_provisioner_kubeconfig.py` (kubeconfig file/directory handling)
+- `tests/unit/sandbox/test_provisioner_request_threading.py` (keeps provisioner sandbox CRUD
   endpoints as sync FastAPI handlers so synchronous K8s client calls run in the
   Starlette worker pool instead of on the ASGI event loop)
 

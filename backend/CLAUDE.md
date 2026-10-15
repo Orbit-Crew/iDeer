@@ -1,6 +1,6 @@
 # Backend guidance
 
-The backend has two layers with a one-way dependency: `backend/app/` contains the Gateway and channel integrations; `backend/packages/harness/deerflow/` contains the reusable agent framework. App code may import the harness. Harness code must remain independent of `app.*`; `backend/tests/test_harness_boundary.py` enforces this boundary.
+The backend has two layers with a one-way dependency: `backend/app/` contains the Gateway and channel integrations; `backend/packages/harness/deerflow/` contains the reusable agent framework. App code may import the harness. Harness code must remain independent of `app.*`; `backend/tests/unit/gateway/test_harness_boundary.py` enforces this boundary.
 
 For current backend architecture, configuration, Gateway contracts, and runtime behavior, start at [backend/docs/README.md](docs/README.md). Read the nearest `AGENTS.md` before changing a governed subsystem. `packages/harness/deerflow/AGENTS.md` and its nested files describe the harness; `app/gateway/AGENTS.md` and `app/channels/AGENTS.md` describe application code.
 

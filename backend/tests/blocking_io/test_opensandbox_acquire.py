@@ -16,11 +16,17 @@ provider creation path: under contention, no blocking IO may run on the loop.
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 
 import pytest
 from blockbuster import BlockingError
-from test_opensandbox_provider import _FakeRemote, _FakeSandboxClass, _install
+
+# The shared OpenSandbox test fakes live with the non-gated provider tests
+# (tests/unit/sandbox/); that directory is not a package and is not on
+# sys.path when the blocking-io lane runs only tests/blocking_io.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "unit" / "sandbox"))
+from test_opensandbox_provider import _FakeRemote, _FakeSandboxClass, _install  # noqa: E402
 
 pytestmark = pytest.mark.asyncio
 
