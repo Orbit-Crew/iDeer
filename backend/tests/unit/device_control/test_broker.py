@@ -506,3 +506,67 @@ async def test_authorization_snapshot_is_checked_before_task_delivery() -> None:
     )
     assert record.status is TaskStatus.DENIED
     assert record.error_code == "AUTHORIZATION_SNAPSHOT_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_send_task_prefers_evicting_terminal_records_when_over_the_cap() -> None:
+    """03-L5: task records used to accumulate forever. The insert path bounds
+    the map and evicts oldest terminal records first, so a live task is never
+    the one dropped while terminal records are available."""
+    from app.device_control.broker import MAX_TRACKED_TASK_RECORDS
+
+    broker = DeviceBroker()
+    for index in range(MAX_TRACKED_TASK_RECORDS):
+        await broker.send_task(
+            device_id="no-such-device",
+            operation="echo",
+            path="x",
+            run_id=f"run-{index}",
+            tool_call_id=f"call-{index}",
+        )
+    assert len(broker.tasks) == MAX_TRACKED_TASK_RECORDS
+
+    # A live record must survive the next insert even though it is oldest.
+    device_key = Ed25519PrivateKey.generate()
+    connection = DeviceConnection("device-1", "session-1", "token", device_key.public_key(), FakeWebSocket())
+    await broker.attach(connection)
+    live = await broker.send_task(
+        device_id="device-1",
+        operation="echo",
+        path="x",
+        run_id="run-live",
+        tool_call_id="call-live",
+    )
+    assert len(broker.tasks) == MAX_TRACKED_TASK_RECORDS
+    assert broker.tasks[live.task_id] is live
+    # The oldest terminal (DEVICE_OFFLINE) record made room.
+    assert "run-0" not in {rec.run_id for rec in broker.tasks.values()}
+
+
+@pytest.mark.asyncio
+async def test_send_task_stays_bounded_when_every_record_is_live() -> None:
+    """03-L5 degenerate case: more in-flight tasks than the cap. The map still
+    stays bounded; the oldest record is dropped and its late lookups report
+    TASK_NOT_FOUND."""
+    from app.device_control.broker import MAX_TRACKED_TASK_RECORDS
+
+    broker = DeviceBroker()
+    device_key = Ed25519PrivateKey.generate()
+    connection = DeviceConnection("device-1", "session-1", "token", device_key.public_key(), FakeWebSocket())
+    await broker.attach(connection)
+    records = []
+    for _ in range(MAX_TRACKED_TASK_RECORDS + 1):
+        records.append(
+            await broker.send_task(
+                device_id="device-1",
+                operation="echo",
+                path="x",
+                run_id="run",
+                tool_call_id="call",
+            )
+        )
+
+    assert len(broker.tasks) == MAX_TRACKED_TASK_RECORDS
+    # Every record was live (SENT), so the oldest one was dropped.
+    assert records[0].task_id not in broker.tasks
+    assert records[-1].task_id in broker.tasks

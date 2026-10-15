@@ -30,6 +30,13 @@ from app.channels.message_bus import InboundMessage, InboundMessageType, Message
 
 logger = logging.getLogger(__name__)
 
+# Bound on the cached inbound context tokens (03-L5): entries normally refresh
+# on the next inbound message of the conversation, so this only caps growth
+# across conversations whose chats never come back. 512 mirrors the Buzz
+# remote-source maps; an evicted conversation falls back to the token carried
+# in the outbound message's metadata.
+MAX_CACHED_CONTEXT_TOKENS = 512
+
 
 def _redact_qrcode(qrcode: str) -> str:
     """Return a non-scannable fingerprint of a QR payload for logs (03-L1)."""
@@ -685,6 +692,10 @@ class WechatChannel(Channel):
         thread_ts = context_token or str(raw_message.get("client_id") or raw_message.get("msg_id") or "").strip() or None
 
         if context_token:
+            while len(self._context_tokens_by_chat) >= MAX_CACHED_CONTEXT_TOKENS:
+                self._context_tokens_by_chat.pop(next(iter(self._context_tokens_by_chat)))
+            while len(self._context_tokens_by_thread) >= MAX_CACHED_CONTEXT_TOKENS:
+                self._context_tokens_by_thread.pop(next(iter(self._context_tokens_by_thread)))
             self._context_tokens_by_chat[chat_id] = context_token
             if thread_ts:
                 self._context_tokens_by_thread[thread_ts] = context_token

@@ -5088,3 +5088,43 @@ class TestQrcodeLoggingRedaction:
         assert "qrcode-secret-abcdef-123456" not in logged, "the scannable qrcode must not be logged (03-L1)"
         assert "qrco...3456(27 chars)" in logged
         assert "qrcode_img_content=" not in logged
+
+
+def test_context_token_maps_are_capped():
+    """03-L5: cached context tokens grow per conversation; the insert path
+    bounds both maps so conversations that never come back cannot grow them
+    without end. An evicted conversation still has the token carried in its
+    outbound metadata."""
+    from app.channels.wechat import MAX_CACHED_CONTEXT_TOKENS
+
+    async def go():
+        from app.channels.wechat import WechatChannel
+
+        bus = MessageBus()
+        published = []
+
+        async def capture(msg):
+            published.append(msg)
+
+        bus.publish_inbound = capture  # type: ignore[method-assign]
+
+        channel = WechatChannel(bus=bus, config={"bot_token": "test-token"})
+        for index in range(MAX_CACHED_CONTEXT_TOKENS):
+            channel._context_tokens_by_chat[f"wx-chat-{index}"] = f"ctx-{index}"
+            channel._context_tokens_by_thread[f"wx-thread-{index}"] = f"ctx-{index}"
+
+        await channel._handle_update(
+            {
+                "message_type": 1,
+                "from_user_id": "wx-user-new",
+                "context_token": "ctx-new",
+                "item_list": [{"type": 1, "text_item": {"text": "hello again"}}],
+            }
+        )
+
+        assert len(channel._context_tokens_by_chat) == MAX_CACHED_CONTEXT_TOKENS
+        assert len(channel._context_tokens_by_thread) == MAX_CACHED_CONTEXT_TOKENS
+        assert channel._context_tokens_by_chat["wx-user-new"] == "ctx-new"
+        assert "wx-chat-0" not in channel._context_tokens_by_chat
+
+    _run(go())

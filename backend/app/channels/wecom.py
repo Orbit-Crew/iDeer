@@ -41,6 +41,10 @@ _TRUNCATION_MARKER = "\n\n... (truncated)"
 # One push must not flood the chat with an unbounded run of messages: keep the
 # first few chunks and collapse the rest into one truncated tail.
 _WECOM_MAX_CHUNK_BATCH = 10
+# Bound on tracked in-flight stream frames (03-L5): entries normally clear on
+# the final outbound or a rejected reservation; this only guards against leaks
+# when a run dies before either happens.
+_WECOM_MAX_TRACKED_FRAMES = 256
 
 
 def _clip_to_byte_limit(text: str, limit: int) -> str:
@@ -471,6 +475,10 @@ class WeComChannel(Channel):
         inbound.topic_id = user_id  # keep the same thread
 
         stream_id = generate_req_id("stream")
+        while len(self._ws_frames) >= _WECOM_MAX_TRACKED_FRAMES:
+            self._ws_frames.pop(next(iter(self._ws_frames)))
+        while len(self._ws_stream_ids) >= _WECOM_MAX_TRACKED_FRAMES:
+            self._ws_stream_ids.pop(next(iter(self._ws_stream_ids)))
         self._ws_frames[msg_id] = frame
         self._ws_stream_ids[msg_id] = stream_id
 
