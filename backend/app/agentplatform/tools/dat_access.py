@@ -114,7 +114,9 @@ def open_uploads_dat_file(runtime: Runtime, declared: str) -> tuple[BinaryIO, in
             )
         if not Path(os.path.realpath(f"/proc/self/fd/{fd}")).is_relative_to(uploads_root):
             raise DatAccessRejected("path_out_of_bounds", f"路径越出本会话输入区（uploads）边界: {normalized}")
+        # 包装纳入同一保护：打开成功后任何失败路径都关闭 fd。
+        stream = open(fd, "rb", closefd=True)
     except BaseException:
         os.close(fd)
         raise
-    return open(fd, "rb", closefd=True), info.st_size
+    return stream, info.st_size

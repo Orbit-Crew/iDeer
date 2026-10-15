@@ -104,6 +104,11 @@ def _iter_scan_windows(handle: BinaryIO, scan_budget: int, overlap: int):
     “完整装得下”的 n-gram 起点，则跨块边界的 n-gram 恰好在一个窗口内被
     统计一次（尾部 overlap 字节里的出现留给下一个窗口的头部，绝不重复）。
     从调用方持有的已验证句柄读取，定位由调用方 ``seek(0)`` 控制。
+
+    “绝不重复/不漏计”的前提是 ``scan_budget`` 来自同一 fstat 快照（恒等
+    于实际可读字节数）：最后一个窗口 ``scanned >= scan_budget`` 必为
+    final，不存在被跳过却无人重放的尾部 carry。读取中途文件被并发截断
+    属于工具契约之外（内容本身已不确定），不为此补发重放窗口。
     """
 
     scanned = 0
