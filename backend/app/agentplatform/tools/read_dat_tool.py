@@ -20,7 +20,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import Counter
-from pathlib import Path
+from typing import BinaryIO
 
 from langchain.tools import tool
 
@@ -97,41 +97,42 @@ def _next_action(truncated: bool, has_more: bool, next_offset: int) -> str:
     return "已读到文件末尾。十六进制视图仅供只读检查 .dat 遥测文件，不会执行文件内容。"
 
 
-def _iter_scan_windows(path: Path, scan_budget: int, overlap: int):
+def _iter_scan_windows(handle: BinaryIO, scan_budget: int, overlap: int):
     """流式产出 ``(window, window_start, is_final)``，覆盖文件前 ``scan_budget`` 字节。
 
     window = 上一块尾部 ``overlap`` 字节 + 新读的块；调用方统计窗口内所有
     “完整装得下”的 n-gram 起点，则跨块边界的 n-gram 恰好在一个窗口内被
     统计一次（尾部 overlap 字节里的出现留给下一个窗口的头部，绝不重复）。
+    从调用方持有的已验证句柄读取，定位由调用方 ``seek(0)`` 控制。
     """
 
     scanned = 0
     carry = b""
-    with path.open("rb") as handle:
-        while scanned < scan_budget:
-            request = min(_STRUCTURE_CHUNK_BYTES, scan_budget - scanned)
-            chunk = handle.read(request)
-            if not chunk:
-                break
-            window = carry + chunk
-            window_start = scanned - len(carry)
-            scanned += len(chunk)
-            is_final = len(chunk) < request or scanned >= scan_budget
-            yield window, window_start, is_final
-            carry = window[-overlap:] if len(window) > overlap else window
+    while scanned < scan_budget:
+        request = min(_STRUCTURE_CHUNK_BYTES, scan_budget - scanned)
+        chunk = handle.read(request)
+        if not chunk:
+            break
+        window = carry + chunk
+        window_start = scanned - len(carry)
+        scanned += len(chunk)
+        is_final = len(chunk) < request or scanned >= scan_budget
+        yield window, window_start, is_final
+        carry = window[-overlap:] if len(window) > overlap else window
 
 
-def _count_ngrams(path: Path, scan_budget: int, length: int) -> Counter:
+def _count_ngrams(handle: BinaryIO, scan_budget: int, length: int) -> Counter:
     """窗口内全量统计 ``length`` 字节 n-gram 出现次数（2 字芽宽度内存有界）。"""
 
     counts: Counter = Counter()
-    for window, _start, _final in _iter_scan_windows(path, scan_budget, length - 1):
+    handle.seek(0)
+    for window, _start, _final in _iter_scan_windows(handle, scan_budget, length - 1):
         for index in range(len(window) - length + 1):
             counts[window[index : index + length]] += 1
     return counts
 
 
-def _count_seeded_ngrams(path: Path, scan_budget: int, seeds: list[bytes], lengths: tuple[int, ...]) -> dict[int, dict[bytes, int]]:
+def _count_seeded_ngrams(handle: BinaryIO, scan_budget: int, seeds: list[bytes], lengths: tuple[int, ...]) -> dict[int, dict[bytes, int]]:
     """只统计“前 2 字节是高频种子”的 3/4 字节 n-gram，键空间有界。"""
 
     counts: dict[int, dict[bytes, int]] = {length: {} for length in lengths}
@@ -139,8 +140,17 @@ def _count_seeded_ngrams(path: Path, scan_budget: int, seeds: list[bytes], lengt
         return counts
     seed_set = set(seeds)
     widest = max(lengths)
-    for window, _start, _final in _iter_scan_windows(path, scan_budget, widest - 1):
-        for index in range(len(window) - 1):
+    overlap = widest - 1
+    handle.seek(0)
+    for window, _start, is_final in _iter_scan_windows(handle, scan_budget, overlap):
+        # 发送侧防重：3 字节模式恰好能完整落进尾部 carry（overlap=3），
+        # 若不跳过会在上一窗口与下一窗口头部各计一次；非最终窗口只统计
+        # 起点位于 carry 区（最后 overlap 个起点）之前的出现，carry 区内
+        # 的出现留给下一窗口唯一计数（4 字节模式装不进 3 字节 carry，
+        # 不受影响）。carry 对应本窗口起点 len-overlap..len-1，其余起点
+        # （含紧贴 carry 前的那个）都归本窗口。
+        limit = len(window) if is_final else len(window) - overlap
+        for index in range(min(limit, len(window) - 1)):
             if window[index : index + 2] not in seed_set:
                 continue
             for length in lengths:
@@ -162,12 +172,13 @@ def _top_patterns(counts: dict[bytes, int] | Counter, limit: int) -> list[bytes]
     return [pattern for _count, pattern in qualified[:limit]]
 
 
-def _record_first_positions(path: Path, scan_budget: int, patterns: list[bytes], need: int) -> dict[bytes, list[int]]:
+def _record_first_positions(handle: BinaryIO, scan_budget: int, patterns: list[bytes], need: int) -> dict[bytes, list[int]]:
     """记录每个模式在探测窗口内的前 ``need`` 个出现位置（字节级 find，限量）。"""
 
     overlap = max(_STRUCTURE_NGRAM_LENGTHS) - 1
     positions: dict[bytes, list[int]] = {pattern: [] for pattern in patterns}
-    for window, window_start, is_final in _iter_scan_windows(path, scan_budget, overlap):
+    handle.seek(0)
+    for window, window_start, is_final in _iter_scan_windows(handle, scan_budget, overlap):
         limit = len(window) if is_final else len(window) - overlap
         for pattern, seen in positions.items():
             if len(seen) >= need:
@@ -179,22 +190,22 @@ def _record_first_positions(path: Path, scan_budget: int, patterns: list[bytes],
     return positions
 
 
-def analyze_dat_structure(path: Path) -> dict:
+def analyze_dat_structure(handle: BinaryIO, file_size: int) -> dict:
     """对 ``.dat`` 文件做纯确定性结构摸底（只读、分块流式、输出限量）。
 
-    三趟有界扫描：① 全量统计 2 字芽（键空间 ≤ 65536）；② 以高频 2 字芽
-    为种子限量统计 3/4 字节候选；③ 为每宽度前 24 个候选记录前 17 个出现
-    位置，计算主间隔与规律性。返回 dict 只含统计事实；候选按（出现次数、
-    模式宽度、间隔规律性、字节序）排序后截到 ``_STRUCTURE_MAX_CANDIDATES``，
+    ``handle`` 是围栏打开的已验证句柄，本函数只在其中 ``seek(0)`` 后顺序
+    读。三趟有界扫描：① 全量统计 2 字芽（键空间 ≤ 65536）；② 以高频
+    2 字芽为种子限量统计 3/4 字节候选；③ 为每宽度前 24 个候选记录前 17 个
+    出现位置，计算主间隔与规律性。返回 dict 只含统计事实；候选按（出现次
+    数、模式宽度、间隔规律性、字节序）排序后截到 ``_STRUCTURE_MAX_CANDIDATES``，
     截断均以标志明示。
     """
 
-    file_size = path.stat().st_size
     scan_budget = min(file_size, _STRUCTURE_MAX_SCAN_BYTES)
 
-    counts2 = _count_ngrams(path, scan_budget, 2)
+    counts2 = _count_ngrams(handle, scan_budget, 2)
     seeds = _top_patterns(counts2, _STRUCTURE_MAX_NGRAM_SEEDS)
-    seeded_counts = _count_seeded_ngrams(path, scan_budget, seeds, (3, 4))
+    seeded_counts = _count_seeded_ngrams(handle, scan_budget, seeds, (3, 4))
 
     pools = {
         2: _top_patterns(counts2, _STRUCTURE_RANKING_POOL_PER_LENGTH),
@@ -203,7 +214,7 @@ def analyze_dat_structure(path: Path) -> dict:
     }
     occurrences: dict[int, dict[bytes, int] | Counter] = {2: counts2, 3: seeded_counts[3], 4: seeded_counts[4]}
     pooled = [pattern for length in sorted(pools) for pattern in pools[length]]
-    positions = _record_first_positions(path, scan_budget, pooled, _STRUCTURE_MAX_GAP_SAMPLES + 1)
+    positions = _record_first_positions(handle, scan_budget, pooled, _STRUCTURE_MAX_GAP_SAMPLES + 1)
 
     ranked: list[dict] = []
     for pattern in pooled:
@@ -317,23 +328,24 @@ def _read_dat_sync(runtime: Runtime, declared_path: str, offset: int, length: in
     if mode not in ("view", "structure"):
         return _rejection("invalid_mode", f"mode 只支持 view（十六进制视图）或 structure（结构摸底），收到: {mode!r}")
     try:
-        target = dat_access.resolve_uploads_dat_file(runtime, declared_path)
+        handle, file_size = dat_access.open_uploads_dat_file(runtime, declared_path)
     except dat_access.DatAccessRejected as exc:
         return _rejection(exc.reason_code, str(exc))
-    if mode == "structure":
-        analysis = analyze_dat_structure(target)
-        payload = {"path": (declared_path or "").strip(), "mode": "structure", **analysis}
-        return json.dumps(payload, ensure_ascii=False)
+    try:
+        if mode == "structure":
+            analysis = analyze_dat_structure(handle, file_size)
+            payload = {"path": (declared_path or "").strip(), "mode": "structure", **analysis}
+            return json.dumps(payload, ensure_ascii=False)
 
-    file_size = target.stat().st_size
-    if offset < 0 or length < 0:
-        return _rejection("invalid_paging", f"offset/length 必须为非负整数，收到 offset={offset}, length={length}")
-    if offset > file_size:
-        return _rejection("invalid_paging", f"offset 超出文件末尾（file_size={file_size}），收到 offset={offset}")
+        if offset < 0 or length < 0:
+            return _rejection("invalid_paging", f"offset/length 必须为非负整数，收到 offset={offset}, length={length}")
+        if offset > file_size:
+            return _rejection("invalid_paging", f"offset 超出文件末尾（file_size={file_size}），收到 offset={offset}")
 
-    with target.open("rb") as handle:
         handle.seek(offset)
         view = handle.read(min(length, DAT_VIEW_MAX_BYTES))
+    finally:
+        handle.close()
 
     truncated = length > DAT_VIEW_MAX_BYTES
     has_more = offset + len(view) < file_size

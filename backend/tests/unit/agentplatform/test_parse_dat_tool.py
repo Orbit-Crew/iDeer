@@ -753,3 +753,32 @@ async def test_scan_rejections_still_carry_the_fence(env) -> None:
 
     assert payload["reason_code"] == "file_not_found"
     assert payload["allowed_pattern"] == dat_access.UPLOADS_DAT_FILE_PATTERN
+
+
+@pytest.mark.asyncio
+async def test_negative_derived_frame_size_keeps_span_bookkeeping_consistent(env) -> None:
+    """长度字段派生出负帧长时按 0 收敛：span 不出现 end < start，跳过字节不虚增。"""
+    _seed_upload(env, "derived.dat", bytes.fromhex("1ACFFC1D") + b"\x00" + b"\x11" * 8)
+    layout = json.dumps(
+        {
+            "sync_word": "1ACFFC1D",
+            "frame": {
+                "size_field": {
+                    "offset": 4,
+                    "type": "u8",
+                    "endian": "big",
+                    "offset_from": "frame_start",
+                    "includes": "header",
+                    "adjustment": -10,
+                }
+            },
+            "fields": [{"name": "pad", "offset": 0, "type": "u8", "endian": "big"}],
+            "checksum": {"algorithm": "none"},
+        }
+    )
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/derived.dat", layout, mode="scan")
+
+    assert payload["status_counts"]["truncated"] == 1
+    assert payload["status_counts"]["ok"] == 0
+    assert 0 <= payload["skipped_bytes"] <= payload["scanned_bytes"]

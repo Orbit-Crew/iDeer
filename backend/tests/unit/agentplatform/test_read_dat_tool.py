@@ -427,3 +427,51 @@ async def test_structure_mode_enforces_the_same_uploads_fence(env) -> None:
 
     assert payload["reason_code"] == "path_out_of_bounds"
     assert payload["allowed_pattern"] == "/mnt/user-data/uploads/<file>"
+
+
+@pytest.mark.asyncio
+async def test_internal_symlink_is_rejected_without_following(env) -> None:
+    """打开与校验必须是同一动作：围栏内指向围栏内的符号链接也按 O_NOFOLLOW 拒绝。"""
+    _seed_upload(env, "real.dat", NORMAL_FRAMES)
+    uploads = env.paths.sandbox_uploads_dir("thread-1", user_id="owner-1")
+    os.symlink(uploads / "real.dat", uploads / "alias.dat")
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/alias.dat")
+
+    assert payload["reason_code"] == "not_regular_file"
+
+
+@pytest.mark.asyncio
+async def test_nul_byte_in_declared_path_is_structurally_rejected(env) -> None:
+    _seed_upload(env, "telemetry.dat", NORMAL_FRAMES)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/telemetry\u0000.dat")
+
+    assert payload["reason_code"] == "path_unresolvable"
+    assert "error" in payload
+
+
+@pytest.mark.asyncio
+async def test_unreadable_file_is_structurally_rejected(env) -> None:
+    _seed_upload(env, "secret.dat", NORMAL_FRAMES)
+    target = env.paths.sandbox_uploads_dir("thread-1", user_id="owner-1") / "secret.dat"
+    target.chmod(0o000)
+    try:
+        payload = await _call(_runtime(env), "/mnt/user-data/uploads/secret.dat")
+    finally:
+        target.chmod(0o644)
+
+    assert payload["reason_code"] == "unreadable"
+
+
+@pytest.mark.asyncio
+async def test_structure_counts_do_not_double_count_at_chunk_boundaries(env, monkeypatch) -> None:
+    """分块边界上的 n-gram 必须恰好统计一次（发送侧跳过尾部 carry 区起点）。"""
+    _seed_upload(env, "telemetry.dat", NORMAL_FRAMES)
+    monkeypatch.setattr(tool_module, "_STRUCTURE_CHUNK_BYTES", 16)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/telemetry.dat", mode="structure")
+
+    triple = next(c for c in payload["candidates"] if c["pattern_hex"] == "00 00 00")
+    reference = sum(1 for i in range(len(NORMAL_FRAMES) - 2) if NORMAL_FRAMES[i : i + 3] == b"\x00\x00\x00")
+    assert triple["occurrences"] == reference

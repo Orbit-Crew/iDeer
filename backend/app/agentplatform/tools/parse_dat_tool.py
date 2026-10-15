@@ -387,7 +387,10 @@ def _scan_frames(data, layout: dict, deadline: float | None = None) -> tuple[lis
             size = _read_derived_size(data, start, size_field, sync_len)
         if size is None or size <= 0 or size > _MAX_FRAME_BYTES or size < min_frame_bytes:
             # 帧长不可读、非法或容纳不下已声明字段：标注截断，绝不解出半个字段。
-            spans.append((start, min(start + (size or 0), total), _STATUS_TRUNCATED))
+            # 派生帧长可为负（长度字段小值 + 负 adjustment）：覆盖按 0 收敛，
+            # 保证 span 不出现 end < start、claimed 不被负值抵扣。
+            declared_size = size if size is not None and size > 0 else 0
+            spans.append((start, min(start + declared_size, total), _STATUS_TRUNCATED))
             if sync is None:
                 pos = total  # 无同步字模式下无法确定下一帧位置，顺序步进终止
             else:
@@ -561,21 +564,18 @@ def _parse_dat_sync(runtime: Runtime, declared_path: str, layout_raw: str, start
     if mode not in ("frames", "scan"):
         return _rejection("invalid_mode", f"mode 只支持 frames（分页帧表）或 scan（整文件扫描聚合），收到: {mode!r}")
     try:
-        target = dat_access.resolve_uploads_dat_file(runtime, declared_path)
+        handle, file_size = dat_access.open_uploads_dat_file(runtime, declared_path)
     except dat_access.DatAccessRejected as exc:
         return _rejection(exc.reason_code, str(exc))
     try:
-        layout = _parse_layout(layout_raw)
-        # scan 是整文件语义：fields_filter 与分页参数一样被忽略（也不校验）。
-        selected = _select_fields(layout, fields_filter) if mode == "frames" else layout["fields"]
-    except _LayoutInvalid as exc:
-        return _rejection("invalid_layout", str(exc), layout_raw)
-    if mode == "frames" and (isinstance(start_frame, bool) or isinstance(frame_count, bool) or start_frame < 0 or frame_count < 0):
-        return _rejection("invalid_paging", f"start_frame/frame_count 必须为非负整数，收到 start_frame={start_frame}, frame_count={frame_count}", layout_raw)
-
-    file_size = target.stat().st_size
-    handle = target.open("rb")
-    try:
+        try:
+            layout = _parse_layout(layout_raw)
+            # scan 是整文件语义：fields_filter 与分页参数一样被忽略（也不校验）。
+            selected = _select_fields(layout, fields_filter) if mode == "frames" else layout["fields"]
+        except _LayoutInvalid as exc:
+            return _rejection("invalid_layout", str(exc), layout_raw)
+        if mode == "frames" and (isinstance(start_frame, bool) or isinstance(frame_count, bool) or start_frame < 0 or frame_count < 0):
+            return _rejection("invalid_paging", f"start_frame/frame_count 必须为非负整数，收到 start_frame={start_frame}, frame_count={frame_count}", layout_raw)
         try:
             data = mmap.mmap(handle.fileno(), file_size, access=mmap.ACCESS_READ) if file_size else b""
         except (ValueError, OSError):
