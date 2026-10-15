@@ -475,6 +475,10 @@ class WeComChannel(Channel):
         inbound.topic_id = user_id  # keep the same thread
 
         stream_id = generate_req_id("stream")
+        # Telegram's _register_stream_message shape: drop the key first so a
+        # re-registered id refreshes its insertion position.
+        self._ws_frames.pop(msg_id, None)
+        self._ws_stream_ids.pop(msg_id, None)
         while len(self._ws_frames) >= _WECOM_MAX_TRACKED_FRAMES:
             self._ws_frames.pop(next(iter(self._ws_frames)))
         while len(self._ws_stream_ids) >= _WECOM_MAX_TRACKED_FRAMES:

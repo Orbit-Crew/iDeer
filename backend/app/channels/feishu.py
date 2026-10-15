@@ -708,6 +708,10 @@ class FeishuChannel(Channel):
         """Create the running card and cache its message ID when available."""
         running_card_id = await self._reply_card(source_message_id, self._compose_card_text(text, metadata))
         if running_card_id:
+            # Telegram's _register_stream_message shape: dropping the key
+            # first refreshes its insertion position, so a re-registered card
+            # is never the one the cap evicts.
+            self._running_card_ids.pop(source_message_id, None)
             while len(self._running_card_ids) >= MAX_TRACKED_RUNNING_CARDS:
                 self._running_card_ids.pop(next(iter(self._running_card_ids)))
             self._running_card_ids[source_message_id] = running_card_id

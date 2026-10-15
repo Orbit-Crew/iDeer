@@ -692,12 +692,16 @@ class WechatChannel(Channel):
         thread_ts = context_token or str(raw_message.get("client_id") or raw_message.get("msg_id") or "").strip() or None
 
         if context_token:
+            # Telegram's _register_stream_message shape: drop the key first
+            # so a refreshed conversation is never the one the cap evicts.
+            self._context_tokens_by_chat.pop(chat_id, None)
             while len(self._context_tokens_by_chat) >= MAX_CACHED_CONTEXT_TOKENS:
                 self._context_tokens_by_chat.pop(next(iter(self._context_tokens_by_chat)))
-            while len(self._context_tokens_by_thread) >= MAX_CACHED_CONTEXT_TOKENS:
-                self._context_tokens_by_thread.pop(next(iter(self._context_tokens_by_thread)))
             self._context_tokens_by_chat[chat_id] = context_token
             if thread_ts:
+                self._context_tokens_by_thread.pop(thread_ts, None)
+                while len(self._context_tokens_by_thread) >= MAX_CACHED_CONTEXT_TOKENS:
+                    self._context_tokens_by_thread.pop(next(iter(self._context_tokens_by_thread)))
                 self._context_tokens_by_thread[thread_ts] = context_token
 
         inbound = self._make_inbound(
