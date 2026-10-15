@@ -129,7 +129,7 @@ make format     # 使用 ruff 格式化代码
 与 Docker/provisioner 行为相关的回归测试：
 
 - `tests/test_docker_sandbox_mode_detection.py`（从 `config.yaml` 识别模式）
-- `tests/test_provisioner_kubeconfig.py`（kubeconfig 文件/目录处理）
+- `tests/unit/sandbox/test_provisioner_kubeconfig.py`（kubeconfig 文件/目录处理）
 
 边界检查（harness 到 app 的导入防火墙）：
 

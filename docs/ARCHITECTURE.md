@@ -43,7 +43,7 @@ public entry point.
 This lets standard LangGraph SDK clients talk to DeerFlow without a separate LangGraph
 server. Both compose files publish nginx as `"${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"`
 — **loopback by default**; the Gateway's `8001` is never published. Any new published port
-must carry an explicit bind address (`backend/tests/test_compose_default_bind_host.py`
+must carry an explicit bind address (`backend/tests/unit/scripts/test_compose_default_bind_host.py`
 pins this for every service in both compose files).
 
 ---

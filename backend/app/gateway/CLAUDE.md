@@ -224,7 +224,7 @@ to the link defined under Routers):
   boundary must still accept the stock SDK's default payload —
   `stream_resumable=False` is the SDK default and means the non-resumable
   behavior DeerFlow serves;
-  `tests/test_run_request_validation.py::test_gateway_accepts_langgraph_sdk_default_payload`
+  `tests/unit/gateway/test_run_request_validation.py::test_gateway_accepts_langgraph_sdk_default_payload`
   pins it.
 - `RunManager.get()` is async; direct callers must `await` it.
 - The history batch helpers `list_successful_regenerate_sources()`,
@@ -386,7 +386,7 @@ to the link defined under Routers):
 - Run event stream changes must keep producer code, `deerflow/constants.py`,
   `runtime/events/catalog.py`, `contracts/run_event_stream_contract.json`,
   `backend/docs/RUN_EVENT_STREAM.md`, and
-  `tests/test_run_event_stream_contract.py` in sync. The dependency-free
+  `tests/unit/runtime/test_run_event_stream_contract.py` in sync. The dependency-free
   constants module owns the persisted envelope limits (`event_type` 32
   characters, `category` 16) and cross-layer workspace event identity; the
   catalog owns validated runtime definitions and categories; the JSON contract

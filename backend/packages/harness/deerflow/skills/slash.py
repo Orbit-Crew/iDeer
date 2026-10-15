@@ -11,7 +11,7 @@ from deerflow.skills.types import Skill
 #: are mirrored by the frontend display parser in
 #: ``frontend/src/core/skills/slash.ts``; both sides are pinned to the shared
 #: fixture at ``contracts/slash_skill_contract.json`` by contract tests
-#: (``tests/test_slash_skill_contract.py`` here, ``slash-contract.test.ts`` on
+#: (``tests/unit/skills/test_slash_skill_contract.py`` here, ``slash-contract.test.ts`` on
 #: the frontend), so a reserved command or grammar change in only one language
 #: fails CI.
 RESERVED_SLASH_SKILL_NAMES = frozenset({"agent", "bootstrap", "goal", "help", "memory", "models", "new", "status"})

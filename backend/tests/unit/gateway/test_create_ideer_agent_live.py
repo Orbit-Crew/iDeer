@@ -19,7 +19,7 @@ from langchain_core.tools import tool
 load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
 
 # The conftest ``_skip_llm_if_no_key`` helper this docstring references no
-# longer exists; guard at module level like tests/test_create_deerflow_agent_live.py
+# longer exists; guard at module level like tests/unit/gateway/test_create_deerflow_agent_live.py
 # so the standard lane skips instead of attempting real LLM calls.
 if not os.getenv("OPENAI_API_KEY"):
     pytest.skip("Requires LLM API key — skipped in CI or when OPENAI_API_KEY is unset", allow_module_level=True)
