@@ -154,3 +154,132 @@ def test_no_policy_denial_leaks_to_audit(tmp_path: Path) -> None:
     client = _client(tmp_path)
     client.connection = FakeConnection()
     assert client.audit.recent(kind=AuditKind.POLICY) == []
+
+
+def test_mcp_error_at_entry_becomes_error_frame(tmp_path: Path) -> None:
+    """05-L5: a malformed capability name raises MCPError at the mcp_service
+    entry, before any receipt exists. The task entry must convert it into an
+    error frame; unhandled it escaped _handle_task, _task_finished swallowed
+    it, and the server waited out its deadline with no reply."""
+    from core.mcp import MCPError
+
+    server_key = Ed25519PrivateKey.generate()
+    client = _client(tmp_path)
+    client.connection = FakeConnection()
+
+    class ExplodingMCPService:
+        consent = None
+
+        async def execute(self, operation, payload):
+            raise MCPError("MCP_UNKNOWN_CAPABILITY", "no such mcp server: nosuch")
+
+    client.mcp_service = ExplodingMCPService()
+
+    asyncio.run(
+        client._handle_task(
+            _signed_task(
+                server_key,
+                {"operation": "local.mcp.nosuch.tool", "run_id": "r1"},
+                task_id="task-mcp",
+            )
+        )
+    )
+
+    errors = [
+        json.loads(raw)
+        for raw in client.connection.sent
+        if json.loads(raw)["type"] == MessageType.ERROR.value
+    ]
+    assert [e["payload"]["error_code"] for e in errors] == ["MCP_UNKNOWN_CAPABILITY"]
+
+
+def test_duplicate_task_id_is_refused_instead_of_orphaning(tmp_path: Path) -> None:
+    """05-L5: a second TASK frame reusing a live task id used to overwrite the
+    _running_tasks entry, dropping the still-running old task from cancel
+    tracking. The newcomer is refused with DUPLICATE_TASK instead."""
+    server_key = Ed25519PrivateKey.generate()
+
+    async def nobody_answers(request):
+        await asyncio.Event().wait()
+
+    client = _client(tmp_path, consent_prompt=nobody_answers)
+    client.server_public_key = public_key_text(server_key)
+    client.policy = LocalPolicy(
+        consent_required_capabilities=frozenset(["local.files.write"])
+    )
+    client.file_service.policy = client.policy
+
+    def dup_frame():
+        return sign_envelope(
+            private_key=server_key,
+            message_type=MessageType.TASK,
+            device_id="device-1",
+            session_id="session-1",
+            task_id="task-dup",
+            payload={
+                "operation": "local.files.write",
+                "path": "/projects/dup.txt",
+                "content": "x",
+                "run_id": "r1",
+            },
+        )
+
+    class ReplayingConnection(FakeConnection):
+        def __init__(self, frames):
+            super().__init__()
+            self.frames = frames
+
+        async def __aiter__(self):
+            for frame in self.frames:
+                yield frame
+
+    client.connection = ReplayingConnection(
+        [json.dumps(dup_frame()), json.dumps(dup_frame())]
+    )
+
+    async def scenario():
+        loop = asyncio.create_task(client._receive_loop())
+        while not any(
+            json.loads(raw)["payload"].get("error_code") == "DUPLICATE_TASK"
+            for raw in client.connection.sent
+            if json.loads(raw)["type"] == MessageType.ERROR.value
+        ):
+            await asyncio.sleep(0.01)
+        loop.cancel()
+        await asyncio.gather(loop, return_exceptions=True)
+        await client.close(actor_id="bob")
+        for pending in tuple(client._running_tasks.values()):
+            await asyncio.gather(pending, return_exceptions=True)
+
+    asyncio.run(scenario())
+
+    assert list(client._running_tasks) == []
+
+
+def test_task_arriving_after_disconnect_does_not_raise(tmp_path: Path) -> None:
+    """05-L5: _handle_task used to assert on a live connection; a task that
+    ran after the session ended raised AssertionError into _task_finished,
+    which swallows it. The dispatch is a no-op without a connection."""
+    server_key = Ed25519PrivateKey.generate()
+    client = _client(tmp_path)
+    client.connection = None
+
+    asyncio.run(
+        client._handle_task(
+            _signed_task(
+                server_key,
+                {"operation": "echo", "value": "x", "run_id": "r1"},
+                task_id="task-late",
+            )
+        )
+    )
+
+
+def test_output_frames_after_disconnect_do_not_raise(tmp_path: Path) -> None:
+    """05-L5: the output/consent/result senders used to assert on a live
+    connection; a session that ended mid-task turned into an AssertionError
+    that _task_finished silently swallowed. They now drop the frame."""
+    client = _client(tmp_path)
+    client.connection = None
+
+    asyncio.run(client.consent_coord._send_python_output("t-1", "stdout", "hello"))

@@ -514,7 +514,11 @@ class LocalConsentCoordinator:
     ) -> None:
 
         wire = self._wire
-        assert wire.connection is not None
+        if wire.connection is None:
+            # The session ended while the task was being admitted (05-L5);
+            # there is nowhere to deliver the prompt, and the server-side
+            # consent deadline resolves the pending request.
+            return
         await wire.connection.send(
             json.dumps(
                 sign_envelope(
@@ -684,7 +688,10 @@ class LocalConsentCoordinator:
             raise RuntimeError("local execution did not produce a receipt")
         wire._record_execution(receipt)
 
-        assert wire.connection is not None
+        if wire.connection is None:
+            # The session ended while consent was pending (05-L5); the audit
+            # entry above already carries the outcome.
+            return
         await wire.connection.send(
             json.dumps(
                 sign_envelope(
@@ -705,7 +712,9 @@ class LocalConsentCoordinator:
     async def _send_python_output(self, task_id: str, stream: str, output: str) -> None:
 
         wire = self._wire
-        assert wire.connection is not None
+        if wire.connection is None:
+            # The session ended mid-task (05-L5); progress has nowhere to go.
+            return
         await wire.connection.send(
             json.dumps(
                 sign_envelope(
