@@ -31,7 +31,7 @@ from .consent_coord import (
 )
 from .file_service import FileTaskResult, LocalFileService
 from .files import FileAccessError
-from .mcp import LocalMCPService, MCPExecution
+from .mcp import LocalMCPService, MCPError, MCPExecution
 from .policy import LocalPolicy, PolicyDecision
 from .protocol import (
     MessageType,
@@ -437,6 +437,19 @@ class LocalRuntimeClient:
             )
             if envelope.type == MessageType.TASK:
                 task_id = envelope.task_id or ""
+                existing = self._running_tasks.get(task_id)
+                if existing is not None and not existing.done():
+                    # Overwriting would orphan the old task outside cancel
+                    # tracking (05-L5); refuse the newcomer instead — a well
+                    # -behaved server never reuses a live task id.
+                    await self._send_error(
+                        task_id,
+                        "a task with this id is already running",
+                        "DUPLICATE_TASK",
+                        dict(envelope.payload),
+                        str(envelope.payload.get("operation", "")),
+                    )
+                    continue
                 task = asyncio.create_task(self._handle_task(envelope))
                 self._running_tasks[task_id] = task
                 task.add_done_callback(
@@ -476,8 +489,11 @@ class LocalRuntimeClient:
             task.cancel()
 
     async def _handle_task(self, envelope) -> None:
-        assert self.connection is not None
         task_id = envelope.task_id or ""
+        if self.connection is None:
+            # The session ended before dispatch; there is no socket to answer
+            # on and the server already sees the drop (05-L5).
+            return
         operation = str(envelope.payload.get("operation", ""))
         if self.paused:
             # Pause never drops a task silently: the caller gets a structured
@@ -650,6 +666,26 @@ class LocalRuntimeClient:
         except (RuntimeError, ValueError, TypeError, KeyError) as exc:
             await self._send_error(
                 task_id, str(exc), "INVALID_TASK", envelope.payload, operation
+            )
+            return
+        except MCPError as exc:
+            # Malformed capability names raise MCPError at the mcp_service
+            # entry, before any receipt exists (05-L5); without this handler
+            # it escaped _handle_task and the server waited for a timeout.
+            await self._send_error(
+                task_id, str(exc), exc.code, envelope.payload, operation
+            )
+            return
+        except Exception as exc:  # noqa: BLE001
+            # Last resort at the task boundary: the server must learn the
+            # task died instead of waiting out its deadline (05-L5). The
+            # narrow handlers above keep stable codes for known failures.
+            await self._send_error(
+                task_id,
+                str(exc) or exc.__class__.__name__,
+                "INTERNAL_TASK",
+                envelope.payload,
+                operation,
             )
             return
         await self.connection.send(

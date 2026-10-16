@@ -420,7 +420,6 @@ describe("UsersPage", () => {
 
   test("calls disableUser when disable is confirmed", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(<UsersPage />);
     await waitFor(() => {
@@ -429,6 +428,12 @@ describe("UsersPage", () => {
 
     const toggleButtons = screen.getAllByTestId("user-toggle-status-button");
     await user.click(toggleButtons[0]!); // click toggle for first user
+
+    // The confirm flow is a dialog now (07-L3), not window.confirm.
+    await waitFor(() => {
+      expect(screen.getByTestId("status-change-confirm")).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId("status-change-confirm"));
 
     await waitFor(() => {
       expect(mockToggleUserStatus).toHaveBeenCalledWith("user-1");
@@ -440,7 +445,6 @@ describe("UsersPage", () => {
 
   test("does not call disableUser when disable is cancelled", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<UsersPage />);
     await waitFor(() => {
@@ -450,6 +454,11 @@ describe("UsersPage", () => {
     const toggleButtons = screen.getAllByTestId("user-toggle-status-button");
     await user.click(toggleButtons[0]!);
 
+    await waitFor(() => {
+      expect(screen.getByTestId("status-change-cancel")).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId("status-change-cancel"));
+
     expect(mockToggleUserStatus).not.toHaveBeenCalled();
 
     vi.restoreAllMocks();
@@ -457,7 +466,6 @@ describe("UsersPage", () => {
 
   test("shows toast error when toggleUserStatus fails", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockToggleUserStatus.mockRejectedValue(new Error("Cannot toggle"));
 
     render(<UsersPage />);
@@ -467,6 +475,11 @@ describe("UsersPage", () => {
 
     const toggleButtons = screen.getAllByTestId("user-toggle-status-button");
     await user.click(toggleButtons[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status-change-confirm")).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId("status-change-confirm"));
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith("Cannot toggle");
@@ -497,7 +510,6 @@ describe("UsersPage", () => {
   });
 
   test("shows confirm dialog when promoting to super_admin", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockListUsers.mockResolvedValue({
       users: [mockUsers[1]], // bob is "user"
       total: 1,
@@ -517,7 +529,6 @@ describe("UsersPage", () => {
   // ── Role change: promote to super_admin with confirm ──────────────
 
   test("shows confirm and calls updateUserRole when promoting to super_admin", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockListUsers.mockResolvedValue({
       users: [mockUsers[1]], // bob is "user"
       total: 1,
@@ -541,7 +552,6 @@ describe("UsersPage", () => {
   // ── Role change: demote from super_admin with confirm ─────────────
 
   test("confirms when demoting from super_admin role", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     mockListUsers.mockResolvedValue({
       users: [mockUsers[0]], // alice is "super_admin"
       total: 1,
@@ -566,7 +576,6 @@ describe("UsersPage", () => {
 
   test("shows toast error when updateUserRole fails", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockUpdateUserRole.mockRejectedValue(new Error("Role update failed"));
     mockListUsers.mockResolvedValue({
       users: [mockUsers[1]], // bob is "user"
@@ -587,7 +596,6 @@ describe("UsersPage", () => {
 
   test("shows toast error for non-Error throw from updateUserRole", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockUpdateUserRole.mockRejectedValue("raw string error");
     mockListUsers.mockResolvedValue({
       users: [mockUsers[1]], // bob is "user"
@@ -630,7 +638,6 @@ describe("UsersPage", () => {
 
   test("shows toast error for non-Error throw from disableUser", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockToggleUserStatus.mockRejectedValue("raw string error");
 
     render(<UsersPage />);
@@ -640,6 +647,11 @@ describe("UsersPage", () => {
 
     const toggleButtons = screen.getAllByTestId("user-toggle-status-button");
     await user.click(toggleButtons[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status-change-confirm")).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId("status-change-confirm"));
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith("raw string error");
@@ -652,7 +664,6 @@ describe("UsersPage", () => {
 
   test("disables button while toggling is in progress", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     // Make toggleUserStatus hang to observe disabled state
     mockToggleUserStatus.mockReturnValue(new Promise(() => {}));
 
@@ -665,8 +676,15 @@ describe("UsersPage", () => {
     await user.click(toggleButtons[0]!);
 
     await waitFor(() => {
+      expect(screen.getByTestId("status-change-confirm")).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId("status-change-confirm"));
+
+    await waitFor(() => {
       // The button should be disabled while the API call is in progress
-      expect(toggleButtons[0]).toBeDisabled();
+      expect(
+        screen.getAllByTestId("user-toggle-status-button")[0],
+      ).toBeDisabled();
     });
 
     vi.restoreAllMocks();
@@ -763,7 +781,6 @@ describe("UsersPage", () => {
 
   test("handleRoleChange shows confirm when promoting to super_admin via Select", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     // bob is "user", changing to "super_admin" needs confirm
     mockListUsers.mockResolvedValue({
@@ -793,7 +810,11 @@ describe("UsersPage", () => {
     await user.click(superAdminOption);
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalled();
+      expect(screen.getByTestId("role-change-confirm")).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId("role-change-confirm"));
+
+    await waitFor(() => {
       expect(mockUpdateUserRole).toHaveBeenCalledWith("user-2", "super_admin");
       expect(mockToastSuccess).toHaveBeenCalledWith("用户角色已更新");
     });
@@ -803,7 +824,6 @@ describe("UsersPage", () => {
 
   test("handleRoleChange shows confirm when demoting from super_admin via Select", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     // alice is "super_admin", changing to "user" needs confirm
     mockListUsers.mockResolvedValue({
@@ -833,7 +853,11 @@ describe("UsersPage", () => {
     await user.click(userOption);
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalled();
+      expect(screen.getByTestId("role-change-confirm")).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId("role-change-confirm"));
+
+    await waitFor(() => {
       expect(mockUpdateUserRole).toHaveBeenCalledWith("user-1", "user");
       expect(mockToastSuccess).toHaveBeenCalledWith("用户角色已更新");
     });
@@ -843,7 +867,6 @@ describe("UsersPage", () => {
 
   test("handleRoleChange aborts when confirm is cancelled (promote)", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
 
     mockListUsers.mockResolvedValue({
       users: [mockUsers[1]], // bob is "user"
@@ -871,10 +894,13 @@ describe("UsersPage", () => {
     await user.click(superAdminOption);
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalled();
+      expect(screen.getByTestId("role-change-cancel")).toBeInTheDocument();
     });
+    await user.click(screen.getByTestId("role-change-cancel"));
+
     // updateUserRole should NOT be called when confirm is cancelled
     expect(mockUpdateUserRole).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("role-change-confirm")).not.toBeInTheDocument();
 
     vi.restoreAllMocks();
   });
@@ -1321,10 +1347,12 @@ describe("UsersPage", () => {
 
     await user.click(screen.getAllByTestId("user-delete-button")[2]!);
     await user.click(screen.getByText("转移资源"));
-    await user.selectOptions(
-      screen.getByDisplayValue("请选择目标用户"),
-      "user-2",
-    );
+    // The transfer target picker is the ui-library Select now (07-L3).
+    const transferTrigger = screen
+      .getByText("请选择目标用户")
+      .closest('[role="combobox"]')!;
+    await user.click(transferTrigger);
+    await user.click(screen.getByRole("option", { name: "bob" }));
     await user.click(screen.getByRole("button", { name: "确认删除" }));
 
     await waitFor(() => {
