@@ -2748,11 +2748,11 @@
     "fingerprints": [
       {
         "path": "backend/packages/harness/deerflow/AGENTS.md",
-        "sha256": "bf960bf1b1cc403d2d0d79b88f0d00045fc940a50cbd4cf16f745646ea0d5bc2"
+        "sha256": "73d3fb76329d8065d29e53458a5f9db2649dcf0c9a29dbb4bc39907bf272f3b4"
       },
       {
         "path": "backend/packages/harness/deerflow/CLAUDE.md",
-        "sha256": "bf960bf1b1cc403d2d0d79b88f0d00045fc940a50cbd4cf16f745646ea0d5bc2"
+        "sha256": "73d3fb76329d8065d29e53458a5f9db2649dcf0c9a29dbb4bc39907bf272f3b4"
       },
       {
         "path": "backend/packages/harness/deerflow/agents/AGENTS.md",
@@ -2784,11 +2784,11 @@
       },
       {
         "path": "backend/packages/harness/deerflow/agents/middlewares/AGENTS.md",
-        "sha256": "e64a47f710ec4839674b38db45820c820a1f53f3ca71d94df357a4316cd85cd9"
+        "sha256": "08e6e248a5bf61d4382aa66ce19d1ae2f34ea03066fc77478edc865c302e4468"
       },
       {
         "path": "backend/packages/harness/deerflow/agents/middlewares/CLAUDE.md",
-        "sha256": "e64a47f710ec4839674b38db45820c820a1f53f3ca71d94df357a4316cd85cd9"
+        "sha256": "08e6e248a5bf61d4382aa66ce19d1ae2f34ea03066fc77478edc865c302e4468"
       },
       {
         "path": "backend/packages/harness/deerflow/community/boxlite/README.md",
@@ -2800,11 +2800,11 @@
       },
       {
         "path": "backend/packages/harness/deerflow/community/tavily/AGENTS.md",
-        "sha256": "7c4b136d9aa64fdb60a1aacf4a156fbdcf17228353f10a92c020b707b51b2c3c"
+        "sha256": "b5592572efbb556e3e05a6f31d10c512510ec037f572ec88ed25d409563903a9"
       },
       {
         "path": "backend/packages/harness/deerflow/community/tavily/CLAUDE.md",
-        "sha256": "7c4b136d9aa64fdb60a1aacf4a156fbdcf17228353f10a92c020b707b51b2c3c"
+        "sha256": "b5592572efbb556e3e05a6f31d10c512510ec037f572ec88ed25d409563903a9"
       },
       {
         "path": "backend/packages/harness/deerflow/community/tenki/README.md",
@@ -2812,43 +2812,43 @@
       },
       {
         "path": "backend/packages/harness/deerflow/config/AGENTS.md",
-        "sha256": "57de0bd0a820972aa594d51a4c817f2dd200a755c324038c655c21097d358fbe"
+        "sha256": "528bff2271aafd4a3c176e784abd63e61353a99875f02d1c345321cb6318c6e5"
       },
       {
         "path": "backend/packages/harness/deerflow/config/CLAUDE.md",
-        "sha256": "57de0bd0a820972aa594d51a4c817f2dd200a755c324038c655c21097d358fbe"
+        "sha256": "528bff2271aafd4a3c176e784abd63e61353a99875f02d1c345321cb6318c6e5"
       },
       {
         "path": "backend/packages/harness/deerflow/extensions/AGENTS.md",
-        "sha256": "0a4f9cea989d5ce5a5dc4a25a729927915d82bcf6e43f97ea8de5ee0751cfae6"
+        "sha256": "5a994537255a7ffa83dadb5e9f8f38213c76f8b4a3e170ca61d8d2f35c90d2ea"
       },
       {
         "path": "backend/packages/harness/deerflow/extensions/CLAUDE.md",
-        "sha256": "0a4f9cea989d5ce5a5dc4a25a729927915d82bcf6e43f97ea8de5ee0751cfae6"
+        "sha256": "5a994537255a7ffa83dadb5e9f8f38213c76f8b4a3e170ca61d8d2f35c90d2ea"
       },
       {
         "path": "backend/packages/harness/deerflow/mcp/AGENTS.md",
-        "sha256": "7cb7244b1d1ddc7718098d279b12162180f599f57af6f0e41dcf5609fb853ccf"
+        "sha256": "8b7feaf1270892da8eb089612b35c6c665d5f95db3ced3dd75314ae4c06a8c2d"
       },
       {
         "path": "backend/packages/harness/deerflow/mcp/CLAUDE.md",
-        "sha256": "7cb7244b1d1ddc7718098d279b12162180f599f57af6f0e41dcf5609fb853ccf"
+        "sha256": "8b7feaf1270892da8eb089612b35c6c665d5f95db3ced3dd75314ae4c06a8c2d"
       },
       {
         "path": "backend/packages/harness/deerflow/models/AGENTS.md",
-        "sha256": "c3d6ac66dbd8e43fe6b6533f4a0536eb212dec2c4bb9daefde6c3fa54f8b09e8"
+        "sha256": "7956720d76aca50ed5e97174d3f57632418bc8e9f25cc0bc28e9a12bd9afe018"
       },
       {
         "path": "backend/packages/harness/deerflow/models/CLAUDE.md",
-        "sha256": "c3d6ac66dbd8e43fe6b6533f4a0536eb212dec2c4bb9daefde6c3fa54f8b09e8"
+        "sha256": "7956720d76aca50ed5e97174d3f57632418bc8e9f25cc0bc28e9a12bd9afe018"
       },
       {
         "path": "backend/packages/harness/deerflow/persistence/migrations/AGENTS.md",
-        "sha256": "35accbe415a541dda56dea407a97b8351449b2c2e78d1bbce360274e2c58ad30"
+        "sha256": "9c67154296fb8c0593346b062b0eaee762f14085f6915b3e2f780dc39fa8540a"
       },
       {
         "path": "backend/packages/harness/deerflow/persistence/migrations/CLAUDE.md",
-        "sha256": "35accbe415a541dda56dea407a97b8351449b2c2e78d1bbce360274e2c58ad30"
+        "sha256": "9c67154296fb8c0593346b062b0eaee762f14085f6915b3e2f780dc39fa8540a"
       },
       {
         "path": "backend/packages/harness/deerflow/persistence/user/AGENTS.md",
@@ -2868,51 +2868,51 @@
       },
       {
         "path": "backend/packages/harness/deerflow/runtime/AGENTS.md",
-        "sha256": "29519149425a388d76a0c665e50f4dd5c451360eaec5448f2598804584ec9ddd"
+        "sha256": "c23687f6e7d0fc02c23f9134b81e47459ecb73af0f651ac03468f27f9e8df1e5"
       },
       {
         "path": "backend/packages/harness/deerflow/runtime/CLAUDE.md",
-        "sha256": "29519149425a388d76a0c665e50f4dd5c451360eaec5448f2598804584ec9ddd"
+        "sha256": "c23687f6e7d0fc02c23f9134b81e47459ecb73af0f651ac03468f27f9e8df1e5"
       },
       {
         "path": "backend/packages/harness/deerflow/sandbox/AGENTS.md",
-        "sha256": "b4bff8d1c3c86ffe3c8d53e4649131784c194dac4f3636af02bdb4d4c1cdcceb"
+        "sha256": "d41691d364fb82ab8c9907f99a0983004618eb2e4031424401da835b4f0cb2ce"
       },
       {
         "path": "backend/packages/harness/deerflow/sandbox/CLAUDE.md",
-        "sha256": "b4bff8d1c3c86ffe3c8d53e4649131784c194dac4f3636af02bdb4d4c1cdcceb"
+        "sha256": "d41691d364fb82ab8c9907f99a0983004618eb2e4031424401da835b4f0cb2ce"
       },
       {
         "path": "backend/packages/harness/deerflow/skills/AGENTS.md",
-        "sha256": "3581f608112b201e61dee784f157b4534f9617b209753f9227a142ca5b2160f3"
+        "sha256": "2237103eab784cc1c09feeca0d4114512a8bc34f8699e013f4b9467ea00ca3a0"
       },
       {
         "path": "backend/packages/harness/deerflow/skills/CLAUDE.md",
-        "sha256": "3581f608112b201e61dee784f157b4534f9617b209753f9227a142ca5b2160f3"
+        "sha256": "2237103eab784cc1c09feeca0d4114512a8bc34f8699e013f4b9467ea00ca3a0"
       },
       {
         "path": "backend/packages/harness/deerflow/subagents/AGENTS.md",
-        "sha256": "ec966773ed0381a715509d33809de7ea0f9d7025e317d10984124cf0bdf5b5c4"
+        "sha256": "95851d6051d906cd2ec05cc8ebf847dd282168e8cb1293198e3c99b7a7367701"
       },
       {
         "path": "backend/packages/harness/deerflow/subagents/CLAUDE.md",
-        "sha256": "ec966773ed0381a715509d33809de7ea0f9d7025e317d10984124cf0bdf5b5c4"
+        "sha256": "95851d6051d906cd2ec05cc8ebf847dd282168e8cb1293198e3c99b7a7367701"
       },
       {
         "path": "backend/packages/harness/deerflow/tools/AGENTS.md",
-        "sha256": "17d8953c00d530e18ad916fff11b8bee8cb4c58990196b49ea54e7579317fb0f"
+        "sha256": "5eda989918da1ce3de90e0a8ab2ee18e885d3da5506615ad4d56870be46d6a95"
       },
       {
         "path": "backend/packages/harness/deerflow/tools/CLAUDE.md",
-        "sha256": "17d8953c00d530e18ad916fff11b8bee8cb4c58990196b49ea54e7579317fb0f"
+        "sha256": "5eda989918da1ce3de90e0a8ab2ee18e885d3da5506615ad4d56870be46d6a95"
       },
       {
         "path": "backend/packages/harness/deerflow/tracing/AGENTS.md",
-        "sha256": "85964dc56e55bf6a4a8e2ed3b151ff53f1ebb8a0d65afcc8de1d9fa5bf9dee14"
+        "sha256": "5d4200bbbcc76bb95ddf288a301525fd113f42f71ac084ef81bd6f8e4d62aa9c"
       },
       {
         "path": "backend/packages/harness/deerflow/tracing/CLAUDE.md",
-        "sha256": "85964dc56e55bf6a4a8e2ed3b151ff53f1ebb8a0d65afcc8de1d9fa5bf9dee14"
+        "sha256": "5d4200bbbcc76bb95ddf288a301525fd113f42f71ac084ef81bd6f8e4d62aa9c"
       },
       {
         "path": "backend/packages/harness/deerflow/tui/AGENTS.md",
@@ -2932,7 +2932,7 @@
       },
       {
         "path": "docs/ARCHITECTURE.md",
-        "sha256": "10d2ff251e638598251456f67876af1f72a28d385132472963e20edcaec4de9b"
+        "sha256": "ce3cdd255ef292bee6642ac055f8b678ff6b3cf82289b3285982a015dc27125f"
       },
       {
         "path": "docs/upgrades/deerflow-main-0f7d8709/AUTHORIZATION_ACCEPTANCE_REPORT.md",
