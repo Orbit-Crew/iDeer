@@ -45,7 +45,7 @@ GitNexus 重索引会重新生成整个管理块，可能无声吞掉这条手�
 1. 路径集合：`git -c core.quotepath=off ls-files '*.md'`。用 policy 的 inventory、exclusions 与 supplements 核对覆盖；所有登记文档必须存在。基线 inventory 保持冻结，新文档登记在 supplements；两组正文执行相同分类规则，包含元数据、链接、唯一 ID、证据及 supersession 检查。
 2. 哈希与行数：对 `inventory.files` 逐条重算 sha256 与行数并比对。`baseline_delta` 里登记的差异是唯一预期偏差。
 3. 分类合计：246 + 56 + 37 + 21 必须等于 360。
-4. 保护指纹：对 `protected_files.fingerprints` 的 67 个路径重算 sha256，全部一致才算干净；指纹失配说明保护文件被改动，按补丁台账流程处理。
+4. 保护指纹：对 `protected_files.fingerprints` 的 67 个路径重算 sha256，全部一致才算干净；指纹失配说明保护文件被改动，按补丁台账流程处理。受保护文档确需修改时（如引用路径重指、上游补丁落地），必须在**同一变更内**重算并刷新 policy 中对应指纹，否则所有 PR 的 `test-contracts` 会持续报 `protected-fingerprint-mismatch`（2026-10 的 #85 参考重指漏刷 29 条指纹，集成线 CI 因此对任何 PR 必红，见 #91）；指纹只允许跟随已确认的内容变更刷新，不允许为消除失败而未经确认改写登记值。
 5. 规则镜像：`python3 scripts/sync_agent_guidance.py --check` 应通过，且 `guidance.bytes` 与实际字节数一致。
 
 有 `--revision` 时，第 2、4 步用 `git show <rev>:<path>` 或 `git archive <rev>` 读内容，不读本地未提交修改，避免未提交内容掩盖候选问题。
