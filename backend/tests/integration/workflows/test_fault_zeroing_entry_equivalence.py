@@ -491,9 +491,21 @@ async def test_dat_upload_is_accepted_and_materialized_like_any_other_upload(env
     for run in runs.values():
         assert {path.name for path in _outputs_host(run).iterdir() if path.is_file()} == set(REQUIRED_OUTPUTS)
     # 声明的 .dat 字节级物化进 Run 工作区（Run 自包含），证据收集阶段可读。
-    dat_uploads = Paths(env.base).sandbox_uploads_dir(started["dat"], user_id=OWNER)
-    assert {path.name for path in dat_uploads.iterdir()} == {dat_name}
-    assert (dat_uploads / dat_name).read_bytes() == dat_bytes
+    # 注意解析走 Run 自己的 sandbox scope：run_id 与 thread id 是不同身份，
+    # 不能拿 run_id 拼线程目录路径。
+    dat_run = runs["dat"]
+    dat_resolver = make_host_resolver(
+        dat_run.run_id,
+        str(dat_run.created_by),
+        sandbox_scope=canonical_sandbox_scope(dat_run.run_id, dat_run.run_id),
+    )
+    run_uploads = Path(dat_resolver("/mnt/user-data/uploads"))
+    assert run_uploads is not None
+    assert {path.name for path in Path(run_uploads).iterdir()} == {dat_name}
+    assert (Path(run_uploads) / dat_name).read_bytes() == dat_bytes
+    # 线程输入区源文件保持原样（只读保证；同线程还有共享夹具的 log 上传）。
+    thread_uploads = Paths(env.base).sandbox_uploads_dir(THREAD_ID, user_id=OWNER)
+    assert (thread_uploads / dat_name).read_bytes() == dat_bytes
 
 
 # ---------------------------------------------------------------------------
