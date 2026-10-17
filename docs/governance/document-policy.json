@@ -36,11 +36,11 @@
     "delta_rule": "verify hashes at the baseline commit, or recompute at a new candidate and record the delta here before relying on the inventory; never overwrite rows silently"
   },
   "inventory": {
-    "count": 366,
+    "count": 367,
     "classification_counts": {
       "engineering-body-review": 252,
       "agent-guidance": 56,
-      "fixture-or-manual-inventory-only": 37,
+      "fixture-or-manual-inventory-only": 38,
       "protected-baseline": 21
     },
     "protected_within_inventory": 61,
@@ -764,6 +764,13 @@
         "protected": false,
         "sha256": "f4cdfb4b268d18964bc8ceeca048534dd42c9554ac5f7ac2c68375fdcd5acdb6",
         "lines": 15
+      },
+      {
+        "path": "backend/tests/fixtures/telemetry/README.md",
+        "classification": "fixture-or-manual-inventory-only",
+        "protected": false,
+        "sha256": "b5bec04b995edc946a8800224880e8160621a36a1dff9c516330f0f4c629ec8b",
+        "lines": 24
       },
       {
         "path": "docs/ARCHITECTURE.md",

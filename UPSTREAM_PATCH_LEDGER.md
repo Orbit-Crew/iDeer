@@ -738,9 +738,9 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
   "budget_basis": {
     "code_files": 48,
     "document_files": 34,
-    "previous_code_files": 46,
-    "previous_document_files": 21,
-    "amendment": "Issue #91 registers PATCH-042 (13 harness AGENTS.md guidance files whose test-path references were repointed to the layered layout by the #85 reference sweep, 222925341; the mirrored CLAUDE.md files stay on PATCH-035) and PATCH-043 (skills/slash.py and subagents/acceptance_checks.py comment/docstring path repoints from the same sweep, no executable semantic change): 46+2 code files = 48, 21+13 documents = 34, total 67->82. The sweep missed both registrations and the document-policy fingerprint refresh, which kept every develop PR red (#88/#90 failure set); see the 2026-10-16 inspection row for issue 91."
+    "previous_code_files": 48,
+    "previous_document_files": 34,
+    "amendment": "Issue #91 registers PATCH-042 (13 harness AGENTS.md guidance files whose test-path references were repointed to the layered layout by the #85 reference sweep, 222925341; the mirrored CLAUDE.md files stay on PATCH-035) and PATCH-043 (skills/slash.py and subagents/acceptance_checks.py comment/docstring path repoints from the same sweep, no executable semantic change): 46+2 code files = 48, 21+13 documents = 34, total 67->82. The sweep missed both registrations and the document-policy fingerprint refresh, which kept every develop PR red (#88/#90 failure set); see the 2026-10-16 inspection row for issue 91. Re-anchor (2026-10-17, PR #86): the branch merged develop at 16a84139d, so previous_code_files/previous_document_files re-anchor to that base's allocation 48/34 — no reallocation against the re-anchored base; the #91 amendment above remains the originating record for the 67->82 growth."
   },
   "patches": [
     {
