@@ -412,7 +412,7 @@ async def test_same_layout_and_file_produce_byte_identical_output(env) -> None:
 
 def test_caps_are_binding_code_constants() -> None:
     assert tool_module.DAT_PARSE_MAX_FRAMES == 100
-    assert tool_module.DAT_PARSE_SCAN_MAX_FRAMES == 100_000
+    assert tool_module.DAT_PARSE_SCAN_MAX_FRAMES == 4_000_000
     assert tool_module.DEFAULT_FRAME_COUNT == 25
     # Ticket 76：扫描模式的限额同样是代码常量（审计语义不被运行时改口）。
     assert tool_module.DAT_SCAN_MAX_BAD_FRAME_LIST == 50
@@ -782,3 +782,17 @@ async def test_negative_derived_frame_size_keeps_span_bookkeeping_consistent(env
     assert payload["status_counts"]["truncated"] == 1
     assert payload["status_counts"]["ok"] == 0
     assert 0 <= payload["skipped_bytes"] <= payload["scanned_bytes"]
+
+
+@pytest.mark.asyncio
+async def test_scan_covers_hundred_megabyte_scale_frame_counts(env) -> None:
+    """spec 尺度事实（单文件约百 MB 级）：32 字节帧的百 MB 文件 ≈ 3.2M 帧，
+    扫描帧上限必须留足余量，100_050 帧只是下界探针——触顶即违背整文件语义。"""
+    frame = bytes.fromhex("1ACFFC1D") + (0).to_bytes(2, "big") + b"\x00" * 26
+    _seed_upload(env, "wide.dat", frame * 100_050)
+
+    payload = await _call(_runtime(env), "/mnt/user-data/uploads/wide.dat", LAYOUT_EXACT, mode="scan")
+
+    assert payload["total_frames"] == 100_050
+    assert payload["scan_truncated"] is False
+    assert payload["status_counts"]["ok"] == 100_050

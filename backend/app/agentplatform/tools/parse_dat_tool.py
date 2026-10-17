@@ -53,7 +53,9 @@ before any byte is decoded; no partial results):
 只返回聚合——总帧数、各状态计数、限量坏帧位置列表（附"还有更多"标志）、
 各字段 min/max/mean（缩放后工程值，均值按 ``DAT_SCAN_MEAN_DECIMALS`` 位小
 数舍入）——绝不返回任何原始帧数据，百 MB 级文件一次调用即得全文件结论而
-不撑爆上下文。扫描忽略分页/筛选参数（整文件语义）。坏帧清单限量
+不撑爆上下文（实测 100 MiB / 328 万帧全量扫描约 3.5s；扫描上限与 60s 时限
+之内是完整全量，触限以 scan_truncated/scan_timeout 如实降级）。扫描忽略分
+页/筛选参数（整文件语义）。坏帧清单限量
 （``DAT_SCAN_MAX_BAD_FRAME_LIST``）与单次调用时限
 （``DAT_PARSE_SCAN_TIMEOUT_SECONDS``，解码循环逐帧检查单调时钟）同样是代
 码常量：触限即以结构化拒绝 ``reason_code=scan_timeout`` 回报已扫描的部分
@@ -80,9 +82,12 @@ DEFAULT_FRAME_COUNT = 25
 # Audit semantics: the telemetry page/scan caps are code constants, never
 # config entries — runtime reconfiguration must not be able to widen them.
 DAT_PARSE_MAX_FRAMES = 100
-# 全量扫描的帧数上限：~100 MB / 32 B 帧的文件约 300 万帧，不设上限会让最坏
-# 情形延迟与内存失控；触顶即停，并以 scan_truncated 明示未完整扫描。
-DAT_PARSE_SCAN_MAX_FRAMES = 100_000
+# 全量扫描的帧数上限：病态布局（极小帧）的兜底，而非常规遥测的操作边界。
+# 实测（本仓库 venv，3.28M 帧 / 100 MiB 定长 32B 文件）全量扫描 3.5s、
+# ~94 万帧/秒：4M 帧约 4.3s，在 60s 时限内留足余量，且覆盖"百 MB 级
+# 单文件 ≈ 320 万帧"的 spec 尺度事实；真正的操作边界是下方 60s 时限，
+# 逐帧检查单调时钟兜底一切布局。触顶即停，并以 scan_truncated 明示未完整扫描。
+DAT_PARSE_SCAN_MAX_FRAMES = 4_000_000
 # 整文件扫描（mode="scan"）的审计常量：坏帧清单限量、单次调用时限、均值小数
 # 位——与分页/扫描上限一样是代码常量，绝不做成配置项（运行时改口会让"全文件
 # 结论"的审计语义失真）。
@@ -252,7 +257,7 @@ def _parse_fields(node: object, frame_bound: int) -> list[dict]:
         scale = item.get("scale", 1.0)
         if isinstance(scale, bool) or not isinstance(scale, (int, float)) or not math.isfinite(scale):
             raise _LayoutInvalid(f"{where}.scale: 必须是有限数值，收到 {scale!r}")
-        fields.append({"name": name, "offset": offset, "format": _format_for(type_name, endian), "scale": scale})
+        fields.append({"name": name, "offset": offset, "format": _format_for(type_name, endian), "width": size, "scale": scale})
     return fields
 
 
@@ -307,7 +312,7 @@ def _parse_layout(raw: str) -> dict:
     fields = _parse_fields(document["fields"], frame_bound)
     checksum = _parse_checksum(document.get("checksum"), frame_bound)
     # 解码期帧容纳底线：任一已声明元素放不下 → 该帧标注 truncated。
-    required_ends = [field["offset"] + {"B": 1, "b": 1, "H": 2, "h": 2, "I": 4, "i": 4}[field["format"][1]] for field in fields]
+    required_ends = [field["offset"] + field["width"] for field in fields]
     if checksum is not None:
         required_ends += [checksum["offset"] + checksum["width"], checksum["end"]]
     return {
@@ -440,6 +445,23 @@ def _summary(spans_count: int, counts: Counter, skipped: int, window_start: int,
     return text
 
 
+def _tally_spans(spans: list[tuple[int, int, str]], scanned_bytes: int) -> tuple[Counter, int, dict[str, int]]:
+    """decode/scan 共享的 span 簿记：状态计数、跳过字节与规范化 status_counts。
+
+    claimed（帧覆盖字节）与 skipped（scanned − claimed，非负收敛）在两条
+    输出路径必须逐字一致——扫描聚合与逐窗解码的对账契约靠这一点。
+    """
+    counts = Counter(status for _start, _end, status in spans)
+    claimed = sum(end - start for start, end, _status in spans)
+    skipped = max(0, scanned_bytes - claimed)
+    status_counts = {
+        _STATUS_OK: counts.get(_STATUS_OK, 0),
+        _STATUS_CHECKSUM_FAILED: counts.get(_STATUS_CHECKSUM_FAILED, 0),
+        _STATUS_TRUNCATED: counts.get(_STATUS_TRUNCATED, 0),
+    }
+    return counts, skipped, status_counts
+
+
 def _decode_payload(data, file_size: int, layout: dict, selected: list[dict], start_frame: int, frame_count: int) -> dict:
     spans, scanned_bytes, scan_truncated = _scan_frames(data, layout)
     clamped = min(frame_count, DAT_PARSE_MAX_FRAMES)
@@ -457,14 +479,7 @@ def _decode_payload(data, file_size: int, layout: dict, selected: list[dict], st
         )
     returned = len(frames)
     next_start = start_frame + returned if returned > 0 and start_frame + returned < len(spans) else None
-    counts = Counter(status for _start, _end, status in spans)
-    claimed = sum(end - start for start, end, _status in spans)
-    skipped = max(0, scanned_bytes - claimed)
-    status_counts = {
-        _STATUS_OK: counts.get(_STATUS_OK, 0),
-        _STATUS_CHECKSUM_FAILED: counts.get(_STATUS_CHECKSUM_FAILED, 0),
-        _STATUS_TRUNCATED: counts.get(_STATUS_TRUNCATED, 0),
-    }
+    counts, skipped, status_counts = _tally_spans(spans, scanned_bytes)
     return {
         "file_size": file_size,
         "scanned_bytes": scanned_bytes,
@@ -501,9 +516,7 @@ def _scan_payload(data, file_size: int, layout: dict) -> dict:
     """
     deadline = time.monotonic() + DAT_PARSE_SCAN_TIMEOUT_SECONDS
     spans, scanned_bytes, scan_truncated = _scan_frames(data, layout, deadline=deadline)
-    counts = Counter(status for _start, _end, status in spans)
-    claimed = sum(end - start for start, end, _status in spans)
-    skipped = max(0, scanned_bytes - claimed)
+    counts, skipped, status_counts = _tally_spans(spans, scanned_bytes)
     bad_total = counts.get(_STATUS_CHECKSUM_FAILED, 0) + counts.get(_STATUS_TRUNCATED, 0)
     bad_frames = []
     for index, (start, _end, status) in enumerate(spans):
@@ -535,11 +548,7 @@ def _scan_payload(data, file_size: int, layout: dict) -> dict:
         # total_frames 是扫描上限内的帧数：触顶时由 scan_truncated 明示
         # "未完整扫描"，绝不假装做过全量。
         "total_frames": len(spans),
-        "status_counts": {
-            _STATUS_OK: counts.get(_STATUS_OK, 0),
-            _STATUS_CHECKSUM_FAILED: counts.get(_STATUS_CHECKSUM_FAILED, 0),
-            _STATUS_TRUNCATED: counts.get(_STATUS_TRUNCATED, 0),
-        },
+        "status_counts": status_counts,
         "bad_frames": bad_frames,
         "bad_frames_truncated": bad_total > len(bad_frames),
         "field_stats": field_stats,
@@ -625,8 +634,9 @@ async def parse_dat_tool(
     性扫描同步字并解码。mode=frames（默认）分页返回帧表（每帧：全局帧号/
     文件偏移/状态/工程值）；坏帧逐帧标注（checksum_failed/truncated）并计
     数，不打断好帧解码；fields_filter 可只返回关注的字段/通道子集。mode=
-    scan 做整文件扫描聚合：服务端一次解码全文件（约百 MB 级文件一次调用即
-    可），只返回总帧数、各状态计数、限量坏帧位置列表（附"还有更多"标志与
+    scan 做整文件扫描聚合：服务端一次解码全文件（百 MB 级文件一次调用即
+    可，扫描帧上限与时限之内的文件保证全量、触限如实降级），只返回总帧
+    数、各状态计数、限量坏帧位置列表（附"还有更多"标志与
     坏帧总数）、各字段 min/max/mean（缩放后工程值），绝不返回任何原始帧数
     据——分页与筛选参数被忽略；扫描时限为代码常量，触限以
     reason_code=scan_timeout 回报已扫描的部分进度。布局解析失败、词汇表外

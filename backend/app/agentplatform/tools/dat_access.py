@@ -16,7 +16,7 @@ import errno
 import os
 import stat
 from pathlib import Path, PurePosixPath
-from typing import BinaryIO
+from typing import BinaryIO, NamedTuple
 
 from app.agentplatform.tools.code_evidence_access import get_thread_id
 from deerflow.config.paths import VIRTUAL_PATH_PREFIX, get_paths
@@ -40,7 +40,14 @@ class DatAccessRejected(ValueError):
         self.reason_code = reason_code
 
 
-def open_uploads_dat_file(runtime: Runtime, declared: str) -> tuple[BinaryIO, int]:
+class VerifiedDat(NamedTuple):
+    """A fence-verified open handle plus the fstat size snapshot it was verified against."""
+
+    handle: BinaryIO
+    size: int
+
+
+def open_uploads_dat_file(runtime: Runtime, declared: str) -> VerifiedDat:
     """Resolve and open a fenced ``/mnt/user-data/uploads/...`` ``.dat`` file.
 
     Check chain (each failure raises :class:`DatAccessRejected` with its own
@@ -126,4 +133,4 @@ def open_uploads_dat_file(runtime: Runtime, declared: str) -> tuple[BinaryIO, in
     except BaseException:
         os.close(fd)
         raise
-    return stream, info.st_size
+    return VerifiedDat(stream, info.st_size)
