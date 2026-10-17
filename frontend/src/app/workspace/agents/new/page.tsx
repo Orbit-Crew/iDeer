@@ -47,6 +47,7 @@ import {
 import { useAuth } from "@/core/auth/AuthProvider";
 import { useI18n } from "@/core/i18n/hooks";
 import { createHumanInputSubmitter } from "@/core/messages/human-input";
+import { SubtasksProvider } from "@/core/tasks/context";
 import { useThreadStream } from "@/core/threads/hooks";
 import { uuid } from "@/core/utils/uuid";
 import { createVisibilityApplication } from "@/core/visibility-applications/api";
@@ -457,76 +458,78 @@ export default function NewAgentPage() {
 
   return (
     <ThreadContext.Provider value={{ thread }}>
-      <ArtifactsProvider>
-        <div className="flex size-full flex-col">
-          {header}
+      <SubtasksProvider>
+        <ArtifactsProvider>
+          <div className="flex size-full flex-col">
+            {header}
 
-          <main className="flex min-h-0 flex-1 flex-col">
-            {showSaveHint ? (
-              <div className="px-4 pt-4">
-                <div className="mx-auto w-full max-w-(--container-width-md)">
-                  <Alert>
-                    <InfoIcon className="h-4 w-4" />
-                    <AlertDescription>{t.agents.saveHint}</AlertDescription>
-                  </Alert>
+            <main className="flex min-h-0 flex-1 flex-col">
+              {showSaveHint ? (
+                <div className="px-4 pt-4">
+                  <div className="mx-auto w-full max-w-(--container-width-md)">
+                    <Alert>
+                      <InfoIcon className="h-4 w-4" />
+                      <AlertDescription>{t.agents.saveHint}</AlertDescription>
+                    </Alert>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex min-h-0 flex-1 justify-center">
+                <MessageList
+                  className={cn("size-full", showSaveHint ? "pt-4" : "pt-10")}
+                  threadId={threadId}
+                  thread={thread}
+                  onSubmitHumanInput={
+                    agentName ? handleSubmitHumanInput : undefined
+                  }
+                />
+              </div>
+
+              <div className="bg-background flex shrink-0 justify-center border-t px-4 py-4">
+                <div className="w-full max-w-(--container-width-md)">
+                  {agent ? (
+                    <div className="flex flex-col items-center gap-4 rounded-2xl border py-8 text-center">
+                      <CheckCircleIcon className="text-primary h-10 w-10" />
+                      <p className="font-semibold">{t.agents.agentCreated}</p>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() =>
+                            router.push(
+                              `/workspace/agents/${agentName}/chats/new`,
+                            )
+                          }
+                        >
+                          {t.agents.startChatting}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => router.push("/workspace/agents")}
+                        >
+                          {t.agents.backToGallery}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <PromptInput
+                      onSubmit={({ text }) => void handleChatSubmit(text)}
+                    >
+                      <PromptInputTextarea
+                        autoFocus
+                        placeholder={t.agents.createPageSubtitle}
+                        disabled={thread.isLoading}
+                      />
+                      <PromptInputFooter className="justify-end">
+                        <PromptInputSubmit disabled={thread.isLoading} />
+                      </PromptInputFooter>
+                    </PromptInput>
+                  )}
                 </div>
               </div>
-            ) : null}
-
-            <div className="flex min-h-0 flex-1 justify-center">
-              <MessageList
-                className={cn("size-full", showSaveHint ? "pt-4" : "pt-10")}
-                threadId={threadId}
-                thread={thread}
-                onSubmitHumanInput={
-                  agentName ? handleSubmitHumanInput : undefined
-                }
-              />
-            </div>
-
-            <div className="bg-background flex shrink-0 justify-center border-t px-4 py-4">
-              <div className="w-full max-w-(--container-width-md)">
-                {agent ? (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border py-8 text-center">
-                    <CheckCircleIcon className="text-primary h-10 w-10" />
-                    <p className="font-semibold">{t.agents.agentCreated}</p>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() =>
-                          router.push(
-                            `/workspace/agents/${agentName}/chats/new`,
-                          )
-                        }
-                      >
-                        {t.agents.startChatting}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => router.push("/workspace/agents")}
-                      >
-                        {t.agents.backToGallery}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <PromptInput
-                    onSubmit={({ text }) => void handleChatSubmit(text)}
-                  >
-                    <PromptInputTextarea
-                      autoFocus
-                      placeholder={t.agents.createPageSubtitle}
-                      disabled={thread.isLoading}
-                    />
-                    <PromptInputFooter className="justify-end">
-                      <PromptInputSubmit disabled={thread.isLoading} />
-                    </PromptInputFooter>
-                  </PromptInput>
-                )}
-              </div>
-            </div>
-          </main>
-        </div>
-      </ArtifactsProvider>
+            </main>
+          </div>
+        </ArtifactsProvider>
+      </SubtasksProvider>
     </ThreadContext.Provider>
   );
 }

@@ -199,7 +199,9 @@ class TestStartRun:
         run_ctx = MagicMock()
         run_ctx.thread_store = MagicMock()
         run_ctx.thread_store.get = AsyncMock(return_value=None)
+        run_ctx.thread_store.check_access = AsyncMock(return_value=True)
         run_ctx.thread_store.create = AsyncMock()
+        run_ctx.thread_store.update_metadata = AsyncMock()
         run_ctx.thread_store.update_status = AsyncMock()
 
         request = MagicMock()
@@ -251,6 +253,175 @@ class TestStartRun:
         run_mgr.create_or_reject.assert_called_once()
         await _drain_background_upsert(run_ctx.thread_store.create)
         run_ctx.thread_store.create.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_thread_run_endpoint_reuses_active_code_package_in_response(self, mock_deps):
+        from app.gateway.routers.thread_runs import RunCreateRequest, create_run
+        from deerflow.runtime import DisconnectMode, RunRecord, RunStatus
+
+        bridge, run_mgr, run_ctx, request = mock_deps
+        run_ctx.thread_store.get.return_value = {"metadata": {"deerflow_code_package_id": "pkg-active"}}
+
+        async def admit(thread_id, assistant_id, **kwargs):
+            return RunRecord(
+                run_id="run-code",
+                thread_id=thread_id,
+                assistant_id=assistant_id,
+                status=RunStatus.pending,
+                on_disconnect=DisconnectMode.cancel,
+                metadata=kwargs["metadata"],
+                kwargs=kwargs["kwargs"],
+            )
+
+        run_mgr.create_or_reject.side_effect = admit
+        body = RunCreateRequest(assistant_id="lead_agent", input={"messages": [{"type": "human", "content": "continue"}]})
+        with (
+            patch("app.gateway.services.get_stream_bridge", return_value=bridge),
+            patch("app.gateway.services.get_run_manager", return_value=run_mgr),
+            patch("app.gateway.services.get_run_context", return_value=run_ctx),
+            patch("app.gateway.services.resolve_agent_factory", return_value=MagicMock()),
+            patch("app.gateway.services.run_agent", new_callable=AsyncMock),
+            patch("app.gateway.run_preparation._read_manifest_if_needed", new_callable=AsyncMock, return_value={"package_id": "pkg-active"}),
+        ):
+            response = await create_run.__wrapped__("thread-1", body, request)
+            await asyncio.sleep(0.05)
+
+        assert response.metadata["code_package_id"] == "pkg-active"
+
+    @pytest.mark.asyncio
+    async def test_existing_thread_active_code_package_is_passed_to_run_preparation(self, mock_deps):
+        bridge, run_mgr, run_ctx, request = mock_deps
+        run_ctx.thread_store.get.return_value = {"metadata": {"deerflow_code_package_id": "pkg-active"}}
+        run_mgr.create_or_reject.return_value = MagicMock(
+            run_id="run-code",
+            thread_id="thread-1",
+            assistant_id="lead_agent",
+            task=None,
+            idempotency_reused=False,
+            kwargs=None,
+            metadata={"code_package_id": "pkg-active"},
+            abort_event=asyncio.Event(),
+        )
+        body = SimpleNamespace(
+            assistant_id="lead_agent",
+            on_disconnect="cancel",
+            input={"messages": [{"role": "user", "content": "continue"}]},
+            config=None,
+            metadata=None,
+            multitask_strategy="reject",
+            stream_mode=None,
+            stream_subgraphs=False,
+            interrupt_before=None,
+            interrupt_after=None,
+            context=None,
+        )
+        prepared = SimpleNamespace(
+            body_context={},
+            canonical_run_id=None,
+            canonical_factory=None,
+            model_name=None,
+            run_metadata={"code_package_id": "pkg-active"},
+            evidence_mode=None,
+            memory_preload_task=None,
+            evidence_binding=None,
+        )
+        prepare = AsyncMock(return_value=prepared)
+
+        with (
+            patch("app.gateway.services.get_stream_bridge", return_value=bridge),
+            patch("app.gateway.services.get_run_manager", return_value=run_mgr),
+            patch("app.gateway.services.get_run_context", return_value=run_ctx),
+            patch("app.gateway.services.resolve_agent_factory", return_value=MagicMock()),
+            patch("app.gateway.services.run_agent", new_callable=AsyncMock),
+            patch("app.gateway.run_preparation.prepare_run", prepare),
+        ):
+            from app.gateway.services import start_run
+
+            result = await start_run(body, "thread-1", request, require_existing_thread=True)
+            await _drain_background_upsert(run_ctx.thread_store.update_metadata)
+            await result.task
+
+        prepare.assert_awaited_once()
+        assert prepare.await_args.kwargs["active_code_package_id"] == "pkg-active"
+        assert run_ctx.thread_store.get.await_args_list[0].kwargs["user_id"] == "user-1"
+        run_ctx.thread_store.update_metadata.assert_awaited_once_with("thread-1", {"deerflow_code_package_id": "pkg-active"}, touch=False, user_id="user-1")
+
+    @pytest.mark.asyncio
+    async def test_submitted_code_package_is_stored_as_thread_active_package(self, mock_deps):
+        bridge, run_mgr, run_ctx, request = mock_deps
+        run_mgr.create_or_reject.return_value = MagicMock(
+            run_id="run-code",
+            thread_id="thread-1",
+            assistant_id="lead_agent",
+            task=None,
+            idempotency_reused=False,
+            kwargs=None,
+            metadata={"code_package_id": "pkg-submitted"},
+            abort_event=asyncio.Event(),
+        )
+        prepared = SimpleNamespace(
+            body_context={},
+            canonical_run_id=None,
+            canonical_factory=None,
+            model_name=None,
+            run_metadata={"code_package_id": "pkg-submitted"},
+            evidence_mode=None,
+            memory_preload_task=None,
+            evidence_binding=None,
+        )
+        body = SimpleNamespace(
+            assistant_id="lead_agent",
+            on_disconnect="cancel",
+            input={"messages": [{"role": "user", "content": "analyze"}]},
+            config=None,
+            metadata=None,
+            multitask_strategy="reject",
+            stream_mode=None,
+            stream_subgraphs=False,
+            interrupt_before=None,
+            interrupt_after=None,
+            context=None,
+        )
+
+        with (
+            patch("app.gateway.services.get_stream_bridge", return_value=bridge),
+            patch("app.gateway.services.get_run_manager", return_value=run_mgr),
+            patch("app.gateway.services.get_run_context", return_value=run_ctx),
+            patch("app.gateway.services.resolve_agent_factory", return_value=MagicMock()),
+            patch("app.gateway.services.run_agent", new_callable=AsyncMock),
+            patch("app.gateway.run_preparation.prepare_run", AsyncMock(return_value=prepared)),
+        ):
+            from app.gateway.services import start_run
+
+            result = await start_run(body, "thread-1", request)
+            await _drain_background_upsert(run_ctx.thread_store.create)
+            await result.task
+
+        created_metadata = run_ctx.thread_store.create.await_args.kwargs["metadata"]
+        assert created_metadata["deerflow_code_package_id"] == "pkg-submitted"
+        assert "code_package_id" not in created_metadata
+
+    @pytest.mark.asyncio
+    async def test_unowned_thread_package_is_not_loaded_before_run_preparation(self, mock_deps):
+        bridge, run_mgr, run_ctx, request = mock_deps
+        run_ctx.thread_store.check_access.return_value = False
+        prepare = AsyncMock()
+        body = SimpleNamespace(assistant_id="lead_agent", multitask_strategy="reject", metadata=None, config=None)
+
+        with (
+            patch("app.gateway.services.get_stream_bridge", return_value=bridge),
+            patch("app.gateway.services.get_run_manager", return_value=run_mgr),
+            patch("app.gateway.services.get_run_context", return_value=run_ctx),
+            patch("app.gateway.run_preparation.prepare_run", prepare),
+        ):
+            from app.gateway.services import start_run
+
+            with pytest.raises(HTTPException) as exc_info:
+                await start_run(body, "thread-1", request, require_existing_thread=True)
+
+        assert exc_info.value.status_code == 404
+        run_ctx.thread_store.get.assert_not_awaited()
+        prepare.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_start_run_uuid_uses_frozen_canonical_factory_and_preallocated_run_id(self, mock_deps):

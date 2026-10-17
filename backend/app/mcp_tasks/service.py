@@ -648,16 +648,24 @@ class McpTaskService:
 
     async def stop(self) -> None:
         task = self._task
-        if task is None:
-            return
-        self._stop.set()
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
-        finally:
-            self._task = None
+        if task is not None:
+            self._stop.set()
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            finally:
+                self._task = None
+        # 03-L8: compensation tasks used to outlive stop() entirely, so a
+        # background cancel could keep running against a "stopped" service.
+        # Cancel and await them here; finalize() discards them from the set.
+        pending_compensations = [t for t in self._compensation_tasks if not t.done()]
+        for compensation in pending_compensations:
+            compensation.cancel()
+        if pending_compensations:
+            await asyncio.gather(*pending_compensations, return_exceptions=True)
+        self._compensation_tasks.clear()
 
     async def _run_loop(self) -> None:
         while not self._stop.is_set():

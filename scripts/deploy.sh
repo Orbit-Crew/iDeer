@@ -84,7 +84,9 @@ if  [ "$CMD" != "down" ] && [ ! -f "$IDEER_CONFIG_PATH" ]; then
         echo "  or 'make config' for the full template, then set the required model API keys."
         exit 1
     fi
-else
+elif [ "$CMD" != "down" ]; then
+    # 08-L9: 'down' never checks config.yaml; printing a green check mark here
+    # implied a verification that did not happen.
     echo -e "${GREEN}✓ config.yaml: $IDEER_CONFIG_PATH${NC}"
 fi
 
@@ -150,6 +152,21 @@ fi
 # the deploy script. The file is never sourced by the shell.
 if [ -f "$REPO_ROOT/.env" ]; then
     COMPOSE_CMD+=(--env-file "$REPO_ROOT/.env")
+fi
+
+# ── frontend/.env ─────────────────────────────────────────────────────────────
+# docker-compose.yaml declares ../frontend/.env as a REQUIRED env_file for the
+# frontend service, so a fresh checkout without it failed compose parsing with
+# an opaque error. Mirror docker.sh's ensure-from-example behavior (08-L7).
+if [ "$CMD" != "down" ] && [ ! -f "$REPO_ROOT/frontend/.env" ]; then
+    if [ -f "$REPO_ROOT/frontend/.env.example" ]; then
+        cp "$REPO_ROOT/frontend/.env.example" "$REPO_ROOT/frontend/.env"
+        echo -e "${GREEN}✓ Created frontend/.env from frontend/.env.example${NC}"
+    else
+        echo -e "${RED}✗ frontend/.env not found and no frontend/.env.example to copy from.${NC}"
+        echo "  Create $REPO_ROOT/frontend/.env before deploying."
+        exit 1
+    fi
 fi
 
 
@@ -260,7 +277,6 @@ if [ "$CMD" = "down" ]; then
     export IDEER_HOME="${IDEER_HOME:-$REPO_ROOT/backend/.deer-flow}"
     export IDEER_CONFIG_PATH="${IDEER_CONFIG_PATH:-$IDEER_HOME/config.yaml}"
     export IDEER_EXTENSIONS_CONFIG_PATH="${IDEER_EXTENSIONS_CONFIG_PATH:-$IDEER_HOME/extensions_config.json}"
-    export IDEER_DOCKER_SOCKET="${IDEER_DOCKER_SOCKET:-/var/run/docker.sock}"
     export IDEER_REPO_ROOT="${IDEER_REPO_ROOT:-$REPO_ROOT}"
     export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-placeholder}"
     export IDEER_INTERNAL_AUTH_TOKEN="${IDEER_INTERNAL_AUTH_TOKEN:-placeholder}"
@@ -276,11 +292,6 @@ if [ "$CMD" = "build" ]; then
     echo "  iDeer — Building Images"
     echo "=========================================="
     echo ""
-
-    # Docker socket is needed for compose to parse volume specs
-    if [ -z "$IDEER_DOCKER_SOCKET" ]; then
-        export IDEER_DOCKER_SOCKET="/var/run/docker.sock"
-    fi
 
     "${COMPOSE_CMD[@]}" build
 
@@ -316,11 +327,11 @@ if [ "$sandbox_mode" = "provisioner" ]; then
 fi
 
 # ── Docker socket (DooD) ─────────────────────────────────────────────────
-# DEER_FLOW_DOCKER_SOCKET is the upstream variable and what the opt-in
-# docker-compose.dood.yaml overlay interpolates; IDEER_DOCKER_SOCKET is the
-# variable the default compose file interpolates. Resolve the socket the way
-# Compose --env-file would interpolate it (shell environment wins, then
-# .env); the file is never sourced by the shell.
+# The base compose files never mount the host Docker socket; it joins gateway
+# and workflow-worker only through the opt-in docker-compose.dood.yaml overlay
+# below. DEER_FLOW_DOCKER_SOCKET is the upstream variable and what that overlay
+# interpolates; IDEER_DOCKER_SOCKET is kept as a legacy alias (shell wins, then
+# .env) so existing deployments keep their custom socket path.
 docker_socket="$DEER_FLOW_DOCKER_SOCKET"
 if [ -z "$docker_socket" ]; then
     docker_socket="$IDEER_DOCKER_SOCKET"
@@ -337,9 +348,6 @@ if [ -z "$docker_socket" ] && [ -f "$REPO_ROOT/.env" ]; then
     docker_socket="${docker_socket#\'}"
 fi
 docker_socket="${docker_socket:-/var/run/docker.sock}"
-if [ -z "$IDEER_DOCKER_SOCKET" ]; then
-    export IDEER_DOCKER_SOCKET="$docker_socket"
-fi
 
 # Only non-local sandbox modes need the host Docker socket. Mounting the
 # socket = root-equivalent host control; see SECURITY.md.
@@ -366,7 +374,7 @@ if [ "$sandbox_mode" != "local" ]; then
             unset DEER_FLOW_DOCKER_SOCKET
         fi
         echo -e "${GREEN}✓ Docker socket: $docker_socket${NC}"
-        echo -e "${YELLOW}  Mounting host Docker socket into gateway (DooD = host root-equivalent). See SECURITY.md.${NC}"
+        echo -e "${YELLOW}  Mounting host Docker socket into gateway and workflow-worker (DooD = host root-equivalent). See SECURITY.md.${NC}"
         COMPOSE_CMD+=(-f "$DOCKER_DIR/docker-compose.dood.yaml")
     else
         echo -e "${GREEN}✓ Docker socket: $docker_socket${NC}"

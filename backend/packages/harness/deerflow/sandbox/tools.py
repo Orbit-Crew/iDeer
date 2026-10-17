@@ -600,6 +600,15 @@ def _resolve_local_read_path(path: str, thread_data: ThreadDataState | None) -> 
         # acquire-time identity and provider state), not by tool-layer host
         # path reconstruction.
         return path
+    evidence_prefix = f"{VIRTUAL_PATH_PREFIX}/code-evidence"
+    if path == evidence_prefix or path.startswith(f"{evidence_prefix}/"):
+        evidence_root = replace_virtual_path(evidence_prefix, thread_data)
+        if evidence_root == evidence_prefix:
+            raise PermissionError("Code evidence requires a thread-local path mapping")
+        resolved = Path(replace_virtual_path(path, thread_data)).resolve()
+        if not resolved.is_relative_to(Path(evidence_root).resolve()):
+            raise PermissionError("Access denied: path traversal detected")
+        return str(resolved)
     return _resolve_and_validate_user_data_path(path, thread_data)
 
 
@@ -2076,7 +2085,7 @@ def _github_env_from_runtime(runtime: Runtime) -> dict[str, str] | None:
 
     The token still crosses the harness/app boundary as opaque data — the
     harness never imports the app-layer minting code, preserving the
-    dependency firewall enforced by ``tests/test_harness_boundary.py``.
+    dependency firewall enforced by ``tests/unit/gateway/test_harness_boundary.py``.
     """
     context = runtime.context if runtime.context is not None else None
     value = context.get("github_token") if context else None
@@ -2249,16 +2258,7 @@ def ls_tool(runtime: Runtime, path: str, description: str = "") -> str:
         thread_data = None
         if is_local_sandbox(runtime):
             thread_data = get_thread_data(runtime)
-            validate_local_tool_path(path, thread_data, read_only=True)
-            if _is_skills_path(path) or _is_acp_workspace_path(path):
-                # Skills and ACP workspace paths are resolved by the sandbox's
-                # PathMapping (which uses the user_id from acquire time), not
-                # by _resolve_skills_path / _resolve_acp_workspace_path (which
-                # use get_effective_user_id() from contextvar and may differ
-                # from the sandbox mapping's user_id).
-                pass
-            elif not _is_custom_mount_path(path):
-                path = _resolve_and_validate_user_data_path(path, thread_data)
+            path = _resolve_local_read_path(path, thread_data)
             # Custom mount paths and skills/ACP paths are resolved by LocalSandbox._resolve_path()
         children = sandbox.list_dir(path)
         if not children:

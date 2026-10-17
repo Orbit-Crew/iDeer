@@ -15,7 +15,9 @@ services:
     container_name: deer-flow-openviking
     command: ["--without-bot"]
     ports:
-      - "${OPENVIKING_PORT:-1933}:1933"
+      # Published ports need an explicit bind address (AGENTS.md deployment rule);
+      # set BIND_HOST=0.0.0.0 explicitly when other hosts need access.
+      - "${BIND_HOST:-127.0.0.1}:${OPENVIKING_PORT:-1933}:1933"
     volumes:
       - openviking-data:/app/.openviking
     networks:

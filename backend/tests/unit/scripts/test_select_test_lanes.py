@@ -26,6 +26,25 @@ def test_backend_and_frontend_changes_select_each_channel_once() -> None:
     assert any("authentication" in reason for reason in plan["reasons"]["real-e2e"])
 
 
+def test_authorization_named_files_reach_the_real_e2e_channel() -> None:
+    """08-L2: authz/authorization file names are auth variants, not unknown risk.
+
+    The exact-word auth match missed `backend/app/gateway/authz.py` (the RBAC
+    enforcement module) and any `authorization*` sibling, so changes to the
+    authorization core could be merged without the Real E2E channel.
+    """
+    for path in (
+        "backend/app/gateway/authz.py",
+        "backend/app/gateway/authorization.py",
+        "backend/app/gateway/auth_middleware.py",
+        "backend/app/gateway/auth/session_cookie.py",
+        "frontend/src/core/auth/session.ts",
+    ):
+        plan = classify_changes([path])
+        assert "real-e2e" in plan["channels"], f"{path} must trigger real-e2e; got {plan['channels']}"
+        assert any("authentication" in reason for reason in plan["reasons"]["real-e2e"])
+
+
 def test_runtime_and_configuration_changes_expand_validation() -> None:
     plan = classify_changes(["config.yaml", "local-runtime/src/runtime.py"])
 

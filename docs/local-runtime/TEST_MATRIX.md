@@ -50,11 +50,11 @@ so a Device can never be accidentally covered as a Resource.
 | Consent restart/replay | `local-runtime/tests/test_consent.py` | SQLite audit survives restart while approvals remain one-time and payload-bound |
 | Artifact upload grant binding | `local-runtime/tests/test_python.py` | Upload grant is bound to run/task/thread/name and cannot be replayed |
 | Server artifact intake | `backend/tests/unit/device_control/test_artifacts.py` | Streaming upload enforces grant expiry, size/hash limits, traversal safety, and one-time consumption |
-| Local receipt to Run Evidence | `backend/tests/test_local_runtime_extension.py` | Local tool executor forwards device receipts into the active run evidence binding |
-| Revocation/offline recheck | `backend/tests/test_local_runtime_extension.py` | Frozen routes revalidate the six-factor authorization before dispatch and refuse revoked/offline capabilities |
-| Run authorization snapshot | `backend/tests/test_local_runtime_extension.py` | Run identity, device, policy version and six-factor intersection are frozen; child snapshots can only narrow |
+| Local receipt to Run Evidence | `backend/tests/unit/agentplatform/test_local_runtime_extension.py` | Local tool executor forwards device receipts into the active run evidence binding |
+| Revocation/offline recheck | `backend/tests/unit/agentplatform/test_local_runtime_extension.py` | Frozen routes revalidate the six-factor authorization before dispatch and refuse revoked/offline capabilities |
+| Run authorization snapshot | `backend/tests/unit/agentplatform/test_local_runtime_extension.py` | Run identity, device, policy version and six-factor intersection are frozen; child snapshots can only narrow |
 | Broker snapshot enforcement | `backend/tests/unit/device_control/test_broker.py` | Broker rejects a task when its frozen device or effective capability snapshot no longer matches |
-| Broker receipt evidence bridge | `backend/tests/unit/device_control/test_broker.py`, `backend/tests/test_local_runtime_extension.py` | Terminal device receipts are forwarded once into the active Run Evidence ledger |
+| Broker receipt evidence bridge | `backend/tests/unit/device_control/test_broker.py`, `backend/tests/unit/agentplatform/test_local_runtime_extension.py` | Terminal device receipts are forwarded once into the active Run Evidence ledger |
 
 ## Local MCP host tests (M9)
 
@@ -95,12 +95,12 @@ so a Device can never be accidentally covered as a Resource.
 
 | Scenario | Test file | Required assertion |
 | --- | --- | --- |
-| `local.mcp.*` projection under the six factors | `backend/tests/test_local_runtime_mcp_integration.py` | Projected tools appear in `assemble_local_tools`/`local_tool_names` only when the device announced them and every factor allows; offline projects nothing |
-| Disabled/crashed server withdrawal | `backend/tests/test_local_runtime_mcp_integration.py` | Withdrawing the capability name from `device_capabilities` removes the tool from the model list; re-announcing restores it |
-| Frozen-route dispatch and receipt recording | `backend/tests/test_local_runtime_mcp_integration.py` | `LocalToolExecutor.invoke` routes `local.mcp.*` through the frozen route, records the receipt (server/tool name, result hash), and never exposes the device id |
-| Structured MCP failure semantics | `backend/tests/test_local_runtime_mcp_integration.py` | `MCP_TIMEOUT`, `SERVER_CRASHED`, `TOOL_NOT_FOUND`, and `SECRET_UNAVAILABLE` return distinguishable structured values with their receipts; no fake success |
-| Shared caller and Sub-Agent boundaries | `backend/tests/test_local_runtime_mcp_integration.py` | `child_authorization` and `RunAuthorizationSnapshot` narrowing apply to MCP capabilities |
-| Authorization matrix (MCP items) | `backend/tests/test_local_runtime_mcp_integration.py` | Unauthorized caller / offline device / policy deny / withdrawn server: tool invisible and invocation rejected before routing |
+| `local.mcp.*` projection under the six factors | `backend/tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | Projected tools appear in `assemble_local_tools`/`local_tool_names` only when the device announced them and every factor allows; offline projects nothing |
+| Disabled/crashed server withdrawal | `backend/tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | Withdrawing the capability name from `device_capabilities` removes the tool from the model list; re-announcing restores it |
+| Frozen-route dispatch and receipt recording | `backend/tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | `LocalToolExecutor.invoke` routes `local.mcp.*` through the frozen route, records the receipt (server/tool name, result hash), and never exposes the device id |
+| Structured MCP failure semantics | `backend/tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | `MCP_TIMEOUT`, `SERVER_CRASHED`, `TOOL_NOT_FOUND`, and `SECRET_UNAVAILABLE` return distinguishable structured values with their receipts; no fake success |
+| Shared caller and Sub-Agent boundaries | `backend/tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | `child_authorization` and `RunAuthorizationSnapshot` narrowing apply to MCP capabilities |
+| Authorization matrix (MCP items) | `backend/tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | Unauthorized caller / offline device / policy deny / withdrawn server: tool invisible and invocation rejected before routing |
 | MCP secret reference composition | `local-runtime/tests/test_mcp_secrets.py` | `SecretResolver` feeds the supervisor seam; references resolve into the server process env only; missing references fail closed; tool output echoing a resolved value is redacted |
 
 ## Required lanes

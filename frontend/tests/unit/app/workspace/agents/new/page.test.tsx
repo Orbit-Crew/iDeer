@@ -1245,7 +1245,7 @@ describe("NewAgentPage", () => {
       const backBtn = document.querySelector(
         "header button[data-variant='ghost']",
       );
-      expect(backBtn).toBeTruthy();
+      expect(backBtn).toBeInTheDocument();
       fireEvent.click(backBtn!);
       expect(mockPush).toHaveBeenCalledWith("/workspace/agents");
     });

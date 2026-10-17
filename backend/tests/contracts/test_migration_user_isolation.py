@@ -1,11 +1,23 @@
 """Tests for per-user data migration."""
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
 
 from deerflow.config.paths import Paths
+
+
+def _seed_threads_db(db_path: Path, rows: list[tuple[str, str]]) -> None:
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("CREATE TABLE threads_meta (thread_id TEXT, user_id TEXT)")
+        conn.executemany("INSERT INTO threads_meta VALUES (?, ?)", rows)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 @pytest.fixture
@@ -91,6 +103,51 @@ class TestMigrateThreadDirs:
         assert len(report) == 1
         assert (base_dir / "threads" / "t1").exists()  # not moved
         assert not (base_dir / "users" / "alice" / "threads" / "t1").exists()
+
+
+class TestBuildOwnerMapFromDb:
+    def test_reads_owner_map_from_deerflow_db_under_data_dir(self, base_dir: Path, paths: Paths):
+        # Current runtime layout: {sqlite_dir}/deerflow.db with sqlite_dir
+        # defaulting to {base_dir}/data (see deerflow.config.database_config).
+        _seed_threads_db(base_dir / "data" / "deerflow.db", [("t1", "alice"), ("t2", "bob")])
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice", "t2": "bob"}
+
+    def test_falls_back_to_legacy_ideer_db(self, base_dir: Path, paths: Paths):
+        _seed_threads_db(base_dir / "ideer.db", [("t1", "alice")])
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice"}
+
+    def test_prefers_new_db_name_over_legacy(self, base_dir: Path, paths: Paths):
+        _seed_threads_db(base_dir / "data" / "deerflow.db", [("t1", "alice")])
+        _seed_threads_db(base_dir / "data" / "ideer.db", [("t1", "legacy-owner")])
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice"}
+
+    def test_returns_empty_when_no_db_exists(self, base_dir: Path, paths: Paths):
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {}
+
+    def test_ignores_null_owners(self, base_dir: Path, paths: Paths):
+        db_path = base_dir / "data" / "deerflow.db"
+        _seed_threads_db(db_path, [("t1", "alice")])
+        conn = sqlite3.connect(str(db_path))
+        try:
+            conn.execute("INSERT INTO threads_meta VALUES ('t2', NULL)")
+            conn.commit()
+        finally:
+            conn.close()
+
+        from scripts.migrate_user_isolation import _build_owner_map_from_db
+
+        assert _build_owner_map_from_db(paths) == {"t1": "alice"}
 
 
 class TestMigrateMemory:
@@ -190,3 +247,92 @@ class TestMigrateAgents:
 
         report = migrate_agents(paths, user_id="default")
         assert report == []
+
+
+class TestMigrateSkills:
+    @staticmethod
+    def _seed_legacy_skill(base_dir: Path, name: str, *, content: str = "skill doc") -> Path:
+        skill_dir = base_dir / "skills" / "custom" / name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+        return skill_dir
+
+    def test_moves_legacy_into_user_layout(self, base_dir: Path, paths: Paths):
+        self._seed_legacy_skill(base_dir, "my-skill", content="legacy skill")
+        (base_dir / "skills" / "public" / "bootstrap").mkdir(parents=True)
+
+        from scripts.migrate_user_isolation import migrate_skills
+
+        report = migrate_skills(paths, user_id="default")
+
+        assert len(report) == 1
+        assert report[0]["skill"] == "my-skill"
+        assert "moved -> " in report[0]["action"]
+
+        dest = paths.user_custom_skills_dir("default") / "my-skill" / "SKILL.md"
+        assert dest.exists()
+        assert dest.read_text() == "legacy skill"
+        # Legacy custom dir cleaned up
+        assert not (base_dir / "skills" / "custom").exists()
+        # But skills/ parent survives (public/ still in use)
+        assert (base_dir / "skills" / "public").exists()
+
+    def test_dry_run_does_not_move(self, base_dir: Path, paths: Paths):
+        legacy_dir = self._seed_legacy_skill(base_dir, "my-skill")
+
+        from scripts.migrate_user_isolation import migrate_skills
+
+        report = migrate_skills(paths, user_id="default", dry_run=True)
+
+        assert len(report) == 1
+        assert legacy_dir.exists(), "dry-run must not touch the filesystem"
+        assert not (paths.user_custom_skills_dir("default") / "my-skill").exists()
+
+    def test_existing_destination_is_conflict(self, base_dir: Path, paths: Paths):
+        self._seed_legacy_skill(base_dir, "my-skill", content="legacy")
+        dest = paths.user_custom_skills_dir("default") / "my-skill"
+        dest.mkdir(parents=True)
+        (dest / "SKILL.md").write_text("preexisting", encoding="utf-8")
+
+        from scripts.migrate_user_isolation import migrate_skills
+
+        report = migrate_skills(paths, user_id="default")
+
+        assert report[0]["action"].startswith("conflict -> ")
+        assert (dest / "SKILL.md").read_text() == "preexisting"
+        conflicts_dir = paths.base_dir / "migration-conflicts" / "skills" / "my-skill"
+        assert (conflicts_dir / "SKILL.md").read_text() == "legacy"
+
+    def test_no_legacy_dir_is_noop(self, base_dir: Path, paths: Paths):
+        from scripts.migrate_user_isolation import migrate_skills
+
+        report = migrate_skills(paths, user_id="default")
+        assert report == []
+
+    def test_migrates_history_dir(self, base_dir: Path, paths: Paths):
+        history_dir = base_dir / "skills" / "custom" / ".history"
+        history_dir.mkdir(parents=True)
+        (history_dir / "log.json").write_text("[]", encoding="utf-8")
+
+        from scripts.migrate_user_isolation import migrate_skills
+
+        migrate_skills(paths, user_id="default")
+
+        dest_history = paths.user_custom_skills_dir("default") / ".history" / "log.json"
+        assert dest_history.exists()
+        assert not history_dir.exists()
+
+    def test_skills_parent_dir_not_deleted_even_if_custom_empty(self, base_dir: Path, paths: Paths):
+        """skills/ parent must NOT be deleted — public/ may still be in use."""
+        # Create only custom dir (empty), public dir with content
+        (base_dir / "skills" / "custom").mkdir(parents=True)
+        (base_dir / "skills" / "public" / "bootstrap").mkdir(parents=True)
+
+        from scripts.migrate_user_isolation import migrate_skills
+
+        migrate_skills(paths, user_id="default")
+
+        # custom/ cleaned up (was empty), but skills/ survives
+        assert not (base_dir / "skills" / "custom").exists()
+        assert (base_dir / "skills").exists()
+        assert (base_dir / "skills" / "public").exists()

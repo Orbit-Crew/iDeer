@@ -14,6 +14,7 @@ import { fileURLToPath } from "url";
 import { test, type Page } from "@playwright/test";
 
 import { mockLangGraphAPI, type MockAPIOptions } from "../utils/mock-api";
+import { waitForAnimationsSettled } from "../utils/settle";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -286,7 +287,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000); // 等待 mock 响应
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
     },
@@ -407,7 +417,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .locator('[data-testid="sidebar"], nav, aside')
         .first();
       if (await sidebar.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
   },
@@ -418,9 +428,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     needsAuth: true,
     expectedTexts: ["设置", "Settings", "外观", "Appearance"],
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
     },
   },
   {
@@ -432,9 +442,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
       '[cmdk-root], [role="dialog"], [data-testid="command-palette"]',
     ],
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+k");
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
     },
   },
 
@@ -462,7 +472,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       // 右键点击侧边栏线程触发重命名
@@ -471,7 +490,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await threadItem.isVisible({ timeout: 3000 }).catch(() => false)) {
         await threadItem.click({ button: "right" });
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
         const renameBtn = page
           .locator(
             'button:has-text("Rename"), button:has-text("重命名"), [data-testid="rename-thread"]',
@@ -479,7 +498,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await renameBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await renameBtn.click();
-          await page.waitForTimeout(500);
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
     },
@@ -500,7 +519,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await deleteBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await deleteBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: [
@@ -522,7 +541,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await deleteBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await deleteBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: [
@@ -544,7 +563,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await createBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await createBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['input[name="name"], input, [role="dialog"]'],
@@ -564,7 +583,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await editBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await editBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['input[name="name"], input, [role="dialog"]'],
@@ -582,7 +601,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await toolCard.isVisible({ timeout: 5000 }).catch(() => false)) {
         await toolCard.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"]'],
@@ -595,9 +614,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: false,
     skipDark: false,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       // 点击记忆/Memory 标签
       const memoryTab = page
         .locator(
@@ -606,7 +625,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await memoryTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await memoryTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
       const addBtn = page
         .locator(
@@ -615,7 +634,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await addBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await addBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['textarea, input, [role="dialog"]'],
@@ -628,9 +647,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true, // 复用 add-memory 的 mobile 变体
     skipDark: false,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const memoryTab = page
         .locator(
           'button:has-text("Memory"), button:has-text("记忆"), [role="tab"]:has-text("Memory"), [role="tab"]:has-text("记忆")',
@@ -638,7 +657,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await memoryTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await memoryTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
       const editBtn = page
         .locator(
@@ -647,7 +666,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await editBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await editBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['textarea, input, [role="dialog"]'],
@@ -660,9 +679,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: false,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const memoryTab = page
         .locator(
           'button:has-text("Memory"), button:has-text("记忆"), [role="tab"]:has-text("Memory"), [role="tab"]:has-text("记忆")',
@@ -670,7 +689,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await memoryTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await memoryTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
       const deleteBtn = page
         .locator(
@@ -679,7 +698,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await deleteBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"]'],
@@ -692,9 +711,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const memoryTab = page
         .locator(
           'button:has-text("Memory"), button:has-text("记忆"), [role="tab"]:has-text("Memory"), [role="tab"]:has-text("记忆")',
@@ -702,7 +721,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await memoryTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await memoryTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
       const clearBtn = page
         .locator(
@@ -711,7 +730,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await clearBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await clearBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"]'],
@@ -724,9 +743,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const memoryTab = page
         .locator(
           'button:has-text("Memory"), button:has-text("记忆"), [role="tab"]:has-text("Memory"), [role="tab"]:has-text("记忆")',
@@ -734,14 +753,14 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await memoryTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await memoryTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
       const importBtn = page
         .locator('button:has-text("Import"), button:has-text("导入")')
         .first();
       if (await importBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await importBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"]'],
@@ -754,9 +773,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: false,
     skipDark: false,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const skillsTab = page
         .locator(
           'button:has-text("Skills"), button:has-text("技能"), [role="tab"]:has-text("Skills"), [role="tab"]:has-text("技能")',
@@ -764,7 +783,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await skillsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await skillsTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
       const editBtn = page
         .locator(
@@ -773,7 +792,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await editBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await editBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"], textarea, .cm-editor'],
@@ -786,9 +805,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const skillsTab = page
         .locator(
           'button:has-text("Skills"), button:has-text("技能"), [role="tab"]:has-text("Skills"), [role="tab"]:has-text("技能")',
@@ -796,7 +815,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await skillsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await skillsTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
       const testBtn = page
         .locator(
@@ -805,7 +824,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await testBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await testBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"]'],
@@ -818,9 +837,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+k");
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       const shortcutsItem = page
         .locator(
           '[cmdk-item]:has-text("Keyboard"), [cmdk-item]:has-text("快捷键"), [cmdk-item]:has-text("Shortcut")',
@@ -828,7 +847,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await shortcutsItem.isVisible({ timeout: 3000 }).catch(() => false)) {
         await shortcutsItem.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"], kbd'],
@@ -855,7 +874,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       // 点击跟进建议
@@ -866,7 +894,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await suggestion.isVisible({ timeout: 3000 }).catch(() => false)) {
         await suggestion.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="dialog"]'],
@@ -896,7 +924,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       // 悬浮侧边栏线程项，点击三点菜单
@@ -907,7 +944,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .last();
       if (await moreBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await moreBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="menu"]'],
@@ -927,7 +964,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await modeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await modeBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="listbox"], [role="menu"]'],
@@ -947,7 +984,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await modelBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await modelBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="listbox"], input[type="search"]'],
@@ -974,7 +1011,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       const exportBtn = page
@@ -984,7 +1030,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await exportBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await exportBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="menu"]'],
@@ -1004,7 +1050,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await settingsBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await settingsBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="menu"]'],
@@ -1022,7 +1068,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await roleSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
         await roleSelect.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="listbox"], [role="option"], option'],
@@ -1049,7 +1095,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       const tokenBtn = page
@@ -1059,7 +1114,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await tokenBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await tokenBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="menu"]'],
@@ -1079,7 +1134,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await effortBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await effortBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[role="listbox"]'],
@@ -1100,7 +1155,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           mimeType: "text/plain",
           buffer: Buffer.from("Hello, this is a test file content."),
         });
-        await page.waitForTimeout(1000);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: [
@@ -1138,7 +1193,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       // 尝试打开 artifacts 面板
@@ -1149,7 +1213,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await artifactBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await artifactBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['#artifacts, [data-testid="artifact-panel"]'],
@@ -1178,8 +1242,17 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          // 在流式响应过程中截图 — 短暂等待
-          await page.waitForTimeout(800);
+          // Capture mid-stream: wait for the streaming indicator to show
+          // instead of a fixed 800ms sleep (tolerant: tour style).
+          await page
+            .locator(
+              '.streaming-indicator, [data-testid="streaming"], .animate-pulse',
+            )
+            .first()
+            .waitFor({ state: "visible", timeout: 3_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
         }
       }
     },
@@ -1209,7 +1282,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       // 展开思考过程
@@ -1220,7 +1302,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await reasoningBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await reasoningBtn.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[data-testid="reasoning"], .reasoning-block'],
@@ -1247,7 +1329,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       // 悬浮在 AI 消息上显示反馈按钮
@@ -1256,7 +1347,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await aiMessage.isVisible({ timeout: 3000 }).catch(() => false)) {
         await aiMessage.hover();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: [
@@ -1285,7 +1376,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
       // 悬浮在引用标记上
@@ -1296,7 +1396,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await citation.isVisible({ timeout: 3000 }).catch(() => false)) {
         await citation.hover();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[data-testid="citation"], .citation-hover'],
@@ -1323,7 +1423,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(4000); // 等待回复完成 + 建议生成
+          // Wait for the reply's followup suggestions observably instead of
+          // a fixed 4s sleep (tolerant: tour style).
+          await page
+            .locator('[data-testid="suggestion"], .followup')
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
     },
@@ -1351,7 +1460,16 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           .first();
         if (await sendBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await sendBtn.click();
-          await page.waitForTimeout(3000);
+          // Wait for the mock assistant reply instead of a fixed 3s sleep
+          // (tolerant: this tour captures whatever the page renders).
+          await page
+            .getByText("Hello from iDeer!")
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 })
+            .catch(() => {
+              // Tolerant: this wait is best-effort; the assertions below gate.
+            });
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
     },
@@ -1367,9 +1485,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: false,
     skipDark: false,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const appearanceTab = page
         .locator(
           'button:has-text("Appearance"), button:has-text("外观"), [role="tab"]:has-text("Appearance"), [role="tab"]:has-text("外观")',
@@ -1377,7 +1495,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await appearanceTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await appearanceTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: [
@@ -1392,9 +1510,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const notifTab = page
         .locator(
           'button:has-text("Notification"), button:has-text("通知"), [role="tab"]:has-text("Notification"), [role="tab"]:has-text("通知")',
@@ -1402,7 +1520,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await notifTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await notifTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: [
@@ -1417,9 +1535,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: false,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const memoryTab = page
         .locator(
           'button:has-text("Memory"), button:has-text("记忆"), [role="tab"]:has-text("Memory"), [role="tab"]:has-text("记忆")',
@@ -1427,7 +1545,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await memoryTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await memoryTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[data-testid="memory-list"], .fact-item'],
@@ -1440,9 +1558,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const toolsTab = page
         .locator(
           'button:has-text("Tools"), button:has-text("工具"), [role="tab"]:has-text("Tools"), [role="tab"]:has-text("工具")',
@@ -1450,7 +1568,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await toolsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await toolsTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[data-testid="tool-list"], .tool-item'],
@@ -1463,9 +1581,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const skillsTab = page
         .locator(
           'button:has-text("Skills"), button:has-text("技能"), [role="tab"]:has-text("Skills"), [role="tab"]:has-text("技能")',
@@ -1473,7 +1591,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await skillsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await skillsTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[data-testid="skill-list"], .skill-item'],
@@ -1486,9 +1604,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const aboutTab = page
         .locator(
           'button:has-text("About"), button:has-text("关于"), [role="tab"]:has-text("About"), [role="tab"]:has-text("关于")',
@@ -1496,7 +1614,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await aboutTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await aboutTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedElements: ['[data-testid="about"]'],
@@ -1541,9 +1659,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: false,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const memoryTab = page
         .locator(
           'button:has-text("Memory"), button:has-text("记忆"), [role="tab"]:has-text("Memory"), [role="tab"]:has-text("记忆")',
@@ -1551,7 +1669,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await memoryTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await memoryTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedTexts: ["No saved facts", "无记忆", "暂无"],
@@ -1565,9 +1683,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipDark: true,
     mockOverrides: { skills: [] },
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+,");
-      await page.waitForTimeout(1500);
+      await waitForAnimationsSettled(page, 2_000);
       const skillsTab = page
         .locator(
           'button:has-text("Skills"), button:has-text("技能"), [role="tab"]:has-text("Skills"), [role="tab"]:has-text("技能")',
@@ -1575,7 +1693,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await skillsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await skillsTab.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedTexts: ["No skills", "无技能", "暂无"],
@@ -1618,9 +1736,9 @@ const SCREENSHOTS: ScreenshotConfig[] = [
     skipMobile: true,
     skipDark: true,
     actions: async (page) => {
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       await page.keyboard.press("Control+k");
-      await page.waitForTimeout(1000);
+      await waitForAnimationsSettled(page, 2_000);
       // 输入无匹配内容
       const cmdInput = page
         .locator(
@@ -1629,7 +1747,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await cmdInput.isVisible({ timeout: 3000 }).catch(() => false)) {
         await cmdInput.fill("zzzznonexistent12345");
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedTexts: ["No results", "无结果", "没有找到"],
@@ -1657,7 +1775,15 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         await emailInput.fill("admin@test.com");
         await passwordInput.fill("WrongPassword123!");
         await submitButton.click();
-        await page.waitForTimeout(2000);
+        // Wait for the login error observably instead of a fixed 2s sleep
+        // (tolerant: tour style).
+        await page
+          .getByText(/错误|invalid|incorrect|Error|失败/)
+          .first()
+          .waitFor({ state: "visible", timeout: 5_000 })
+          .catch(() => {
+            // Tolerant: this wait is best-effort; the assertions below gate.
+          });
       }
     },
     expectedTexts: ["错误", "invalid", "incorrect", "Error", "失败"],
@@ -1677,7 +1803,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await submitButton.isVisible({ timeout: 5000 }).catch(() => false)) {
         await submitButton.click();
-        await page.waitForTimeout(1000);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedTexts: ["required", "必填", "Please"],
@@ -1699,7 +1825,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
       if (await passwordInput.isVisible({ timeout: 5000 }).catch(() => false)) {
         await passwordInput.fill("123");
         await submitButton.click();
-        await page.waitForTimeout(1000);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
     expectedTexts: ["too short", "too weak", "密码", "short", "weak"],
@@ -1718,14 +1844,14 @@ const SCREENSHOTS: ScreenshotConfig[] = [
       if (await editor.isVisible({ timeout: 5000 }).catch(() => false)) {
         await editor.click();
         await page.keyboard.type("invalid: yaml: content: [[[");
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
         // 尝试保存
         const saveBtn = page
           .locator('button:has-text("Save"), button:has-text("保存")')
           .first();
         if (await saveBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await saveBtn.click();
-          await page.waitForTimeout(1000);
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
     },
@@ -1745,7 +1871,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .first();
       if (await roleSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
         await roleSelect.click();
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
         const superAdminOption = page
           .locator(
             'option:has-text("super_admin"), [role="option"]:has-text("super_admin"), [role="option"]:has-text("超级管理员")',
@@ -1755,7 +1881,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
           await superAdminOption.isVisible({ timeout: 2000 }).catch(() => false)
         ) {
           await superAdminOption.click();
-          await page.waitForTimeout(500);
+          await waitForAnimationsSettled(page, 2_000);
         }
       }
     },
@@ -1791,7 +1917,7 @@ const SCREENSHOTS: ScreenshotConfig[] = [
         .locator('[data-testid="sidebar"], nav, aside')
         .first();
       if (await sidebar.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await page.waitForTimeout(500);
+        await waitForAnimationsSettled(page, 2_000);
       }
     },
   },
@@ -1929,9 +2055,9 @@ test.describe("Visual Screenshots — Desktop (1280x720)", () => {
           .catch(() => {});
       }
 
-      // 等待网络空闲
-      await page.waitForLoadState("networkidle").catch(() => {});
-      await page.waitForTimeout(500); // 动画稳定
+      // Observable settle: no running animations, instead of a networkidle
+      // gate plus a fixed 500ms sleep.
+      await waitForAnimationsSettled(page, 2_000);
 
       // 执行自定义操作
       if (config.actions) {
@@ -2017,8 +2143,9 @@ test.describe("Visual Screenshots — Mobile (375x812)", () => {
           .catch(() => {});
       }
 
-      await page.waitForLoadState("networkidle").catch(() => {});
-      await page.waitForTimeout(500);
+      // Observable settle: no running animations, instead of a networkidle
+      // gate plus a fixed 500ms sleep.
+      await waitForAnimationsSettled(page, 2_000);
 
       if (config.actions) {
         await config.actions(page).catch(() => {});
@@ -2100,8 +2227,9 @@ test.describe("Visual Screenshots — Dark Mode", () => {
           .catch(() => {});
       }
 
-      await page.waitForLoadState("networkidle").catch(() => {});
-      await page.waitForTimeout(500);
+      // Observable settle: no running animations, instead of a networkidle
+      // gate plus a fixed 500ms sleep.
+      await waitForAnimationsSettled(page, 2_000);
 
       if (config.actions) {
         await config.actions(page).catch(() => {});

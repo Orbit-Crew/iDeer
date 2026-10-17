@@ -123,6 +123,8 @@ from deerflow.utils.assembly_io import run_assembly
 from deerflow.utils.messages import ORIGINAL_USER_CONTENT_KEY, UNTRUSTED_INPUT_KEY
 from deerflow.utils.thread_id import validate_thread_id
 
+_ACTIVE_CODE_PACKAGE_METADATA_KEY = "deerflow_code_package_id"
+
 _install_canonical_agent_bootstrap()
 # Canonical runs key their sandboxes on a run-scoped identity; teach the
 # runtime's local provider to mount the run's frozen read-only skill view.
@@ -1642,22 +1644,35 @@ async def _ensure_thread_metadata(
             raise LookupError(f"Thread {record.thread_id} was deleted during run admission")
         from deerflow.persistence.thread_meta import THREAD_PROJECT_METADATA_KEY
 
-        run_metadata = record.metadata if metadata is None else metadata
+        run_metadata = record.metadata or {}
+        thread_metadata = run_metadata if metadata is None else metadata
         metadata = {
             key: value
-            for key, value in (run_metadata or {}).items()
+            for key, value in (thread_metadata or {}).items()
             # Strip the run-scoped trace id (existing) and the reserved
             # membership key: run admission never modifies project membership —
             # the column is written only by POST /api/threads and
             # /threads/{id}/move — so the key must not persist either.
-            if key not in (DEERFLOW_TRACE_METADATA_KEY, THREAD_PROJECT_METADATA_KEY)
+            if key not in (DEERFLOW_TRACE_METADATA_KEY, THREAD_PROJECT_METADATA_KEY, "code_package_id")
         }
+        code_package_id = run_metadata.get("code_package_id")
+        if code_package_id:
+            metadata[_ACTIVE_CODE_PACKAGE_METADATA_KEY] = str(code_package_id)
         await thread_store.create(
             record.thread_id,
             assistant_id=record.assistant_id,
             metadata=metadata,
         )
         return
+    run_metadata = record.metadata or {}
+    code_package_id = run_metadata.get("code_package_id")
+    if code_package_id:
+        await thread_store.update_metadata(
+            record.thread_id,
+            {_ACTIVE_CODE_PACKAGE_METADATA_KEY: str(code_package_id)},
+            touch=False,
+            user_id=owner_user_id,
+        )
 
 
 async def start_run(
@@ -1705,6 +1720,24 @@ async def start_run(
     run_mgr = get_run_manager(request)
     run_ctx = get_run_context(request)
 
+    owner_user_id = get_trusted_internal_owner_user_id(request)
+    if owner_user_id is None:
+        owner_user_id = getattr(getattr(request, "state", None), "user", None)
+        owner_user_id = getattr(owner_user_id, "id", None)
+        if owner_user_id is not None:
+            owner_user_id = str(owner_user_id)
+
+    active_code_package_id = None
+    if require_existing_thread:
+        if not await run_ctx.thread_store.check_access(thread_id, owner_user_id, require_existing=True):
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+        thread = await run_ctx.thread_store.get(thread_id, user_id=owner_user_id)
+        metadata = thread.get("metadata") if isinstance(thread, dict) else getattr(thread, "metadata", None)
+        if isinstance(metadata, dict):
+            candidate = metadata.get(_ACTIVE_CODE_PACKAGE_METADATA_KEY)
+            if isinstance(candidate, str) and candidate:
+                active_code_package_id = candidate
+
     disconnect = DisconnectMode.cancel if body.on_disconnect == "cancel" else DisconnectMode.continue_
 
     # Deep module owns evidence/manifest/alias parallelism and snapshot freeze.
@@ -1712,7 +1745,7 @@ async def start_run(
 
     preparation_started = asyncio.get_running_loop().time()
     trace_id = ensure_trace_id()
-    prepared = await prepare_run(body, thread_id, request, trace_id=trace_id)
+    prepared = await prepare_run(body, thread_id, request, trace_id=trace_id, active_code_package_id=active_code_package_id)
     logger.info(
         "first_token_timing trace_id=%s stage=run_preparation thread_id=%s run_preparation_ms=%.1f pre_llm_stage=completed",
         trace_id,
@@ -1727,19 +1760,6 @@ async def start_run(
     if prepared.evidence_mode == "hybrid" and "evidence_mode" not in (getattr(body, "metadata", None) or {}):
         run_metadata = {key: value for key, value in run_metadata.items() if key != "evidence_mode"}
     run_metadata = {**run_metadata, DEERFLOW_TRACE_METADATA_KEY: trace_id}
-
-    owner_user_id = get_trusted_internal_owner_user_id(request)
-    if owner_user_id is None:
-        owner_user_id = getattr(getattr(request, "state", None), "user", None)
-        owner_user_id = getattr(owner_user_id, "id", None)
-        if owner_user_id is not None:
-            # Session JWTs carry UUID ids; every store column and lookup key
-            # is the canonical string form.
-            owner_user_id = str(owner_user_id)
-
-    if require_existing_thread:
-        if not await run_ctx.thread_store.check_access(thread_id, owner_user_id, require_existing=True):
-            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
 
     # Validate checkpoint admission before the durable run row is created.
     if getattr(body, "command", None) is not None:

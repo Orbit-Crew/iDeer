@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
+import threading
 from collections.abc import Awaitable, Callable, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from deerflow_extension_api import (
@@ -14,7 +15,6 @@ from deerflow_extension_api import (
     RunEvidenceEnvelope,
     TaskInfo,
     TaskOutcome,
-    set_runtime_evidence_hooks,
 )
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -212,9 +212,14 @@ class _RunEvidenceState:
     the parent task. Keeping the immutable public binding inside a shared
     carrier preserves isolation between Runs while allowing receipts recorded
     by tool tasks to reach the parent finalizer.
+
+    Concurrency contract (report 04-M2): synchronous ``record_*`` callers may
+    run on ``asyncio.to_thread`` worker threads that share this carrier with
+    the event loop, so every read-modify-write of ``binding`` holds ``lock``.
     """
 
     binding: RunEvidenceBinding
+    lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 _run_evidence_binding: ContextVar[_RunEvidenceState | None] = ContextVar(
@@ -240,7 +245,13 @@ def current_run_evidence() -> RunEvidenceBinding | None:
 
 
 class RuntimeEvidenceHooks:
-    """Adapt AgentPlatform evidence functions to the DeerFlow host contract."""
+    """Adapt AgentPlatform evidence functions to the DeerFlow host contract.
+
+    Instantiated only by ``install()`` and registered through
+    ``ExtensionRegistry.runtime_evidence(...)``: importing this package never
+    installs process-global hooks, so the hooks take effect exactly when the
+    host enables the extension.
+    """
 
     def current_run_evidence(self) -> RunEvidenceBinding | None:
         return current_run_evidence()
@@ -273,23 +284,20 @@ class RuntimeEvidenceHooks:
         )
 
 
-set_runtime_evidence_hooks(RuntimeEvidenceHooks())
-
-
 def _append_evidence_item(field: str, item: Mapping[str, Any]) -> None:
     """Append runtime-owned evidence to the current binding, if one exists."""
 
-    binding = current_run_evidence()
-    if binding is None:
+    state = _run_evidence_binding.get()
+    if state is None:
         return
-    values = list(getattr(binding, field))
     normalized = dict(item)
     identity = _evidence_item_identity(normalized)
-    if any(_evidence_item_identity(value) == identity for value in values):
-        return
-    values.append(normalized)
-    state = _run_evidence_binding.get()
-    if state is not None:
+    with state.lock:
+        binding = state.binding
+        values = list(getattr(binding, field))
+        if any(_evidence_item_identity(value) == identity for value in values):
+            return
+        values.append(normalized)
         state.binding = replace(binding, **{field: tuple(values)})
 
 
@@ -300,13 +308,31 @@ def _evidence_item_identity(item: Mapping[str, Any]) -> tuple[Any, ...]:
     may ask the same question and must remain independently auditable.
     """
 
-    for field in ("receipt_id", "tool_call_id", "event_id"):
-        value = item.get(field)
+    for key in ("receipt_id", "tool_call_id", "event_id"):
+        value = item.get(key)
         if value:
-            return (field, str(value))
+            return (key, str(value))
     if item.get("task_id"):
         return ("task_id", str(item["task_id"]), str(item.get("status", "")))
-    return ("value", repr(sorted(item.items(), key=lambda pair: str(pair[0]))))
+    return ("value", _stable_mapping_digest(item))
+
+
+def _stable_mapping_digest(value: Any) -> str:
+    """Serialize a mapping deterministically, falling back to type names.
+
+    ``repr`` of arbitrary objects is not reproducible across interpreter
+    runs, which would make the fallback identity unstable (report 04-L5);
+    non-serializable leaves degrade to their type name instead.
+    """
+
+    if isinstance(value, Mapping):
+        body = ",".join(f"{_stable_mapping_digest(key)}={_stable_mapping_digest(item)}" for key, item in sorted(value.items(), key=lambda pair: str(pair[0])))
+        return "{" + body + "}"
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(_stable_mapping_digest(entry) for entry in value) + "]"
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return f"{type(value).__name__}:{value!r}"
+    return f"<{type(value).__name__}>"
 
 
 def record_tool_receipt(receipt: Mapping[str, Any]) -> None:
@@ -322,12 +348,12 @@ def record_retrieval_receipt(receipt: Mapping[str, Any]) -> None:
 
 
 def mark_retrieval_receipt_archive_status(receipt_id: str, status: str) -> None:
-    binding = current_run_evidence()
-    if binding is None:
-        return
-    receipts = [{**receipt, "archive_status": status} if receipt.get("receipt_id") == receipt_id else receipt for receipt in binding.retrieval_receipts]
     state = _run_evidence_binding.get()
-    if state is not None:
+    if state is None:
+        return
+    with state.lock:
+        binding = state.binding
+        receipts = [{**receipt, "archive_status": status} if receipt.get("receipt_id") == receipt_id else receipt for receipt in binding.retrieval_receipts]
         state.binding = replace(binding, retrieval_receipts=tuple(receipts))
 
 
@@ -402,25 +428,25 @@ def record_delegated_retrieval_receipts(
 def record_retrieval_citations(text: str) -> None:
     """Mark only archived retrieval items explicitly cited by a final message."""
 
-    binding = current_run_evidence()
-    if binding is None:
+    state = _run_evidence_binding.get()
+    if state is None:
         return
     cited_ids = set(_KNOWLEDGE_CITATION_RE.findall(_mask_code(text)))
     if not cited_ids:
         return
-    receipts = list(binding.retrieval_receipts)
-    changed = False
-    for receipt_index, receipt in enumerate(receipts):
-        items = receipt.get("items")
-        if not isinstance(items, list):
-            continue
-        cited = [str(item["evidence_id"]) for item in items if isinstance(item, dict) and item.get("evidence_id") in cited_ids]
-        if cited:
-            receipts[receipt_index] = {**receipt, "cited_item_ids": cited}
-            changed = True
-    if changed:
-        state = _run_evidence_binding.get()
-        if state is not None:
+    with state.lock:
+        binding = state.binding
+        receipts = list(binding.retrieval_receipts)
+        changed = False
+        for receipt_index, receipt in enumerate(receipts):
+            items = receipt.get("items")
+            if not isinstance(items, list):
+                continue
+            cited = [str(item["evidence_id"]) for item in items if isinstance(item, dict) and item.get("evidence_id") in cited_ids]
+            if cited:
+                receipts[receipt_index] = {**receipt, "cited_item_ids": cited}
+                changed = True
+        if changed:
             state.binding = replace(binding, retrieval_receipts=tuple(receipts))
 
 

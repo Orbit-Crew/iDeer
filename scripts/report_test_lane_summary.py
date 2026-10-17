@@ -74,12 +74,18 @@ def render(plan: dict[str, Any], summary: dict[str, Any]) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--plan-json", required=True)
-    parser.add_argument("--needs-json", required=True)
+    parser.add_argument("--plan-json", help="plan as an inline JSON string (small plans only)")
+    parser.add_argument("--plan-file", type=Path, help="read the plan JSON from a file; use this from workflows because large diffs exceed the argument size limit")
+    parser.add_argument("--needs-json")
+    parser.add_argument("--needs-file", type=Path)
     parser.add_argument("--summary-file", type=Path)
     args = parser.parse_args()
-    plan = json.loads(args.plan_json)
-    needs = json.loads(args.needs_json)
+    if bool(args.plan_json) == bool(args.plan_file):
+        parser.error("provide exactly one of --plan-json / --plan-file")
+    if bool(args.needs_json) == bool(args.needs_file):
+        parser.error("provide exactly one of --needs-json / --needs-file")
+    plan = json.loads(args.plan_file.read_text() if args.plan_file else args.plan_json)
+    needs = json.loads(args.needs_file.read_text() if args.needs_file else args.needs_json)
     summary = summarize(plan, needs)
     output = render(plan, summary)
     print(output)

@@ -85,21 +85,6 @@ class AuditIntegrity:
     problem: str | None = None
 
 
-def _redacted(detail: dict[str, Any] | None, redactor: Any) -> dict[str, Any]:
-    if not detail:
-        return {}
-    if redactor is None:
-        return dict(detail)
-    scrubbed = redactor.redact(
-        json.dumps(detail, ensure_ascii=False, sort_keys=True, default=str)
-    )
-    try:
-        parsed = json.loads(scrubbed)
-    except (TypeError, ValueError):
-        return {"detail": scrubbed}
-    return parsed if isinstance(parsed, dict) else {"detail": parsed}
-
-
 def _paged(entries: list[AuditEntry], limit: int) -> list[AuditEntry]:
     """First ``limit`` entries; 0 means the whole list, the reading default."""
     return entries[:limit] if limit > 0 else entries
@@ -235,16 +220,27 @@ class LocalAuditLog:
         """Newest first, so the user sees what just happened without paging."""
         if self.db_path is None:
             entries = list(reversed(self._buffer))
-        else:
-            with sqlite3.connect(self.db_path) as db:
-                rows = db.execute(
-                    "SELECT seq, at, kind, action, capability, digest, run_id, task_id,"
-                    " actor_id, detail, entry_hash FROM audit_entries ORDER BY seq DESC"
-                ).fetchall()
-            entries = [_from_row(row) for row in rows]
+            if kind is not None:
+                entries = [entry for entry in entries if entry.kind is kind]
+            return _paged(entries, limit)
+        # Filter and page inside SQLite: the tray polls recent(limit=1) every
+        # second, so loading the whole table per poll would make the status
+        # refresh O(history) as the audit log grows (05-M7).
+        sql = (
+            "SELECT seq, at, kind, action, capability, digest, run_id, task_id,"
+            " actor_id, detail, entry_hash FROM audit_entries"
+        )
+        params: list[Any] = []
         if kind is not None:
-            entries = [entry for entry in entries if entry.kind is kind]
-        return _paged(entries, limit)
+            sql += " WHERE kind = ?"
+            params.append(kind.value)
+        sql += " ORDER BY seq DESC"
+        if limit > 0:
+            sql += " LIMIT ?"
+            params.append(limit)
+        with sqlite3.connect(self.db_path) as db:
+            rows = db.execute(sql, params).fetchall()
+        return [_from_row(row) for row in rows]
 
     def since(self, seq: int, *, limit: int = 200) -> list[AuditEntry]:
         """Entries newer than ``seq``, oldest first: what a live view must append."""

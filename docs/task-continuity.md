@@ -120,7 +120,7 @@ implementation or complete DeerFlow baseline behavior. Its vector-versus-keyword
 comparison did not establish a stable net benefit, so this implementation has no
 vector dependency.
 
-`backend/tests/test_task_continuity.py` exercises source recovery after actual
+`backend/tests/unit/gateway/test_task_continuity.py` exercises source recovery after actual
 graph compaction and checkpoint resume, scope/rollback isolation, retention,
 truncation, failure behavior and tool contracts. The manual live integration check
 uses the production middleware and native tools with synthetic history:

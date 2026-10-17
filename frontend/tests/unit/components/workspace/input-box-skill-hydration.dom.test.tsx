@@ -158,7 +158,7 @@ describe("InputBox skill draft hydration", () => {
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Remove /research" }),
-      ).toBeTruthy();
+      ).toBeInTheDocument();
     });
     expect(screen.getByRole("textbox").textContent).toBe("topic");
   });
@@ -174,7 +174,7 @@ describe("InputBox skill draft hydration", () => {
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Remove /research" }),
-      ).toBeTruthy();
+      ).toBeInTheDocument();
     });
   });
 

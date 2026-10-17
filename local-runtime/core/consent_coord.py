@@ -14,7 +14,7 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional
 
 if TYPE_CHECKING:
     from .audit import LocalAuditLog
@@ -44,7 +44,9 @@ CONSENT_TIMEOUT_SECONDS = 300.0
 #: Asks the local user about one pending request and resolves to their answer
 #: (``{"approved": bool, "actor_id": str, "always": bool}``) or ``None`` when
 #: nobody can answer it. Implemented by the tray; the transport never renders.
-ConsentPrompt = Callable[[PendingConsent], Awaitable[dict[str, Any] | None]]
+# A runtime type alias: ``dict[...]``/``X | None`` spellings evaluate here on
+# every import, so it keeps the typing-module forms the 3.8 line supports.
+ConsentPrompt = Callable[[PendingConsent], Awaitable[Optional[Dict[str, Any]]]]
 
 
 @dataclass
@@ -456,8 +458,15 @@ class LocalConsentCoordinator:
             return
         await self._execute_consented(envelope, request)
 
-    def expire_consents(self, *, now: float | None = None) -> tuple[str, ...]:
-        """Auto-deny prompts nobody answered, so nothing hangs indefinitely."""
+    async def expire_consents(self, *, now: float | None = None) -> tuple[str, ...]:
+        """Auto-deny prompts nobody answered, so nothing hangs indefinitely.
+
+        Covers both routes: local tray prompts (abandoned via their future)
+        and relayed browser decisions, whose entries used to sit in
+        ``_relayed_consents`` forever when the server went silent on a
+        request (05-M9). Each expired relayed request is denied to the
+        server, so the task does not just wait out its remote timeout.
+        """
         cutoff = (now if now is not None else time.monotonic()) - CONSENT_TIMEOUT_SECONDS
         expired = [
             task_id
@@ -468,7 +477,37 @@ class LocalConsentCoordinator:
             self._abandon_local_consent(
                 task_id, reason="the consent request timed out"
             )
-        return tuple(expired)
+        relayed_expired = [
+            task_id
+            for task_id, consent in self._relayed_consents.items()
+            if consent.requested_at <= cutoff
+        ]
+        for task_id in relayed_expired:
+            relayed = self._relayed_consents.pop(task_id, None)
+            if relayed is None:
+                continue
+            self._audit(
+                AuditKind.CONSENT,
+                "expired",
+                capability=relayed.request.capability,
+                task_id=task_id,
+                run_id=str(relayed.request.payload.get("run_id", "")),
+                digest=relayed.request.request_hash,
+                detail={"origin": "server"},
+            )
+            wire = self._wire
+            if wire.connection is not None:
+                await wire._send_error(
+                    task_id,
+                    "the consent request timed out",
+                    "DENIED",
+                    relayed.request.payload,
+                    relayed.request.capability,
+                    policy_decision=PolicyDecision.DENY.value,
+                    status="denied",
+                    consent_decision="denied",
+                )
+        return tuple(expired + relayed_expired)
 
     async def _send_consent_required(
         self, envelope: Any, request: ConsentRequest
@@ -501,6 +540,9 @@ class LocalConsentCoordinator:
         wire = self._wire
         task_id = envelope.task_id or ""
         if task_id in wire._cancelled_tasks:
+            # Consume the marker: the cancel has now been observed, and an
+            # entry only ever added to would grow without bound (05-M9).
+            wire._cancelled_tasks.discard(task_id)
             return
         relayed = self._relayed_consents.pop(task_id, None)
         request = relayed.request if relayed is not None else None

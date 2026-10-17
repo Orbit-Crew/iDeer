@@ -12,10 +12,6 @@ vi.mock("@/core/i18n/hooks", async () => {
   };
 });
 
-vi.mock("@/components/ui/galaxy", () => ({
-  default: () => <div data-testid="galaxy" />,
-}));
-
 vi.mock("@/components/ui/flickering-grid", () => ({
   FlickeringGrid: () => <div data-testid="flickering-grid" />,
 }));

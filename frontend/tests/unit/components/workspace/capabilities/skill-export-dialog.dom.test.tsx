@@ -72,7 +72,7 @@ describe("export dialog lifecycle", () => {
     expect(screen.getAllByText("Not declared")).toHaveLength(2);
     expect(screen.queryByText("file-50.txt")).toBeNull();
     fireEvent.click(screen.getByText("Next 50 files"));
-    expect(screen.getByText("file-50.txt")).toBeTruthy();
+    expect(screen.getByText("file-50.txt")).toBeInTheDocument();
     expect(screen.queryByText("file-0.txt")).toBeNull();
   });
   it("requires refreshed preview after a conflict", async () => {

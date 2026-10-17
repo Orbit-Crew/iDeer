@@ -25,7 +25,7 @@ Accepted divergence: a crash-recovered scheduled launch reuses its run via the i
 
 `logging.enhance.enabled` gates **log output only** (`trace_id` field presence and format) — not the id, the header, or the run metadata — so `TraceMiddleware` reads no `AppConfig`; `logging` stays restart-required (`STARTUP_ONLY_FIELDS["logging"]`). `X-Trace-Id` is in `CORS_EXPOSED_HEADERS` (not safelisted). Unhandled-exception 500s keep the header — `TraceMiddleware` sends its own plain 500 (CORS-opaque, see its docstring) before re-raising; mid-stream failures propagate unchanged.
 
-Tests: the `tests/test_trace_*` and `tests/test_worker_trace_binding.py` suites, `test_gateway_services.py`, `test_run_metadata_secret_safety.py`, plus the Langfuse suites in `tracing/AGENTS.md`.
+Tests: the `tests/test_trace_*` and `tests/unit/runtime/test_worker_trace_binding.py` suites, `test_gateway_services.py`, `test_run_metadata_secret_safety.py`, plus the Langfuse suites in `tracing/AGENTS.md`.
 
 ### Managed Lark CLI credentials (`integrations/lark_cli.py`)
 

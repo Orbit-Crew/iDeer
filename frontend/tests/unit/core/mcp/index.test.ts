@@ -184,8 +184,8 @@ describe("mcp index", () => {
       );
 
       const { loadMCPConfig } = await import("@/core/mcp/index");
-      // The upstream barrel api passes the parsed body through; the empty-body
-      // guard lives in core/api/mcp-config-manager (covered by its own tests).
+      // The upstream barrel api passes the parsed body through; the
+      // empty-body guard lives in core/mcp/api (covered by its own tests).
       await expect(loadMCPConfig()).resolves.toBeNull();
     });
   });
@@ -308,8 +308,8 @@ describe("mcp index", () => {
       );
 
       const { updateMCPConfig } = await import("@/core/mcp/index");
-      // The upstream barrel api passes the parsed body through; the empty-body
-      // guard lives in core/api/mcp-config-manager (covered by its own tests).
+      // The upstream barrel api passes the parsed body through; the
+      // empty-body guard lives in core/mcp/api (covered by its own tests).
       await expect(updateMCPConfig(MOCK_MCP_CONFIG)).resolves.toBeNull();
     });
   });

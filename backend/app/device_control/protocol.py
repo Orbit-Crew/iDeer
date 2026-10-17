@@ -11,6 +11,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
@@ -133,17 +134,21 @@ class TaskEnvelope(BaseModel):
             raise ProtocolError("MESSAGE_NOT_YET_VALID", "message envelope is from the future")
         if self.payload_hash != payload_digest(self.payload):
             raise ProtocolError("PAYLOAD_HASH_MISMATCH", "payload hash does not match the envelope")
-        if seen_message_ids is not None:
-            if self.message_id in seen_message_ids:
-                raise ProtocolError("MESSAGE_REPLAYED", "message id has already been received")
-            seen_message_ids.add(self.message_id)
         try:
             public_key.verify(
                 base64.urlsafe_b64decode(self.signature.encode("ascii")),
                 self.signing_bytes(),
             )
-        except (ValueError, TypeError) as exc:
+        except (InvalidSignature, ValueError, TypeError) as exc:
             raise ProtocolError("SIGNATURE_INVALID", "message signature is invalid") from exc
+        # Only a signature-verified frame registers its message id: registering
+        # before verification let an unsigned frame burn the id, so the
+        # device's legitimate retry was rejected as a replay without its
+        # signature ever being checked.
+        if seen_message_ids is not None:
+            if self.message_id in seen_message_ids:
+                raise ProtocolError("MESSAGE_REPLAYED", "message id has already been received")
+            seen_message_ids.add(self.message_id)
         if seen_task_ids is not None and self.type == MessageType.TASK and self.task_id:
             if self.task_id in seen_task_ids:
                 raise ProtocolError("TASK_REPLAYED", "task id has already been received")

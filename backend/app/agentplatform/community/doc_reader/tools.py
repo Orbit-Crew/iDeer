@@ -134,10 +134,12 @@ def _invisible_mount_hint(file_path: str) -> str | None:
 def _validate_path(file_path: str) -> Path:
     """Validate and resolve file path, ensuring it is within allowed directories.
 
-    Raises PermissionError if the path escapes the allowed prefix.
+    Raises PermissionError if the path escapes the allowed prefix. The check is
+    on resolved path segments, not a raw string prefix: ``/mnt/user-data-evil``
+    must not pass a ``startswith("/mnt/user-data")`` test (report 02-M9).
     """
     path = Path(file_path).resolve()
-    if not any(str(path).startswith(prefix) for prefix in _ALLOWED_PATH_PREFIXES):
+    if not any(path == Path(prefix) or path.is_relative_to(prefix) for prefix in _ALLOWED_PATH_PREFIXES):
         raise PermissionError(f"Access denied: file must be under one of {_ALLOWED_PATH_PREFIXES}, got: {file_path}")
     return path
 

@@ -29,6 +29,7 @@ from app.agentplatform import resource_models as _resource_models  # noqa: F401 
 from app.agentplatform.fault_zeroing.contract import CONTRACT_VERSION, REQUIRED_OUTPUTS
 from app.agentplatform.fault_zeroing.intake import INTERRUPT_TYPE
 from app.agentplatform.resource_models import Resource, ResourceVersion
+from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
 from app.agentplatform.resources.runtime import _json_hash
 from app.agentplatform.tools import zeroing_run_tool
 from deerflow.config.paths import Paths
@@ -177,7 +178,7 @@ async def _finish_run(env, run_id: str, *, status: str, error: str | None = None
         run.error = error
         await session.commit()
     if outputs:
-        outputs_dir = env.paths.sandbox_outputs_dir(run_id, user_id="owner-1")
+        outputs_dir = env.paths.sandbox_outputs_dir(canonical_sandbox_scope(run_id, run_id), user_id="owner-1")
         outputs_dir.mkdir(parents=True, exist_ok=True)
         for name in outputs:
             (outputs_dir / name).write_text(f"# {name}\n", encoding="utf-8")
@@ -213,13 +214,13 @@ async def test_start_with_full_evidence_creates_a_queued_run_bound_to_materializ
     assert run.snapshot["evidence_intake"]["status"] == "execute"
     # Materialized Run workspace: uploads and the code package live under the
     # run's own thread bucket, and the inputs bind the materialized paths.
-    uploads_dir = env.paths.sandbox_uploads_dir(run.run_id, user_id="owner-1")
+    uploads_dir = env.paths.sandbox_uploads_dir(canonical_sandbox_scope(run.run_id, run.run_id), user_id="owner-1")
     assert (uploads_dir / "log.txt").read_text(encoding="utf-8") == "evidence"
     assert run.inputs["upload_dir"] == "/mnt/user-data/uploads"
     package_source = run.inputs["code_package_source"]
     assert package_source.startswith("/mnt/user-data/code-evidence/")
     package_id = package_source.split("/")[4]
-    assert (_thread_package_dir(env, run.run_id, package_id) / "source" / "main.c").is_file()
+    assert (_thread_package_dir(env, canonical_sandbox_scope(run.run_id, run.run_id), package_id) / "source" / "main.c").is_file()
     tasks = await _task_rows(env.factory)
     assert len(tasks) == 1 and tasks[0].status == "queued"
 
@@ -554,8 +555,8 @@ async def test_concurrency_limit_discards_materialized_run_data(env, monkeypatch
     assert payload["created"] is False
     assert payload["reason_code"] == "workflow_user_concurrency_exceeded"
     # 并发超限 = Run 未创建：上传已物化进该 run id 的工作区，必须清掉。
-    assert (env.paths.sandbox_uploads_dir(run_id, user_id="owner-1") / "log.txt").exists() is False
-    assert (env.paths.thread_dir(run_id, user_id="owner-1") / "user-data").exists() is False
+    assert (env.paths.sandbox_uploads_dir(canonical_sandbox_scope(run_id, run_id), user_id="owner-1") / "log.txt").exists() is False
+    assert (env.paths.thread_dir(canonical_sandbox_scope(run_id, run_id), user_id="owner-1") / "user-data").exists() is False
 
 
 @pytest.mark.asyncio
@@ -582,7 +583,7 @@ async def test_resource_error_after_materialization_discards_run_data(env, monke
     payload = _payload(result)
     assert payload["created"] is False
     assert payload["reason_code"] == "workflow_not_usable"
-    assert (env.paths.thread_dir(run_id, user_id="owner-1") / "user-data").exists() is False
+    assert (env.paths.thread_dir(canonical_sandbox_scope(run_id, run_id), user_id="owner-1") / "user-data").exists() is False
 
 
 # ---------------------------------------------------------------------------
@@ -686,3 +687,27 @@ def test_bundled_agent_and_example_config_declare_the_fault_zeroing_group() -> N
     skill_text = (repo_root / "resources" / "skills" / "fault-zeroing" / "SKILL.md").read_text(encoding="utf-8")
     for name in ("start_zeroing_run", "confirm_zeroing_run", "check_zeroing_run"):
         assert f"  - {name}" in skill_text
+
+
+@pytest.mark.asyncio
+async def test_chat_intake_materializes_inputs_in_the_workflow_resolver_workspace(env, monkeypatch) -> None:
+    from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
+    from app.agentplatform.workflows.v2 import file_roots
+
+    monkeypatch.setattr(file_roots, "get_paths", lambda: env.paths)
+    _seed_upload(env, "log.txt")
+    _seed_package(env)
+    result = await zeroing_run_tool.start_zeroing_run_tool.coroutine(
+        runtime=_runtime(),
+        problem_description=PROBLEM,
+        upload_paths=["/mnt/user-data/uploads/log.txt"],
+        code_package_id="pkg-1",
+        tool_call_id="tc-workspace",
+    )
+    payload = _payload(result)
+    run = (await _run_rows(env.factory))[0]
+    resolver = file_roots.make_host_resolver(run.run_id, "owner-1", sandbox_scope=canonical_sandbox_scope(run.run_id, run.run_id))
+
+    assert payload["status"] == "queued"
+    assert Path(resolver("/mnt/user-data/uploads/log.txt")).read_text() == "evidence"
+    assert Path(resolver(run.inputs["code_package_source"] + "/main.c")).read_text() == "int main(void) { return 0; }\n"

@@ -187,6 +187,18 @@ def test_node_prompts_cite_rule_source_instead_of_inlining_enums(workflow_yaml: 
     assert "high_risk_candidate" in rules, "the static-alert confidence cap must live in evidence_rules.md"
 
 
+def test_workflow_static_analysis_covers_python_and_mixed_code_packages(workflow_yaml: dict) -> None:
+    action = _node(workflow_yaml, "evidence_collection").get("action") or {}
+    params = action.get("params") or {}
+    prompt = (params.get("prompt") or "") + (params.get("system_prompt") or "")
+
+    assert ".py" in prompt
+    assert ".cpp" in prompt
+    assert "ruff" in prompt.lower()
+    assert "bandit" in prompt.lower()
+    assert "languages" in prompt
+
+
 def test_file_existence_alone_never_completes_a_run(tmp_path: Path) -> None:
     """Regression 7: placeholder outputs fail the contract gate."""
 

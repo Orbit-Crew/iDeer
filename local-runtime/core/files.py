@@ -9,6 +9,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from .compat import is_junction
+
 
 class FileAccessError(Exception):
     """A user-safe file error; physical paths are never included."""
@@ -98,7 +100,7 @@ class LocalFileStore:
         """Reject links before canonicalisation, including links that stay in-root."""
         current = root
         try:
-            if stat.S_ISLNK(os.lstat(current).st_mode) or os.path.isjunction(current):
+            if stat.S_ISLNK(os.lstat(current).st_mode) or is_junction(current):
                 raise FileAccessError(OUTSIDE_ALLOWED_ROOTS, "outside allowed roots")
             for component in filter(None, suffix.split("/")):
                 current = current / component
@@ -106,7 +108,7 @@ class LocalFileStore:
                     mode = os.lstat(current).st_mode
                 except FileNotFoundError:
                     break
-                if stat.S_ISLNK(mode) or os.path.isjunction(current):
+                if stat.S_ISLNK(mode) or is_junction(current):
                     raise FileAccessError(
                         OUTSIDE_ALLOWED_ROOTS, "outside allowed roots"
                     )
@@ -128,6 +130,8 @@ class LocalFileStore:
     def list(self, logical_path: str) -> list[str]:
         root, path = self._resolve(logical_path)
         try:
+            if os.name == "nt":
+                return self._list_nt(root, path)
             directory_fd = self._open_directory(root, path)
             entries: list[str] = []
             try:
@@ -254,9 +258,30 @@ class LocalFileStore:
             ) from exc
 
     @staticmethod
+    def _list_nt(root: RootConfig, path: Path) -> list[str]:
+        """Enumerate a resolved directory on Windows.
+
+        Directory descriptors and dir_fd calls are POSIX-only, so entries are
+        vetted through lstat reparse tags instead: a symlink or a junction —
+        including one that stays inside the root, and any other reparse point
+        (such as a cloud placeholder) — must never surface through the logical
+        view.
+        """
+        entries: list[str] = []
+        with os.scandir(path) as scan:
+            for entry in scan:
+                item_stat = entry.stat(follow_symlinks=False)
+                if stat.S_ISLNK(item_stat.st_mode) or item_stat.st_reparse_tag:
+                    raise FileAccessError(
+                        OUTSIDE_ALLOWED_ROOTS, "outside allowed roots"
+                    )
+                relative = (path / entry.name).relative_to(root.physical_root)
+                entries.append(f"{root.logical_root}/{relative.as_posix()}")
+        return sorted(entries)
+
+    @staticmethod
     def _open_directory(root: RootConfig, path: Path) -> int:
-        if os.name == "nt":
-            return os.open(path, os.O_RDONLY)
+        """Open every path component from the physical root, POSIX only."""
         relative = path.relative_to(root.physical_root)
         fd = os.open(
             root.physical_root,

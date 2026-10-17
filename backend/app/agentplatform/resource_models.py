@@ -52,8 +52,8 @@ class ResourceMetadata(Base):
     imported_from = Column(Text, nullable=True)
     version = Column(Integer, nullable=False, default=1, server_default=text("1"))
     is_favorited = Column(Boolean, nullable=False, default=False, server_default="false")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, server_default=func.now())
+    created_at = Column(DateTime, nullable=False, default=_now, server_default=func.now())
+    updated_at = Column(DateTime, nullable=False, default=_now, onupdate=_now, server_default=func.now())
 
     __table_args__ = (
         UniqueConstraint("resource_type", "resource_id", "owner_id", name="uq_resource_type_id_owner"),

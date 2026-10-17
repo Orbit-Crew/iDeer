@@ -3,7 +3,7 @@
 ``load()`` executes ``resources/skills/<skill>/scripts/generate.py`` in place.
 The default SourceFileLoader writes ``__pycache__/*.pyc`` NEXT TO that source,
 i.e. into a shipped skill package; the skill review scan
-(``backend/tests/test_skill_review_core.py``) then fails those directories as
+(``backend/tests/unit/skills/test_skill_review_core.py``) then fails those directories as
 "not NUL-free UTF-8" and the pr-standard backend lane goes red. The loader
 must not write anything into the package.
 """

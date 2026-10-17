@@ -858,7 +858,7 @@ describe("InputBox", () => {
 
       // Find and click flash mode button (it's one of the PromptInputActionMenuItems)
       const flashButton = screen.getByText("Flash").closest("button");
-      expect(flashButton).toBeTruthy();
+      expect(flashButton).toBeInTheDocument();
       await user.click(flashButton!);
 
       expect(onContextChange).toHaveBeenCalledWith(
@@ -889,7 +889,7 @@ describe("InputBox", () => {
       );
 
       const proButton = screen.getByText("Pro").closest("button");
-      expect(proButton).toBeTruthy();
+      expect(proButton).toBeInTheDocument();
       await user.click(proButton!);
 
       expect(onContextChange).toHaveBeenCalledWith(
@@ -920,7 +920,7 @@ describe("InputBox", () => {
       );
 
       const ultraButton = screen.getByText("Ultra").closest("button");
-      expect(ultraButton).toBeTruthy();
+      expect(ultraButton).toBeInTheDocument();
       await user.click(ultraButton!);
 
       expect(onContextChange).toHaveBeenCalledWith(
@@ -951,7 +951,7 @@ describe("InputBox", () => {
       );
 
       const reasoningButton = screen.getByText("Reasoning").closest("button");
-      expect(reasoningButton).toBeTruthy();
+      expect(reasoningButton).toBeInTheDocument();
       await user.click(reasoningButton!);
 
       expect(onContextChange).toHaveBeenCalledWith(
@@ -2121,7 +2121,7 @@ describe("InputBox", () => {
       const effortTrigger = screen
         .getAllByText(/Reasoning Effort/)
         .find((el) => el.closest("button"));
-      expect(effortTrigger).toBeTruthy();
+      expect(effortTrigger).toBeInTheDocument();
 
       const btn = effortTrigger!.closest("button")!;
       await user.click(btn);
@@ -2361,7 +2361,7 @@ describe("InputBox", () => {
 
       // Click on "Minimal" option
       const minimalBtn = screen.getByText("Minimal").closest("button");
-      expect(minimalBtn).toBeTruthy();
+      expect(minimalBtn).toBeInTheDocument();
       await user.click(minimalBtn!);
 
       expect(onContextChange).toHaveBeenCalledWith(
@@ -2392,7 +2392,7 @@ describe("InputBox", () => {
       await user.click(btn);
 
       const lowBtn = screen.getByText("Low").closest("button");
-      expect(lowBtn).toBeTruthy();
+      expect(lowBtn).toBeInTheDocument();
       await user.click(lowBtn!);
 
       expect(onContextChange).toHaveBeenCalledWith(
@@ -2423,7 +2423,7 @@ describe("InputBox", () => {
       await user.click(btn);
 
       const mediumBtn = screen.getByText("Medium").closest("button");
-      expect(mediumBtn).toBeTruthy();
+      expect(mediumBtn).toBeInTheDocument();
       await user.click(mediumBtn!);
 
       expect(onContextChange).toHaveBeenCalledWith(
@@ -2454,7 +2454,7 @@ describe("InputBox", () => {
       await user.click(btn);
 
       const highBtn = screen.getByText("High").closest("button");
-      expect(highBtn).toBeTruthy();
+      expect(highBtn).toBeInTheDocument();
       await user.click(highBtn!);
 
       expect(onContextChange).toHaveBeenCalledWith(

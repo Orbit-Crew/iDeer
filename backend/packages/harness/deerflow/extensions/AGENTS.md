@@ -128,7 +128,7 @@ truth, both compose defaults repeat it, and every `astral-sh/setup-uv` step pins
 version so CI exercises the manager against the binary production actually runs. Otherwise a
 newer uv can bump `uv.lock`'s `revision` (or make `uv lock --check` disagree with a lock
 generated elsewhere) while CI stays green, and the pinned uv in the production image then
-fails on the committed lock. `backend/tests/test_ci_uv_version_pin.py` keeps the four
+fails on the committed lock. `backend/tests/unit/scripts/test_ci_uv_version_pin.py` keeps the four
 locations in step, which makes a uv upgrade one deliberate, reviewable change.
 Rebuild the Gateway image after changing the managed set. Every install, upgrade, enable,
 disable, remove, or config mutation also requires a Gateway restart because plugin loading
@@ -333,7 +333,7 @@ matching on", so importing the dispatcher's own implementation keeps the two in 
 construction. Do not vendor a local copy: a private import that disappears fails loudly at
 startup, while a stale copy diverges silently at a security boundary. `starlette` is
 therefore a declared, bounded direct dependency so the bump is visible in review, and
-`tests/test_gateway_request_path.py` pins the agreement independently of the mechanism.
+`tests/unit/gateway/test_gateway_request_path.py` pins the agreement independently of the mechanism.
 Any preflight, conflict, or include failure rolls back the whole router without preventing
 later routers from mounting. Do not introduce a framework-bound `RouterContributor`
 contract: the public registry accepts `Sequence[Any]`

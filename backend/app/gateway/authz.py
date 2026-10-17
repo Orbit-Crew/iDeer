@@ -190,25 +190,26 @@ def _get_route_authorization_config() -> AuthorizationConfig:
 
 
 _route_provider_cache: dict[str, AuthorizationProvider] = {}
-_route_provider_config_id: int | None = None
 _route_provider_config_sig: str | None = None
 
 
 def _get_cached_route_provider(config: AuthorizationConfig) -> AuthorizationProvider | None:
-    """Resolve and cache the configured route authorization provider."""
-    global _route_provider_config_id, _route_provider_config_sig
-    config_id = id(config)
-    if config_id == _route_provider_config_id and _route_provider_cache:
-        return _route_provider_cache.get("provider")
+    """Resolve and cache the configured route authorization provider.
+
+    01-L3: the cache keys on the config's repr signature alone. The previous
+    ``id(config)`` fast path could mis-hit when a new config object reused a
+    freed object's memory address (the signature comparison only ran as a
+    fallback); the worst case now is one redundant provider build, which is
+    directionally safe.
+    """
+    global _route_provider_config_sig
     sig = repr(sorted(config.model_dump().items()))
     if sig == _route_provider_config_sig and _route_provider_cache:
-        _route_provider_config_id = config_id
         return _route_provider_cache.get("provider")
     _route_provider_cache.clear()
     provider = resolve_authorization_provider(config)
     if provider is not None:
         _route_provider_cache["provider"] = provider
-    _route_provider_config_id = config_id
     _route_provider_config_sig = sig
     return provider
 
@@ -525,6 +526,20 @@ def _cached_rbac_identity(request: Request, user_id: str) -> dict[str, Any] | No
     return cached
 
 
+def cached_platform_role(request: Request, user_id: str) -> str | None:
+    """Return the users_ext role already resolved on this request, if any.
+
+    Synchronous read for callers that cannot ``await`` :func:`resolve_platform_identity`
+    (e.g. the extension principal projection). Returns ``None`` when nothing
+    was resolved for *user_id* on this request — trusted sources
+    (internal/auth-disabled) and requests that never passed the auth
+    middleware have no platform role to project, and callers must fail closed
+    on that ``None`` instead of falling back to the legacy auth role.
+    """
+    identity = _cached_rbac_identity(request, user_id)
+    return str(identity["role"]) if identity is not None else None
+
+
 async def resolve_platform_identity(request: Request, user: Any) -> dict[str, Any] | None:
     """Resolve the platform identity for *user* from ``users_ext``.
 
@@ -606,6 +621,16 @@ async def _authenticate(request: Request) -> AuthContext:
     Permission mapping by platform role (users_ext):
     - super_admin / department_admin / user: all permissions
     - viewer: read-only (threads:read, runs:read)
+
+    01-M5: this static mapping is intentionally coarser than the middleware
+    path's ``resolve_route_permissions()`` provider evaluation (per-route
+    permissions, PAT scope intersection). The two agree only while
+    AuthMiddleware is mounted and ``request.state.auth`` is already resolved
+    — any middleware-less composition (tests, embedding, future splits)
+    silently degrades to "non-viewer means all permissions", with
+    department_admin and user indistinguishable. Keep AuthMiddleware mounted
+    or re-derive permissions through the provider path here if that ever
+    changes.
     """
     from app.agentplatform.rbac_models import UserRole
     from app.gateway.deps import get_optional_user_from_request

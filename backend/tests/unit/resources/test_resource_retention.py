@@ -278,7 +278,7 @@ async def test_purge_moves_eligible_content_and_removes_catalog_rows(tmp_path: P
         )
 
     assert result.moved_storage_keys == ("skills/archived/versions/2", "skills/expired/versions/1")
-    assert result.removed_version_ids == ("archived", "expired")
+    assert result.removed_version_ids == ("archived@2", "expired@1")
     assert result.removed_resources == ("expired",)
     assert result.blocked == ()
     assert not (runtime / "resources" / "skills" / "expired").exists()

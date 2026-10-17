@@ -6,6 +6,10 @@ request passes the cookie check, resolves the JWT payload to a real
 ``deerflow.runtime.user_context`` contextvar so that repository-layer
 owner filtering works automatically via the sentinel pattern.
 
+Device-credential routes (see ``device_gate``) are the one exception: the
+devices router enforces device credentials (pairing code, claim token,
+device session token) inside the route/service layer instead.
+
 Fine-grained permission checks remain in authz.py decorators.
 """
 
@@ -28,6 +32,7 @@ from app.gateway.auth_disabled import (
     is_auth_disabled,
 )
 from app.gateway.authz import AuthContext, resolve_route_permissions
+from app.gateway.device_gate import is_device_credential_route
 from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, get_internal_user, is_valid_internal_auth_token
 from app.gateway.request_path import get_request_route_path
 from deerflow.runtime.user_context import reset_current_user, set_current_user
@@ -63,7 +68,10 @@ def _is_public(path: str) -> bool:
     stripped = path.rstrip("/")
     if stripped in _PUBLIC_EXACT_PATHS:
         return True
-    return any(path.startswith(prefix) for prefix in _PUBLIC_PATH_PREFIXES)
+    # 01-L1: prefix matches respect the segment boundary — a bare startswith
+    # would exempt lookalike paths like "/healthcheck-xyz" or
+    # "/api/webhooks-evil" that merely begin with a public prefix.
+    return any(path == prefix or path.startswith(prefix.rstrip("/") + "/") for prefix in _PUBLIC_PATH_PREFIXES)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -90,7 +98,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        if _is_public(get_request_route_path(request)):
+        route_path = get_request_route_path(request)
+        if _is_public(route_path) or is_device_credential_route(request.method, route_path):
+            # Device-credential routes authenticate inside the devices router
+            # (pairing code / claim token / X-Device-Session, all enforced by
+            # DeviceControlService), not with a browser session. A request
+            # without a valid device credential still gets 401 — from the
+            # route layer instead of this middleware.
             return await call_next(request)
 
         # T1 first-token timing: auth is the first pre-token segment.

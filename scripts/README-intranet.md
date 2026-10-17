@@ -120,7 +120,11 @@ This will:
 2. Load Docker images
 3. Start all services
 4. Run health checks
-5. Auto-create the super admin account (`super_admin@test.com` / `super_admin@test.com` by default; override with `IDEER_ADMIN_EMAIL` / `IDEER_ADMIN_PASSWORD`; skipped when an admin already exists)
+5. Auto-create the super admin account (email defaults to `super_admin@test.com`;
+   when `IDEER_ADMIN_PASSWORD` is unset, a random password is generated, shown
+   once during initialization, and saved to `runtime/data/.super-admin-password`;
+   override with `IDEER_ADMIN_EMAIL` / `IDEER_ADMIN_PASSWORD`; skipped when an
+   admin already exists)
 6. Seed the complete bundled resource manifest (`bundled-resources.json`) —
    bundled skills, agents (`fault-zeroing`, `srs-writing`, and others), and the
    `fault-zeroing` workflow — as **public canonical resources owned by the
@@ -282,8 +286,12 @@ The intranet deployment runs five containers:
 - **gateway** -- Python backend API on port 8001 (internal)
 - **workflow-worker** -- Workflow execution worker, reusing the gateway image
   (internal)
-- **sandbox** (on demand) -- AIO sandbox containers started by the gateway
-  through the host Docker socket, using the bundled `ideer-sandbox:<version>`
-  image
+- **sandbox** (on demand) -- AIO sandbox containers started by the gateway and
+  workflow-worker through the host Docker socket, using the bundled
+  `ideer-sandbox:<version>` image. The socket is NOT mounted by default: when
+  the runtime config selects the AIO sandbox provider (the
+  `config.intranet.yaml` default), `deploy-intranet.sh` appends the opt-in
+  `docker-compose.dood.yaml` overlay to its compose invocations; other sandbox
+  providers never receive it.
 
 All containers communicate over an internal Docker bridge network (`ideer`).

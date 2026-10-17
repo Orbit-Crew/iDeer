@@ -1,4 +1,8 @@
-"""CRUD API for custom agents."""
+"""CRUD API for custom agents.
+
+Mount status: deliberately NOT mounted by ``create_app()`` (see app.py) —
+the local baseline keeps agent management behind the enterprise experts
+entries (ledger D4), so this surface is not exposed by the merged app."""
 
 import asyncio
 import logging

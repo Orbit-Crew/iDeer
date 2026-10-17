@@ -283,6 +283,7 @@ async def test_local_runtime_client_completes_echo_through_temporary_service(
                 session_token=completed["session_token"],
                 session_id=completed["session_id"],
                 private_key=device_key,
+                server_public_key=completed["server_public_key"],
             )
             runtime_task = asyncio.create_task(runtime.run())
             for _ in range(100):
@@ -397,6 +398,7 @@ async def test_local_runtime_completes_mcp_task_through_broker_with_receipt(devi
                 session_token=completed["session_token"],
                 session_id=completed["session_id"],
                 private_key=device_key,
+                server_public_key=completed["server_public_key"],
                 mcp_service=LocalMCPService(
                     supervisor,
                     policy=LocalPolicy(),

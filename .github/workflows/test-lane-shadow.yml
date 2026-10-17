@@ -30,7 +30,12 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
-        run: python3 scripts/select_test_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+        run: python3 scripts/select_test_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT" --plan-file plan.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lane-plan-${{ github.run_id }}
+          path: plan.json
+          if-no-files-found: error
 
   test-contracts:
     needs: select
@@ -115,6 +120,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.1"
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Install backend dependencies
         working-directory: backend
         run: uv sync --group dev
@@ -176,11 +183,12 @@ jobs:
         with:
           python-version: "3.12"
       # Test-only install: the lane imports `core` through PYTHONPATH
-      # (scripts/run-test-lane.sh), and `pip install -e .` currently fails
-      # because the flat core/ layout matches no hatchling wheel target —
-      # see the broken Install step in local-runtime-windows.yml.
+      # (scripts/run-test-lane.sh). Dependency constraints come from the
+      # package manifest (local-runtime/pyproject.toml); only the test
+      # plugins are named here so they never drift from the manifest.
       - name: Install local-runtime test dependencies
-        run: python -m pip install pytest pytest-asyncio pytest-timeout "cryptography>=43" "websockets>=13,<14"
+        working-directory: local-runtime
+        run: python -m pip install -e . pytest pytest-asyncio pytest-timeout
       - name: Run local-runtime tests
         run: bash scripts/run-test-lane.sh local-runtime
 
@@ -264,6 +272,11 @@ jobs:
           path: logs/test-lanes/**
           if-no-files-found: ignore
 
+  # Legacy-name aggregation steps follow the backend-serial contract: only a
+  # real failure or cancellation goes red. A skipped underlying job (lane not
+  # selected, or selected but blocked by an upstream failure) stays green —
+  # the PR Standard Gate arbitrates required results itself via
+  # report_test_lane_summary.py (selected-but-skipped is "missing-required-result").
   backend-coverage:
     needs: [select, backend-unit-tests]
     if: always()
@@ -274,8 +287,9 @@ jobs:
           SELECTED: ${{ contains(needs.select.outputs.channels, 'backend-standard') }}
           TEST_RESULT: ${{ needs.backend-unit-tests.result }}
         run: |
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
           if [[ "$SELECTED" == "true" ]]; then
-            test "$TEST_RESULT" = "success"
             echo "Backend coverage is reserved for scheduled/manual backend-full validation."
           else
             echo "Backend coverage was not required for this candidate."
@@ -304,8 +318,13 @@ jobs:
           SELECTED: ${{ contains(needs.select.outputs.channels, 'frontend-standard') }}
           TEST_RESULT: ${{ needs.frontend-unit-tests.result }}
         run: |
-          if [[ "$SELECTED" == "true" ]]; then test "$TEST_RESULT" = "success"; fi
-          echo "Frontend coverage is reserved for scheduled/manual frontend-core validation."
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
+          if [[ "$SELECTED" == "true" ]]; then
+            echo "Frontend coverage is reserved for scheduled/manual frontend-core validation."
+          else
+            echo "Frontend coverage was not required for this candidate."
+          fi
 
   lint-frontend:
     needs: [select, lint]
@@ -317,8 +336,13 @@ jobs:
           SELECTED: ${{ contains(needs.select.outputs.channels, 'static-checks') }}
           TEST_RESULT: ${{ needs.lint.result }}
         run: |
-          if [[ "$SELECTED" == "true" ]]; then test "$TEST_RESULT" = "success"; fi
-          echo "Frontend static checks are represented by the shared lint job."
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
+          if [[ "$SELECTED" == "true" ]]; then
+            echo "Frontend static checks are represented by the shared lint job."
+          else
+            echo "Frontend static checks were not required for this candidate."
+          fi
 
   agent-guidance:
     needs: [select, test-contracts]
@@ -329,8 +353,9 @@ jobs:
         env:
           TEST_RESULT: ${{ needs.test-contracts.result }}
         run: |
-          test "$TEST_RESULT" = "success"
-          echo "Guidance synchronization ran in test-contracts."
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
+          echo "Guidance synchronization ran in test-contracts (result: $TEST_RESULT)."
 
   pr-standard-shadow:
     name: PR Standard Gate
@@ -354,16 +379,30 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: lane-plan-${{ github.run_id }}
       - name: Validate required results and report selected lanes
-        env:
-          PLAN_JSON: ${{ needs.select.outputs.plan }}
-          NEEDS_JSON: ${{ toJSON(needs) }}
+        # The plan travels as an artifact file and the needs input is a small
+        # hand-built results map: both used to ride through env vars, and on
+        # large stacked diffs the plan blew past the OS argument size limit
+        # ("Argument list too long" killed the gate before the script ran).
         run: |
           START_SECONDS=$SECONDS
           set +e
+          cat > needs.json <<NEEDS
+          {
+            "test-contracts": {"result": "${{ needs.test-contracts.result }}"},
+            "backend-unit-tests": {"result": "${{ needs.backend-unit-tests.result }}"},
+            "frontend-unit-tests": {"result": "${{ needs.frontend-unit-tests.result }}"},
+            "local-runtime": {"result": "${{ needs.local-runtime.result }}"},
+            "e2e-tests": {"result": "${{ needs.e2e-tests.result }}"},
+            "lint": {"result": "${{ needs.lint.result }}"}
+          }
+          NEEDS
           python3 scripts/report_test_lane_summary.py \
-            --plan-json "$PLAN_JSON" \
-            --needs-json "$NEEDS_JSON" \
+            --plan-file plan.json \
+            --needs-file needs.json \
             --summary-file "$GITHUB_STEP_SUMMARY"
           STATUS=$?
           set -e

@@ -1825,8 +1825,8 @@ for route in app.routes:
 # 单元测试（282 个；2026-10-04 用下方收集命令核对）
 cd backend && PYTHONPATH=. uv run pytest \
   tests/test_auth.py \
-  tests/test_auth_config.py \
-  tests/test_auth_errors.py \
+  tests/unit/gateway/test_auth_config.py \
+  tests/unit/gateway/test_auth_errors.py \
   tests/test_auth_type_system.py \
   tests/test_auth_middleware.py \
   tests/test_langgraph_auth.py \

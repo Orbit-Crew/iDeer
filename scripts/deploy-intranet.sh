@@ -38,7 +38,9 @@ Options:
 Environment:
   IDEER_BUNDLE_ROOT, IDEER_VERSION, IDEER_NO_LOAD
   IDEER_ADMIN_EMAIL, IDEER_ADMIN_PASSWORD override the auto-created super admin
-    credentials (default: super_admin@test.com / super_admin@test.com)
+    credentials (email defaults to super_admin@test.com; when
+    IDEER_ADMIN_PASSWORD is unset, a random password is generated, shown once
+    during initialization, and saved to runtime/data/.super-admin-password)
   IDEER_BUNDLED_CONFLICT=keep|override same as --bundled-conflict
 EOF
 }
@@ -254,6 +256,22 @@ SOURCE_DELETED="$BUNDLE_ROOT/source-deletions.txt"
 BUNDLE_MANIFEST_TOOL="$BUNDLE_ROOT/intranet_bundle_manifest.py"
 [ -f "$BUNDLE_MANIFEST_TOOL" ] || BUNDLE_MANIFEST_TOOL="$SOURCE_DIR/scripts/intranet_bundle_manifest.py"
 
+# Read a single KEY=value assignment out of the intranet env file without
+# sourcing it (08-M2). The file carries secrets and lives in an
+# operator-writable bundle directory, so arbitrary shell expressions in it
+# must never be executed (a `FOO=$(rm -rf ...)` line would run at source
+# time, and an unbound variable reference would abort the script under
+# `set -u`). Mirrors the line-based extraction deploy.sh uses for UV_EXTRAS;
+# compose keeps consuming the file through `--env-file` (dotenv syntax).
+env_value() {
+    local key="$1"
+    local default="${2:-}"
+    local line=""
+    [ -f "$ENV_FILE" ] || { printf '%s' "$default"; return 0; }
+    line="$(grep -E "^${key}=" "$ENV_FILE" | tail -1 | cut -d= -f2- || true)"
+    printf '%s' "${line:-$default}"
+}
+
 validate_bundle_platform() {
     [ -f "$BUNDLE_MANIFEST" ] || return 0
     local bundle_platform docker_arch expected
@@ -313,8 +331,18 @@ PY
     log "extracting source tar..."
     run_cmd rm -rf "$SOURCE_DIR"
     run_cmd mkdir -p "$SOURCE_DIR"
-    run_cmd tar -xzf "$SOURCE_TAR" -C "$SOURCE_DIR"
-    run_cmd printf '%s\n' "$VERSION" > "$marker"
+    # up/restart invoke prepare_bundle inside `if !`, which suppresses errexit
+    # for this whole call tree (08-M3): a plain `run_cmd tar` failure would be
+    # swallowed and the marker below would still be written, making later
+    # invocations skip re-extracting the broken tree. Fail explicitly instead,
+    # and mint the version marker only after the archive fully extracted.
+    if [ "$DRY_RUN" -eq 1 ]; then
+        log "[dry-run] tar -xzf $SOURCE_TAR -C $SOURCE_DIR"
+        log "[dry-run] write $marker = $VERSION"
+    else
+        tar -xzf "$SOURCE_TAR" -C "$SOURCE_DIR" || die "failed to extract source archive: $SOURCE_TAR"
+        printf '%s\n' "$VERSION" > "$marker"
+    fi
     if [ -f "$BUNDLE_MANIFEST" ]; then
         run_cmd cp "$BUNDLE_MANIFEST" "$SOURCE_DIR/.bundle-manifest.json"
     fi
@@ -458,13 +486,14 @@ load_or_create_secret_file() {
 validate_runtime() {
     require_file "$ENV_FILE"
 
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-
-    local config_path="${IDEER_CONFIG_PATH:-$RUNTIME_DIR/config.yaml}"
-    local backend_env_path="${IDEER_ENV_FILE:-$RUNTIME_DIR/.env}"
-    local frontend_env_path="${IDEER_FRONTEND_ENV_FILE:-$RUNTIME_DIR/frontend.env}"
-    local extensions_config_path="${IDEER_EXTENSIONS_CONFIG_PATH:-$RUNTIME_DIR/extensions_config.json}"
+    local config_path
+    config_path="$(env_value IDEER_CONFIG_PATH "$RUNTIME_DIR/config.yaml")"
+    local backend_env_path
+    backend_env_path="$(env_value IDEER_ENV_FILE "$RUNTIME_DIR/.env")"
+    local frontend_env_path
+    frontend_env_path="$(env_value IDEER_FRONTEND_ENV_FILE "$RUNTIME_DIR/frontend.env")"
+    local extensions_config_path
+    extensions_config_path="$(env_value IDEER_EXTENSIONS_CONFIG_PATH "$RUNTIME_DIR/extensions_config.json")"
 
     require_file "$config_path"
     require_file "$backend_env_path"
@@ -606,7 +635,10 @@ IDEER_CONFIG_PATH=$RUNTIME_DIR/config.yaml
 IDEER_EXTENSIONS_CONFIG_PATH=$RUNTIME_DIR/extensions_config.json
 IDEER_ENV_FILE=$RUNTIME_DIR/.env
 IDEER_FRONTEND_ENV_FILE=$RUNTIME_DIR/frontend.env
-IDEER_DOCKER_SOCKET=/var/run/docker.sock
+# Host Docker socket for the opt-in DooD overlay (docker-compose.dood.yaml),
+# which deploy-intranet.sh appends only when the runtime config selects the
+# AIO sandbox provider. The base intranet compose mounts no socket.
+DEER_FLOW_DOCKER_SOCKET=/var/run/docker.sock
 BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET_VALUE
 IDEER_INTERNAL_AUTH_TOKEN=$IDEER_INTERNAL_AUTH_TOKEN_VALUE
 IDEER_GATEWAY_IMAGE=ideer-gateway:$VERSION
@@ -665,12 +697,9 @@ load_images() {
 # nginx:alpine and ideer-sandbox:* are never touched (the sandbox tag shares
 # its image with every version, so removing old tags frees no space).
 prune_old_images() {
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-
     local current_version=""
     local img
-    img="$(grep -E '^IDEER_GATEWAY_IMAGE=' "$ENV_FILE" | tail -1 | cut -d= -f2- || true)"
+    img="$(env_value IDEER_GATEWAY_IMAGE)"
     case "$img" in
         ideer-gateway:*) current_version="${img#ideer-gateway:}" ;;
     esac
@@ -725,8 +754,54 @@ prune_old_images() {
     fi
 }
 
+# Mirror scripts/deploy.sh detect_sandbox_mode: the runtime config decides
+# whether the opt-in DooD overlay is appended to compose invocations.
+detect_sandbox_mode() {
+    local config_path
+    config_path="$(env_value IDEER_CONFIG_PATH "$RUNTIME_DIR/config.yaml")"
+    local sandbox_use=""
+    local provisioner_url=""
+
+    [ -f "$config_path" ] || { echo "local"; return; }
+
+    sandbox_use=$(awk '
+        /^[[:space:]]*sandbox:[[:space:]]*$/ { in_sandbox=1; next }
+        in_sandbox && /^[^[:space:]#]/ { in_sandbox=0 }
+        in_sandbox && /^[[:space:]]*use:[[:space:]]*/ {
+            line=$0; sub(/^[[:space:]]*use:[[:space:]]*/, "", line); print line; exit
+        }
+    ' "$config_path")
+
+    provisioner_url=$(awk '
+        /^[[:space:]]*sandbox:[[:space:]]*$/ { in_sandbox=1; next }
+        in_sandbox && /^[^[:space:]#]/ { in_sandbox=0 }
+        in_sandbox && /^[[:space:]]*provisioner_url:[[:space:]]*/ {
+            line=$0; sub(/^[[:space:]]*provisioner_url:[[:space:]]*/, "", line); print line; exit
+        }
+    ' "$config_path")
+
+    if [[ "$sandbox_use" == *"deerflow.community.aio_sandbox:AioSandboxProvider"* ]]; then
+        if [ -n "$provisioner_url" ]; then
+            echo "provisioner"
+        else
+            echo "aio"
+        fi
+    else
+        echo "local"
+    fi
+}
+
 compose_cmd() {
-    run_cmd docker compose -p ideer -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+    local compose_files=(-f "$COMPOSE_FILE")
+    if [ "$(detect_sandbox_mode)" = "aio" ]; then
+        # Opt-in DooD overlay: the only path that exposes the host Docker
+        # socket (root-equivalent host control). config.intranet.yaml defaults
+        # to aio, so intranet deployments keep sandbox capability without the
+        # base compose carrying an unconditional socket mount.
+        compose_files+=(-f "$SOURCE_DIR/docker/docker-compose.dood.yaml")
+        log "sandbox mode: aio — mounting host Docker socket via docker-compose.dood.yaml (DooD = host root-equivalent)"
+    fi
+    run_cmd docker compose -p ideer "${compose_files[@]}" --env-file "$ENV_FILE" "$@"
 }
 
 compose_update_args() {
@@ -752,25 +827,39 @@ compose_update_args() {
 
 # POST a JSON body and print the HTTP status code.  Uses curl when available
 # and falls back to python3 so machines without curl can still bootstrap.
+json_escape() {
+    # Escape a string for inclusion in a JSON document (08-M11): the super
+    # admin initialize payload was previously interpolated raw, so a password
+    # containing a double quote or backslash produced an invalid request body
+    # and an opaque gateway error.
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    printf '%s' "$value"
+}
+
 http_post_json() {
     local url="$1"
     local json="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl -sS -o /dev/null -w '%{http_code}' -X POST "$url" \
-            -H 'Content-Type: application/json' --data "$json"
+        # The body flows through stdin (--data @-): passing it as a curl
+        # argument exposed the super admin password in the process list (ps)
+        # for the duration of the request (08-M11).
+        printf '%s' "$json" | curl -sS -o /dev/null -w '%{http_code}' -X POST "$url" \
+            -H 'Content-Type: application/json' --data @-
         return 0
     fi
     if command -v python3 >/dev/null 2>&1; then
         python3 -c '
 import json, sys, urllib.request
-url, payload = sys.argv[1], sys.argv[2].encode()
+url, payload = sys.argv[1], sys.stdin.buffer.read()
 req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
 try:
     with urllib.request.urlopen(req, timeout=15):
         print(200)
 except urllib.error.HTTPError as exc:
     print(exc.code)
-' "$url" "$json"
+' "$url" <<<"$json"
         return 0
     fi
     die "curl or python3 is required to initialize the super admin"
@@ -778,23 +867,47 @@ except urllib.error.HTTPError as exc:
 
 # Create the first super admin account once the gateway is healthy.  The
 # /initialize endpoint refuses with 409 when an admin already exists, so this
-# is idempotent across re-runs.  Credentials default to the standard test
-# account and can be overridden with IDEER_ADMIN_EMAIL / IDEER_ADMIN_PASSWORD.
+# is idempotent across re-runs.  The email defaults to super_admin@test.com;
+# without IDEER_ADMIN_PASSWORD a random password is generated, shown once on
+# creation, and persisted (chmod 600) to $RUNTIME_DIR/data/.super-admin-password
+# so re-runs reuse the same credential.  IDEER_ADMIN_EMAIL / IDEER_ADMIN_PASSWORD
+# override both.
 initialize_super_admin() {
     local email="${IDEER_ADMIN_EMAIL:-super_admin@test.com}"
-    local password="${IDEER_ADMIN_PASSWORD:-super_admin@test.com}"
+    local password="${IDEER_ADMIN_PASSWORD:-}"
+    local password_file="$RUNTIME_DIR/data/.super-admin-password"
+    local generated=0
 
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    local port="${PORT:-2026}"
+    if [ -z "$password" ]; then
+        if [ -f "$password_file" ]; then
+            password="$(tr -d '\r\n' < "$password_file")"
+        fi
+        if [ -z "$password" ]; then
+            password="$(generate_secret)"
+            generated=1
+        fi
+    fi
+
+    local port
+    port="$(env_value PORT 2026)"
 
     log "initializing super admin account ($email)..."
     local status
     status="$(http_post_json \
         "http://127.0.0.1:${port}/api/v1/auth/initialize" \
-        "{\"email\":\"${email}\",\"password\":\"${password}\"}")" || die "failed to reach the gateway for admin initialization"
+        "{\"email\":\"$(json_escape "$email")\",\"password\":\"$(json_escape "$password")\"}")" || die "failed to reach the gateway for admin initialization"
     case "$status" in
-        201) log "super admin account created" ;;
+        201)
+            log "super admin account created"
+            if [ "$generated" -eq 1 ]; then
+                if printf '%s\n' "$password" > "$password_file"; then
+                    chmod 600 "$password_file"
+                    log "generated super admin password (one-time display, also saved to $password_file): $password"
+                else
+                    log "generated super admin password (one-time display, could not write $password_file): $password"
+                fi
+            fi
+            ;;
         409) log "super admin already exists; skipping" ;;
         *)
             die "admin initialization failed (HTTP $status)"
@@ -805,12 +918,11 @@ initialize_super_admin() {
 # Resolve the active super admin user id from the runtime database.  Prints
 # nothing when no admin exists yet (e.g. first boot before initialization).
 find_super_admin_id() {
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
     # The DeerFlow convergence renamed the runtime DB file (ideer.db ->
     # deerflow.db); prefer the new name and fall back to the legacy one so
     # pre-convergence bundles still upgrade cleanly.
-    local base="${IDEER_HOME:-$RUNTIME_DIR/data}/data"
+    local base
+    base="$(env_value IDEER_HOME "$RUNTIME_DIR/data")/data"
     local db="$base/deerflow.db"
     [ -f "$db" ] || db="$base/ideer.db"
     [ -f "$db" ] || return 0
@@ -838,8 +950,6 @@ install_admin_bundled_resources() {
     }
 
     require_file "$ENV_FILE"
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
 
     # The env file is the source of truth for the data dir: only trust the
     # IDEER_HOME it explicitly declares.  A pre-existing env file (e.g. from a
@@ -847,9 +957,10 @@ install_admin_bundled_resources() {
     # IDEER_HOME from the surrounding shell, which would relocate the agents.
     local runtime_home="$RUNTIME_DIR/data"
     if grep -qE '^IDEER_HOME=' "$ENV_FILE"; then
-        runtime_home="${IDEER_HOME:-$runtime_home}"
+        runtime_home="$(env_value IDEER_HOME "$runtime_home")"
     fi
-    local config_path="${IDEER_CONFIG_PATH:-$RUNTIME_DIR/config.yaml}"
+    local config_path
+    config_path="$(env_value IDEER_CONFIG_PATH "$RUNTIME_DIR/config.yaml")"
     require_file "$config_path"
 
     local admin_id
@@ -920,11 +1031,11 @@ wait_for_http() {
 }
 
 verify_services() {
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    wait_for_http "http://127.0.0.1:${PORT:-2026}/health" "gateway"
-    wait_for_http "http://127.0.0.1:${PORT:-2026}/api/v1/auth/setup-status" "auth setup-status"
-    wait_for_http "http://127.0.0.1:${PORT:-2026}/" "frontend"
+    local port
+    port="$(env_value PORT 2026)"
+    wait_for_http "http://127.0.0.1:${port}/health" "gateway"
+    wait_for_http "http://127.0.0.1:${port}/api/v1/auth/setup-status" "auth setup-status"
+    wait_for_http "http://127.0.0.1:${port}/" "frontend"
 }
 
 print_rollback_instructions() {

@@ -773,10 +773,15 @@ class StdioMCPConnection:
         self._next_id = 0
         self._reader_task: asyncio.Task[None] | None = None
         self._stderr_task: asyncio.Task[None] | None = None
-        self._write_lock = asyncio.Lock()
+        self._write_lock: asyncio.Lock | None = None
         self._closing = False
 
     async def start(self) -> None:
+        if self._write_lock is None:
+            # asyncio.Lock binds its loop at construction on Python 3.9 and
+            # older; connections are built outside any running loop, so the
+            # lock belongs to start()'s running loop.
+            self._write_lock = asyncio.Lock()
         try:
             self.process = await asyncio.create_subprocess_exec(
                 *self.command,
@@ -826,7 +831,9 @@ class StdioMCPConnection:
                 )
                 await self.process.stdin.drain()
             return await asyncio.wait_for(future, timeout)
-        except TimeoutError:
+        except asyncio.TimeoutError:
+            # asyncio.wait_for raises asyncio.TimeoutError, only an alias of
+            # the builtin from Python 3.11 on.
             self._pending.pop(message["id"], None)
             raise MCPError("MCP_TIMEOUT", f"{method} timed out") from None
         except (OSError, ValueError, json.JSONDecodeError) as exc:
@@ -866,7 +873,10 @@ class StdioMCPConnection:
                 break
             await asyncio.sleep(0.02)
         if process.returncode is None:
-            process.kill()
+            # The child was spawned with start_new_session, so a bare kill()
+            # would orphan the grandchildren an npx-style wrapper spawned;
+            # _terminate() signals the whole process group instead (05-M5).
+            _terminate(process)
         await process.wait()
         if self._reader_task is not None:
             self._reader_task.cancel()
@@ -1003,7 +1013,7 @@ class HTTPMCPConnection:
             )
             if session_id:
                 self._session_id = session_id
-        except TimeoutError:
+        except asyncio.TimeoutError:
             raise MCPError("MCP_TIMEOUT", f"{method} timed out") from None
         except (OSError, ValueError) as exc:
             raise MCPError(
@@ -1056,7 +1066,7 @@ class HTTPMCPConnection:
             _, _, _, session_id = await asyncio.wait_for(self._post(body), timeout=10)
             if session_id:
                 self._session_id = session_id
-        except (TimeoutError, MCPError, OSError):
+        except (asyncio.TimeoutError, MCPError, OSError):
             pass
 
     async def close(self) -> None:
@@ -1133,11 +1143,12 @@ def _parse_http_url(url: str) -> tuple[str, str, int, str] | None:
     # plain HTTP, so https URLs would silently downgrade if accepted here.
     if parts.scheme != "http" or not parts.hostname:
         return None
-    default_port = 443 if parts.scheme == "https" else 80
+    # Only http can reach this point, so the default port is always 80; the
+    # former 443 https arm here was dead code (05-L7).
     return (
         parts.scheme,
         parts.hostname,
-        parts.port if parts.port is not None else default_port,
+        parts.port if parts.port is not None else 80,
         parts.path or "/",
     )
 

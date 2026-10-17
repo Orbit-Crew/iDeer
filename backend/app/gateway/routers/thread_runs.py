@@ -745,6 +745,7 @@ async def create_run(
         body,
         thread_id,
         request,
+        require_existing_thread=True,
         idempotency_key=_scope_http_run_idempotency_key(request, thread_id, idempotency_key),
     )
     return _record_to_response(record)
@@ -770,6 +771,7 @@ async def stream_run(
         body,
         thread_id,
         request,
+        require_existing_thread=True,
         idempotency_key=_scope_http_run_idempotency_key(request, thread_id, idempotency_key),
     )
 
@@ -825,6 +827,7 @@ async def wait_run(
         body,
         thread_id,
         request,
+        require_existing_thread=True,
         idempotency_key=_scope_http_run_idempotency_key(request, thread_id, idempotency_key),
     )
     # Capture before waiting: create_or_reject mutates the shared cached
@@ -1087,7 +1090,18 @@ async def _stream_existing_run(
             try:
                 await record.task
             except (asyncio.CancelledError, Exception):
-                pass
+                # 01-L4: the cancellation used to be absorbed silently; leave a
+                # trace when the awaited run task itself was cancelled so the
+                # 204 does not hide a cancelled wait from operations. The wait
+                # target may be a bare coroutine in embedded compositions, so
+                # probe the Task API defensively.
+                probe_cancelled = getattr(record.task, "cancelled", None)
+                if callable(probe_cancelled):
+                    try:
+                        if probe_cancelled():
+                            logger.warning("stream wait for run %s ended by run-task cancellation; returning 204", run_id)
+                    except Exception:
+                        pass
             return Response(status_code=204)
 
     if bridge is None:

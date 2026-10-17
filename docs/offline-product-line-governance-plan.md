@@ -87,7 +87,16 @@ v2.1.0 升级继续由 `docs/upgrades/deerflow-v2.1.0/` 的独立任务处理。
 5. **补丁卫生**：每轮收敛强制 reassess 补丁台账（根 `UPSTREAM_PATCH_LEDGER.md`
    为唯一权威登记处）移除条件；harness 原始补丁面为 44 文件，本轮规则副本文档增量及明确预算变更见根账本；代码补丁与文档分别报告；可上游化的
    通用修复提 PR 回上游（候选：P003 文档行、P011 SQLite 异步桥、P014 迁移守卫、
-   P032 readability 守卫等）。
+   P032 readability 守卫等；前端面候选：07-H1 memory 代理穿越校验，票 59，
+   草稿见 `docs/upgrades/upstream-pr-candidates/memory-proxy-path-traversal.md`；
+   渠道面候选：03-H1/H2/M3/M4/M6+M5 渠道生命周期状态收敛与事件循环亲和，票 61，
+   草稿见 `docs/upgrades/upstream-pr-candidates/channel-lifecycle-loop-affinity.md`；
+   harness 面候选：04-M5 registry runtime evidence hooks 重复注册确定性语义，
+   票 63——上游比对确认该注册缝尚为 fork 本地面，候选为条件性 rider，草稿见
+   `docs/upgrades/upstream-pr-candidates/registry-duplicate-evidence-hooks.md`；
+   harness 面候选：02-M6 三处企业接缝扩展点（tool-scope/子代理 middleware/builtin
+   覆盖），票 64——上游无对应缝，候选为条件性 rider，草稿见
+   `docs/upgrades/upstream-pr-candidates/host-seam-extension-points.md`）。
 
 ### 修复轨（定向 cherry-pick）
 

@@ -17,9 +17,12 @@ contracts that workflow agent nodes depend on have no upstream equivalent:
    The bridge reproduces the events by streaming new messages off the result
    while the run executes.
 
-No deerflow code is modified. The file-scope middleware is injected by wrapping
-the executor module's ``create_agent`` binding behind a request-scoped
-ContextVar, so the wrapper is inert for every non-workflow executor.
+No deerflow module is rewritten on import (ticket #64, 02-M6, contract
+batches 1-2): both contracts are published as single-provider seam
+registrations — ``WorkflowKnowledgeToolScopes`` resolved at the end of
+``get_available_tools`` (batch 1) and ``WorkflowMiddlewareSource`` consulted
+at subagent agent assembly (batch 2) — still keyed off the same request-scoped
+ContextVars, so every non-workflow caller is a passthrough.
 """
 
 from __future__ import annotations
@@ -36,7 +39,6 @@ from langchain.agents import AgentState
 from langchain.agents.middleware import AgentMiddleware
 
 from app.agentplatform.workflows.v2.filesystem_scope import FilesystemScopeMiddleware
-from deerflow.subagents import executor as _executor_module
 from deerflow.subagents.config import SubagentConfig
 from deerflow.subagents.executor import SubagentExecutor, SubagentStatus
 
@@ -46,44 +48,68 @@ _PENDING_FILE_SCOPE: ContextVar[list[Any] | None] = ContextVar("workflow_file_sc
 _PENDING_KNOWLEDGE_SCOPE: ContextVar[KnowledgeScope | None] = ContextVar("workflow_knowledge_scope", default=None)
 
 
-def _install_scope_aware_tool_loading() -> None:
-    """Apply the current Workflow scope to tools loaded by native delegation."""
+class WorkflowKnowledgeToolScopes:
+    """Tool-scope adapter bridging the workflow knowledge ContextVar.
 
-    import deerflow.tools as deerflow_tools
+    Provider for the seam deerflow consults at the end of
+    ``get_available_tools`` (behavior identical to the module wrapper this
+    class replaced): native task-tool delegation has no canonical child
+    dependency declaration, so the child stays fail-closed with an empty
+    KnowledgeScope instead of inheriting the parent's KB allowlist; canonical
+    Workflow Agent nodes are assembled through the adapters and receive their
+    own narrowed scope.
+    """
 
-    original = deerflow_tools.get_available_tools
-    if getattr(original, "_workflow_knowledge_scope_aware", False):
-        return
-
-    def scoped_tools(*args: Any, **kwargs: Any) -> list[Any]:
-        tools = original(*args, **kwargs)
+    def apply_tool_scopes(self, tools: list[Any], *, subagent_enabled: bool) -> list[Any]:
         scope = _PENDING_KNOWLEDGE_SCOPE.get()
-        # Native task-tool delegation has no canonical child dependency
-        # declaration.  Keep the child fail-closed instead of inheriting the
-        # parent's KB allowlist; canonical Workflow Agent nodes are assembled
-        # through the adapters and receive their own narrowed scope.
-        if scope is not None and kwargs.get("subagent_enabled") is False:
+        if scope is None:
+            return tools
+        if subagent_enabled is False:
             scope = KnowledgeScope()
-        return adapt_knowledge_tools(tools, scope) if scope is not None else tools
-
-    scoped_tools._workflow_knowledge_scope_aware = True  # type: ignore[attr-defined]
-    deerflow_tools.get_available_tools = scoped_tools
+        return adapt_knowledge_tools(list(tools), scope)
 
 
-_install_scope_aware_tool_loading()
+class WorkflowMiddlewareSource:
+    """Subagent middleware source bridging the workflow file-scope ContextVar.
+
+    Provider for the seam deerflow consults at subagent agent assembly
+    (appending after the upstream middleware chain, exactly where the module
+    wrapper this class replaced appended them); returns the middlewares of the
+    workflow execution running in the current task, empty for every
+    non-workflow caller (passthrough).
+    """
+
+    def pending_middlewares(self) -> list[Any]:
+        return list(_PENDING_FILE_SCOPE.get() or ())
+
+
+def _install_workflow_seams() -> None:
+    """Publish the workflow execution contracts (registry-only).
+
+    Both contracts are single-provider seam registrations resolved by their
+    upstream consumption sites (contract batches 1-2, ticket #64):
+    ``WorkflowKnowledgeToolScopes`` at the end of ``get_available_tools`` and
+    ``WorkflowMiddlewareSource`` at subagent agent assembly. Upstream modules
+    stay untouched; the ContextVars keep every non-workflow caller a
+    passthrough.
+    """
+    from deerflow.extensions import set_default_subagent_middlewares, set_default_tool_scopes
+
+    set_default_tool_scopes(WorkflowKnowledgeToolScopes(), owner="workflows.v2:executor_bridge")
+    set_default_subagent_middlewares(WorkflowMiddlewareSource(), owner="workflows.v2:executor_bridge")
+
+
+_install_workflow_seams()
 
 
 class RunWorkspacePathsMiddleware(AgentMiddleware[AgentState]):
     """Pin ``thread_data`` to the run workspace while the sandbox is scoped.
 
     The bridge scopes the sandbox thread so the provider can recognize the
-    frozen run (``canonical_sandbox_scope``), but the upstream thread-data
-    middleware derives ``/mnt/user-data`` host paths from that scoped identity,
-    while the workflow file-roots contract — and the artifact gate — key the
-    run workspace on the raw run id (``thread_id == run_id``). Appended after
-    the upstream middleware, this override re-points the workspace, uploads and
-    outputs mappings at the run workspace so tool writes land where the gate
-    verifies them.
+    frozen run (``canonical_sandbox_scope``). Appended after the upstream
+    thread-data middleware, this override derives the workspace, uploads and
+    outputs mappings from the workflow file-roots resolver, so tool reads and
+    writes use the same scoped workspace as intake and the artifact gate.
     """
 
     def __init__(self, *, run_id: str, sandbox_scope: str | None = None) -> None:
@@ -109,31 +135,6 @@ class RunWorkspacePathsMiddleware(AgentMiddleware[AgentState]):
                 thread_data[key] = host
                 updated = True
         return {"thread_data": thread_data} if updated else None
-
-
-def _install_scope_aware_create_agent() -> None:
-    """Wrap the executor module's ``create_agent`` once, at import time.
-
-    Imports hold the import lock, so the check-then-install runs without a
-    race. The wrapper appends the pending workflow middlewares only when a
-    workflow execution set the ContextVar in the current task; every other
-    caller is a passthrough.
-    """
-    original = _executor_module.create_agent
-    if getattr(original, "_workflow_scope_aware", False):
-        return
-
-    def scope_aware_create_agent(*args: Any, **kwargs: Any):
-        pending = _PENDING_FILE_SCOPE.get()
-        if pending:
-            kwargs["middleware"] = [*(kwargs.get("middleware") or []), *pending]
-        return original(*args, **kwargs)
-
-    scope_aware_create_agent._workflow_scope_aware = True  # type: ignore[attr-defined]
-    _executor_module.create_agent = scope_aware_create_agent
-
-
-_install_scope_aware_create_agent()
 
 
 @dataclass

@@ -1,3 +1,7 @@
+import {
+  MOCK_API_UNAVAILABLE,
+  mockApiDisabled,
+} from "@/app/mock/api/mock-api-gate";
 const status = {
   installed: false,
   version: "v1.0.65",
@@ -30,5 +34,6 @@ const status = {
 };
 
 export function GET() {
+  if (mockApiDisabled()) return MOCK_API_UNAVAILABLE;
   return Response.json(status);
 }

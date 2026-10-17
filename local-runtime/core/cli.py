@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import base64
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -60,9 +61,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     runtime.add_argument("--server-url", required=True)
     runtime.add_argument("--device-id", required=True)
-    runtime.add_argument("--session-token", required=True)
+    # Session credentials must not land in argv (ps/proc cmdline); see
+    # _resolve_runtime_credentials for the stdin/env fallbacks (05-M8).
     runtime.add_argument(
-        "--private-key", required=True, help="base64 encoded Ed25519 private key"
+        "--session-token",
+        default=os.environ.get("IDEER_LOCAL_SESSION_TOKEN", ""),
+        help="device session token; '-' reads it from stdin",
+    )
+    runtime.add_argument(
+        "--private-key",
+        default=os.environ.get("IDEER_LOCAL_PRIVATE_KEY", ""),
+        help="base64 encoded Ed25519 private key; '-' reads it from stdin",
     )
     runtime.add_argument(
         "--mcp-config",
@@ -131,6 +140,32 @@ def _read_secret_value() -> str:
     if not value:
         raise ValueError("a credential value must not be empty")
     return value
+
+
+def _resolve_runtime_credentials(session_token: str, private_key: str) -> tuple[str, str]:
+    """Resolve the start-runtime credentials without putting them in argv (05-M8).
+
+    A literal ``-`` reads the value from stdin (to EOF, like secret-set), and
+    both arguments fall back to the IDEER_LOCAL_SESSION_TOKEN /
+    IDEER_LOCAL_PRIVATE_KEY environment variables. Anything passed as a
+    command-line argument is readable by every local user via
+    /proc/<pid>/cmdline, so the tray's OS credential store remains the
+    recommended path.
+    """
+    if session_token == "-":
+        # Line-based on purpose: both credentials are single-line values and
+        # both may be piped in one invocation ("printf '%s\n%s' | ... - -").
+        session_token = sys.stdin.readline().strip()
+    if private_key == "-":
+        private_key = sys.stdin.readline().strip()
+    if not session_token or not private_key:
+        raise ValueError(
+            "start-runtime needs a session token and a base64 Ed25519 private "
+            "key; pass '-' to read them from stdin, set "
+            "IDEER_LOCAL_SESSION_TOKEN / IDEER_LOCAL_PRIVATE_KEY, or use the "
+            "tray path, which keeps them in the OS credential store"
+        )
+    return session_token, private_key
 
 
 def _secure_key_value(key: Ed25519PrivateKey) -> str:
@@ -240,6 +275,9 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
                 device_id=str(result["device"]["id"]),
                 device_name=args.name,
                 claim_token_ref=claim_ref,
+                # The register response distributes the broker public key over
+                # the pairing channel; bind it before any ws:// connection.
+                server_public_key=str(result.get("server_public_key", "")),
                 config_path=str(args.config),
             )
             key_ref = f"ideer-device-key-{settings.device_id}"
@@ -307,6 +345,10 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
             return 1
         device = result.get("device", {})
         token = str(result.get("session_token", ""))
+        # Keep the key captured at pair_start unless the complete response
+        # distributes one; the pinned key must survive this rebuild of the
+        # settings object.
+        previous_broker_key = settings.server_public_key
         try:
             token_ref = f"ideer-device-session-{args.device_id}"
             secure.set(token_ref, token)
@@ -321,6 +363,9 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
             device_name=str(device.get("name", settings.device_name)),
             runtime_version=str(device.get("runtime_version", "0.1.0")),
             device_key_ref=key_ref,
+            server_public_key=(
+                str(result.get("server_public_key", "")) or previous_broker_key
+            ),
             config_path=str(args.config),
         )
         settings.save(args.config)
@@ -347,7 +392,14 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
         from .mcp import LocalMCPService, MCPSupervisor, load_mcp_specs
         from .transport import LocalRuntimeClient
 
-        key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(args.private_key))
+        try:
+            session_token, private_key_text = _resolve_runtime_credentials(
+                args.session_token, args.private_key
+            )
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(private_key_text))
         mcp_service = None
         supervisor = None
         if args.mcp_config is not None:
@@ -372,7 +424,7 @@ def main(argv: list[str] | None = None, *, store: SecretStore | None = None) -> 
         client = LocalRuntimeClient(
             server_url=args.server_url,
             device_id=args.device_id,
-            session_token=args.session_token,
+            session_token=session_token,
             private_key=key,
             mcp_service=mcp_service,
         )

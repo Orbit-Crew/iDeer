@@ -59,7 +59,7 @@ class TestApplyLoggingLevel:
         logging.getLogger("deerflow").setLevel(self._original_deerflow_level)
         logging.getLogger("app").setLevel(self._original_app_level)
 
-    def test_sets_ideer_app_logger_levels(self) -> None:
+    def test_sets_deerflow_app_logger_levels(self) -> None:
         apply_logging_level("debug")
         assert logging.getLogger("deerflow").level == logging.DEBUG
         assert logging.getLogger("app").level == logging.DEBUG
@@ -89,3 +89,8 @@ class TestApplyLoggingLevel:
         apply_logging_level(None)
         assert logging.getLogger("deerflow").level == logging.INFO
         assert logging.getLogger("app").level == logging.INFO
+
+    def test_sets_ideer_app_logger_levels(self) -> None:
+        apply_logging_level("debug")
+        assert logging.getLogger("deerflow").level == logging.DEBUG
+        assert logging.getLogger("app").level == logging.DEBUG

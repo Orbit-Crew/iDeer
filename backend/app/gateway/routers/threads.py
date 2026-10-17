@@ -102,7 +102,7 @@ def _checkpoint_mode_http_error(exc: Exception, thread_id: str) -> HTTPException
 # owner identity through the API surface. Defense-in-depth — the
 # row-level invariant is still ``threads_meta.user_id`` populated from
 # the auth contextvar; this list closes the metadata-blob echo gap.
-_SERVER_RESERVED_METADATA_KEYS: frozenset[str] = frozenset({"owner_id", "user_id", THREAD_PROJECT_METADATA_KEY})
+_SERVER_RESERVED_METADATA_KEYS: frozenset[str] = frozenset({"owner_id", "user_id", THREAD_PROJECT_METADATA_KEY, "deerflow_code_package_id"})
 _SIDECAR_METADATA_KEY = "deerflow_sidecar"
 _BRANCH_METADATA_KEY = "deerflow_branch"
 _BRANCH_TITLE_SEQUENCE_METADATA_KEY = "branch_title_sequence"

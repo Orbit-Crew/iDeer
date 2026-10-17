@@ -153,6 +153,27 @@ class TestReadOnlyPath:
             sandbox.write_file("/mnt/skills/new_file.py", "content")
         assert exc_info.value.errno == errno.EROFS
 
+    def test_bash_write_to_projected_copy_does_not_mutate_source(self, tmp_path):
+        source = tmp_path / "canonical" / "SKILL.md"
+        view = tmp_path / "skills_view" / "public" / "demo" / "SKILL.md"
+        source.parent.mkdir(parents=True)
+        view.parent.mkdir(parents=True)
+        source.write_text("ORIGINAL\n", encoding="utf-8")
+        from deerflow.skills.projection import _copy_into_view
+
+        _copy_into_view(str(source), str(view))
+        assert view.stat().st_ino != source.stat().st_ino
+
+        sandbox = LocalSandbox(
+            "test",
+            [
+                PathMapping(container_path="/mnt/skills/public/demo", local_path=str(view.parent), read_only=True),
+            ],
+        )
+        sandbox.execute_command("python -c \"from pathlib import Path; Path(r'/mnt/skills/public/demo/SKILL.md').write_text('MUTATED\\n', encoding='utf-8')\"")
+        assert source.read_text(encoding="utf-8") == "ORIGINAL\n"
+        assert view.read_text(encoding="utf-8") == "MUTATED\n"
+
     def test_write_file_allowed_on_writable_mount(self, tmp_path):
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -308,6 +329,31 @@ class TestSymlinkEscapes:
         assert "/mnt/data/nested/" in entries
         assert "/mnt/data/nested/linked-dir/" in entries
         assert "/mnt/data/dir-link" not in entries
+
+    def test_list_dir_raises_when_path_is_missing(self, tmp_path):
+        mount_dir = tmp_path / "mount"
+        mount_dir.mkdir()
+        sandbox = LocalSandbox(
+            "test",
+            [
+                PathMapping(container_path="/mnt/data", local_path=str(mount_dir), read_only=False),
+            ],
+        )
+
+        with pytest.raises(FileNotFoundError):
+            sandbox.list_dir("/mnt/data/missing")
+
+    def test_list_dir_empty_directory_returns_empty(self, tmp_path):
+        mount_dir = tmp_path / "mount"
+        mount_dir.mkdir()
+        sandbox = LocalSandbox(
+            "test",
+            [
+                PathMapping(container_path="/mnt/data", local_path=str(mount_dir), read_only=False),
+            ],
+        )
+
+        assert sandbox.list_dir("/mnt/data") == []
 
     def test_write_file_blocks_symlink_into_nested_read_only_mount(self, tmp_path):
         repo_dir = tmp_path / "repo"
@@ -488,15 +534,18 @@ class TestMultipleMounts:
             ],
         )
 
-        # Capture the resolved command at the _run_posix_command seam —
-        # upstream executes via Popen + drain threads there, not subprocess.run.
+        # Mock subprocess to capture the resolved command. The POSIX path runs
+        # commands via subprocess.Popen, so wrap that and still execute the real
+        # command.
         captured = {}
+        original_popen = __import__("subprocess").Popen
 
-        def _fake_run_posix(args, timeout, env=None):
-            captured["command"] = args
-            return ("hello", "", 0, False)
+        def mock_popen(*args, **kwargs):
+            if len(args) > 0:
+                captured["command"] = args[0]
+            return original_popen(*args, **kwargs)
 
-        monkeypatch.setattr("deerflow.sandbox.local.local_sandbox.LocalSandbox._run_posix_command", staticmethod(_fake_run_posix))
+        monkeypatch.setattr("deerflow.sandbox.local.local_sandbox.subprocess.Popen", mock_popen)
         monkeypatch.setattr("deerflow.sandbox.local.local_sandbox.LocalSandbox._get_shell", lambda self: "/bin/sh")
 
         sandbox.execute_command("cat /mnt/data/test.txt")
@@ -539,11 +588,110 @@ class TestMultipleMounts:
         assert "/mnt/data/file.txt" in masked
         assert str(mount_dir) not in masked
 
+    @pytest.mark.parametrize("suffix", ["", ":3:needle", " 3 needle"])
+    def test_reverse_resolve_keeps_mount_spelling_for_symlink_resolving_outside(self, tmp_path, suffix):
+        """A link under a mount whose target is outside every mount must not turn
+        into the target's host path.
+
+        ``grep -n`` output (``link.py:3:...``) used to hide this only because the
+        whole line was resolved as one nonexistent file; once a match ends at
+        ``:``, the link itself is resolved like any whitespace-terminated path.
+        """
+        workspace = (tmp_path / "workspace").resolve()
+        workspace.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "secret.py").write_text("needle\n")
+        _symlink_to(outside / "secret.py", workspace / "link.py")
+        sandbox = LocalSandbox("test", [PathMapping(container_path="/mnt/user-data/workspace", local_path=str(workspace))])
+
+        masked = sandbox._reverse_resolve_paths_in_output(f"{workspace}/link.py{suffix}")
+
+        assert masked == f"/mnt/user-data/workspace/link.py{suffix}"
+        # Structured results take the same path back: ``glob`` returned the target's host path.
+        assert sandbox.glob("/mnt/user-data/workspace", "*.py") == (["/mnt/user-data/workspace/link.py"], False)
+
+    def test_reverse_resolve_prefers_the_mount_a_symlink_resolves_into(self, tmp_path):
+        """The spelling fallback applies only when resolution leaves every mount."""
+        workspace = (tmp_path / "workspace").resolve()
+        uploads = (tmp_path / "uploads").resolve()
+        workspace.mkdir()
+        uploads.mkdir()
+        (uploads / "doc.md").write_text("x\n")
+        _symlink_to(uploads / "doc.md", workspace / "doc.md")
+        sandbox = LocalSandbox(
+            "test",
+            [
+                PathMapping(container_path="/mnt/user-data/workspace", local_path=str(workspace)),
+                PathMapping(container_path="/mnt/user-data/uploads", local_path=str(uploads)),
+            ],
+        )
+
+        assert sandbox._reverse_resolve_path(str(workspace / "doc.md")) == "/mnt/user-data/uploads/doc.md"
+
+    def test_reverse_resolve_spelling_fallback_does_not_keep_dot_dot_escapes(self, tmp_path):
+        """``mount/../x`` is outside the mount by spelling too, so it must not come
+        back as ``/mnt/.../../x`` -- a virtual path forward resolution rejects."""
+        workspace = (tmp_path / "workspace").resolve()
+        workspace.mkdir()
+        sandbox = LocalSandbox("test", [PathMapping(container_path="/mnt/user-data/workspace", local_path=str(workspace))])
+
+        resolved = sandbox._reverse_resolve_path(f"{workspace}/../outside/secret.py")
+
+        assert not resolved.startswith("/mnt/user-data/workspace")
+
 
 class TestLocalSandboxProviderMounts:
+    def test_skill_isolation_capability_fails_closed_when_host_bash_is_enabled(self):
+        provider = LocalSandboxProvider.__new__(LocalSandboxProvider)
+
+        with patch(
+            "deerflow.sandbox.local.local_sandbox_provider.is_host_bash_allowed",
+            return_value=False,
+        ):
+            assert provider.supports_agent_skill_isolation is True
+
+        with patch(
+            "deerflow.sandbox.local.local_sandbox_provider.is_host_bash_allowed",
+            return_value=True,
+        ):
+            assert provider.supports_agent_skill_isolation is False
+
+    def test_thread_mappings_mount_per_user_integration_projections(self, tmp_path):
+        from deerflow.config.paths import Paths
+
+        paths = Paths(base_dir=tmp_path / "home")
+        skills_dir = tmp_path / "skills"
+        (skills_dir / "public").mkdir(parents=True)
+        (skills_dir / "custom").mkdir()
+        config = SimpleNamespace(
+            skills=SimpleNamespace(
+                container_path="/mnt/skills",
+                get_skills_path=lambda: skills_dir,
+                use="deerflow.skills.storage.local_skill_storage:LocalSkillStorage",
+            )
+        )
+
+        with (
+            patch("deerflow.config.get_app_config", return_value=config),
+            patch("deerflow.config.paths.get_paths", return_value=paths),
+        ):
+            alice = LocalSandboxProvider._build_thread_path_mappings("thread-a", user_id="alice")
+            bob = LocalSandboxProvider._build_thread_path_mappings("thread-b", user_id="bob")
+
+        alice_integrations = next(mapping for mapping in alice if mapping.container_path == "/mnt/skills/integrations")
+        bob_integrations = next(mapping for mapping in bob if mapping.container_path == "/mnt/skills/integrations")
+        assert alice_integrations.local_path == str(paths.user_integration_skills_view_dir("alice"))
+        assert bob_integrations.local_path == str(paths.user_integration_skills_view_dir("bob"))
+        assert alice_integrations.local_path != bob_integrations.local_path
+        assert alice_integrations.read_only is True
+        assert bob_integrations.read_only is True
+
     def test_setup_path_mappings_uses_configured_skills_container_path_as_reserved_prefix(self, tmp_path):
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
+        public_dir = skills_dir / "public"
+        public_dir.mkdir()
         custom_dir = tmp_path / "custom"
         custom_dir.mkdir()
 
@@ -563,14 +711,17 @@ class TestLocalSandboxProviderMounts:
         with patch("deerflow.config.get_app_config", return_value=config):
             provider = LocalSandboxProvider()
 
-        # Upstream mounts only the PUBLIC skills projection under the
-        # configured container path ({container}/public); a custom mount nested
-        # under the skills root is kept as its own mapping.
+        # Public skills are the only static skills mount; custom skills are
+        # per-user and built dynamically in _build_thread_path_mappings.
+        # Custom volume mount /custom-skills/nested is also included (not
+        # a reserved prefix like /custom-skills/custom).
         assert [m.container_path for m in provider._path_mappings] == ["/custom-skills/public", "/custom-skills/nested"]
 
     def test_setup_path_mappings_skips_relative_host_path(self, tmp_path):
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
+        public_dir = skills_dir / "public"
+        public_dir.mkdir()
 
         from deerflow.config.sandbox_config import SandboxConfig, VolumeMountConfig
 
@@ -588,11 +739,14 @@ class TestLocalSandboxProviderMounts:
         with patch("deerflow.config.get_app_config", return_value=config):
             provider = LocalSandboxProvider()
 
+        # Public skills mount is static; custom skills are per-thread.
         assert [m.container_path for m in provider._path_mappings] == ["/mnt/skills/public"]
 
     def test_setup_path_mappings_skips_non_absolute_container_path(self, tmp_path):
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
+        public_dir = skills_dir / "public"
+        public_dir.mkdir()
         custom_dir = tmp_path / "custom"
         custom_dir.mkdir()
 
@@ -613,6 +767,57 @@ class TestLocalSandboxProviderMounts:
             provider = LocalSandboxProvider()
 
         assert [m.container_path for m in provider._path_mappings] == ["/mnt/skills/public"]
+
+    def test_setup_path_mappings_logs_actionable_error_for_missing_host_path(self, tmp_path, caplog):
+        """Regression for #3244.
+
+        When ``sandbox.mounts[].host_path`` is absent from the gateway process's
+        filesystem (the typical symptom in Docker production mode: host_path is a
+        host machine path that is not bind-mounted into the gateway container),
+        the mount is still skipped — but the failure must be a hard-to-miss ERROR
+        log with explicit, actionable guidance about Docker bind mounts, not the
+        old DEBUG/WARNING that buried the silent failure.
+        """
+        skills_dir = tmp_path / "skills"
+        skills_dir.mkdir()
+        public_dir = skills_dir / "public"
+        public_dir.mkdir()
+        missing_host_path = tmp_path / "does-not-exist"
+
+        from deerflow.config.sandbox_config import SandboxConfig, VolumeMountConfig
+
+        sandbox_config = SandboxConfig(
+            use="deerflow.sandbox.local:LocalSandboxProvider",
+            mounts=[
+                VolumeMountConfig(host_path=str(missing_host_path), container_path="/mnt/knowledge", read_only=True),
+            ],
+        )
+        config = SimpleNamespace(
+            skills=SimpleNamespace(container_path="/mnt/skills", get_skills_path=lambda: skills_dir, use="deerflow.skills.storage.local_skill_storage:LocalSkillStorage"),
+            sandbox=sandbox_config,
+        )
+
+        with caplog.at_level("ERROR", logger="deerflow.sandbox.local.local_sandbox_provider"):
+            with patch("deerflow.config.get_app_config", return_value=config):
+                provider = LocalSandboxProvider()
+
+        # Silent-skip behaviour is preserved (no breaking change for existing deployments).
+        # Only public skills mount is static; custom skills are per-thread.
+        assert [m.container_path for m in provider._path_mappings] == ["/mnt/skills/public"]
+
+        # The failure must be observable at ERROR level and reference the offending paths.
+        error_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert error_records, "expected an ERROR log when host_path is missing"
+        message = "\n".join(r.getMessage() for r in error_records)
+        assert str(missing_host_path) in message
+        assert "/mnt/knowledge" in message
+
+        # And it must include actionable Docker guidance so users don't lose hours
+        # to a silent empty-mount failure in production.
+        lowered = message.lower()
+        assert "docker" in lowered
+        assert "gateway" in lowered
+        assert "docker-compose" in lowered
 
     def test_write_file_resolves_container_paths_in_content(self, tmp_path):
         """write_file should replace container paths in file content with local paths."""
@@ -706,9 +911,86 @@ class TestLocalSandboxProviderMounts:
         # The container path should be preserved through roundtrip
         assert "/mnt/data/config.json" in result
 
+    def test_read_file_line_range_reads_file_in_single_pass(self, tmp_path):
+        """Encoding sniffing (UTF-8 -> UTF-8 BOM -> GB18030) needs the whole
+        byte stream once; a ranged read must still open and read the file in
+        exactly one pass, with the line slice happening in memory — repeated
+        full reads stay forbidden."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        big_file = data_dir / "huge.log"
+        big_file.write_text("\n".join(f"line {i}" for i in range(1, 2000)), encoding="utf-8")
+
+        sandbox = LocalSandbox(
+            "test",
+            [
+                PathMapping(container_path="/mnt/data", local_path=str(data_dir)),
+            ],
+        )
+
+        read_calls: list[int] = []
+
+        class CountingFile:
+            def __init__(self, wrapped):
+                self._wrapped = wrapped
+
+            def __enter__(self):
+                self._wrapped.__enter__()
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return self._wrapped.__exit__(exc_type, exc, tb)
+
+            def read(self, *args, **kwargs):
+                read_calls.append(1)
+                return self._wrapped.read(*args, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._wrapped, name)
+
+        import builtins
+
+        real_open = builtins.open
+        open_modes: list[str] = []
+
+        def counting_open(file, *args, **kwargs):
+            handle = real_open(file, *args, **kwargs)
+            if Path(file) == big_file:
+                open_modes.append(kwargs.get("mode", args[0] if args else "r"))
+                return CountingFile(handle)
+            return handle
+
+        with patch("builtins.open", side_effect=counting_open):
+            content = sandbox.read_file("/mnt/data/huge.log", start_line=1, end_line=10)
+
+        assert content == "\n".join(f"line {i}" for i in range(1, 11))
+        assert open_modes == ["rb"]
+        assert len(read_calls) == 1
+
+    def test_read_file_single_sided_line_ranges_supported(self, tmp_path):
+        """LocalSandbox should support partial reads when only one bound is provided."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "range.txt").write_text(
+            "\n".join(f"line {i}" for i in range(1, 11)),
+            encoding="utf-8",
+        )
+
+        sandbox = LocalSandbox(
+            "test",
+            [
+                PathMapping(container_path="/mnt/data", local_path=str(data_dir)),
+            ],
+        )
+
+        assert sandbox.read_file("/mnt/data/range.txt", start_line=8) == "line 8\nline 9\nline 10"
+        assert sandbox.read_file("/mnt/data/range.txt", end_line=3) == "line 1\nline 2\nline 3"
+
     def test_setup_path_mappings_normalizes_container_path_trailing_slash(self, tmp_path):
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
+        public_dir = skills_dir / "public"
+        public_dir.mkdir()
         custom_dir = tmp_path / "custom"
         custom_dir.mkdir()
 

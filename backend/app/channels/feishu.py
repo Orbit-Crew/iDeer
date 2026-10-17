@@ -34,6 +34,10 @@ PENDING_CLARIFICATION_TTL_SECONDS = 30 * 60
 FEISHU_INBOUND_BATCH_WINDOW_SECONDS = 0.75
 FEISHU_MAX_INBOUND_FILE_BYTES = 20_000_000
 SOURCE_PREVIEW_METADATA_KEY = "feishu_source_preview"
+# Bounded wait for the cross-loop WS disconnect during stop(); the thread join
+# below it has its own 5s budget, mirroring the other adapters' bounded
+# cross-loop awaits (discord.py stop()).
+FEISHU_WS_DISCONNECT_TIMEOUT_SECONDS = 5.0
 
 
 def _is_feishu_command(text: str) -> bool:
@@ -62,6 +66,13 @@ class FeishuChannel(Channel):
         super().__init__(name="feishu", bus=bus, config=config)
         self._thread: threading.Thread | None = None
         self._main_loop: asyncio.AbstractEventLoop | None = None
+        # The lark WS client and the thread-local loop it was constructed on;
+        # both are published by _run_ws and torn down by stop().
+        self._ws_client: Any = None
+        self._ws_loop: asyncio.AbstractEventLoop | None = None
+        # Set by stop(): blocks _on_message on this instance so a restart
+        # cannot leave an old zombie connection feeding events into it.
+        self._stopped = False
         self._api_client = None
         self._CreateMessageReactionRequest = None
         self._CreateMessageReactionRequestBody = None
@@ -205,6 +216,7 @@ class FeishuChannel(Channel):
         self._main_loop = asyncio.get_event_loop()
 
         self._open_threadsafe_future_intake()
+        self._stopped = False
         self._running = True
         self.bus.subscribe_outbound(self._on_outbound)
 
@@ -252,17 +264,44 @@ class FeishuChannel(Channel):
                 log_level=lark.LogLevel.INFO,
                 domain=domain,
             )
+            # Publish before start(): stop() needs the client and its loop to
+            # disconnect the websocket even while start() is still running.
+            self._ws_client = ws_client
+            self._ws_loop = loop
             ws_client.start()
         except Exception:
             if self._running:
                 logger.exception("Feishu WebSocket error")
             self._running = False
+        finally:
+            # Cancel the SDK's leftover background tasks (ping/receive loops)
+            # and close this thread's loop, so repeated start/stop cycles
+            # neither leak a loop nor emit pending-task GC noise. A loop
+            # stopped by stop() raises out of ``ws_client.start()`` above and
+            # lands here; cancelling the abandoned receive loop also prevents
+            # any auto-reconnect from outliving the instance.
+            try:
+                pending = [task for task in asyncio.all_tasks(loop) if not task.done()]
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception:
+                logger.debug("[Feishu] failed to drain WS tasks during shutdown", exc_info=True)
+            finally:
+                loop.close()
+                self._ws_client = None
+                self._ws_loop = None
 
     def _on_ignored_message_event(self, event) -> None:
         logger.debug("[Feishu] ignoring non-content message event: %s", type(event).__name__)
 
     async def stop(self) -> None:
         self._running = False
+        # Old instance goes deaf immediately: a lark WS reconnect or a
+        # slow-to-start thread must not feed provider events into a stopped
+        # channel (restart would otherwise rely on manager dedupe alone).
+        self._stopped = True
         self.bus.unsubscribe_outbound(self._on_outbound)
         await self._close_and_drain_threadsafe_futures()
 
@@ -276,10 +315,60 @@ class FeishuChannel(Channel):
             await asyncio.gather(*background_tasks, *running_card_tasks, return_exceptions=True)
         self._background_tasks.clear()
         self._running_card_tasks.clear()
-        if self._thread:
-            self._thread.join(timeout=5)
-            self._thread = None
+        await self._shutdown_ws_client()
         logger.info("Feishu channel stopped")
+
+    async def _shutdown_ws_client(self) -> None:
+        """Disconnect the lark WS client and stop the thread that owns it.
+
+        The SDK's ``ws.Client`` has no public close; ``_disconnect()`` is its
+        own async teardown and must run on the loop the client was constructed
+        on (the WS thread's loop). Disconnect alone is not enough — the SDK's
+        receive loop auto-reconnects forever, and ``start()``'s
+        ``run_until_complete(_select())`` never returns on its own — so after
+        the disconnect the loop is stopped, which both prevents reconnect and
+        lets the thread exit. Stopping the loop also closes the window where a
+        thread that has not reached ``start()`` yet would connect after
+        ``stop()`` returned.
+        """
+        ws_client = self._ws_client
+        ws_loop = self._ws_loop
+        self._ws_client = None
+        self._ws_loop = None
+
+        if ws_client is not None and ws_loop is not None and not ws_loop.is_closed():
+            disconnect_coro = ws_client._disconnect()
+            try:
+                disconnect_future = asyncio.run_coroutine_threadsafe(disconnect_coro, ws_loop)
+            except RuntimeError:
+                disconnect_coro.close()
+                logger.debug("[Feishu] event loop closed before WS disconnect could be scheduled")
+            else:
+                if ws_loop.is_running():
+                    try:
+                        await asyncio.wait_for(
+                            asyncio.wrap_future(disconnect_future),
+                            timeout=FEISHU_WS_DISCONNECT_TIMEOUT_SECONDS,
+                        )
+                    except TimeoutError:
+                        disconnect_future.cancel()
+                        logger.warning("[Feishu] WS disconnect timed out during shutdown")
+                    except Exception:
+                        logger.exception("[Feishu] error while disconnecting WS client")
+                # else: the loop is not running yet, so the queued disconnect
+                # cannot execute; stopping the loop below prevents any
+                # connection from being established in the first place.
+            try:
+                ws_loop.call_soon_threadsafe(ws_loop.stop)
+            except RuntimeError:
+                logger.debug("[Feishu] event loop closed before WS loop shutdown could be scheduled")
+
+        thread = self._thread
+        if thread:
+            thread.join(timeout=5)
+            if thread.is_alive():
+                logger.warning("[Feishu] WS thread did not stop within the shutdown budget")
+            self._thread = None
 
     async def send(self, msg: OutboundMessage, *, _max_retries: int = 3) -> None:
         if not self._api_client:
@@ -1055,6 +1144,12 @@ class FeishuChannel(Channel):
 
     def _on_message(self, event) -> None:
         """Called by lark-oapi when a message is received (runs in lark thread)."""
+        if self._stopped:
+            # This instance was stopped; a lark WS reconnect may still deliver
+            # events on the old connection, but none of them may reach the
+            # batch state machine or the bus.
+            logger.debug("[Feishu] event ignored because the channel instance is stopped")
+            return
         try:
             logger.info("[Feishu] raw event received: type=%s", type(event).__name__)
             message = event.event.message

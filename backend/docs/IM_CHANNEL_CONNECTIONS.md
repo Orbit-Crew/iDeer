@@ -554,7 +554,7 @@ value is authorization-grade at the Gateway/guardrail boundary, but the exported
 shell variable remains informational because any bash command can overwrite its
 own environment; skills must not treat the shell variable itself as
 authenticated identity. Tests: `backend/tests/test_gateway_services.py`,
-`backend/tests/test_channel_user_id_env.py`.
+`backend/tests/unit/gateway/test_channel_user_id_env.py`.
 
 ### WeChat and WeCom connection runtime limits
 

@@ -46,14 +46,14 @@ describe("Evidence citation interaction", () => {
     trigger.focus();
     await user.keyboard("{Enter}");
 
-    expect(await screen.findByTestId("evidence-panel")).toBeTruthy();
+    expect(await screen.findByTestId("evidence-panel")).toBeInTheDocument();
     expect(rs.mocked(fetch).mock.calls[0]?.[0]).toContain(
       "evidence_id=rr_test_i1",
     );
     expect(
       await screen.findByText("Keep the policy fragment visible."),
-    ).toBeTruthy();
-    expect(screen.getByText("Retrieval score: 0.91")).toBeTruthy();
+    ).toBeInTheDocument();
+    expect(screen.getByText("Retrieval score: 0.91")).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(document.activeElement).toBe(trigger));
@@ -77,7 +77,7 @@ describe("Evidence citation interaction", () => {
     );
     expect(
       await screen.findByText("This knowledge evidence is unavailable."),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   it("shows a generic restricted state without rendering receipt metadata", async () => {
@@ -100,6 +100,6 @@ describe("Evidence citation interaction", () => {
     );
     expect(
       await screen.findByText("This knowledge evidence is restricted."),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 });

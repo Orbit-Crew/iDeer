@@ -67,8 +67,11 @@ example_version = example.get('config_version', 0)
 
 if user_version >= example_version:
     print(f'Config schema version {user_version} is current; checking structural migrations...')
-
-print(f'Upgrading config.yaml: version {user_version} -> {example_version}')
+else:
+    # 08-L10: print the upgrade banner only when there is a version to upgrade;
+    # the two prints used to run together on an already-current config
+    # (claiming version X -> X with X equal on both sides).
+    print(f'Upgrading config.yaml: version {user_version} -> {example_version}')
 print()
 
 # ── Migrations ───────────────────────────────────────────────────────────
@@ -201,6 +204,25 @@ def merge(target, source, path=''):
             merge(target[key], value, key_path)
 
 merge(user, example)
+
+# Lists are intentionally not recursively merged above. Add the code evidence
+# registration by name so existing configs with their own tool lists can use
+# the scanners without replacing operator-defined entries.
+for required_group in ('code',):
+    groups = user.setdefault('tool_groups', [])
+    if isinstance(groups, list) and not any(isinstance(item, dict) and item.get('name') == required_group for item in groups):
+        template = next((item for item in example.get('tool_groups', []) if isinstance(item, dict) and item.get('name') == required_group), None)
+        if template is not None:
+            groups.append(copy.deepcopy(template))
+            added.append(f'tool_groups[{required_group}]')
+
+for required_tool in ('analyze_code_evidence',):
+    tools = user.setdefault('tools', [])
+    if isinstance(tools, list) and not any(isinstance(item, dict) and item.get('name') == required_tool for item in tools):
+        template = next((item for item in example.get('tools', []) if isinstance(item, dict) and item.get('name') == required_tool), None)
+        if template is not None:
+            tools.append(copy.deepcopy(template))
+            added.append(f'tools[{required_tool}]')
 
 # Always update config_version
 user['config_version'] = example_version

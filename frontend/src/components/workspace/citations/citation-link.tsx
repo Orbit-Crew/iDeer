@@ -15,6 +15,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { isSafeHref } from "@/components/workspace/messages/is-safe-href";
 import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,12 @@ export function CitationLink({
         {children}
       </EvidenceCitationLink>
     );
+  }
+  // Defense in depth: the sanitize pipeline already blocks unsafe schemes,
+  // but this renderer must not depend on pipeline ordering — the same
+  // front-line check markdown-link and artifact-link apply (report 07-L6).
+  if (href !== undefined && !isSafeHref(href)) {
+    return null;
   }
   const domain = extractDomain(href ?? "");
 

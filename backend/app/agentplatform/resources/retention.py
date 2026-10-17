@@ -193,7 +193,10 @@ async def purge_eligible_versions(
                     ResourceVersion.version == item.version,
                 )
             )
-            removed_version_ids.append(item.resource_id)
+            # The field is named "version ids": record the version identity,
+            # not the owning resource id repeated once per purged version
+            # (report 02-L1).
+            removed_version_ids.append(f"{item.resource_id}@{item.version}")
 
         removed_resources: list[str] = []
         blocked: list[str] = []

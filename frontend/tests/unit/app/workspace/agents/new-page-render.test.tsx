@@ -255,7 +255,7 @@ describe("NewAgentPage", () => {
     const continueBtn = buttons.find((b) =>
       b.textContent?.includes("Continue"),
     );
-    expect(continueBtn).toBeDefined();
+    expect(continueBtn).toBeInTheDocument();
     expect(continueBtn!.textContent).toMatch(/Continue/i);
   });
 

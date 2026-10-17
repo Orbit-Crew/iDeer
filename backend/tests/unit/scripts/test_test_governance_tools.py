@@ -7,13 +7,15 @@ from check_test_contracts import validate
 from test_inventory import (
     _iter_test_files,
     _lanes,
+    _markers,
     _matching_lanes,
     _node_lanes,
     _pytest_collected_nodes,
+    _typescript_inventory,
     build_inventory,
     compare_inventory,
 )
-from test_preflight import LANES, _minimum_python, _mkdir_probe
+from test_preflight import LANES, _minimum_python, _mkdir_probe, _pnpm_versions_match
 
 
 def test_inventory_assigns_exclusive_backend_lanes(tmp_path: Path) -> None:
@@ -87,6 +89,74 @@ def test_inventory_reports_discovery_collection_and_execution_separately(
     assert rows["frontend/tests/e2e-record/sample.spec.ts"]["suggested_bucket"] == "frontend/e2e/record"
 
 
+def test_inventory_marker_probe_ignores_mid_line_at_words(tmp_path: Path) -> None:
+    """08-M7: the bare-@ fallback must not treat docstring/comment/e-mail text as markers.
+
+    A loose ``@word`` scan re-attributed a file's static lane when any
+    ``@serial``/``@external``-shaped word appeared mid-line (e.g.
+    ``user@serial.example``), which feeds test-inventory, the non-collect
+    test-contracts path and test_reference_lookup with a wrong lane.
+    """
+    plain = tmp_path / "backend/tests/unit/test_probe.py"
+    plain.parent.mkdir(parents=True)
+    plain.write_text(
+        '"""Contact user@serial.example or @external for access."""\n# reply to admin@live.example\ndef test_sample(): pass\n',
+        encoding="utf-8",
+    )
+    assert _markers(plain) == []
+    assert _lanes(plain) == ["backend-standard"]
+
+    # Real bare decorators at decorator position keep registering.
+    decorated = tmp_path / "backend/tests/unit/test_deco.py"
+    decorated.write_text("@requires_llm\ndef test_llm(): pass\n", encoding="utf-8")
+    assert _markers(decorated) == ["requires_llm"]
+    assert _lanes(decorated) == ["backend-llm"]
+
+
+def test_inventory_typescript_names_with_embedded_quotes(tmp_path: Path) -> None:
+    """08-L11: TS test names are extracted by matching the opening quote character.
+
+    The old pick-a-quote-then-split logic truncated a name that itself
+    contains a double quote (display-only tests list, but still wrong).
+    """
+    path = tmp_path / "frontend/tests/unit/sample.test.ts"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "describe('say \"hi\" there', () => {});\ntest('single', () => {});\n",
+        encoding="utf-8",
+    )
+
+    tests, _imports = _typescript_inventory(path)
+
+    assert tests == ['say "hi" there', "single"], tests
+
+
+def test_inventory_survives_broken_test_files_with_parse_error_rows(tmp_path: Path) -> None:
+    """08-M8: a syntax-broken or non-UTF-8 test file must yield a parse-error row, not crash build_inventory.
+
+    One committed-half ``.py`` file used to abort ``build_inventory`` (and the
+    test-inventory / test-contracts lanes consuming it) with a bare traceback
+    instead of a locatable finding.
+    """
+    backend_tests = tmp_path / "backend/tests"
+    backend_tests.mkdir(parents=True)
+    (backend_tests / "test_broken.py").write_text("def test_broken(:\n", encoding="utf-8")
+    (backend_tests / "test_undecodable.py").write_bytes(b"\xff\xfe def test_x(): pass\n")
+    (backend_tests / "test_ok.py").write_text("def test_ok(): pass\n", encoding="utf-8")
+
+    rows = {row["path"]: row for row in build_inventory(tmp_path)}
+
+    assert rows["backend/tests/test_broken.py"]["discovery_status"] == "parse-error"
+    assert "SyntaxError" in str(rows["backend/tests/test_broken.py"]["parse_error"])
+    assert rows["backend/tests/test_undecodable.py"]["discovery_status"] == "parse-error"
+    # lane ownership stays attributable from the path so the contracts keep a complete view
+    assert rows["backend/tests/test_broken.py"]["lanes"] == ["backend-standard"]
+    assert rows["backend/tests/test_undecodable.py"]["markers"] == []
+    # the healthy sibling is still inventoried normally
+    assert rows["backend/tests/test_ok.py"]["tests"] == ["test_ok"]
+    assert rows["backend/tests/test_ok.py"]["discovery_status"] == "discovered"
+
+
 def test_inventory_assigns_mixed_pytest_markers_per_node() -> None:
     path = Path("backend/tests/unit/test_mixed.py")
 
@@ -145,6 +215,28 @@ def test_inventory_collects_effective_markers_per_pytest_node(
     assert "optional provider is unavailable" in optional["collection_skip_reason"]
     assert _lanes(Path("frontend/tests/e2e-real-backend/real-backend-render.spec.ts")) == ["frontend-real"]
     assert _lanes(Path("frontend/tests/e2e/stagehand/chat-interactions.spec.ts")) == ["frontend-stagehand"]
+
+
+def test_preflight_pnpm_version_contract_fails_closed_when_pinned() -> None:
+    """08-M9: the pnpm lockfile version check must not silently skip.
+
+    The old ``not expected or not actual or actual == expected`` passed when
+    the pinned version was missing OR the installed version failed to parse
+    (empty string), so a broken ``pnpm --version`` output skipped the
+    lockfile contract; a prerelease build false-red against a pinned release.
+    """
+    # unpinned expectation verifies nothing (informational)
+    assert _pnpm_versions_match("", "")
+    assert _pnpm_versions_match("", "9.1.2")
+    # pinned expectation: unparseable/missing actual must FAIL
+    assert not _pnpm_versions_match("10.26.2", "")
+    assert not _pnpm_versions_match("10.26.2", "pnpm: command not found")
+    # exact match and prerelease/integrity suffixes compare by release prefix
+    assert _pnpm_versions_match("10.26.2", "10.26.2")
+    assert _pnpm_versions_match("10.26.2", "10.26.2-beta.1")
+    assert _pnpm_versions_match("10.26.2+sha512.abc", "10.26.2")
+    # a different release still fails
+    assert not _pnpm_versions_match("10.26.2", "9.15.9")
 
 
 def test_preflight_declares_every_runner_lane() -> None:

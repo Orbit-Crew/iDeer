@@ -154,7 +154,7 @@ export function SkillList() {
                     </div>
                     <CardTitle className="type-body truncate">
                       <Link
-                        href={`/workspace/capabilities/skills/${identity}`}
+                        href={`/workspace/capabilities/skills/${encodeURIComponent(identity)}`}
                         className="hover:underline"
                       >
                         {skill.name}

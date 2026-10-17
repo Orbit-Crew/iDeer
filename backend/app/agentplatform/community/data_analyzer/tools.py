@@ -27,11 +27,17 @@ _ALLOWED_PATH_PREFIXES = ["/mnt/user-data", "/tmp"]
 
 
 def _validate_path(file_path: str) -> str:
-    """Validate file path is within allowed directories. Returns resolved path."""
+    """Validate file path is within allowed directories. Returns resolved path.
+
+    The check is on resolved path segments, not a raw string prefix:
+    ``/mnt/user-data-evil`` must not pass a ``startswith("/mnt/user-data")``
+    test (report 02-M9).
+    """
     import os
+    from pathlib import Path
 
     resolved = os.path.realpath(file_path)
-    if not any(resolved.startswith(prefix) for prefix in _ALLOWED_PATH_PREFIXES):
+    if not any(resolved == prefix or Path(resolved).is_relative_to(prefix) for prefix in _ALLOWED_PATH_PREFIXES):
         raise PermissionError(f"Access denied: file must be under one of {_ALLOWED_PATH_PREFIXES}, got: {file_path}")
     return resolved
 

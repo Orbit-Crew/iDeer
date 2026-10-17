@@ -52,7 +52,7 @@ describe("I18nProvider", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Child content")).toBeDefined();
+    expect(screen.getByText("Child content")).toBeInTheDocument();
   });
 
   it("provides the initial locale via context", () => {

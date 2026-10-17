@@ -110,7 +110,9 @@ describe("ConversationReferenceList", () => {
         selected={[]}
       />,
     );
-    expect(screen.getByTestId("conversation-reference-loading")).toBeTruthy();
+    expect(
+      screen.getByTestId("conversation-reference-loading"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("No conversations found")).toBeNull();
   });
 
@@ -123,9 +125,9 @@ describe("ConversationReferenceList", () => {
         selected={[]}
       />,
     );
-    expect(screen.getByText("Alpha requirements")).toBeTruthy();
-    expect(screen.getByText("Beta design")).toBeTruthy();
-    expect(screen.getByText("Untitled")).toBeTruthy();
+    expect(screen.getByText("Alpha requirements")).toBeInTheDocument();
+    expect(screen.getByText("Beta design")).toBeInTheDocument();
+    expect(screen.getByText("Untitled")).toBeInTheDocument();
     expect(screen.queryByText("This conversation")).toBeNull();
   });
 
@@ -186,6 +188,8 @@ describe("ConversationReferenceList", () => {
     const alpha = screen.getByText("Alpha requirements").closest("[cmdk-item]");
     expect(untitled?.getAttribute("aria-disabled")).toBe("true");
     expect(alpha?.getAttribute("aria-disabled")).not.toBe("true");
-    expect(screen.getByText("Up to 2 conversations per message")).toBeTruthy();
+    expect(
+      screen.getByText("Up to 2 conversations per message"),
+    ).toBeInTheDocument();
   });
 });

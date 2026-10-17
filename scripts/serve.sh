@@ -102,45 +102,84 @@ DEERFLOW_ROOTS="$(
     } | awk 'NF && !seen[$0]++ {print length($0)"\t"$0}' | sort -rn | sed 's/^[0-9]*\t//'
 )"
 
-# True if PID has an open file/cwd under any deer-flow worktree root. The
-# trailing slash keeps a sibling dir like ".../deer-flow-notes" from matching
-# the ".../deer-flow" root.
-_is_deerflow_pid() {
-    local pid=$1 files root
+# Print the DeerFlow root that owns PID, using procfs before lsof. procfs is
+# available on Linux/WSL, while lsof remains the fallback on other hosts.
+_deerflow_pid_root() {
+    local pid=$1 files path root fd
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
 
-    # Daemon children inherit DEERFLOW_DAEMON_ROOT from run_service. Checking
-    # it (Linux only — macOS has no /proc) identifies processes like
-    # next-server that lsof misses, so the name/port reaps in stop_all can
-    # claim them.
-    if [ -r "/proc/$pid/environ" ] &&
-        tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -Fxq "DEERFLOW_DAEMON_ROOT=$REPO_ROOT"; then
-        return 0
+    if [ -r "/proc/$pid/environ" ]; then
+        while IFS= read -r root; do
+            [ -n "$root" ] || continue
+            if tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -Fxq "DEERFLOW_DAEMON_ROOT=$root"; then
+                printf '%s\n' "$root"
+                return 0
+            fi
+        done <<< "$DEERFLOW_ROOTS"
     fi
 
-    files=$(lsof -b -w -p "$pid" 2>/dev/null) || return 1
+    if [ -e "/proc/$pid/cwd" ]; then
+        path=$(readlink "/proc/$pid/cwd" 2>/dev/null || true)
+        while IFS= read -r root; do
+            [ -n "$root" ] || continue
+            case "$path" in "$root"|"$root"/*) printf '%s\n' "$root"; return 0 ;; esac
+        done <<< "$DEERFLOW_ROOTS"
+    fi
+
+    for fd in /proc/"$pid"/fd/*; do
+        [ -e "$fd" ] || continue
+        path=$(readlink "$fd" 2>/dev/null || true)
+        while IFS= read -r root; do
+            [ -n "$root" ] || continue
+            case "$path" in "$root"|"$root"/*) printf '%s\n' "$root"; return 0 ;; esac
+        done <<< "$DEERFLOW_ROOTS"
+    done
+
+    files=$(lsof -b -w -p "$pid" 2>/dev/null || true)
     while IFS= read -r root; do
         [ -n "$root" ] || continue
         case "$files" in
-            *"$root"/*) return 0 ;;
+            *"$root"/*) printf '%s\n' "$root"; return 0 ;;
         esac
     done <<< "$DEERFLOW_ROOTS"
     return 1
 }
 
+_is_deerflow_pid() {
+    _deerflow_pid_root "$1" >/dev/null
+}
+
+_port_listener_pids() {
+    local port=$1 pid line
+    local found=""
+
+    if command -v lsof >/dev/null 2>&1; then
+        while IFS= read -r pid; do
+            [[ "$pid" =~ ^[0-9]+$ ]] || continue
+            case " $found " in *" $pid "*) ;; *) found="$found $pid"; printf '%s\n' "$pid" ;; esac
+        done < <(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    fi
+
+    if command -v ss >/dev/null 2>&1; then
+        while IFS= read -r line; do
+            while [[ "$line" =~ pid=([0-9]+) ]]; do
+                pid=${BASH_REMATCH[1]}
+                line=${line#*pid=$pid}
+                case " $found " in *" $pid "*) ;; *) found="$found $pid"; printf '%s\n' "$pid" ;; esac
+            done
+        done < <(ss -H -ltnp "( sport = :$port )" 2>/dev/null || ss -ltnp "( sport = :$port )" 2>/dev/null | tail -n +2 || true)
+    fi
+}
+
 # Report ports about to be reclaimed from a *different* worktree, so stopping
 # (or starting, which stops first) isn't silently killing someone else's run.
 _report_reclaimed_ports() {
-    local port pid files root owner
+    local port pid owner
     for port in 8001 3000 2026; do
-        for pid in $(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null); do
-            _is_deerflow_pid "$pid" || continue
-            files=$(lsof -b -w -p "$pid" 2>/dev/null)
-            case "$files" in *"$REPO_ROOT"/*) continue ;; esac  # this worktree — normal
-            owner=""
-            while IFS= read -r root; do
-                [ -n "$root" ] || continue
-                case "$files" in *"$root"/*) owner="$root"; break ;; esac
-            done <<< "$DEERFLOW_ROOTS"
+        for pid in $(_port_listener_pids "$port"); do
+            owner=$(_deerflow_pid_root "$pid" || true)
+            [ -n "$owner" ] || continue
+            [ "$owner" != "$REPO_ROOT" ] || continue
             echo "  ↻ Reclaiming port $port from another worktree: ${owner:-?}"
             break
         done
@@ -178,11 +217,30 @@ _kill_repo_port() {
                 *) pids="$pids $pid" ;;
             esac
         fi
-    done < <(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    done < <(_port_listener_pids "$port")
 
     if [ -n "$pids" ]; then
         kill -9 $pids 2>/dev/null || true
     fi
+}
+
+_report_remaining_ports() {
+    local port pid command remaining=false found
+    for port in 8001 3000 2026; do
+        _is_port_listening "$port" || continue
+        remaining=true
+        found=false
+        for pid in $(_port_listener_pids "$port"); do
+            command=$(ps -p "$pid" -o comm= 2>/dev/null || true)
+            echo "✗ Port $port is still listening (PID $pid${command:+, $command})."
+            found=true
+        done
+        if ! $found; then
+            echo "✗ Port $port is still listening; its process could not be identified."
+        fi
+    done
+    $remaining && return 1
+    return 0
 }
 
 _is_port_listening() {
@@ -277,7 +335,11 @@ stop_all() {
     _kill_repo_port 3000
     _kill_repo_port 2026
     bash ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
-    echo "✓ All services stopped"
+    if _report_remaining_ports; then
+        echo "✓ All services stopped"
+    else
+        return 1
+    fi
 }
 
 # Validate the reusable frontend build before any stop_all runs, so start and
@@ -293,7 +355,7 @@ fi
 # ── Action routing ───────────────────────────────────────────────────────────
 
 if [ "$ACTION" = "stop" ]; then
-    stop_all
+    stop_all || exit $?
     exit 0
 fi
 
@@ -323,6 +385,14 @@ if ! DEERFLOW_PNPM_PYTHON="$(_pick_python)"; then
 fi
 DEERFLOW_PNPM_RUNNER="$REPO_ROOT/scripts/pnpm.py"
 export DEERFLOW_PNPM_PYTHON DEERFLOW_PNPM_RUNNER
+
+# 08-M12: nginx remains the single entry of the local stack on loopback. The
+# gateway used to bind 0.0.0.0, so LAN hosts could bypass nginx and hit the
+# API directly; it now follows BIND_HOST (default 127.0.0.1). Set BIND_HOST
+# explicitly (e.g. 0.0.0.0) when LAN devices must reach the gateway. The
+# frontend dev/preview server and nginx.local.conf still listen on all
+# interfaces for LAN debugging; route sensitive traffic through nginx:2026.
+BIND_HOST="${BIND_HOST:-127.0.0.1}"
 
 # Frontend command
 if $DEV_MODE; then
@@ -447,7 +517,7 @@ cleanup() {
     local status="${1:-0}"
     trap - INT TERM
     echo ""
-    stop_all
+    stop_all || true
     exit "$status"
 }
 
@@ -468,13 +538,14 @@ run_service() {
     fi
 
     echo "Starting $name..."
+    # Tag the service subtree so every descendant (pnpm → next → next-server)
+    # carries DEERFLOW_DAEMON_ROOT in its environment, letting _is_deerflow_pid
+    # recognize it at stop time even where lsof cannot enumerate the process
+    # (#21). Daemon mode only wraps the same command with nohup.
     if $DAEMON_MODE; then
-        # Tag the daemon so every descendant (pnpm → next → next-server)
-        # carries DEERFLOW_DAEMON_ROOT in its environment, letting
-        # _is_deerflow_pid recognize it at stop time.
         nohup env DEERFLOW_DAEMON_ROOT="$REPO_ROOT" sh -c "$cmd" > /dev/null 2>&1 &
     else
-        sh -c "$cmd" &
+        env DEERFLOW_DAEMON_ROOT="$REPO_ROOT" sh -c "$cmd" &
     fi
 
     bash ./scripts/wait-for-port.sh "$port" "$timeout" "$name" || {
@@ -503,7 +574,7 @@ echo "✓ Database migrations completed"
 
 # 1. Gateway API
 run_service "Gateway" \
-    "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
+    "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host '$BIND_HOST' --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
     8001 30
 
 # 2. Frontend

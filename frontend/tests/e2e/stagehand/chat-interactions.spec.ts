@@ -28,7 +28,12 @@ test.describe("Chat Interactions - Stagehand", () => {
     try {
       await page.goto("http://localhost:3000/workspace/chats/new");
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      // Wait for the workspace input shell to mount instead of a fixed 2s
+      // sleep (stagehand lane is not locally runnable; static equivalent).
+      await page
+        .locator("textarea")
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
 
       const content = await stagehandExtract(
         stagehand,
@@ -45,7 +50,12 @@ test.describe("Chat Interactions - Stagehand", () => {
     try {
       await page.goto("http://localhost:3000/workspace/chats/new");
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      // Wait for the workspace input shell to mount instead of a fixed 2s
+      // sleep (stagehand lane is not locally runnable; static equivalent).
+      await page
+        .locator("textarea")
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
 
       await stagehandAct(
         stagehand,
@@ -68,7 +78,12 @@ test.describe("Chat Interactions - Stagehand", () => {
     try {
       await page.goto("http://localhost:3000/workspace/chats/new");
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      // Wait for the workspace input shell to mount instead of a fixed 2s
+      // sleep (stagehand lane is not locally runnable; static equivalent).
+      await page
+        .locator("textarea")
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
 
       const content = await stagehandExtract(
         stagehand,

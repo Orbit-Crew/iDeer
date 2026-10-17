@@ -35,6 +35,7 @@ from .mcp import LocalMCPService, MCPExecution
 from .policy import LocalPolicy, PolicyDecision
 from .protocol import (
     MessageType,
+    ProtocolError,
     new_session_id,
     public_key_text,
     sign_envelope,
@@ -65,6 +66,7 @@ class LocalRuntimeClient:
         capabilities: tuple[str, ...] | None = None,
         policy_hash: str | None = None,
         server_public_key: str | None = None,
+        allow_unpinned_broker_key: bool = False,
         policy: LocalPolicy | None = None,
         file_service: LocalFileService | None = None,
         python_service: LocalPythonService | None = None,
@@ -95,6 +97,10 @@ class LocalRuntimeClient:
         self.capabilities = capabilities
         self.policy_hash = policy_hash
         self.server_public_key = server_public_key
+        # First-connection trust (TOFU) is a deliberate configuration choice,
+        # never a default: pairing distributes the broker key, and a client
+        # without a bound key refuses to connect unless this fallback is on.
+        self.allow_unpinned_broker_key = allow_unpinned_broker_key
         self.policy = policy or LocalPolicy()
         self.file_service = file_service
         self.python_service = python_service
@@ -365,11 +371,28 @@ class LocalRuntimeClient:
         # the broker's HELLO so UI status cannot race the server acknowledgement.
         self.connected = True
         assert self.connection is not None
+        expiry_task = asyncio.create_task(self._expire_consents_periodically())
         try:
             server_hello = json.loads(await self.connection.recv())
-            configured_key = self.server_public_key or str(
+            pinned_before_hello = bool(self.server_public_key)
+            offered_key = str(
                 server_hello.get("payload", {}).get("server_public_key", "")
             )
+            if pinned_before_hello:
+                # The key captured at pairing (or pinned by an earlier
+                # explicitly-configured first connection) is the only trusted
+                # broker identity; the HELLO copy is advisory and never
+                # replaces it, so a swapped-in key fails verification below.
+                configured_key = self.server_public_key or ""
+            elif self.allow_unpinned_broker_key:
+                # Explicit opt-in fallback: trust and pin the first observed
+                # key, exactly the behaviour the default now refuses.
+                configured_key = offered_key
+            else:
+                # Same bare-code style as the protocol verification failures:
+                # the supervisor audits it and retries until pairing binds a
+                # key to the live client.
+                raise ProtocolError("BROKER_KEY_UNPINNED")
             verify_envelope(
                 server_hello,
                 server_public_key=configured_key,
@@ -377,7 +400,9 @@ class LocalRuntimeClient:
                 expected_session_id=self.session_id or "",
             )
             self.server_public_key = configured_key
-            if self.on_server_public_key is not None:
+            if not pinned_before_hello and self.on_server_public_key is not None:
+                # Only a first bind is announced: a pinned key is persisted by
+                # pairing itself and would only rewrite the same value.
                 self.on_server_public_key(configured_key)
             await self._receive_loop()
         except ConnectionClosed as exc:
@@ -387,6 +412,8 @@ class LocalRuntimeClient:
                 ) from exc
             raise
         finally:
+            expiry_task.cancel()
+            await asyncio.gather(expiry_task, return_exceptions=True)
             # Reached on every exit: a clean close, an aborted socket and a
             # verification failure all end here. Without this the next run()
             # finds self.connection still set and "sends" hello to a socket
@@ -424,6 +451,9 @@ class LocalRuntimeClient:
 
     def _task_finished(self, task_id: str, task: asyncio.Task[None]) -> None:
         self._running_tasks.pop(task_id, None)
+        # The cancel marker is only meaningful while the task can still run;
+        # a finished task must not leave an entry behind (05-M9).
+        self._cancelled_tasks.discard(task_id)
         if not task.cancelled():
             task.exception()
 
@@ -484,9 +514,23 @@ class LocalRuntimeClient:
         )
         try:
             if operation == "echo":
+                # Echo is its own contract: whatever the broker signed is
+                # reflected back verbatim as the result, with the same
+                # policy authorization every other operation goes through;
+                # there is no extra capability semantics to apply (05-L13).
                 result = envelope.payload.get("value")
                 receipt = await self.handle_echo_task(envelope)
             elif operation in {"local.files.list", "local.files.read"}:
+                if not self.server_public_key:
+                    # No broker key is bound: pairing never completed and no
+                    # explicitly-configured fallback pinned one. LEVEL_0 file
+                    # capabilities hand local file contents to whoever holds
+                    # the session, so they stay shut rather than trust the
+                    # connection that asked.
+                    await self._denial_response(
+                        operation, task_id, envelope.payload, PolicyDecision.DENY
+                    )
+                    return
                 file_task = self.handle_file_task(operation, dict(envelope.payload))
                 if file_task.decision is not PolicyDecision.ALLOW:
                     await self._send_error(
@@ -766,9 +810,19 @@ class LocalRuntimeClient:
             task_id, approved=approved, actor_id=actor_id, always=always
         )
 
-    def expire_consents(self, *, now: float | None = None) -> tuple[str, ...]:
+    async def expire_consents(self, *, now: float | None = None) -> tuple[str, ...]:
         """Auto-deny prompts nobody answered, so nothing hangs indefinitely."""
-        return self.consent_coord.expire_consents(now=now)
+        return await self.consent_coord.expire_consents(now=now)
+
+    async def _expire_consents_periodically(self) -> None:
+        """Drive consent expiry while the session is live (05-M9).
+
+        Without a production caller, prompts the server never answered stayed
+        in ``_relayed_consents`` (and in pending_consents()) forever.
+        """
+        while True:
+            await asyncio.sleep(max(CONSENT_TIMEOUT_SECONDS / 4, 1.0))
+            await self.consent_coord.expire_consents()
 
     async def _request_consent(
         self, envelope: Any, payload: dict[str, Any], store: ConsentStore

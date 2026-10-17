@@ -16,7 +16,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
-from .artifacts import ArtifactUploader
+from .artifacts import ArtifactUploadError, ArtifactUploader
 from .compat import UTC, StrEnum
 from .consent import ConsentStore, request_hash
 from .files import LocalFileStore
@@ -30,6 +30,19 @@ from .secrets import (
     SecretResolver,
     is_secret_ref,
 )
+
+
+# Windows creationflags for the constrained child: start in a new process
+# group (0x200) and suspended (0x4). subprocess exports the former only on
+# Windows and has never exported the latter, so both are pinned here like the
+# other raw Windows constants in this package.
+_CREATE_NEW_PROCESS_GROUP = 0x200
+_CREATE_SUSPENDED = 0x4
+
+# Upper bound for the broker-supplied task timeout (05-M3): without it a
+# single payload could hold an execution slot for as long as the payload
+# asks. Direct PythonExecutor callers keep full control of their own value.
+MAX_TASK_TIMEOUT_SECONDS = 600.0
 
 
 class _WindowsBasicLimit(ctypes.Structure):
@@ -125,6 +138,72 @@ class _WindowsJob:
             self._handle = None
 
 
+class _WindowsThreadEntry(ctypes.Structure):
+    """ABI-compatible THREADENTRY32."""
+
+    _fields_ = [
+        ("dwSize", ctypes.c_uint32),
+        ("cntUsage", ctypes.c_uint32),
+        ("th32ThreadID", ctypes.c_uint32),
+        ("th32OwnerProcessID", ctypes.c_uint32),
+        ("tpBasePri", ctypes.c_long),
+        ("tpDeltaPri", ctypes.c_long),
+        ("dwFlags", ctypes.c_uint32),
+    ]
+
+
+def _resume_initial_thread(pid: int) -> None:
+    """Resume the main thread that Popen left suspended on Windows.
+
+    ResumeThread needs a thread handle, which :class:`subprocess.Popen` does
+    not expose, so the initial thread is found through the tool-help snapshot:
+    a process created with CREATE_SUSPENDED still has exactly one thread, and
+    a suspended main thread cannot have spawned any more.
+    """
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateToolhelp32Snapshot.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+    kernel32.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
+    kernel32.Thread32First.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(_WindowsThreadEntry),
+    ]
+    kernel32.Thread32First.restype = ctypes.c_int
+    kernel32.Thread32Next.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(_WindowsThreadEntry),
+    ]
+    kernel32.Thread32Next.restype = ctypes.c_int
+    kernel32.OpenThread.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+    kernel32.OpenThread.restype = ctypes.c_void_p
+    kernel32.ResumeThread.argtypes = [ctypes.c_void_p]
+    kernel32.ResumeThread.restype = ctypes.c_uint32
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_int
+    # TH32CS_SNAPTHREAD = 0x4; THREAD_SUSPEND_RESUME = 0x0002.
+    snapshot = kernel32.CreateToolhelp32Snapshot(0x4, 0)
+    if not snapshot or snapshot == ctypes.c_void_p(-1).value:
+        raise OSError(ctypes.get_last_error(), "CreateToolhelp32Snapshot failed")
+    try:
+        entry = _WindowsThreadEntry()
+        entry.dwSize = ctypes.sizeof(_WindowsThreadEntry)
+        found = kernel32.Thread32First(snapshot, ctypes.byref(entry))
+        while found:
+            if entry.th32OwnerProcessID == pid:
+                thread = kernel32.OpenThread(0x0002, 0, entry.th32ThreadID)
+                if not thread:
+                    raise OSError(ctypes.get_last_error(), "OpenThread failed")
+                try:
+                    if kernel32.ResumeThread(thread) == 0xFFFFFFFF:
+                        raise OSError(ctypes.get_last_error(), "ResumeThread failed")
+                finally:
+                    kernel32.CloseHandle(thread)
+                return
+            found = kernel32.Thread32Next(snapshot, ctypes.byref(entry))
+    finally:
+        kernel32.CloseHandle(snapshot)
+    raise OSError("suspended main thread not found")
+
+
 class PythonTaskStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
@@ -165,6 +244,9 @@ class _StreamingRedactor:
 
     def feed(self, text: str, *, final: bool = False) -> str:
         self._pending += text
+        # Windows children translate \n to \r\n for redirected streams; the
+        # held-back tail means a \r\n split across two chunks still joins.
+        self._pending = self._pending.replace("\r\n", "\n")
         redacted = self._secrets.redact(
             self._pattern.sub(r"\1\2[REDACTED]", self._pending)
         )
@@ -267,6 +349,11 @@ class LocalPythonService:
             refs = []
             for logical_path in payload.get("expected_outputs", []):
                 path = self.files.resolve(str(logical_path))
+                # 05-M4: check the size before reading the whole file into
+                # memory; the uploader's own limit only fires after the read.
+                max_bytes = getattr(self.uploader, "max_bytes", None)
+                if max_bytes is not None and path.stat().st_size > max_bytes:
+                    raise ArtifactUploadError("artifact exceeds configured size limit")
                 refs.append(
                     self.uploader.upload(
                         path.name, self.files.read_bytes(str(logical_path))
@@ -324,8 +411,21 @@ class LocalPythonService:
             raise TypeError("working_root is required")
         if not isinstance(payload.get("script"), str):
             raise TypeError("script is required")
+        # The payload's "runtime" field is a compatibility filter, not a
+        # selector: execution is always pinned to this runtime's own
+        # interpreter (sys.executable), so an unknown value is rejected
+        # early, and any accepted value runs the same binary (05-L7).
         if payload.get("runtime", "python") not in {"python", "python3"}:
             raise ValueError("unsupported Python runtime")
+        # 05-M3: the broker-chosen timeout is bounded and must be a positive
+        # number; a stale or hostile payload cannot pin an execution slot.
+        timeout = payload.get("timeout", 30)
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+            raise TypeError("timeout must be a number")
+        if not 0 < float(timeout) <= MAX_TASK_TIMEOUT_SECONDS:
+            raise ValueError(
+                f"timeout must be within (0, {MAX_TASK_TIMEOUT_SECONDS:.0f}] seconds"
+            )
         for field in ("args", "expected_outputs"):
             value = payload.get(field, [])
             if not isinstance(value, list) or any(
@@ -396,23 +496,39 @@ class PythonExecutor:
             # Keep the child suspended until the Job Object owns it; this closes
             # the window in which a script could create an unmanaged descendant.
             process_options["creationflags"] = (
-                subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_SUSPENDED
+                _CREATE_NEW_PROCESS_GROUP | _CREATE_SUSPENDED
             )
         else:
             process_options["start_new_session"] = True
         secret_redactor = SecretRedactor(secret_values)
         started_at = datetime.now(UTC)
         with ExitStack() as stack:
+            # The temp logs must outlive only this task. Registered before the
+            # file contexts so LIFO unwinding runs the unlink after the handles
+            # close (Windows cannot delete an open file); missing_ok covers a
+            # setup failure before either file existed. Without this, every
+            # task leaks two files of unredacted subprocess output: the
+            # streaming reads and _summarize_log below are their last readers,
+            # and receipt.as_dict() never exposes the paths.
+            log_temp_names: list[str] = []
+
+            def _remove_log_temp_files() -> None:
+                for name in log_temp_names:
+                    Path(name).unlink(missing_ok=True)
+
+            stack.callback(_remove_log_temp_files)
             stdout_file = stack.enter_context(
                 tempfile.NamedTemporaryFile(
                     mode="w+b", prefix="local-python-stdout-", delete=False
                 )
             )
+            log_temp_names.append(stdout_file.name)
             stderr_file = stack.enter_context(
                 tempfile.NamedTemporaryFile(
                     mode="w+b", prefix="local-python-stderr-", delete=False
                 )
             )
+            log_temp_names.append(stderr_file.name)
             process_options["stdout"] = stdout_file
             process_options["stderr"] = stderr_file
             process = subprocess.Popen(  # noqa: ASYNC220
@@ -423,11 +539,7 @@ class PythonExecutor:
             if os.name == "nt":
                 try:
                     job = _WindowsJob(process.pid, process_handle=process._handle)
-                    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-                    kernel32.ResumeThread.argtypes = [ctypes.c_void_p]
-                    kernel32.ResumeThread.restype = ctypes.c_uint32
-                    if kernel32.ResumeThread(process._handle) == 0xFFFFFFFF:
-                        raise OSError(ctypes.get_last_error(), "ResumeThread failed")
+                    _resume_initial_thread(process.pid)
                 except Exception:  # noqa: BLE001 - any setup failure must clean up
                     self._terminate(process)
                     await self._wait_until_exited(process)
@@ -564,11 +676,27 @@ class PythonExecutor:
     def _summarize_log(self, path: str, secrets: SecretRedactor) -> tuple[str, str]:
         digest = hashlib.sha256()
         preview = bytearray()
+        pending_cr = b""
         with open(path, "rb") as output_file:
             while chunk := output_file.read(64 * 1024):
-                digest.update(chunk)
+                # Windows children translate \n to \r\n for redirected
+                # stdout/stderr; canonicalize before hashing so the receipt
+                # hash is platform-independent. A \r is carried across the
+                # read boundary when the \r\n pair straddles it, and a lone
+                # \r (e.g. a progress bar) is left untouched.
+                chunk = pending_cr + chunk
+                pending_cr = b""
+                if chunk.endswith(b"\r"):
+                    pending_cr = b"\r"
+                    chunk = chunk[:-1]
+                canonical = chunk.replace(b"\r\n", b"\n")
+                digest.update(canonical)
                 if len(preview) < self.max_output_bytes:
-                    preview.extend(chunk[: self.max_output_bytes - len(preview)])
+                    preview.extend(canonical[: self.max_output_bytes - len(preview)])
+        if pending_cr:
+            digest.update(pending_cr)
+            if len(preview) < self.max_output_bytes:
+                preview.extend(pending_cr[: self.max_output_bytes - len(preview)])
         return secrets.redact(
             self._redact(bytes(preview).decode("utf-8", errors="replace"))
         ), digest.hexdigest()

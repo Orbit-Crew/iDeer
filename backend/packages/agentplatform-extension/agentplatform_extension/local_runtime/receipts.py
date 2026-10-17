@@ -9,6 +9,14 @@ from typing import Any
 
 
 def tool_receipt_from_local(receipt: Mapping[str, Any], *, tool_call_id: str | None = None) -> dict[str, Any]:
+    """Project a device execution receipt into the canonical tool ledger.
+
+    The outer ``receipt_kind: "tool"`` is the ledger's classification of the
+    evidence row; the inner ``receipt_kind: "local_execution"`` inside
+    ``local_execution_receipt`` is the device receipt's own kind. Same key
+    name, different layers, by design (report 04-L4).
+    """
+
     value = dict(receipt)
     value.update({"tool_name": value.get("capability", "local.unknown"), "receipt_kind": "local_execution"})
     if tool_call_id is not None:

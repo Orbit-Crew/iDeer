@@ -548,3 +548,34 @@ async def test_paused_then_confirmed_run_executes_with_declared_input_defaults(e
     assert inputs_seen and all(item.get("output_base_dir") == "/mnt/user-data/outputs" for item in inputs_seen)
     outputs_host = _outputs_host(resumed)
     assert {path.name for path in outputs_host.iterdir() if path.is_file()} == set(REQUIRED_OUTPUTS)
+
+
+@pytest.mark.asyncio
+async def test_workflow_file_intake_is_readable_from_the_canonical_workspace(env, monkeypatch) -> None:
+    import io
+    import zipfile
+
+    from fastapi import UploadFile
+
+    from app.agentplatform.workflows.v2 import file_roots
+
+    paths = Paths(env.base)
+    monkeypatch.setattr(resources, "get_paths", lambda: paths)
+    monkeypatch.setattr(file_roots, "get_paths", lambda: paths)
+    monkeypatch.setattr("app.agentplatform.code_evidence.get_effective_user_id", lambda: OWNER)
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as package:
+        package.writestr("main.c", "int main(void) { return 0; }\n")
+    archive.seek(0)
+    result = await resources.create_workflow_run_with_files(
+        "wf-equivalence",
+        inputs=json.dumps({"problem_description": PROBLEM}),
+        model_name=None,
+        files=[UploadFile(filename="source.zip", file=archive), UploadFile(filename="incident.txt", file=io.BytesIO(b"evidence"))],
+        current_user=_user(OWNER),
+    )
+    resolver = make_host_resolver(result["run_id"], OWNER, sandbox_scope=canonical_sandbox_scope(result["run_id"], result["run_id"]))
+
+    assert result["status"] == "queued"
+    assert Path(resolver("/mnt/user-data/uploads/incident.txt")).read_text() == "evidence"
+    assert Path(resolver(result["code_package"]["source_virtual_path"] + "/main.c")).read_text() == "int main(void) { return 0; }\n"

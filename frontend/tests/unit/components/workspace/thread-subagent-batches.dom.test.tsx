@@ -137,7 +137,7 @@ describe("ThreadSubagentBatches capability gating", () => {
       await screen.findByText(
         "The batch worker is not running. Historical batches are read-only.",
       ),
-    ).toBeDefined();
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pause" })).toHaveProperty(
       "disabled",
       true,

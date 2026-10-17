@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Folder } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -92,11 +92,14 @@ export default function ChatPage() {
   );
   const backendTokenUsage = threadTokenUsageToTokenUsage(threadTokenUsage.data);
   const contextUsage = selectContextUsage(threadTokenUsage.data);
-  const mountedRef = useRef(false);
+  // Standard "mounted" gate (report 07-M7): a ref flip during render does not
+  // re-render, so the placeholder could persist forever when nothing else
+  // happens to re-render the page after mount.
+  const [mounted, setMounted] = useState(false);
   useSpecificChatMode();
 
   useEffect(() => {
-    mountedRef.current = true;
+    setMounted(true);
   }, []);
 
   // Born assigned: pre-create the thread row with its project so the sidebar
@@ -375,7 +378,7 @@ export default function ChatPage() {
                       </div>
                     </div>
                   )}
-                  {mountedRef.current ? (
+                  {mounted ? (
                     <InputBox
                       className={cn(
                         "bg-background/5 w-full",

@@ -129,10 +129,10 @@ describe("ProjectPage instructions limit", () => {
     };
     mocks.project = makeProject("x".repeat(101));
     openInstructionsTab();
-    expect(screen.getByText("101 / 100 bytes")).toBeDefined();
+    expect(screen.getByText("101 / 100 bytes")).toBeInTheDocument();
     // Over the configured cap: the guard fires and the save is blocked,
     // even though 101 bytes is far below the 8192-byte default.
-    expect(screen.getByText(/over the 100-byte limit/)).toBeDefined();
+    expect(screen.getByText(/over the 100-byte limit/)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save" }).hasAttribute("disabled"),
     ).toBe(true);
@@ -145,7 +145,7 @@ describe("ProjectPage instructions limit", () => {
     };
     mocks.project = makeProject("x".repeat(9000));
     openInstructionsTab();
-    expect(screen.getByText("9000 / 16384 bytes")).toBeDefined();
+    expect(screen.getByText("9000 / 16384 bytes")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(
       screen
@@ -158,7 +158,7 @@ describe("ProjectPage instructions limit", () => {
     mocks.projectsConfig = undefined;
     mocks.project = makeProject("x".repeat(42));
     openInstructionsTab();
-    expect(screen.getByText("42 / 8192 bytes")).toBeDefined();
+    expect(screen.getByText("42 / 8192 bytes")).toBeInTheDocument();
   });
 });
 
@@ -219,7 +219,7 @@ describe("ProjectPage instructions reconciliation", () => {
 
     expect(editor()).toHaveProperty("value", "base v1");
     // Draft equals the server value: clean state + the saved indicator.
-    expect(screen.getByRole("status")).toBeDefined();
+    expect(screen.getByRole("status")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save" }).hasAttribute("disabled"),
     ).toBe(true);
@@ -334,6 +334,6 @@ describe("ProjectPage rename reconciliation", () => {
     rerender(<ProjectPage />);
 
     expect(nameInput()).toHaveProperty("value", "Alpha");
-    expect(screen.getByRole("button", { name: "Restore" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument();
   });
 });

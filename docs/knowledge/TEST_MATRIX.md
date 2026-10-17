@@ -35,7 +35,7 @@ archived-reason: planning-era mapping; tests landed under backend/tests/unit/kno
 
 | 矩阵项 | 落点 | 要点 |
 | --- | --- | --- |
-| search | 既有 `backend/tests/test_ragflow_tools.py`（~34 例）、`backend/tests/test_ragflow_client.py` | 已覆盖：分组并行（≤4）、空 dataset 跳过、rank 交错、分页 |
+| search | 既有 `backend/tests/unit/knowledge/test_ragflow_tools.py`（~34 例）、`backend/tests/unit/knowledge/test_ragflow_client.py` | 已覆盖：分组并行（≤4）、空 dataset 跳过、rank 交错、分页 |
 | upload / status | M3：新建 `backend/tests/unit/knowledge/test_knowledge_provider.py` | 管理侧 Provider（复用 harness client 共享 base_url/auth/timeout/error mapping/redaction，知识方案 §18） |
 | timeout | 既有 client 测试错误归一化锚点（`test_ragflow_client.py:170-246`）扩展超时分支 | `RAGFlowConnectionError` 归一 |
 | redaction | 既有 `test_ragflow_tools.py:496-602`（API key 永不泄漏、dataset ID 仅错误路径、base_url 永不外发 `:574-600`） | M2 新增断言：绑定/解绑 API 的错误同样脱敏 |
@@ -76,7 +76,7 @@ archived-reason: planning-era mapping; tests landed under backend/tests/unit/kno
 | 要点 | 落点 |
 | --- | --- |
 | run_id / KB UUID / revision / query hash / document / chunk / scores / tool receipt 完整关联 | M5：新建 `backend/tests/unit/knowledge/test_knowledge_retrieval_receipt.py`；receipt 现状（工具级哈希账本，无 KB 维度）见 `IMPLEMENTATION_INVENTORY.md` §6 |
-| tool receipt 链路不回归 | 既有 `backend/tests/test_tool_receipt.py`、`test_receipt_verification.py`、`backend/tests/unit/agentplatform/test_receipt_projection.py`；票 04 保证 knowledge_search receipt 仍进 Run Evidence（`tool_receipt_middleware.py:76-81` → `agentplatform_extension/evidence.py:148-151`） |
+| tool receipt 链路不回归 | 既有 `backend/tests/unit/gateway/test_tool_receipt.py`、`test_receipt_verification.py`、`backend/tests/unit/agentplatform/test_receipt_projection.py`；票 04 保证 knowledge_search receipt 仍进 Run Evidence（`tool_receipt_middleware.py:76-81` → `agentplatform_extension/evidence.py:148-151`） |
 | KNOWLEDGE_ACCESS_DENIED 可观测 | 票 04：与空结果 `"No relevant content found."`（`formatting.py:54`）可区分；receipt/错误串不含 dataset ID |
 
 ## 5. §99 Security Tests

@@ -66,6 +66,10 @@ verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
   - scope：Assembly/Resource Scope 授权、设备本地复核、风险三级与 consent 绑定 request hash、outbound 通信方向。
   - trigger：改本地执行授权、consent 语义或 allowed roots 时读全文。
   - 实现/验证：[本地运行时安全模型](../local-runtime/SECURITY_MODEL.md)；[任务路由 · 本地运行时补丁](../agents/task-routing.md)；[项目状态页 §5](../project-state.md)。
+- [批次 6 产品语义确认包](2026-10-15-product-semantics-decision-package.md) — 四项审查"待确认"统一裁决：archived 仅拦新增使用、不打断在途冻结快照（记录确认）；知识部署层 veto 工具未配置即拒绝、`datasets` 属性缺省不设限（改代码）；`list_devices` 管理员全局可见为显式设计（记录确认）；NetworkPolicy 判定补齐私网变体与元数据端点、DNS 级校验列为接线前条件（改代码）。
+  - scope：资源运行时加载生命周期语义、知识 scope 部署层 veto 缺省、设备列表可见性边界、扩展侧 NetworkPolicy 判定口径。
+  - trigger：改 `CanonicalResourceLoader` 生命周期检查、知识 scope veto 解析、设备列表路由授权或 NetworkPolicy 判定时读全文。
+  - 实现/验证：`knowledge/scope.py` `deployment_allowed_datasets()`；回归见 `tests/unit/workflows/test_v2_knowledge_freeze.py` 与 `tests/test_agentplatform_extension_boundary.py`。
 
 ### 故障归零证据与结果契约（fault-zeroing evidence and result contracts）
 
@@ -99,6 +103,13 @@ verified-against: worktree docs/agent-doc-disclosure @ b9e0ca1c3
   - scope：里程碑顺序、硬前置与任务卡切片纪律；不替代基线与专项方案。
   - trigger：规划或启动里程碑、判定补丁关闭顺序时读全文；注意其状态基线为 2026-09-08，属时点记录。
   - 实现/验证：各里程碑交付以当时候选的验收记录为准；当前候选状态见[项目状态页](../project-state.md)。
+
+### 测试资产治理（test suite governance）
+
+- [backend/tests 双目录同名副本去重：采纳迁移收尾](2026-10-13-backend-test-dedup.md) — 148 对根/子目录同名测试副本按"根副本为合并基、子目录为规范位置"完成迁移收尾（选项 a），拒绝把双跑登记为已知状态；`tests/blocking_io/` 与根目录独有文件不在去重范围。
+  - scope：backend/tests 同名测试副本的去重口径、冲突裁决规则与守卫机制；不改产品代码与用例语义归属。
+  - trigger：移动/删除 backend 测试文件、解释 test-migration-ledger 2026-07-09 批次与现状的矛盾、或收到重复收集守卫报红时读全文。
+  - 实现/验证：批次记录见 [test-migration-ledger](../testing/test-migration-ledger.md)；守卫为 `scripts/check_test_collection_duplicates.py`。
 
 ## 历史与专项设计
 

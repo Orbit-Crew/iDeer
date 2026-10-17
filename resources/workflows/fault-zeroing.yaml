@@ -100,10 +100,10 @@ nodes:
           使用 ls / glob / grep 枚举目录内容（注意：不要枚举上级目录，上级目录不在权限内）。
 
           1. 使用 glob 扫描 {{inputs.upload_dir}}，了解文件结构。
-             当模式为 code 或 hybrid 时，再扫描 {{inputs.code_package_source}}，仅在该目录内递归读取 .c/.h、日志和构建元数据；记录源码相对路径、行号和 provenance。没有编译元数据时记录 compilation_configuration_verified=false，并将代码结论标为 pending_verification。
+             当模式为 code 或 hybrid 时，再扫描 {{inputs.code_package_source}}，仅在该目录内递归读取 C/C++（.c/.h/.cc/.cpp/.cxx/.hpp）、Python（.py）、日志和构建元数据；记录源码相对路径、行号和 provenance。没有编译元数据时记录 compilation_configuration_verified=false，并将代码结论标为 pending_verification。
              当 {{inputs.code_package_source}} 非空时，调用 analyze_code_evidence
              （package_root={{inputs.code_package_source}}）对代码证据包运行固定的
-             只读静态扫描；扫描器不可用时工具会如实返回 scanners_unavailable。
+             只读静态扫描（C/C++ 使用 clang-tidy/cppcheck，Python 使用 Ruff/Bandit；混合包两类都会运行）。依据返回的 languages 和 scanner_status 记录覆盖范围及跳过/不可用状态；未扫描不得表述为无告警。
            2. 按格式读取关键文件：
               - .doc/.docx/.pdf/.xls/.xlsx/.ppt/.pptx 调用 read_document 转 Markdown 后读取
                 （遇截断标记用 page_range 分段继续；转换结果为空疑似扫描件时按失败契约处理；

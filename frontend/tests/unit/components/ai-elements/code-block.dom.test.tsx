@@ -13,6 +13,6 @@ describe("CodeBlock", () => {
 
     render(<CodeBlock code="const immediate = true" language="typescript" />);
 
-    expect(screen.getByText("const immediate = true")).toBeTruthy();
+    expect(screen.getByText("const immediate = true")).toBeInTheDocument();
   });
 });

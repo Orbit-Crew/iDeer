@@ -115,7 +115,7 @@ class TestRejectPathTraversal:
     def test_clean_path(self):
         from deerflow.sandbox.tools import _reject_path_traversal
 
-        _reject_path_traversal("/mnt/user-data/workspace/file.txt")
+        assert _reject_path_traversal("/mnt/user-data/workspace/file.txt") is None
 
     def test_traversal_raises(self):
         from deerflow.sandbox.tools import _reject_path_traversal
@@ -132,7 +132,7 @@ class TestRejectPathTraversal:
     def test_root_only(self):
         from deerflow.sandbox.tools import _reject_path_traversal
 
-        _reject_path_traversal("/")
+        assert _reject_path_traversal("/") is None
 
     def test_dot_dot_at_start(self):
         from deerflow.sandbox.tools import _reject_path_traversal
@@ -157,14 +157,14 @@ class TestValidateLocalToolPath:
         from deerflow.sandbox.tools import validate_local_tool_path
 
         td = _make_thread_data()
-        validate_local_tool_path("/mnt/user-data/workspace/file.txt", td)
+        assert validate_local_tool_path("/mnt/user-data/workspace/file.txt", td) is None
 
     def test_skills_path_read_only_allowed(self):
         from deerflow.sandbox.tools import validate_local_tool_path
 
         td = _make_thread_data()
         with patch("deerflow.sandbox.tools._is_skills_path", return_value=True):
-            validate_local_tool_path("/mnt/skills/test", td, read_only=True)
+            assert validate_local_tool_path("/mnt/skills/test", td, read_only=True) is None
 
     def test_skills_path_write_raises(self):
         from deerflow.sandbox.tools import validate_local_tool_path
@@ -180,7 +180,7 @@ class TestValidateLocalToolPath:
         td = _make_thread_data()
         with patch("deerflow.sandbox.tools._is_skills_path", return_value=False):
             with patch("deerflow.sandbox.tools._is_acp_workspace_path", return_value=True):
-                validate_local_tool_path("/mnt/acp-workspace/test", td, read_only=True)
+                assert validate_local_tool_path("/mnt/acp-workspace/test", td, read_only=True) is None
 
     def test_acp_workspace_write_raises(self):
         from deerflow.sandbox.tools import validate_local_tool_path
@@ -660,14 +660,14 @@ class TestEnsureThreadDirectoriesExist:
     def test_none_runtime(self):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
 
-        ensure_thread_directories_exist(None)
+        assert ensure_thread_directories_exist(None) is None
 
     def test_non_local_sandbox(self):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
 
         runtime = _make_runtime(sandbox_id="docker:abc")
         with patch("deerflow.sandbox.tools.is_local_sandbox", return_value=False):
-            ensure_thread_directories_exist(runtime)
+            assert ensure_thread_directories_exist(runtime) is None
 
     def test_already_created(self):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
@@ -675,7 +675,7 @@ class TestEnsureThreadDirectoriesExist:
         runtime = _make_runtime()
         runtime.state["thread_directories_created"] = True
         with patch("deerflow.sandbox.tools.is_local_sandbox", return_value=True):
-            ensure_thread_directories_exist(runtime)
+            assert ensure_thread_directories_exist(runtime) is None
 
     def test_creates_directories(self, tmp_path):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
@@ -928,7 +928,7 @@ class TestValidateLocalBashCommandPaths:
 
         td = _make_thread_data()
         with patch("deerflow.sandbox.tools._get_mcp_allowed_paths", return_value=[]):
-            validate_local_bash_command_paths("ls /mnt/user-data/workspace", td)
+            assert validate_local_bash_command_paths("ls /mnt/user-data/workspace", td) is None
 
     def test_file_url_blocked(self):
         from deerflow.sandbox.tools import validate_local_bash_command_paths
@@ -1052,7 +1052,7 @@ class TestValidateLocalBashCwdTarget:
         from deerflow.sandbox.tools import _validate_local_bash_cwd_target
 
         with patch("deerflow.sandbox.tools._is_allowed_local_bash_absolute_path", return_value=True):
-            _validate_local_bash_cwd_target("cd", "/mnt/user-data/workspace", [])
+            assert _validate_local_bash_cwd_target("cd", "/mnt/user-data/workspace", []) is None
 
     def test_absolute_disallowed(self):
         from deerflow.sandbox.tools import _validate_local_bash_cwd_target
@@ -1112,12 +1112,12 @@ class TestValidateResolvedUserDataPath:
         from deerflow.sandbox.tools import _validate_resolved_user_data_path
 
         workspace = tmp_path / "workspace"
-        workspace.mkdir()
+        assert workspace.mkdir() is None
         file = workspace / "file.txt"
-        file.touch()
+        assert file.touch() is None
 
         td = {"workspace_path": str(workspace), "uploads_path": None, "outputs_path": None}
-        _validate_resolved_user_data_path(file.resolve(), td)
+        assert _validate_resolved_user_data_path(file.resolve(), td) is None
 
 
 # ---------------------------------------------------------------------------
@@ -1170,7 +1170,7 @@ class TestValidateLocalToolPathExtra:
         from deerflow.sandbox.tools import validate_local_tool_path
 
         # Should not raise for read_only=True
-        validate_local_tool_path("/mnt/skills/test", _make_thread_data(), read_only=True)
+        assert validate_local_tool_path("/mnt/skills/test", _make_thread_data(), read_only=True) is None
 
     def test_skills_path_write_raises(self):
         from deerflow.sandbox.tools import validate_local_tool_path
@@ -1181,7 +1181,7 @@ class TestValidateLocalToolPathExtra:
     def test_acp_workspace_read_only_allowed(self):
         from deerflow.sandbox.tools import validate_local_tool_path
 
-        validate_local_tool_path("/mnt/acp-workspace/test", _make_thread_data(), read_only=True)
+        assert validate_local_tool_path("/mnt/acp-workspace/test", _make_thread_data(), read_only=True) is None
 
     def test_acp_workspace_write_raises(self):
         from deerflow.sandbox.tools import validate_local_tool_path
@@ -1192,7 +1192,7 @@ class TestValidateLocalToolPathExtra:
     def test_user_data_path_allowed(self):
         from deerflow.sandbox.tools import validate_local_tool_path
 
-        validate_local_tool_path("/mnt/user-data/workspace/file.txt", _make_thread_data())
+        assert validate_local_tool_path("/mnt/user-data/workspace/file.txt", _make_thread_data()) is None
 
     def test_custom_mount_read_only_raises(self):
         from deerflow.sandbox.tools import validate_local_tool_path
@@ -1217,7 +1217,7 @@ class TestValidateLocalToolPathExtra:
             with patch("deerflow.sandbox.tools._is_acp_workspace_path", return_value=False):
                 with patch("deerflow.sandbox.tools._is_custom_mount_path", return_value=True):
                     with patch("deerflow.sandbox.tools._get_custom_mount_for_path", return_value=mock_mount):
-                        validate_local_tool_path("/mnt/custom/file", _make_thread_data(), read_only=False)
+                        assert validate_local_tool_path("/mnt/custom/file", _make_thread_data(), read_only=False) is None
 
     def test_unknown_path_raises(self):
         from deerflow.sandbox.tools import validate_local_tool_path
@@ -1257,12 +1257,12 @@ class TestValidateLocalBashCommandPathsExtra:
         from deerflow.sandbox.tools import validate_local_bash_command_paths
 
         # /bin/ls is in the allowed system paths
-        validate_local_bash_command_paths("/bin/ls -la", _make_thread_data())
+        assert validate_local_bash_command_paths("/bin/ls -la", _make_thread_data()) is None
 
     def test_virtual_path_allowed(self):
         from deerflow.sandbox.tools import validate_local_bash_command_paths
 
-        validate_local_bash_command_paths("cat /mnt/user-data/workspace/file.txt", _make_thread_data())
+        assert validate_local_bash_command_paths("cat /mnt/user-data/workspace/file.txt", _make_thread_data()) is None
 
     def test_dotdot_traversal_raises(self):
         from deerflow.sandbox.tools import validate_local_bash_command_paths
@@ -1590,26 +1590,26 @@ class TestEnsureThreadDirectoriesExistExtra:
     def test_none_runtime(self):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
 
-        ensure_thread_directories_exist(None)  # no-op
+        assert ensure_thread_directories_exist(None) is None
 
     def test_non_local_sandbox(self):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
 
         runtime = _make_runtime(sandbox_id="aio:test")
-        ensure_thread_directories_exist(runtime)  # no-op
+        assert ensure_thread_directories_exist(runtime) is None
 
     def test_no_thread_data(self):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
 
         runtime = _make_runtime(sandbox_id="local:test", thread_data=None)
-        ensure_thread_directories_exist(runtime)  # no-op
+        assert ensure_thread_directories_exist(runtime) is None
 
     def test_already_created(self):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
 
         runtime = _make_runtime(sandbox_id="local:test", thread_data=_make_thread_data())
         runtime.state["thread_directories_created"] = True
-        ensure_thread_directories_exist(runtime)  # no-op
+        assert ensure_thread_directories_exist(runtime) is None
 
     def test_creates_directories(self, tmp_path):
         from deerflow.sandbox.tools import ensure_thread_directories_exist
@@ -3093,7 +3093,7 @@ class TestValidateLocalBashCommandPathsExtended:
 
         td = _make_thread_data()
         with patch("deerflow.sandbox.tools._get_mcp_allowed_paths", return_value=[]):
-            validate_local_bash_command_paths("cd /mnt/user-data/workspace", td)
+            assert validate_local_bash_command_paths("cd /mnt/user-data/workspace", td) is None
 
     def test_cd_to_home_raises(self):
         from deerflow.sandbox.tools import validate_local_bash_command_paths
@@ -3107,7 +3107,7 @@ class TestValidateLocalBashCommandPathsExtended:
 
         td = _make_thread_data()
         with patch("deerflow.sandbox.tools._get_mcp_allowed_paths", return_value=[]):
-            validate_local_bash_command_paths("curl https://example.com > /mnt/user-data/workspace/out.txt", td)
+            assert validate_local_bash_command_paths("curl https://example.com > /mnt/user-data/workspace/out.txt", td) is None
 
     def test_dotdot_in_command_raises(self):
         from deerflow.sandbox.tools import validate_local_bash_command_paths
@@ -3129,7 +3129,7 @@ class TestValidateLocalBashShellTokensExtended:
         from deerflow.sandbox.tools import _validate_local_bash_shell_tokens
 
         # Should not raise - assignment is allowed
-        _validate_local_bash_shell_tokens("FOO=bar ls /mnt/user-data/workspace", [])
+        assert _validate_local_bash_shell_tokens("FOO=bar ls /mnt/user-data/workspace", []) is None
 
     def test_command_wrapper_builtin(self):
         from deerflow.sandbox.tools import _validate_local_bash_shell_tokens
@@ -3142,7 +3142,7 @@ class TestValidateLocalBashShellTokensExtended:
         from deerflow.sandbox.tools import _validate_local_bash_shell_tokens
 
         # 'if' is a prefix keyword
-        _validate_local_bash_shell_tokens("if true; then echo ok; fi", [])
+        assert _validate_local_bash_shell_tokens("if true; then echo ok; fi", []) is None
 
 
 class TestValidateLocalBashRootPathArgs:
@@ -3156,17 +3156,17 @@ class TestValidateLocalBashRootPathArgs:
         from deerflow.sandbox.tools import _validate_local_bash_root_path_args
 
         # 'echo' is not in _LOCAL_BASH_ROOT_PATH_COMMANDS
-        _validate_local_bash_root_path_args("echo", ["/etc/passwd"], 0)
+        assert _validate_local_bash_root_path_args("echo", ["/etc/passwd"], 0) is None
 
     def test_separator_stops(self):
         from deerflow.sandbox.tools import _validate_local_bash_root_path_args
 
-        _validate_local_bash_root_path_args("cat", [";", "/etc/passwd"], 0)
+        assert _validate_local_bash_root_path_args("cat", [";", "/etc/passwd"], 0) is None
 
     def test_redirection_skipped(self):
         from deerflow.sandbox.tools import _validate_local_bash_root_path_args
 
-        _validate_local_bash_root_path_args("cat", [">", "/tmp/out"], 0)
+        assert _validate_local_bash_root_path_args("cat", [">", "/tmp/out"], 0) is None
 
 
 class TestNextCdTargetExtended:

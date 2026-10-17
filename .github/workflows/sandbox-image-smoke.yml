@@ -16,7 +16,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'backend/packages/harness/deerflow/community/aio_sandbox/**'
-      - 'backend/tests/test_aio_sandbox_local_backend.py'
+      - 'backend/tests/integration/sandbox/test_aio_sandbox_local_backend.py'
       - '.github/workflows/sandbox-image-smoke.yml'
 
 concurrency:
@@ -29,7 +29,9 @@ permissions:
 jobs:
   sandbox-image-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The CN registry pull of the multi-GB sandbox image intermittently
+    # exceeds 25 minutes; two PR-gate runs died at exactly 25m on 2026-10-14.
+    timeout-minutes: 40
     env:
       SANDBOX_SMOKE_IMAGE_REF: ${{ vars.SANDBOX_SMOKE_IMAGE || 'enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest' }}
       FOWNER_SMOKE_IMAGE_REF: ${{ vars.SANDBOX_FOWNER_SMOKE_IMAGE || 'enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:1.11.0' }}
@@ -68,7 +70,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          # Must match backend/Dockerfile's UV_IMAGE tag; pinned by backend/tests/test_ci_uv_version_pin.py
+          # Must match backend/Dockerfile's UV_IMAGE tag; pinned by backend/tests/unit/scripts/test_ci_uv_version_pin.py
           version: "0.11.1"
 
       - name: Install backend dependencies
@@ -77,4 +79,4 @@ jobs:
 
       - name: Run the live real-image smoke tests
         working-directory: backend
-        run: uv run pytest -m live tests/test_aio_sandbox_local_backend.py -v
+        run: uv run pytest -m live tests/integration/sandbox/test_aio_sandbox_local_backend.py -v

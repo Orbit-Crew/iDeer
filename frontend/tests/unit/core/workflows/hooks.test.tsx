@@ -141,6 +141,35 @@ describe("useRunStatus", () => {
     expect(result.current.runStatus?.action_tokens?.draft).toBe("one");
   });
 
+  test("retains only the newest events past the streaming window", async () => {
+    vi.stubGlobal("EventSource", MockEventSource);
+    const api = await import("@/core/workflows/api");
+    vi.mocked(api.getRunStatus).mockResolvedValue({
+      run_id: "run-1",
+      workflow: "approval",
+      status: "running",
+      error: null,
+    });
+    const { useRunStatus } = await import("@/core/workflows/hooks");
+    const { result } = renderHook(() => useRunStatus("approval", "run-1"), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(MockEventSource.instances).toHaveLength(1));
+    act(() => {
+      for (let seq = 1; seq <= 1001; seq += 1) {
+        MockEventSource.instances[0]?.emit("node_started", seq, {
+          node_id: `node-${seq}`,
+        });
+      }
+    });
+
+    const events = result.current.runStatus?.events ?? [];
+    expect(events).toHaveLength(1000);
+    expect(events[0]?.seq).toBe(2);
+    expect(events.at(-1)?.seq).toBe(1001);
+  });
+
   test("closes the stream and stops fallback polling on a terminal event", async () => {
     vi.stubGlobal("EventSource", MockEventSource);
     const api = await import("@/core/workflows/api");

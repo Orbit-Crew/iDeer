@@ -35,9 +35,10 @@ describe("decorative animation scheduling", () => {
   });
 
   it("does not render the removed decorative sections from anywhere on the landing route", () => {
-    // The section components still exist on disk, so guard against them
-    // sneaking back onto the landing page without their render-activity
-    // scheduling (useRenderActivity + lazy dynamic imports).
+    // The section components were deleted from disk (#68); this guard keeps
+    // them (or similar decorative sections) from sneaking back onto the
+    // landing page without their render-activity scheduling
+    // (useRenderActivity + lazy dynamic imports).
     for (const section of [
       "whats-new-section",
       "case-study-section",

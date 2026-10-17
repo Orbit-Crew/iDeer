@@ -19,13 +19,12 @@ export interface SubtaskContextValue {
   setTasks: (tasks: Record<string, Subtask>) => void;
 }
 
-export const SubtaskContext = createContext<SubtaskContextValue>({
-  tasks: {},
-  tasksRef: { current: {} },
-  setTasks: () => {
-    /* noop */
-  },
-});
+// No default value: consuming outside a Provider is a bug (the hook throws),
+// matching the `createContext<... | undefined>(undefined)` pattern used by
+// auth/AuthProvider.tsx.
+export const SubtaskContext = createContext<SubtaskContextValue | undefined>(
+  undefined,
+);
 
 export function SubtasksProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Record<string, Subtask>>({});

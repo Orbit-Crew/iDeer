@@ -227,6 +227,46 @@ class ToolContributor(Protocol):
         return ()
 
 
+# --- Host seam providers (single-provider registrations) ---------------------
+
+
+class ToolScopeAdapter(Protocol):
+    """Adapt the assembled tool list to the caller's authorized tool scope.
+
+    Consulted once at the end of the host's tool assembly
+    (``get_available_tools``). A provider that has no scope for the current
+    execution returns the list unchanged; every host caller observes the
+    returned sequence, never the input list.
+    """
+
+    def apply_tool_scopes(self, tools: Sequence[Any], *, subagent_enabled: bool) -> Sequence[Any]:
+        return tools
+
+
+class SubagentMiddlewareSource(Protocol):
+    """Contribute execution-context middlewares at subagent agent assembly.
+
+    Consulted every time the subagent executor assembles its agent graph.
+    Returning an empty sequence is the passthrough contract: the upstream
+    middleware chain must be assembled untouched.
+    """
+
+    def pending_middlewares(self) -> Sequence[Any]:
+        return ()
+
+
+class BuiltinToolOverrides(Protocol):
+    """Resolve host-canonically overridden builtin tools.
+
+    Consulted when the host binds a builtin tool by name (for example the
+    bootstrap agent's ``setup_agent``). Returning ``default`` keeps the stock
+    builtin, so unmanaged names stay host-owned.
+    """
+
+    def resolve_builtin_tool(self, name: str, default: Any) -> Any:
+        return default
+
+
 # --- Extension services ----------------------------------------------------
 
 
@@ -265,6 +305,15 @@ class ExtensionRegistry(Protocol):
         return None
 
     def tools(self, contributor: ToolContributor) -> None:
+        return None
+
+    def tool_scopes(self, adapter: ToolScopeAdapter) -> None:
+        return None
+
+    def subagent_middlewares(self, source: SubagentMiddlewareSource) -> None:
+        return None
+
+    def builtin_tools(self, overrides: BuiltinToolOverrides) -> None:
         return None
 
     def task_lifecycle(self, contributor: TaskLifecycleContributor) -> None:

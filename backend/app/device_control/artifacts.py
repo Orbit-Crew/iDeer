@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import secrets
 from collections.abc import AsyncIterable
@@ -55,12 +56,16 @@ class DeviceArtifactStore:
         if grant.expires_at.replace(tzinfo=UTC) <= datetime.now(UTC):
             raise ArtifactStoreError("GRANT_EXPIRED", "artifact upload grant expired")
         target_dir = self.root / grant.thread_id / "outputs"
-        target_dir.mkdir(parents=True, exist_ok=True)
         temporary = target_dir / f".upload-{secrets.token_hex(12)}"
         digest = hashlib.sha256()
         size = 0
         try:
-            with temporary.open("wb") as output:
+            # Chunk validation and hashing stay on the event loop (pure CPU);
+            # every disk operation runs in a worker thread so a 10 MB upload
+            # can never block the gateway loop.
+            await asyncio.to_thread(target_dir.mkdir, parents=True, exist_ok=True)
+            output = await asyncio.to_thread(temporary.open, "wb")
+            try:
                 async for chunk in chunks:
                     if not isinstance(chunk, bytes):
                         raise ArtifactStoreError("INVALID_CHUNK", "artifact upload chunk is invalid")
@@ -68,16 +73,29 @@ class DeviceArtifactStore:
                     if size > grant.max_bytes:
                         raise ArtifactStoreError("SIZE_LIMIT", "artifact exceeds configured size limit")
                     digest.update(chunk)
-                    output.write(chunk)
-                output.flush()
-            actual_hash = digest.hexdigest()
-            if grant.expected_sha256 is not None and actual_hash != grant.expected_sha256:
-                raise ArtifactStoreError("HASH_MISMATCH", "artifact content hash does not match grant")
-            destination = target_dir / f"{actual_hash}-{grant.filename}"
-            if destination.exists() and destination.read_bytes() != temporary.read_bytes():
-                raise ArtifactStoreError("CONTENT_CONFLICT", "artifact handle content conflict")
-            temporary.replace(destination)
+                    await asyncio.to_thread(output.write, chunk)
+                await asyncio.to_thread(output.flush)
+            finally:
+                await asyncio.to_thread(output.close)
+            handle, total_size, actual_hash = await asyncio.to_thread(self._commit, grant, target_dir, temporary, digest.hexdigest(), size)
             grant.consumed = True
-            return f"local://{actual_hash}/{grant.filename}", size, actual_hash
+            return handle, total_size, actual_hash
         finally:
-            temporary.unlink(missing_ok=True)
+            await asyncio.to_thread(temporary.unlink, missing_ok=True)
+
+    @staticmethod
+    def _commit(
+        grant: ArtifactUploadGrant,
+        target_dir: Path,
+        temporary: Path,
+        actual_hash: str,
+        size: int,
+    ) -> tuple[str, int, str]:
+        """Verify the written bytes and commit atomically; runs off the event loop."""
+        if grant.expected_sha256 is not None and actual_hash != grant.expected_sha256:
+            raise ArtifactStoreError("HASH_MISMATCH", "artifact content hash does not match grant")
+        destination = target_dir / f"{actual_hash}-{grant.filename}"
+        if destination.exists() and destination.read_bytes() != temporary.read_bytes():
+            raise ArtifactStoreError("CONTENT_CONFLICT", "artifact handle content conflict")
+        temporary.replace(destination)
+        return f"local://{actual_hash}/{grant.filename}", size, actual_hash

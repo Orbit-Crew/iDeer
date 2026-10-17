@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { I18nContext } from "@/core/i18n/context";
 import { enUS } from "@/core/i18n/locales/en-US";
 import { DEFAULT_LOCAL_SETTINGS } from "@/core/settings/local";
+import { SubtasksProvider } from "@/core/tasks/context";
 
 const streamMockState = rs.hoisted(() => ({
   options: undefined as { throttle?: boolean | number } | undefined,
@@ -55,7 +56,7 @@ test("batches stream subscription updates in a macrotask", async () => {
             t: enUS,
           },
         },
-        createElement(StreamProbe),
+        createElement(SubtasksProvider, null, createElement(StreamProbe)),
       ),
     ),
   );

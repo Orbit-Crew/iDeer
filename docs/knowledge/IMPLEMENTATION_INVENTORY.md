@@ -91,7 +91,7 @@ archived-reason: survey-era snapshot scoped to the M2 candidate; ticket 02/03/04
 
 ### 5.1 Tool
 
-- 定义：`backend/packages/harness/deerflow/community/ragflow/tools.py` —— `knowledge_search_tool = StructuredTool.from_function(coroutine=_knowledge_search_entrypoint, name="knowledge_search", ...)`（:395-400）。**入参仅 `query: str`**（`test_agent_exposes_only_query_on_single_search_tool`，`backend/tests/test_ragflow_tools.py:726-732`）。
+- 定义：`backend/packages/harness/deerflow/community/ragflow/tools.py` —— `knowledge_search_tool = StructuredTool.from_function(coroutine=_knowledge_search_entrypoint, name="knowledge_search", ...)`（:395-400）。**入参仅 `query: str`**（`test_agent_exposes_only_query_on_single_search_tool`，`backend/tests/unit/knowledge/test_ragflow_tools.py:726-732`）。
 - 主流程 `knowledge_search(query)`（:344-378）：读取 settings → 构建 client → `_resolve_datasets`（:211-240）→ `_group_searchable_datasets`（:243-249，按 embedding model 分组、跳过 `chunk_count == 0`）→ `_retrieve_dataset_groups`（:315-341，`asyncio.Semaphore(4)` 并行）→ `_merge_group_results`（:268-312，跨组 rank 交错）→ `format_retrieval_result` → API key 脱敏 → 返回字符串。
 - 注册：config `tools:` 列表 `use: deerflow.community.ragflow.tools:knowledge_search_tool`；配置取值 `get_app_config().get_tool_config("knowledge_search")`（`deerflow/config/app_config.py:621`）；`ToolConfig` 允许任意扩展键（`deerflow/config/tool_config.py:11-20`，`extra="allow"`），RAGFlow 专属字段落在 `model_extra` 由 `_RAGFlowRetrievalSettings`（tools.py:36-75）校验。
 

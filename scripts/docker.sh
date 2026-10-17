@@ -21,7 +21,9 @@ COMPOSE_FILE="docker-compose-dev.yaml"
 COMPOSE_BIN=(docker compose)
 
 _refresh_compose_cmd() {
-    COMPOSE_CMD="${COMPOSE_BIN[*]} -p deer-flow-dev -f ${COMPOSE_FILE}"
+    # Kept as an array (like COMPOSE_BIN) so a repo path containing spaces and
+    # the two-word "docker compose" stay intact under set -u / quoting (08-L6).
+    COMPOSE_CMD=("${COMPOSE_BIN[@]}" -p deer-flow-dev -f "$COMPOSE_FILE")
 }
 _refresh_compose_cmd
 
@@ -246,7 +248,10 @@ init() {
     echo "=========================================="
     echo ""
 
-    SANDBOX_IMAGE="enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest"
+    # Aligned with setup-sandbox.sh (08-L6): the mirror's :latest tag is
+    # frozen on an old pre-1.9.3 digest lacking the /v1/bash/* routes
+    # (#3921/#3922), so the default pins a version >= 1.9.3 instead.
+    SANDBOX_IMAGE="enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:1.11.0"
 
     # Detect sandbox mode from config.yaml
     local sandbox_mode
@@ -344,8 +349,8 @@ start() {
                 exit 1
             fi
         fi
-        echo -e "${YELLOW}Mounting host Docker socket into gateway (DooD = host root-equivalent). See SECURITY.md.${NC}"
-        COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.dood.yaml"
+        echo -e "${YELLOW}Mounting host Docker socket into gateway and workflow-worker (DooD = host root-equivalent). See SECURITY.md.${NC}"
+        COMPOSE_CMD=("${COMPOSE_CMD[@]}" -f docker-compose.dood.yaml)
     fi
 
     echo -e "${BLUE}Runtime: Gateway embedded agent runtime${NC}"
@@ -400,7 +405,7 @@ start() {
     load_proxy_env_from_dotenv
 
     echo "Building and starting containers..."
-    cd "$DOCKER_DIR" && $COMPOSE_CMD up --build -d --remove-orphans $services
+    cd "$DOCKER_DIR" && "${COMPOSE_CMD[@]}" up --build -d --remove-orphans $services
     echo ""
     echo "=========================================="
     echo "  DeerFlow Docker is starting!"
@@ -453,14 +458,14 @@ logs() {
             ;;
     esac
     
-    cd "$DOCKER_DIR" && $COMPOSE_CMD logs -f $service
+    cd "$DOCKER_DIR" && "${COMPOSE_CMD[@]}" logs -f $service
 }
 
 # Stop Docker development environment
 stop() {
     compose_preflight
     echo "Stopping Docker development services..."
-    cd "$DOCKER_DIR" && $COMPOSE_CMD down
+    cd "$DOCKER_DIR" && "${COMPOSE_CMD[@]}" down
     echo "Cleaning up sandbox containers..."
     bash "$SCRIPT_DIR/cleanup-containers.sh" deer-flow-sandbox 2>/dev/null || true
     echo -e "${GREEN}✓ Docker services stopped${NC}"
@@ -474,7 +479,7 @@ restart() {
     echo "========================================"
     echo ""
     echo -e "${BLUE}Restarting containers...${NC}"
-    cd "$DOCKER_DIR" && $COMPOSE_CMD restart
+    cd "$DOCKER_DIR" && "${COMPOSE_CMD[@]}" restart
     echo ""
     echo -e "${GREEN}✓ Docker services restarted${NC}"
     echo ""

@@ -95,6 +95,17 @@ def test_saved_settings_never_contain_session_token(tmp_path) -> None:
     assert "bearer-secret" not in path.read_text(encoding="utf-8")
 
 
+def test_unpinned_broker_key_fallback_defaults_off_and_round_trips(tmp_path) -> None:
+    """First-connection trust is a deliberate opt-in, never a default."""
+    path = tmp_path / "runtime.json"
+
+    RuntimeSettings().save(path)
+    assert load_settings(path).allow_unpinned_broker_key is False
+
+    RuntimeSettings(allow_unpinned_broker_key=True).save(path)
+    assert load_settings(path).allow_unpinned_broker_key is True
+
+
 def test_unlisted_dangerous_capability_defaults_to_level_two() -> None:
     policy = LocalPolicy()
 
@@ -113,3 +124,25 @@ def test_server_url_becomes_the_runtime_websocket_address() -> None:
     assert https.websocket_url() == "wss://intranet.example/api/devices/ws"
     assert plain.websocket_url() == "ws://intranet.example:8000/api/devices/ws"
     assert already.websocket_url() == "wss://intranet.example/other"
+
+
+def test_settings_save_is_atomic_and_leaves_no_temporary(
+    tmp_path, monkeypatch
+) -> None:
+    """05-L4: a failed save must not destroy the previous snapshot."""
+    import core.settings as settings_module
+
+    target = tmp_path / "runtime.json"
+    RuntimeSettings(server_url="ws://first").save(target)
+    original = target.read_text()
+
+    def exploding_replace(source, destination):
+        raise OSError("simulated disk full")
+
+    monkeypatch.setattr(settings_module.os, "replace", exploding_replace)
+    with pytest.raises(OSError):
+        RuntimeSettings(server_url="ws://second").save(target)
+
+    # The previous snapshot survived the failed write, and no .tmp leaked.
+    assert target.read_text() == original
+    assert list(tmp_path.iterdir()) == [target]

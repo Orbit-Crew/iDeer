@@ -8,8 +8,17 @@ LibreOffice 监听进程管理器
 import logging
 import os
 import subprocess
+import time
 
 logger = logging.getLogger(__name__)
+
+# LibreOffice 在无输出场景下也可能偶尔打印日志，监听进程是常驻进程，
+# stdout/stderr 若接 PIPE 而无人读取，缓冲区写满后进程会永久阻塞——
+# 因此监听进程统一重定向到 DEVNULL，绝不用 PIPE。
+# 启动等待改为轮询：进程秒退（如端口冲突）能在第一个轮询周期内被发现，
+# 而不是无条件阻塞固定秒数。
+_LISTENER_STARTUP_WAIT_SECONDS = 2.0
+_LISTENER_STARTUP_POLL_SECONDS = 0.1
 
 
 class LibreOfficeManager:
@@ -86,8 +95,6 @@ class LibreOfficeManager:
         Returns:
             bool: 是否成功启动或已经在运行
         """
-        import time
-
         # 如果已经有监听进程在运行，检查其状态
         if self._listener_process is not None:
             try:
@@ -123,23 +130,20 @@ class LibreOfficeManager:
             logger.info(f"启动 LibreOffice 监听进程: {' '.join(cmd)}")
             self._listener_process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
 
-            # 等待进程启动并检查是否成功
-            time.sleep(2)  # 等待 2 秒让进程启动
+            # 轮询等待进程启动：发现进程秒退立即失败，进程存活则等到等待窗口结束
+            deadline = time.monotonic() + _LISTENER_STARTUP_WAIT_SECONDS
+            while self._listener_process.poll() is None and time.monotonic() < deadline:
+                time.sleep(_LISTENER_STARTUP_POLL_SECONDS)
 
             # 检查进程是否成功启动
             poll_result = self._listener_process.poll()
             if poll_result is not None:
-                # 进程已退出，获取错误信息
-                stdout, stderr = self._listener_process.communicate()
+                # 进程已退出（输出已重定向 DEVNULL，仅记录退出码）
                 logger.error(f"LibreOffice 监听进程启动失败（退出码: {poll_result}）")
-                if stderr:
-                    logger.error(f"LibreOffice stderr: {stderr.decode('utf-8', errors='ignore')}")
-                if stdout:
-                    logger.debug(f"LibreOffice stdout: {stdout.decode('utf-8', errors='ignore')}")
                 self._listener_process = None
                 return False
 
@@ -171,6 +175,31 @@ class LibreOfficeManager:
             finally:
                 self._listener_process = None
 
+    def _convert_with_fallback(self, cmd: list[str], *, use_listener: bool, timeout: int) -> subprocess.CompletedProcess | None:
+        """执行一次转换命令，监听模式失败后回退到普通模式重试一次。
+
+        回退是有界的两段循环而不是递归：监听进程重启可能持续成功而转换
+        持续失败，递归自调用会无界增长。返回最后一次尝试的结果；两段都
+        超时返回 None（超时已在此记录日志）。
+        """
+        for attempt_listener in [True, False] if use_listener else [False]:
+            actual_timeout = timeout if attempt_listener else 120
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=actual_timeout)
+            except subprocess.TimeoutExpired:
+                if not attempt_listener:
+                    logger.error(f"文档转换超时（{actual_timeout}秒）")
+                    return None
+                logger.warning("监听进程模式超时，停止监听进程并回退到普通模式重新转换...")
+                self.stop_listener()
+                continue
+            if result.returncode != 0 and attempt_listener:
+                logger.warning("监听进程模式失败（退出码 %s），停止监听进程并回退到普通模式重新转换...", result.returncode)
+                self.stop_listener()
+                continue
+            return result
+        return None
+
     def convert_to_pdf(self, file_path: str, output_dir: str, timeout: int = 60) -> str | None:
         """
         使用 LibreOffice 转换文档为 PDF
@@ -195,28 +224,22 @@ class LibreOfficeManager:
         use_listener = self.ensure_listener()
         if use_listener:
             logger.info("使用 LibreOffice 监听进程模式转换文档")
-            actual_timeout = timeout  # 监听进程模式下可以使用较短的超时
         else:
             logger.warning("LibreOffice 监听进程不可用，使用普通模式（较慢）")
-            actual_timeout = 120  # 普通模式下使用更长的超时
 
         try:
             # 创建输出目录
             os.makedirs(output_dir, exist_ok=True)
 
-            # 构建转换命令
+            # 构建转换命令（监听/普通两种模式下命令相同，仅超时不同）
             cmd = [soffice_path, "--headless", "--convert-to", "pdf", "--outdir", output_dir, file_path]
 
             logger.info(f"执行文档转换: {file_path}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=actual_timeout)
-
+            result = self._convert_with_fallback(cmd, use_listener=use_listener, timeout=timeout)
+            if result is None:
+                return None
             if result.returncode != 0:
                 logger.error(f"文档转换失败: {result.stderr}")
-                # 如果是监听进程模式失败，尝试回退到普通模式
-                if use_listener:
-                    logger.warning("监听进程模式失败，尝试使用普通模式重新转换...")
-                    self.stop_listener()  # 停止可能有问题的监听进程
-                    return self.convert_to_pdf(file_path, output_dir, timeout)
                 return None
 
             # 查找生成的 PDF 文件
@@ -237,14 +260,6 @@ class LibreOfficeManager:
                     logger.error("转换完成但未找到 PDF 文件")
                     return None
 
-        except subprocess.TimeoutExpired:
-            logger.error(f"文档转换超时（{actual_timeout}秒）")
-            # 如果是监听进程模式超时，尝试回退到普通模式
-            if use_listener:
-                logger.warning("监听进程模式超时，尝试使用普通模式重新转换...")
-                self.stop_listener()
-                return self.convert_to_pdf(file_path, output_dir, timeout)
-            return None
         except Exception as e:
             logger.error(f"文档转换异常: {str(e)}")
             logger.exception("详细堆栈:")
@@ -336,27 +351,21 @@ class LibreOfficeManager:
         use_listener = self.ensure_listener()
         if use_listener:
             logger.info("使用 LibreOffice 监听进程模式转换文档")
-            actual_timeout = timeout
         else:
             logger.warning("LibreOffice 监听进程不可用，使用普通模式（较慢）")
-            actual_timeout = 120
 
         try:
             # 创建输出目录
             os.makedirs(output_dir, exist_ok=True)
 
-            # 构建转换命令
+            # 构建转换命令（监听/普通两种模式下命令相同，仅超时不同）
             cmd = [soffice_path, "--headless", "--convert-to", target_format, "--outdir", output_dir, file_path]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=actual_timeout)
-
+            result = self._convert_with_fallback(cmd, use_listener=use_listener, timeout=timeout)
+            if result is None:
+                return None
             if result.returncode != 0:
                 logger.error(f"文档格式转换失败: {result.stderr}")
-                # 如果是监听进程模式失败，尝试回退到普通模式
-                if use_listener:
-                    logger.warning("监听进程模式失败，尝试使用普通模式重新转换...")
-                    self.stop_listener()
-                    return self.convert_to_modern_format(file_path, output_dir, timeout)
                 return None
 
             # 查找生成的文件
@@ -377,14 +386,6 @@ class LibreOfficeManager:
                     logger.error("转换完成但未找到输出文件")
                     return None
 
-        except subprocess.TimeoutExpired:
-            logger.error(f"文档格式转换超时（{actual_timeout}秒）")
-            # 如果是监听进程模式超时，尝试回退到普通模式
-            if use_listener:
-                logger.warning("监听进程模式超时，尝试使用普通模式重新转换...")
-                self.stop_listener()
-                return self.convert_to_modern_format(file_path, output_dir, timeout)
-            return None
         except Exception as e:
             logger.error(f"文档格式转换异常: {str(e)}")
             logger.exception("详细堆栈:")

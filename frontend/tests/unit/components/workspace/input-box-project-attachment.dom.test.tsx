@@ -269,7 +269,7 @@ describe("InputBox staged project attachments", () => {
     await waitFor(() =>
       expect(screen.getAllByTestId("project-attachment-chip")).toHaveLength(1),
     );
-    expect(screen.getByText(OTHER_ATTACHMENT.filename)).toBeTruthy();
+    expect(screen.getByText(OTHER_ATTACHMENT.filename)).toBeInTheDocument();
     second.unmount();
   });
 

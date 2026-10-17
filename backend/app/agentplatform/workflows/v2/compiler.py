@@ -147,7 +147,6 @@ class _GraphState(TypedDict, total=False):
     run_id: str
     model_name: str | None
     inputs: dict[str, Any]
-    model_name: str | None
     state: Annotated[dict[str, Any], _merge_maps]
     outputs: Annotated[dict[str, Any], _merge_maps]
     edge_iterations: Annotated[dict[str, int], _merge_maps]
@@ -290,7 +289,6 @@ class WorkflowGraphCompiler:
                 model_name=state.get("model_name"),
                 knowledge_scope=_knowledge_scope_from_state(state),
             )
-            params = render_template(node.action.params, render_state)  # type: ignore[union-attr]
             await self._emit(
                 "node_started",
                 {
@@ -300,14 +298,18 @@ class WorkflowGraphCompiler:
                     "started_at": _now_iso(),
                 },
             )
-            violations = self._check_preconditions(node, render_state)
-            if violations and node.on_precondition_failure == "skip":
-                await self._emit(
-                    "node_skipped",
-                    {"node_id": node.id, "idempotency_key": context.idempotency_key, "reasons": violations, "finished_at": _now_iso()},
-                )
-                return {"outputs": {node.id: None}}
             try:
+                # Params rendering happens inside the try so a render-budget
+                # failure (e.g. a self-referencing user input) is reported as
+                # a structured node failure instead of escaping the handler.
+                params = render_template(node.action.params, render_state)  # type: ignore[union-attr]
+                violations = self._check_preconditions(node, render_state)
+                if violations and node.on_precondition_failure == "skip":
+                    await self._emit(
+                        "node_skipped",
+                        {"node_id": node.id, "idempotency_key": context.idempotency_key, "reasons": violations, "finished_at": _now_iso()},
+                    )
+                    return {"outputs": {node.id: None}}
                 if violations:
                     raise WorkflowPreconditionFailed(node.id, violations)
                 adapter = self.adapters.resolve(node.action.kind, node.action.name)  # type: ignore[union-attr]
@@ -344,6 +346,10 @@ class WorkflowGraphCompiler:
                             # policy and get their own backoff budget below
                             last_error = exc
                             break
+                        except WorkflowCancelled:
+                            # Cancellation is not a node failure: it must never
+                            # consume the node retry budget (report 02-M2).
+                            raise
                         except Exception as exc:  # retry policy is deliberately node-local
                             last_error = exc
                             if isinstance(exc, WorkflowSchemaViolation) and attempt + 1 < node.retry.max_attempts and node.action is not None and node.action.kind == "agent":
@@ -376,6 +382,11 @@ class WorkflowGraphCompiler:
                         return {"interrupt": interrupt({"type": "transient_error", "node_id": node.id, "error": str(last_error)})}
                     break
             except GraphInterrupt:
+                raise
+            except WorkflowCancelled:
+                # The terminal run_cancelled event is emitted by the run
+                # session; emitting node_failed here would contradict the
+                # event stream's cancelled classification (report 02-M2).
                 raise
             except Exception as exc:
                 await self._emit(

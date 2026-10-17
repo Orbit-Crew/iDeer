@@ -1,5 +1,9 @@
 import type { NextRequest } from "next/server";
 
+import {
+  MOCK_API_UNAVAILABLE,
+  mockApiDisabled,
+} from "@/app/mock/api/mock-api-gate";
 import { resolveStaticDemoArtifact } from "@/core/threads/static-demo";
 
 export async function GET(
@@ -13,6 +17,7 @@ export async function GET(
     }>;
   },
 ) {
+  if (mockApiDisabled()) return MOCK_API_UNAVAILABLE;
   const { thread_id: threadId, artifact_path: artifactSegments = [] } =
     await params;
   const publicPath = resolveStaticDemoArtifact(threadId, artifactSegments);

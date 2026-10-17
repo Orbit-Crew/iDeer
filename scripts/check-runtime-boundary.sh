@@ -3,12 +3,15 @@ set -euo pipefail
 
 # The convergence is complete: control-plane code must use the DeerFlow
 # runtime. Reject any reintroduction of direct legacy runtime imports.
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if command -v rg >/dev/null 2>&1; then
-  mapfile -t imports < <(rg -l '^[[:space:]]*(from ideer|import ideer)' "$repo_root/backend/app" -g '*.py' | sort || true)
-else
-  mapfile -t imports < <(grep -Rl -E '^[[:space:]]*(from ideer|import ideer)' "$repo_root/backend/app" --include='*.py' | sort || true)
+# The scan is the gate: degrade to an explicit failure when ripgrep is
+# missing rather than silently scanning nothing (08-M4 false green).
+if ! command -v rg >/dev/null 2>&1; then
+  printf 'ERROR: ripgrep (rg) is required by check-runtime-boundary.sh but was not found on PATH; install ripgrep so the boundary scan cannot silently pass.\n' >&2
+  exit 1
 fi
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mapfile -t imports < <(rg -l '^[[:space:]]*(from ideer|import ideer)' "$repo_root/backend/app" -g '*.py' | sort || true)
 
 printf 'backend/app direct ideer import files: %s\n' "${#imports[@]}"
 if (( ${#imports[@]} )); then

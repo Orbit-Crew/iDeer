@@ -16,6 +16,7 @@ from starlette.types import ASGIApp
 
 from app.gateway.auth.session_cookie_state import SESSION_COOKIE_MAX_AGE_STATE_ATTR
 from app.gateway.auth_disabled import is_auth_disabled
+from app.gateway.device_gate import is_device_credential_route
 from app.gateway.request_path import get_request_route_path
 
 CSRF_COOKIE_NAME = "csrf_token"
@@ -57,12 +58,19 @@ def should_check_csrf(request: Request) -> bool:
 
     CSRF is checked for state-changing methods (POST, PUT, DELETE, PATCH).
     GET, HEAD, OPTIONS, and TRACE are exempt per RFC 7231.
+
+    Device-credential routes are also exempt: they authenticate with explicit
+    pairing-code / claim-token / device-session credentials (enforced in the
+    devices router) and never trust ambient cookie credentials, so a
+    cross-site request has nothing to ride.
     """
     if request.method not in _CSRF_STATE_CHANGING_METHODS:
         return False
 
     path = _request_path(request)
     if path in _CSRF_EXEMPT_EXACT_PATHS:
+        return False
+    if is_device_credential_route(request.method, path):
         return False
     return True
 

@@ -6,6 +6,8 @@ Tool arguments and receipts stay plaintext-free, and tool output that echoes
 a resolved value is scrubbed before it can travel back to the server.
 """
 
+from __future__ import annotations
+
 import asyncio
 from typing import Any
 

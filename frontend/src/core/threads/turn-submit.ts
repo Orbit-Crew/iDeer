@@ -19,7 +19,7 @@ import { useMemo, useRef } from "react";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
-import type { UploadedFileInfo } from "../uploads";
+import type { CodeEvidencePackage, UploadedFileInfo } from "../uploads";
 import { promptInputFilePartToFile, uploadFiles } from "../uploads";
 
 import {
@@ -53,6 +53,7 @@ export type TurnDispatchOptions = {
   additionalKwargs?: Record<string, unknown>;
   additionalInputMessages?: Message[];
   preuploadedFiles?: ReadonlyMap<File, UploadedFileInfo>;
+  preuploadedCodePackages?: ReadonlyMap<File, CodeEvidencePackage>;
   traceId?: string;
   /**
    * Thread IDs of conversations the user attached for this run. They ride in
@@ -283,6 +284,7 @@ export type TurnSubmitPorts = {
 
 export type TurnUploadResult = {
   files: UploadedFileInfo[];
+  code_packages?: CodeEvidencePackage[];
   trace_id?: string;
 };
 
@@ -410,6 +412,7 @@ export function createTurnSubmitController(
   // Attachment pre-uploads for existing threads: results are reused at
   // dispatch so upload time stays off the send-to-first-token path.
   const preuploadedFiles = new Map<File, UploadedFileInfo>();
+  const preuploadedCodePackages = new Map<File, CodeEvidencePackage>();
   const preuploadPromises = new Map<File, Promise<UploadedFileInfo>>();
   let attachmentTraceId: string | null = null;
 
@@ -433,6 +436,10 @@ export function createTurnSubmitController(
         throw new Error(`Failed to upload attachment: ${file.name}`);
       }
       preuploadedFiles.set(file, uploadedFile);
+      const codePackage = response.code_packages?.[0];
+      if (codePackage) {
+        preuploadedCodePackages.set(file, codePackage);
+      }
       attachmentTraceId ??= response.trace_id ?? null;
       return uploadedFile;
     })();
@@ -449,6 +456,7 @@ export function createTurnSubmitController(
 
   const resetPreuploads = () => {
     preuploadedFiles.clear();
+    preuploadedCodePackages.clear();
     preuploadPromises.clear();
     attachmentTraceId = null;
   };
@@ -496,15 +504,24 @@ export function createTurnSubmitController(
               ),
             );
             const preuploads = new Map<File, UploadedFileInfo>();
+            const codePackages = new Map<File, CodeEvidencePackage>();
             for (const file of converted) {
               if (!file) {
                 throw new Error("Failed to prepare an attachment for upload.");
               }
               preuploads.set(file, await preupload(file, request.threadId));
+              const codePackage = preuploadedCodePackages.get(file);
+              if (codePackage) {
+                codePackages.set(file, codePackage);
+              }
+            }
+            if (codePackages.size > 1) {
+              throw new Error("Upload one code ZIP per message.");
             }
             dispatchOptions = {
               ...request.options,
               preuploadedFiles: preuploads,
+              preuploadedCodePackages: codePackages,
               traceId: attachmentTraceId ?? undefined,
             };
           } catch (error) {
@@ -555,6 +572,7 @@ export function createTurnSubmitController(
       for (const file of [...preuploadedFiles.keys()]) {
         if (!activeFiles.has(file)) {
           preuploadedFiles.delete(file);
+          preuploadedCodePackages.delete(file);
         }
       }
     },

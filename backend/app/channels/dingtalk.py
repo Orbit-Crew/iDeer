@@ -165,6 +165,20 @@ class DingTalkChannel(Channel):
     def supports_streaming(self) -> bool:
         return bool(self._card_template_id)
 
+    @property
+    def is_running(self) -> bool:
+        """Running means the stream thread is still alive, not just started.
+
+        ``_run_stream`` exits when client construction/registration raises
+        while ``_running`` stays True, so the base flag alone would keep
+        reporting a healthy channel forever and
+        ``ChannelService.ensure_channel_ready`` would never restart it.
+        Mirrors ``FeishuChannel.is_running`` / ``TelegramChannel.is_running``.
+        """
+        if not self._running:
+            return False
+        return self._thread is not None and self._thread.is_alive()
+
     async def start(self) -> None:
         if self._running:
             return
@@ -377,6 +391,10 @@ class DingTalkChannel(Channel):
         except Exception:
             if self._running:
                 logger.exception("DingTalk Stream Push error")
+            # The stream thread is gone: clear the flag so ``is_running``
+            # (which also checks thread liveness) reports the channel down and
+            # the readiness loop can rebuild it instead of fake-alive forever.
+            self._running = False
         finally:
             self._stream_client = None
 

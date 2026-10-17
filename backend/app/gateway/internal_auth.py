@@ -96,8 +96,11 @@ def get_internal_user(owner_user_id: str | None = None):
     Telegram chat ids like ``-1001234567890``) cannot be used to escape
     the per-user storage bucket or impersonate a different user via
     header value tricks (e.g. trailing slashes, ``..`` segments). The
-    normalization is lossy but deterministic: two distinct raw inputs
-    never share a safe id, so cross-user bleed is impossible.
+    normalization is lossy but deterministic. It is NOT injective — distinct
+    raw inputs can collide after truncation/folding — so this lowers risk; it
+    does not by itself make cross-user bleed impossible. The actual guarantee
+    is that the header is only set by trusted internal callers, and the safe
+    id keeps untrusted characters out of per-user storage paths (01-L5).
     """
     effective_id = make_safe_user_id(owner_user_id) if owner_user_id else DEFAULT_USER_ID
     return SimpleNamespace(id=effective_id, system_role=INTERNAL_SYSTEM_ROLE)

@@ -244,7 +244,7 @@ describe("WorkflowDetailPage", () => {
     render(<WorkflowDetailPage />);
     const badges = screen.getAllByTestId("badge");
     const versionBadge = badges.find((b) => b.textContent === "v1.0");
-    expect(versionBadge).toBeDefined();
+    expect(versionBadge).toBeInTheDocument();
     expect(versionBadge!.textContent).toBe("v1.0");
   });
 
@@ -288,7 +288,7 @@ describe("WorkflowDetailPage", () => {
     render(<WorkflowDetailPage />);
     const buttons = screen.getAllByTestId("button");
     const runButton = buttons.find((b) => b.textContent?.includes("Run"));
-    expect(runButton).toBeDefined();
+    expect(runButton).toBeInTheDocument();
     expect(runButton!.textContent).toMatch(/Run/i);
   });
 
@@ -298,7 +298,7 @@ describe("WorkflowDetailPage", () => {
     const editLink = links.find((l) =>
       l.getAttribute("href")?.includes("/edit"),
     );
-    expect(editLink).toBeDefined();
+    expect(editLink).toBeInTheDocument();
     expect(editLink!.getAttribute("href")).toMatch(/\/edit$/);
   });
 });

@@ -14,7 +14,7 @@ import app.agentplatform.audit_model  # noqa: F401 - register audit_logs
 import app.agentplatform.rbac_models  # noqa: F401 - register users_ext for audit FK  # noqa: F401 - register users_ext
 import app.agentplatform.resource_models  # noqa: F401 - register resource tables
 import app.agentplatform.visibility_models  # noqa: F401 - register visibility tables
-from app.agentplatform.resource_models import Resource
+from app.agentplatform.resource_models import Resource, ResourceVersion
 from app.agentplatform.resources.service import (
     ResourceAction,
     ResourceActor,
@@ -233,6 +233,97 @@ async def test_visibility_expansion_requires_approval_but_shrink_is_immediate(se
     assert changed.scope_department_id is None
     assert changed.authz_revision == 2
     assert (await session.execute(select(VisibilityApplication.status).where(VisibilityApplication.id == application.id))).scalar_one() == "withdrawn"
+
+
+def _version(resource: Resource) -> ResourceVersion:
+    return ResourceVersion(
+        id=f"version-{resource.id}",
+        resource_id=resource.id,
+        version=1,
+        content_hash="a" * 64,
+        storage_key=f"agents/{resource.id}/versions/1",
+        scan_result={"status": "clean"},
+        created_by=resource.owner_id,
+    )
+
+
+@pytest.mark.asyncio
+async def test_same_level_department_rescope_requires_approval(session: AsyncSession) -> None:
+    resource = _resource("rescope", owner_id="owner", visibility="department", department_id="dept-a")
+    session.add_all([resource, _version(resource)])
+    await session.commit()
+    service = ResourceService(session, _actor(user_id="owner", department_id="dept-b"))
+
+    with pytest.raises(ResourceApprovalRequired):
+        await service.change_visibility(resource.id, "department", scope_department_id="dept-b")
+
+    assert (resource.visibility, resource.scope_department_id, resource.authz_revision) == ("department", "dept-a", 1)
+
+    application = await service.request_visibility(
+        resource.id,
+        target_visibility="department",
+        scope_department_id="dept-b",
+        reason="move to own department",
+    )
+    assert (application.current_visibility, application.target_visibility, application.department_id) == ("department", "department", "dept-b")
+    assert (resource.visibility, resource.scope_department_id) == ("department", "dept-a")
+
+    reviewed = await ResourceService(
+        session,
+        _actor(
+            user_id="dept-b-admin",
+            role="department_admin",
+            department_id="dept-b",
+            permissions={ResourceAction.READ, ResourceAction.APPROVE},
+        ),
+    ).review_visibility_application(application.id, approve=True, comment="ok", expected_version=application.version)
+
+    assert reviewed.status == "approved"
+    assert (resource.visibility, resource.scope_department_id, resource.authz_revision) == ("department", "dept-b", 2)
+
+
+@pytest.mark.asyncio
+async def test_public_to_department_narrowing_requires_approval(session: AsyncSession) -> None:
+    resource = _resource("narrow", owner_id="owner", visibility="public")
+    session.add_all([resource, _version(resource)])
+    await session.commit()
+    service = ResourceService(session, _actor(user_id="owner"))
+
+    with pytest.raises(ResourceApprovalRequired):
+        await service.change_visibility(resource.id, "department", scope_department_id="dept-a")
+
+    assert (resource.visibility, resource.scope_department_id, resource.authz_revision) == ("public", None, 1)
+
+    application = await service.request_visibility(
+        resource.id,
+        target_visibility="department",
+        scope_department_id="dept-a",
+        reason="narrow to own department",
+    )
+
+    assert application.status == "pending"
+    assert (resource.visibility, resource.scope_department_id) == ("public", None)
+
+
+@pytest.mark.asyncio
+async def test_scope_department_id_must_be_the_operators_own_department(session: AsyncSession) -> None:
+    resource = _resource("foreign-scope", owner_id="owner", visibility="private")
+    session.add(resource)
+    await session.commit()
+    service = ResourceService(session, _actor(user_id="owner"))
+
+    with pytest.raises(ResourcePermissionDenied, match="own department"):
+        await service.change_visibility(resource.id, "department", scope_department_id="dept-b")
+    with pytest.raises(ResourcePermissionDenied, match="own department"):
+        await service.request_visibility(
+            resource.id,
+            target_visibility="department",
+            scope_department_id="dept-b",
+            reason="foreign department",
+        )
+
+    assert resource.visibility == "private"
+    assert not list((await session.execute(select(VisibilityApplication))).scalars())
 
 
 @pytest.mark.asyncio

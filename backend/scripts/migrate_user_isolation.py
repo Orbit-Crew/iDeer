@@ -150,7 +150,13 @@ def migrate_memory(
 
     dest = paths.user_memory_file(user_id)
     if dest.exists():
+        # POSIX rename silently replaces, so a fixed backup name would wipe
+        # the backup a previous run left behind; pick the first free slot.
         legacy_backup = paths.base_dir / "memory.legacy.json"
+        sequence = 1
+        while legacy_backup.exists():
+            legacy_backup = paths.base_dir / f"memory.legacy.{sequence}.json"
+            sequence += 1
         logger.warning("Destination %s exists; renaming legacy to %s", dest, legacy_backup)
         if not dry_run:
             legacy_mem.rename(legacy_backup)

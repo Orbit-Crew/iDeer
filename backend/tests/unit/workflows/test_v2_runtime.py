@@ -810,6 +810,103 @@ edges: [{from: first, to: second}]
 
 
 @pytest.mark.asyncio
+async def test_compiler_does_not_retry_mid_node_cancel() -> None:
+    """A cancel observed while a node streams must short-circuit the node's
+    retry policy: no backoff retries, no node_failed event (report 02-M2)."""
+    definition = parse_workflow_v2(
+        """
+schema_version: 2
+name: cancel-retry
+inputs: {}
+state: {}
+entrypoint: task
+nodes:
+  - id: task
+    type: action
+    retry: {max_attempts: 3, backoff_seconds: 0}
+    action: {kind: agent, name: stream}
+edges: []
+"""
+    )
+    events: list[tuple[str, dict]] = []
+    streams = 0
+
+    class Adapter:
+        async def astream(self, context, params):
+            nonlocal streams
+            streams += 1
+            yield {"type": "token", "text": "hello"}
+
+    async def emit(event_type: str, payload: dict) -> None:
+        events.append((event_type, payload))
+
+    async def is_cancelled() -> bool:
+        # The cancel request arrives only once the node is already streaming,
+        # so the pre-node gate passes and the mid-node check must fire.
+        return streams > 0
+
+    graph = WorkflowGraphCompiler(
+        definition,
+        ActionAdapterRegistry({("agent", "stream"): Adapter()}),
+        emit_event=emit,
+        is_cancelled=is_cancelled,
+    ).compile()
+
+    with pytest.raises(WorkflowCancelled, match="cancelled"):
+        await graph.ainvoke(
+            {"run_id": "run-1", "inputs": {}, "state": {}, "outputs": {}},
+            config={"configurable": {"thread_id": "wf:cancel-retry"}},
+        )
+    assert streams == 1, "mid-node cancel was retried by the node retry policy"
+    assert [event_type for event_type, _ in events] == ["node_started"], "cancel emitted a node_failed event"
+
+
+@pytest.mark.asyncio
+async def test_compiler_fails_node_on_self_referencing_template_input() -> None:
+    """A user input shaped like the template referencing it must fail the node
+    with the structured render error instead of hanging the event loop."""
+    definition = parse_workflow_v2(
+        """
+schema_version: 2
+name: selfref
+inputs:
+  topic: {type: string, default: ""}
+state: {}
+entrypoint: render
+nodes:
+  - id: render
+    type: action
+    action: {kind: tool, name: echo, params: {prompt: "topic: {{inputs.topic}}"}}
+edges: []
+"""
+    )
+    events: list[tuple[str, dict]] = []
+
+    class Adapter:
+        async def run(self, context, params):
+            return {"ok": True}
+
+    async def emit(event_type: str, payload: dict) -> None:
+        events.append((event_type, payload))
+
+    from app.agentplatform.workflows.v2.errors import WorkflowTemplateRenderError
+
+    graph = WorkflowGraphCompiler(
+        definition,
+        ActionAdapterRegistry({("tool", "echo"): Adapter()}),
+        emit_event=emit,
+    ).compile()
+
+    with pytest.raises(WorkflowTemplateRenderError):
+        await graph.ainvoke({"run_id": "run-1", "inputs": {"topic": "{{inputs.topic}}"}, "state": {}, "outputs": {}}, config={"configurable": {"thread_id": "wf:selfref"}})
+
+    failure = [payload for event_type, payload in events if event_type == "node_failed"]
+    assert len(failure) == 1
+    assert failure[0]["code"] == "template_render_failed"
+    assert failure[0]["node_id"] == "render"
+
+
+@pytest.mark.asyncio
 async def test_compiler_fails_node_when_action_exceeds_configured_timeout() -> None:
     definition = parse_workflow_v2(
         """

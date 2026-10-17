@@ -9,10 +9,18 @@ from typing import Any
 
 from deerflow.persistence.models.workflow_v2 import WorkflowTaskRow
 
+from .compiler import WorkflowCancelled
 from .errors import run_error_summary
 from .store import WorkflowV2Store
 
 logger = logging.getLogger(__name__)
+
+# Top-level loop guard: a non-transient store failure (e.g. a DB error other
+# than OperationalError) used to escape run_once and silently kill the worker
+# coroutine, leaving the process idle until an external restart. The loop now
+# logs, backs off exponentially and keeps polling.
+ERROR_BACKOFF_BASE_SECONDS = 1.0
+ERROR_BACKOFF_MAX_SECONDS = 30.0
 
 
 class WorkflowPaused(Exception):
@@ -106,6 +114,12 @@ class WorkflowWorker:
         except WorkflowPaused:
             if not lease_lost.is_set():
                 await self.store.finish_task(task.task_id, "paused", None, self.worker_id)
+        except WorkflowCancelled as exc:
+            # The event stream already emitted run_cancelled; the durable
+            # terminal state must agree instead of recording "failed".
+            logger.info("workflow task %s cancelled: %s", task.task_id, exc)
+            if not lease_lost.is_set():
+                await self.store.finish_task(task.task_id, "cancelled", None, self.worker_id)
         except Exception as exc:
             logger.exception("workflow task %s failed", task.task_id)
             if not lease_lost.is_set():
@@ -118,6 +132,16 @@ class WorkflowWorker:
         return True
 
     async def run_forever(self, poll_seconds: float = 1.0) -> None:
+        backoff = ERROR_BACKOFF_BASE_SECONDS
         while True:
-            if not await self.run_once():
-                await asyncio.sleep(poll_seconds)
+            try:
+                if not await self.run_once():
+                    await asyncio.sleep(poll_seconds)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("workflow worker loop failed; backing off %.1fs", backoff)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, ERROR_BACKOFF_MAX_SECONDS)
+            else:
+                backoff = ERROR_BACKOFF_BASE_SECONDS

@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import asyncio
+import glob
 import hashlib
+import os
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
 
+import core.python as core_python
 from core.artifacts import (
     ArtifactUploadError,
     FileArtifactUploader,
@@ -13,7 +20,13 @@ from core.artifacts import (
 from core.consent import ConsentStore, request_hash
 from core.files import LocalFileStore, RootConfig
 from core.policy import LocalPolicy, PolicyDecision
-from core.python import LocalPythonService, PythonExecutor, PythonTaskStatus
+from core.python import (
+    LocalPythonService,
+    PythonExecutor,
+    PythonTaskStatus,
+    _StreamingRedactor,
+)
+from core.secrets import SecretRedactor
 
 
 def test_python_executor_success_and_bounded_output(tmp_path: Path) -> None:
@@ -27,6 +40,68 @@ def test_python_executor_success_and_bounded_output(tmp_path: Path) -> None:
     assert result.stdout == "hello\n"
 
 
+def test_windows_process_options_suspend_the_child_for_job_assignment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Windows branch builds creationflags from attributes subprocess
+    actually exports, and keeps the suspended bit so the Job Object owns the
+    child before any script runs (regression: CPython never exports
+    subprocess.CREATE_SUSPENDED, which used to raise AttributeError there)."""
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 4242
+        _handle = 9999
+        returncode = 0
+
+        def poll(self) -> int:
+            return 0
+
+    class FakeJob:
+        def close(self) -> None:
+            pass
+
+    def fake_popen(args: list[str], **kwargs: object) -> FakeProcess:
+        captured.update(kwargs)
+        return FakeProcess()
+
+    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(
+        core_python, "_WindowsJob", lambda pid, process_handle=None: FakeJob()
+    )
+    monkeypatch.setattr(core_python, "_resume_initial_thread", lambda pid: None)
+
+    result = asyncio.run(
+        PythonExecutor().run("pass", working_root=tmp_path, timeout=30)
+    )
+
+    flags = captured["creationflags"]
+    assert flags & 0x4  # CREATE_SUSPENDED
+    assert flags & 0x200  # CREATE_NEW_PROCESS_GROUP
+    assert result.status is PythonTaskStatus.COMPLETED
+
+
+def test_windows_line_endings_are_canonicalized_in_reported_output(
+    tmp_path: Path,
+) -> None:
+    """Windows children translate \\n to \\r\\n for redirected streams; the
+    reported text, streamed chunks, and the receipt hash stay platform-
+    canonical while a lone \\r (e.g. a progress bar) survives."""
+    log = tmp_path / "out.log"
+    log.write_bytes(b"progress\r100%\r\ndone\r\n")
+    text, digest = PythonExecutor()._summarize_log(str(log), SecretRedactor(()))
+    assert text == "progress\r100%\ndone\n"
+    assert digest == hashlib.sha256(b"progress\r100%\ndone\n").hexdigest()
+
+
+def test_streaming_redactor_joins_line_endings_split_across_chunks() -> None:
+    redactor = _StreamingRedactor(SecretRedactor(()))
+    assert redactor.feed("hello\r") + redactor.feed("\n", final=True) == "hello\n"
+    assert redactor.feed("abc\r\n", final=True) == "abc\n"
+    assert redactor.feed("abc\r", final=True) == "abc\r"
+
+
 def test_python_executor_timeout(tmp_path: Path) -> None:
     result = asyncio.run(
         PythonExecutor().run(
@@ -34,6 +109,53 @@ def test_python_executor_timeout(tmp_path: Path) -> None:
         )
     )
     assert result.status is PythonTaskStatus.TIMED_OUT
+
+
+def test_python_executor_removes_output_log_temp_files_after_the_task(
+    tmp_path: Path,
+) -> None:
+    """05-H2: subprocess stdout/stderr temp logs must not outlive the task."""
+    observed_during_run: list[str] = []
+
+    def _snapshot_temp_logs() -> None:
+        observed_during_run.extend(
+            path
+            for path in glob.glob(os.path.join(tempfile.gettempdir(), "local-python-*"))
+            if path not in observed_during_run
+        )
+
+    async def on_output(_stream: str, _chunk: str) -> None:
+        _snapshot_temp_logs()
+
+    result = asyncio.run(
+        PythonExecutor().run(
+            "print('hello')", working_root=tmp_path, on_output=on_output
+        )
+    )
+
+    assert result.stdout_log_path is not None
+    assert result.stderr_log_path is not None
+    # The logs lived on disk while the subprocess ran (streaming and hashing
+    # read them back by name), so the recorded path is the executor's temp file.
+    assert result.stdout_log_path in observed_during_run
+    assert not Path(result.stdout_log_path).exists()
+    assert not Path(result.stderr_log_path).exists()
+
+
+def test_python_executor_timeout_removes_output_log_temp_files(
+    tmp_path: Path,
+) -> None:
+    result = asyncio.run(
+        PythonExecutor().run(
+            "import time; time.sleep(10)", working_root=tmp_path, timeout=0.05
+        )
+    )
+
+    assert result.status is PythonTaskStatus.TIMED_OUT
+    assert result.stdout_log_path is not None
+    assert not Path(result.stdout_log_path).exists()
+    assert result.stderr_log_path is not None
+    assert not Path(result.stderr_log_path).exists()
 
 
 def test_python_executor_nonzero_exit_is_failed_with_exit_code(tmp_path: Path) -> None:
@@ -98,12 +220,15 @@ def test_local_python_requires_hash_bound_consent_and_returns_receipt(
     assert result.receipt.started_at is not None
     assert result.receipt.finished_at is not None
     assert result.receipt.stdout_log_path is not None
-    assert Path(result.receipt.stdout_log_path).read_text() == "hello\n"
-    stderr_log_path = result.receipt.stderr_log_path
+    assert result.receipt.stderr_log_path is not None
+    # The executor removes its temp logs when the task ends (05-H2); the
+    # receipt keeps the paths only as a record, and cleanup stays a safe
+    # no-op afterwards.
+    assert not Path(result.receipt.stdout_log_path).exists()
+    assert not Path(result.receipt.stderr_log_path).exists()
     result.receipt.cleanup_local_logs()
     assert not Path(result.receipt.stdout_log_path).exists()
-    assert stderr_log_path is not None
-    assert not Path(stderr_log_path).exists()
+    assert not Path(result.receipt.stderr_log_path).exists()
 
 
 def test_local_python_uploads_only_explicit_expected_outputs(tmp_path: Path) -> None:
@@ -312,3 +437,48 @@ def test_python_executor_redacts_sensitive_value_split_across_chunks(
     output = asyncio.run(run_with_output())
     assert "secret-value" not in output
     assert "API_KEY=[REDACTED]" in output
+
+
+def test_local_python_rejects_timeout_outside_allowed_range() -> None:
+    """05-M3: the payload timeout is bounded, not broker-controlled."""
+    service = LocalPythonService(LocalFileStore([RootConfig("/projects", Path("."))]))
+    base = {
+        "working_root": "/projects",
+        "script": "print('hello')",
+        "environment": [],
+    }
+    with pytest.raises(ValueError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": 601}))
+    with pytest.raises(ValueError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": 0}))
+    with pytest.raises(ValueError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": -5}))
+    with pytest.raises(TypeError, match="timeout"):
+        asyncio.run(service.execute({**base, "timeout": "30"}))
+
+
+def test_local_python_rejects_oversized_expected_output_before_reading(
+    tmp_path: Path,
+) -> None:
+    """05-M4: size is checked before the whole file is read into memory."""
+    payload = {
+        "working_root": "/projects",
+        "script": "open('big.bin', 'wb').write(b'x' * 8)",
+        "expected_outputs": ["/projects/big.bin"],
+        "environment": [],
+        "timeout": 30,
+    }
+    consent = ConsentStore()
+    consent.approve("local.python", request_hash(payload))
+    uploader = MemoryArtifactUploader(max_bytes=4)
+    files = LocalFileStore([RootConfig("/projects", tmp_path)])
+    service = LocalPythonService(files, consent=consent, uploader=uploader)
+
+    def refuse_read(logical_path: str) -> bytes:
+        raise AssertionError("read_bytes must not run past the size check")
+
+    files.read_bytes = refuse_read  # type: ignore[method-assign]
+
+    with pytest.raises(ArtifactUploadError, match="size limit"):
+        asyncio.run(service.execute(payload))
+    assert uploader.items == {}

@@ -38,6 +38,907 @@ The batch entries below are historical examples. Use only the entry relevant
 to the test being moved; they do not replace validation on the current
 candidate.
 
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/utils+tui+extensions+scripts (layering batch 1 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/utils tests/unit/tui tests/unit/extensions tests/unit/scripts -q -m "not serial and not requires_llm and not live and not external"` → 2282 passed / 7 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_assembly_io.py` | `tests/unit/utils/test_assembly_io.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_checkpoint_channels.py` | `tests/unit/scripts/test_bench_checkpoint_channels.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_checkpoint_production.py` | `tests/unit/scripts/test_bench_checkpoint_production.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_concurrency.py` | `tests/unit/scripts/test_bench_concurrency.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_context_snapshot.py` | `tests/unit/scripts/test_bench_context_snapshot.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_contracts.py` | `tests/unit/scripts/test_bench_deermem_eviction_contracts.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_dataset.py` | `tests/unit/scripts/test_bench_deermem_eviction_dataset.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_grading.py` | `tests/unit/scripts/test_bench_deermem_eviction_grading.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_policy.py` | `tests/unit/scripts/test_bench_deermem_eviction_policy.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_protocol.py` | `tests/unit/scripts/test_bench_deermem_eviction_protocol.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_published_results.py` | `tests/unit/scripts/test_bench_deermem_eviction_published_results.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_qa.py` | `tests/unit/scripts/test_bench_deermem_eviction_qa.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_report.py` | `tests/unit/scripts/test_bench_deermem_eviction_report.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_deermem_eviction_results.py` | `tests/unit/scripts/test_bench_deermem_eviction_results.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_sandbox_provider.py` | `tests/unit/scripts/test_bench_sandbox_provider.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_tool_result_probe_cleanup.py` | `tests/unit/scripts/test_bench_tool_result_probe_cleanup.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_bench_worker.py` | `tests/unit/scripts/test_bench_worker.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_ci_uv_version_pin.py` | `tests/unit/scripts/test_ci_uv_version_pin.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_compose_default_bind_host.py` | `tests/unit/scripts/test_compose_default_bind_host.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_compose_default_workers.py` | `tests/unit/scripts/test_compose_default_workers.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_compose_extensions_config_writable.py` | `tests/unit/scripts/test_compose_extensions_config_writable.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_custom_events.py` | `tests/unit/utils/test_custom_events.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_deploy_uv_extras.py` | `tests/unit/scripts/test_deploy_uv_extras.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_detect_blocking_io_static.py` | `tests/unit/scripts/test_detect_blocking_io_static.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_detect_uv_extras.py` | `tests/unit/scripts/test_detect_uv_extras.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_detector_repo_root.py` | `tests/unit/scripts/test_detector_repo_root.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_dockerignore_excludes_runtime_data.py` | `tests/unit/scripts/test_dockerignore_excludes_runtime_data.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_executor_starvation.py` | `tests/unit/utils/test_executor_starvation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_api_contracts.py` | `tests/unit/extensions/test_extension_api_contracts.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_api_state.py` | `tests/unit/extensions/test_extension_api_state.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_api_surface.py` | `tests/unit/extensions/test_extension_api_surface.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_app_loading.py` | `tests/unit/extensions/test_extension_app_loading.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_config.py` | `tests/unit/extensions/test_extension_config.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_dependency_sync.py` | `tests/unit/extensions/test_extension_dependency_sync.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_gateway_wiring.py` | `tests/unit/extensions/test_extension_gateway_wiring.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_injection.py` | `tests/unit/extensions/test_extension_injection.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_isolation.py` | `tests/unit/extensions/test_extension_isolation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_loader.py` | `tests/unit/extensions/test_extension_loader.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_manager.py` | `tests/unit/extensions/test_extension_manager.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_ordering.py` | `tests/unit/extensions/test_extension_ordering.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_placement_guarantees.py` | `tests/unit/extensions/test_extension_placement_guarantees.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_registry.py` | `tests/unit/extensions/test_extension_registry.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_route_principal.py` | `tests/unit/extensions/test_extension_route_principal.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_stack_wiring.py` | `tests/unit/extensions/test_extension_stack_wiring.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extension_subagent_lifecycle.py` | `tests/unit/extensions/test_extension_subagent_lifecycle.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extensions_config_atomic_write.py` | `tests/unit/extensions/test_extensions_config_atomic_write.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_extensions_config_raw_writes.py` | `tests/unit/extensions/test_extensions_config_raw_writes.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_io.py` | `tests/unit/utils/test_file_io.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_outline.py` | `tests/unit/utils/test_file_outline.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_outline_atx.py` | `tests/unit/utils/test_file_outline_atx.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_file_outline_text_budget.py` | `tests/unit/utils/test_file_outline_text_budget.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_gateway_startup.py` | `tests/unit/scripts/test_gateway_startup.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_harness_packaging.py` | `tests/unit/scripts/test_harness_packaging.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_helm_extensions_config_writable.py` | `tests/unit/scripts/test_helm_extensions_config_writable.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_intranet_config_contract.py` | `tests/unit/scripts/test_intranet_config_contract.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_logging_config.py` | `tests/unit/scripts/test_logging_config.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_makefile_shell_script_invocation.py` | `tests/unit/scripts/test_makefile_shell_script_invocation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_nginx_api_docs_gate.py` | `tests/unit/scripts/test_nginx_api_docs_gate.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_nginx_compression.py` | `tests/unit/scripts/test_nginx_compression.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_nginx_langgraph_body_size.py` | `tests/unit/scripts/test_nginx_langgraph_body_size.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_pnpm_script.py` | `tests/unit/scripts/test_pnpm_script.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_readability.py` | `tests/unit/utils/test_readability.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_replay_provider.py` | `tests/unit/scripts/test_replay_provider.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_review_changed_public_skills.py` | `tests/unit/scripts/test_review_changed_public_skills.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_run_evidence_reader.py` | `tests/unit/extensions/test_run_evidence_reader.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_sandbox_memory_profile_script.py` | `tests/unit/scripts/test_sandbox_memory_profile_script.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_scan_changed_blocking_io.py` | `tests/unit/scripts/test_scan_changed_blocking_io.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_frontend_skip_build.py` | `tests/unit/scripts/test_serve_frontend_skip_build.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_gateway_bind_host.py` | `tests/unit/scripts/test_serve_gateway_bind_host.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_nginx_stop.py` | `tests/unit/scripts/test_serve_nginx_stop.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_serve_pick_python.py` | `tests/unit/scripts/test_serve_pick_python.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_setup_sandbox.py` | `tests/unit/scripts/test_setup_sandbox.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_summarize_checkpoint_channels.py` | `tests/unit/scripts/test_summarize_checkpoint_channels.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_summarize_checkpoint_production.py` | `tests/unit/scripts/test_summarize_checkpoint_production.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_support_bundle.py` | `tests/unit/scripts/test_support_bundle.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_support_shell.py` | `tests/unit/scripts/test_support_shell.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_support_symlinks.py` | `tests/unit/scripts/test_support_symlinks.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_test_environment.py` | `tests/unit/scripts/test_test_environment.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_testclient_compatibility.py` | `tests/unit/scripts/test_testclient_compatibility.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_thread_id_validation.py` | `tests/unit/utils/test_thread_id_validation.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_app.py` | `tests/unit/tui/test_tui_app.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_cli.py` | `tests/unit/tui/test_tui_cli.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_cli_main.py` | `tests/unit/tui/test_tui_cli_main.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_command_registry.py` | `tests/unit/tui/test_tui_command_registry.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_composer.py` | `tests/unit/tui/test_tui_composer.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_input_history.py` | `tests/unit/tui/test_tui_input_history.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_message_format.py` | `tests/unit/tui/test_tui_message_format.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_overlays.py` | `tests/unit/tui/test_tui_overlays.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_palette.py` | `tests/unit/tui/test_tui_palette.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_palette_render.py` | `tests/unit/tui/test_tui_palette_render.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_persistence.py` | `tests/unit/tui/test_tui_persistence.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_render.py` | `tests/unit/tui/test_tui_render.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_runtime.py` | `tests/unit/tui/test_tui_runtime.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_session.py` | `tests/unit/tui/test_tui_session.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_transparent.py` | `tests/unit/tui/test_tui_transparent.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_tui_view_state.py` | `tests/unit/tui/test_tui_view_state.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_upstream_governance.py` | `tests/unit/scripts/test_upstream_governance.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_utils_llm_text.py` | `tests/unit/utils/test_utils_llm_text.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_utils_messages.py` | `tests/unit/utils/test_utils_messages.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_utils_time.py` | `tests/unit/utils/test_utils_time.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+| `tests/test_uvicorn_reload_exclude.py` | `tests/unit/scripts/test_uvicorn_reload_exclude.py` | pure move — no assertion change | focused lane 2282 passed / 7 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/scheduler+mcp_tasks, integration/scheduler+mcp_tasks (layering batch 2 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/scheduler tests/unit/mcp_tasks tests/integration/scheduler tests/integration/mcp_tasks -q -m "not serial and not requires_llm and not live and not external"` → 407 passed / 54 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_mcp_task_config.py` | `tests/unit/mcp_tasks/test_mcp_task_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_models.py` | `tests/unit/mcp_tasks/test_mcp_task_models.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_ordinary_driver.py` | `tests/unit/mcp_tasks/test_mcp_task_ordinary_driver.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_ordinary_e2e.py` | `tests/unit/mcp_tasks/test_mcp_task_ordinary_e2e.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_postgres.py` | `tests/integration/mcp_tasks/test_mcp_task_postgres.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_repository.py` | `tests/unit/mcp_tasks/test_mcp_task_repository.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_runtime_config.py` | `tests/unit/mcp_tasks/test_mcp_task_runtime_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_service.py` | `tests/unit/mcp_tasks/test_mcp_task_service.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_tool_caller.py` | `tests/unit/mcp_tasks/test_mcp_task_tool_caller.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_tool_wrapping.py` | `tests/unit/mcp_tasks/test_mcp_task_tool_wrapping.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_task_toolset_config.py` | `tests/unit/mcp_tasks/test_mcp_task_toolset_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_mcp_tasks_router.py` | `tests/unit/mcp_tasks/test_mcp_tasks_router.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_occurrence_sequence.py` | `tests/unit/scheduler/test_scheduled_occurrence_sequence.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_claims.py` | `tests/unit/scheduler/test_scheduled_task_claims.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_cron_preview.py` | `tests/unit/scheduler/test_scheduled_task_cron_preview.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_dispatch_race.py` | `tests/unit/scheduler/test_scheduled_task_dispatch_race.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_lifecycle.py` | `tests/unit/scheduler/test_scheduled_task_lifecycle.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_models.py` | `tests/unit/scheduler/test_scheduled_task_models.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_postgres.py` | `tests/integration/scheduler/test_scheduled_task_postgres.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_queue.py` | `tests/unit/scheduler/test_scheduled_task_queue.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_repository.py` | `tests/unit/scheduler/test_scheduled_task_repository.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_router.py` | `tests/unit/scheduler/test_scheduled_task_router.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_router_behavior.py` | `tests/unit/scheduler/test_scheduled_task_router_behavior.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_run_status_filter.py` | `tests/unit/scheduler/test_scheduled_task_run_status_filter.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_schedules.py` | `tests/unit/scheduler/test_scheduled_task_schedules.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduled_task_service.py` | `tests/unit/scheduler/test_scheduled_task_service.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_completion_atomicity.py` | `tests/unit/scheduler/test_scheduler_completion_atomicity.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_completion_consistency.py` | `tests/unit/scheduler/test_scheduler_completion_consistency.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_config.py` | `tests/unit/scheduler/test_scheduler_config.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+| `tests/test_scheduler_occurrence_ordering.py` | `tests/integration/scheduler/test_scheduler_occurrence_ordering.py` | pure move — no assertion change | focused lane 407 passed / 54 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/channels+memory+knowledge (layering batch 3 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/channels tests/unit/memory tests/unit/knowledge -q -m "not serial and not requires_llm and not live and not external"` → 3338 passed / 20 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_additional_channel_connections.py` | `tests/unit/channels/test_additional_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_buzz_channel.py` | `tests/unit/channels/test_buzz_channel.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_buzz_nostr.py` | `tests/unit/channels/test_buzz_nostr.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_buzz_seen_events.py` | `tests/unit/channels/test_buzz_seen_events.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_channel_connections_config.py` | `tests/unit/channels/test_channel_connections_config.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_channel_intake_backpressure.py` | `tests/unit/channels/test_channel_intake_backpressure.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_deermem_self_contained.py` | `tests/unit/memory/test_deermem_self_contained.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_discord_channel_connections.py` | `tests/unit/channels/test_discord_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_extension_system_model_calls.py` | `tests/unit/memory/test_extension_system_model_calls.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_github_channel.py` | `tests/unit/channels/test_github_channel.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_github_webhooks.py` | `tests/unit/channels/test_github_webhooks.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_honcho_memory_backend.py` | `tests/unit/memory/test_honcho_memory_backend.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_inbound_dedupe.py` | `tests/unit/channels/test_inbound_dedupe.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_knowledge_gate4_live.py` | `tests/unit/knowledge/test_knowledge_gate4_live.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_knowledge_gate7_live.py` | `tests/unit/knowledge/test_knowledge_gate7_live.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_knowledge_gate8_live.py` | `tests/unit/knowledge/test_knowledge_gate8_live.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lark_broker.py` | `tests/unit/channels/test_lark_broker.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lark_cli_integration.py` | `tests/unit/channels/test_lark_cli_integration.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lightrag_client.py` | `tests/unit/knowledge/test_lightrag_client.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_lightrag_tools.py` | `tests/unit/knowledge/test_lightrag_tools.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_mem0_memory_backend.py` | `tests/unit/memory/test_mem0_memory_backend.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_cancel_by_agent.py` | `tests/unit/memory/test_memory_cancel_by_agent.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_consolidation.py` | `tests/unit/memory/test_memory_consolidation.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_eviction.py` | `tests/unit/memory/test_memory_eviction.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_fact_dedup.py` | `tests/unit/memory/test_memory_fact_dedup.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_manager_interface.py` | `tests/unit/memory/test_memory_manager_interface.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_manager_pluggable.py` | `tests/unit/memory/test_memory_manager_pluggable.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_markdown_migration_cli.py` | `tests/unit/memory/test_memory_markdown_migration_cli.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_retrieval_adapter.py` | `tests/unit/memory/test_memory_retrieval_adapter.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_scope_gate.py` | `tests/unit/memory/test_memory_scope_gate.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_search.py` | `tests/unit/memory/test_memory_search.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_staleness_review.py` | `tests/unit/memory/test_memory_staleness_review.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_storage_markdown.py` | `tests/unit/memory/test_memory_storage_markdown.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_memory_tools.py` | `tests/unit/memory/test_memory_tools.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_message_processing.py` | `tests/unit/memory/test_message_processing.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_message_processing_signals.py` | `tests/unit/memory/test_message_processing_signals.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_prompt_external.py` | `tests/unit/memory/test_prompt_external.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_ragflow_client.py` | `tests/unit/knowledge/test_ragflow_client.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_ragflow_tools.py` | `tests/unit/knowledge/test_ragflow_tools.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_runtime_channel_config_merge.py` | `tests/unit/channels/test_runtime_channel_config_merge.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_slack_channel_connections.py` | `tests/unit/channels/test_slack_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_slash_skills.py` | `tests/unit/channels/test_slash_skills.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_telegram_channel_connections.py` | `tests/unit/channels/test_telegram_channel_connections.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_tiktoken_cache_and_count_tokens.py` | `tests/unit/memory/test_tiktoken_cache_and_count_tokens.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_trace_entry_points.py` | `tests/unit/channels/test_trace_entry_points.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_updater_truncation.py` | `tests/unit/memory/test_updater_truncation.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_updater_watermark.py` | `tests/unit/memory/test_updater_watermark.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_wecom_content_limit.py` | `tests/unit/channels/test_wecom_content_limit.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+| `tests/test_wecom_ws_text.py` | `tests/unit/channels/test_wecom_ws_text.py` | pure move — no assertion change | focused lane 3338 passed / 20 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/models+tools (layering batch 4 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/models tests/unit/tools -q -m "not serial and not requires_llm and not live and not external"` → 4050 passed / 10 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_assistant_payload_replay.py` | `tests/unit/models/test_assistant_payload_replay.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_background_tasks_tool.py` | `tests/unit/tools/test_background_tasks_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_batch_task_tool.py` | `tests/unit/tools/test_batch_task_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_brave_tools.py` | `tests/unit/tools/test_brave_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browser_automation.py` | `tests/unit/tools/test_browser_automation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browser_close_cancellation.py` | `tests/unit/tools/test_browser_close_cancellation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browser_router.py` | `tests/unit/tools/test_browser_router.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_browserless_client.py` | `tests/unit/tools/test_browserless_client.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_claude_provider_oauth_billing.py` | `tests/unit/models/test_claude_provider_oauth_billing.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_claude_provider_prompt_caching.py` | `tests/unit/models/test_claude_provider_prompt_caching.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_cli_auth_providers.py` | `tests/unit/models/test_cli_auth_providers.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_client_live_policy.py` | `tests/unit/models/test_client_live_policy.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_client_message_serialization.py` | `tests/unit/models/test_client_message_serialization.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_crawl4ai_tools.py` | `tests/unit/tools/test_crawl4ai_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_credential_loader.py` | `tests/unit/models/test_credential_loader.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_ddg_search_tools.py` | `tests/unit/tools/test_ddg_search_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_catalog.py` | `tests/unit/tools/test_deferred_catalog.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_promotion_integration.py` | `tests/unit/tools/test_deferred_promotion_integration.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_setup.py` | `tests/unit/tools/test_deferred_setup.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_deferred_tool_crosscontext.py` | `tests/unit/tools/test_deferred_tool_crosscontext.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_exa_tools.py` | `tests/unit/tools/test_exa_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_fastcrw_tools.py` | `tests/unit/tools/test_fastcrw_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_file_signature.py` | `tests/unit/tools/test_file_signature.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_firecrawl_tools.py` | `tests/unit/tools/test_firecrawl_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_groundroute_tools.py` | `tests/unit/tools/test_groundroute_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_image_search.py` | `tests/unit/tools/test_image_search.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_infoquest_http_timeout.py` | `tests/unit/tools/test_infoquest_http_timeout.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_list_uploaded_files_tool.py` | `tests/unit/tools/test_list_uploaded_files_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_local_bash_tool_loading.py` | `tests/unit/tools/test_local_bash_tool_loading.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_context_headers.py` | `tests/unit/tools/test_mcp_context_headers.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_custom_interceptors.py` | `tests/unit/tools/test_mcp_custom_interceptors.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_file_migration.py` | `tests/unit/tools/test_mcp_file_migration.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_header_names.py` | `tests/unit/tools/test_mcp_header_names.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_routing_auto_promote.py` | `tests/unit/tools/test_mcp_routing_auto_promote.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_routing_metadata.py` | `tests/unit/tools/test_mcp_routing_metadata.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_routing_prompt.py` | `tests/unit/tools/test_mcp_routing_prompt.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_session_pool_loop_isolation.py` | `tests/unit/tools/test_mcp_session_pool_loop_isolation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_session_timeouts.py` | `tests/unit/tools/test_mcp_session_timeouts.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_tool_name_prefix.py` | `tests/unit/tools/test_mcp_tool_name_prefix.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_tool_name_validation.py` | `tests/unit/tools/test_mcp_tool_name_validation.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_mcp_user_scoped_auth.py` | `tests/unit/tools/test_mcp_user_scoped_auth.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_model_request_admission.py` | `tests/unit/models/test_model_request_admission.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_model_request_admission_fifo_atomic.py` | `tests/unit/models/test_model_request_admission_fifo_atomic.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_patched_mimo.py` | `tests/unit/models/test_patched_mimo.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_patched_openai.py` | `tests/unit/models/test_patched_openai.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_patched_stepfun.py` | `tests/unit/models/test_patched_stepfun.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_read_conversation_tool.py` | `tests/unit/tools/test_read_conversation_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_review_skill_package_tool.py` | `tests/unit/tools/test_review_skill_package_tool.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_searxng_client.py` | `tests/unit/tools/test_searxng_client.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_serialize_message_content.py` | `tests/unit/models/test_serialize_message_content.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_serply_tools.py` | `tests/unit/tools/test_serply_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_session_pool_singleton_lifecycle.py` | `tests/unit/tools/test_session_pool_singleton_lifecycle.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_skill_policy_deferred_discovery.py` | `tests/unit/tools/test_skill_policy_deferred_discovery.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_sofya_tools.py` | `tests/unit/tools/test_sofya_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_subagent_deferred_promotion_integration.py` | `tests/unit/tools/test_subagent_deferred_promotion_integration.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_task_tool_core_logic.py` | `tests/unit/tools/test_task_tool_core_logic.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_tavily_tools.py` | `tests/unit/tools/test_tavily_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_tencent_wsa_tools.py` | `tests/unit/tools/test_tencent_wsa_tools.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_tool_search.py` | `tests/unit/tools/test_tool_search.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_view_image_provider_error_classification.py` | `tests/unit/tools/test_view_image_provider_error_classification.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_web_fetch_error_shell_meta.py` | `tests/unit/tools/test_web_fetch_error_shell_meta.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+| `tests/test_web_search_time_range.py` | `tests/unit/tools/test_web_search_time_range.py` | pure move — no assertion change | focused lane 4050 passed / 10 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/runtime+persistence (layering batch 5 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/runtime tests/unit/persistence -q -m "not serial and not requires_llm and not live and not external"` → 2645 passed / 20 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_agent_store_sql.py` | `tests/unit/persistence/test_agent_store_sql.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_base_to_dict.py` | `tests/unit/persistence/test_base_to_dict.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_branch_history_seed.py` | `tests/unit/runtime/test_branch_history_seed.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_cached_history_saver.py` | `tests/unit/runtime/test_cached_history_saver.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_cached_history_saver_integration.py` | `tests/unit/runtime/test_cached_history_saver_integration.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_channel_connections_repository.py` | `tests/unit/persistence/test_channel_connections_repository.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_cache_config.py` | `tests/unit/runtime/test_checkpoint_cache_config.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_cache_memory.py` | `tests/unit/runtime/test_checkpoint_cache_memory.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_cache_provider.py` | `tests/unit/runtime/test_checkpoint_cache_provider.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_mode.py` | `tests/unit/runtime/test_checkpoint_mode.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_patches.py` | `tests/unit/runtime/test_checkpoint_patches.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_retention_contract.py` | `tests/unit/runtime/test_checkpoint_retention_contract.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpoint_state.py` | `tests/unit/runtime/test_checkpoint_state.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_checkpointer_none_fix.py` | `tests/unit/runtime/test_checkpointer_none_fix.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_context_compaction.py` | `tests/unit/runtime/test_context_compaction.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_converters.py` | `tests/unit/runtime/test_converters.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_db_event_store_lock_lifecycle.py` | `tests/unit/runtime/test_db_event_store_lock_lifecycle.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_delta_channel_checkpointers.py` | `tests/unit/runtime/test_delta_channel_checkpointers.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_delta_channel_state.py` | `tests/unit/runtime/test_delta_channel_state.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_goal_runtime.py` | `tests/unit/runtime/test_goal_runtime.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_goal_worker.py` | `tests/unit/runtime/test_goal_worker.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_history_batch_queries.py` | `tests/unit/persistence/test_history_batch_queries.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_interrupt_serialization.py` | `tests/unit/runtime/test_interrupt_serialization.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_async_io.py` | `tests/unit/runtime/test_jsonl_event_store_async_io.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_cancellation.py` | `tests/unit/runtime/test_jsonl_event_store_cancellation.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_lock_lifecycle.py` | `tests/unit/runtime/test_jsonl_event_store_lock_lifecycle.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_jsonl_event_store_unicode.py` | `tests/unit/runtime/test_jsonl_event_store_unicode.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_managed_subagent_store.py` | `tests/unit/persistence/test_managed_subagent_store.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_multi_worker_run_ownership.py` | `tests/unit/runtime/test_multi_worker_run_ownership.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_autogen_script.py` | `tests/unit/persistence/test_persistence_autogen_script.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap.py` | `tests/unit/persistence/test_persistence_bootstrap.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_concurrency.py` | `tests/unit/persistence/test_persistence_bootstrap_concurrency.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_pg_lock.py` | `tests/unit/persistence/test_persistence_bootstrap_pg_lock.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_regression.py` | `tests/unit/persistence/test_persistence_bootstrap_regression.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_bootstrap_sqlite_lock.py` | `tests/unit/persistence/test_persistence_bootstrap_sqlite_lock.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_persistence_timezone.py` | `tests/unit/persistence/test_persistence_timezone.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_personal_access_tokens_repository.py` | `tests/unit/persistence/test_personal_access_tokens_repository.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_context_injection.py` | `tests/unit/runtime/test_project_context_injection.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_document_tools.py` | `tests/unit/persistence/test_project_document_tools.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_documents_repo.py` | `tests/unit/persistence/test_project_documents_repo.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_shelf_index.py` | `tests/unit/persistence/test_project_shelf_index.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_project_trash.py` | `tests/unit/persistence/test_project_trash.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_projects_context.py` | `tests/unit/persistence/test_projects_context.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_projects_repo.py` | `tests/unit/persistence/test_projects_repo.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_duration_checkpoint.py` | `tests/unit/runtime/test_run_duration_checkpoint.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_store_by_run_index.py` | `tests/unit/runtime/test_run_event_store_by_run_index.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_store_filter.py` | `tests/unit/runtime/test_run_event_store_filter.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_store_pagination.py` | `tests/unit/runtime/test_run_event_store_pagination.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_event_stream_contract.py` | `tests/unit/runtime/test_run_event_stream_contract.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_journal.py` | `tests/unit/runtime/test_run_journal.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_metadata_secret_safety.py` | `tests/unit/runtime/test_run_metadata_secret_safety.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_naming.py` | `tests/unit/runtime/test_run_naming.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_worker_delta_resume.py` | `tests/unit/runtime/test_run_worker_delta_resume.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_run_worker_mcp_tasks.py` | `tests/unit/runtime/test_run_worker_mcp_tasks.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_runtime_keyed_lock.py` | `tests/unit/runtime/test_runtime_keyed_lock.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_subagent_batch_repository.py` | `tests/unit/persistence/test_subagent_batch_repository.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_thread_archive.py` | `tests/unit/persistence/test_thread_archive.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_thread_state_promoted.py` | `tests/unit/runtime/test_thread_state_promoted.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_threads_checkpoint_mode.py` | `tests/unit/runtime/test_threads_checkpoint_mode.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_token_usage_by_model.py` | `tests/unit/persistence/test_token_usage_by_model.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_tool_progress_middleware.py` | `tests/unit/runtime/test_tool_progress_middleware.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_tool_promotion_audit_middleware.py` | `tests/unit/runtime/test_tool_promotion_audit_middleware.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_user_oauth_partial_index.py` | `tests/unit/persistence/test_user_oauth_partial_index.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_user_preferences.py` | `tests/unit/persistence/test_user_preferences.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_worker_stream_subgraph_namespace.py` | `tests/unit/runtime/test_worker_stream_subgraph_namespace.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_worker_subagent_persistence.py` | `tests/unit/runtime/test_worker_subagent_persistence.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_worker_trace_binding.py` | `tests/unit/runtime/test_worker_trace_binding.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+| `tests/test_workspace_changes.py` | `tests/unit/runtime/test_workspace_changes.py` | pure move — no assertion change | focused lane 2645 passed / 20 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/sandbox+agentplatform+skills (layering batch 6 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/sandbox tests/unit/agentplatform tests/unit/skills -q -m "not serial and not requires_llm and not live and not external"` → 4333 passed / 42 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_acceptance_checks.py` | `tests/unit/sandbox/test_acceptance_checks.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_acquire_serialization.py` | `tests/unit/sandbox/test_acquire_serialization.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_aio_sandbox_network_proxy.py` | `tests/unit/sandbox/test_aio_sandbox_network_proxy.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_aio_sandbox_provider.py` | `tests/unit/sandbox/test_aio_sandbox_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_boxlite_provider.py` | `tests/unit/sandbox/test_boxlite_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_e2b_capacity_store_redis.py` | `tests/integration/sandbox/test_e2b_capacity_store_redis.py` (relayered on review — module-level `integration` marker) | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_e2b_sandbox_provider.py` | `tests/unit/sandbox/test_e2b_sandbox_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_ensure_sandbox_initialized.py` | `tests/unit/sandbox/test_ensure_sandbox_initialized.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_extension_task_lifecycle.py` | `tests/unit/agentplatform/test_extension_task_lifecycle.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_gateway_skill_export.py` | `tests/unit/skills/test_gateway_skill_export.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_github_token_plumbing.py` | `tests/unit/sandbox/test_github_token_plumbing.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_runtime_extension.py` | `tests/unit/agentplatform/test_local_runtime_extension.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_runtime_mcp_integration.py` | `tests/unit/agentplatform/test_local_runtime_mcp_integration.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_sandbox_command_timeout.py` | `tests/unit/sandbox/test_local_sandbox_command_timeout.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_local_sandbox_path_regex_cache.py` | `tests/unit/sandbox/test_local_sandbox_path_regex_cache.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_opensandbox_provider.py` | `tests/unit/sandbox/test_opensandbox_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_pat_auth.py` | `tests/unit/agentplatform/test_pat_auth.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_provisioner_kubeconfig.py` | `tests/unit/sandbox/test_provisioner_kubeconfig.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_provisioner_mount_contract.py` | `tests/unit/sandbox/test_provisioner_mount_contract.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_provisioner_request_threading.py` | `tests/unit/sandbox/test_provisioner_request_threading.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_before_write_cancellation.py` | `tests/unit/sandbox/test_read_before_write_cancellation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_before_write_middleware.py` | `tests/unit/sandbox/test_read_before_write_middleware.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_file_line_range.py` | `tests/unit/sandbox/test_read_file_line_range.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_file_tool_binary.py` | `tests/unit/sandbox/test_read_file_tool_binary.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_read_file_truncation_continuation.py` | `tests/unit/sandbox/test_read_file_truncation_continuation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_remote_list_dir.py` | `tests/unit/sandbox/test_remote_list_dir.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_remote_search.py` | `tests/unit/sandbox/test_remote_search.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_run_worker_delivery.py` | `tests/unit/agentplatform/test_run_worker_delivery.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_authorization.py` | `tests/unit/sandbox/test_sandbox_authorization.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_identity.py` | `tests/unit/sandbox/test_sandbox_identity.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_leases.py` | `tests/unit/sandbox/test_sandbox_leases.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_ownership_store.py` | `tests/unit/sandbox/test_sandbox_ownership_store.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_path_patterns.py` | `tests/unit/sandbox/test_sandbox_path_patterns.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_provider_lifecycle.py` | `tests/unit/sandbox/test_sandbox_provider_lifecycle.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_skill_sync_cancellation.py` | `tests/unit/sandbox/test_sandbox_skill_sync_cancellation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_sandbox_windows_path_normalization.py` | `tests/unit/sandbox/test_sandbox_windows_path_normalization.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_should_ignore_name.py` | `tests/unit/sandbox/test_should_ignore_name.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_catalog.py` | `tests/unit/skills/test_skill_catalog.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_container_path_defaults.py` | `tests/unit/skills/test_skill_container_path_defaults.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_describe.py` | `tests/unit/skills/test_skill_describe.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_export.py` | `tests/unit/skills/test_skill_export.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_metadata_prompt_injection.py` | `tests/unit/skills/test_skill_metadata_prompt_injection.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_permissions.py` | `tests/unit/skills/test_skill_permissions.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_projection.py` | `tests/unit/skills/test_skill_projection.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_request_scoped_secrets.py` | `tests/unit/sandbox/test_skill_request_scoped_secrets.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_review_core.py` | `tests/unit/skills/test_skill_review_core.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_review_waivers.py` | `tests/unit/skills/test_skill_review_waivers.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_reviewer_public_skill.py` | `tests/unit/skills/test_skill_reviewer_public_skill.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_storage_lifecycle.py` | `tests/unit/skills/test_skill_storage_lifecycle.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skill_tool_policy_middleware.py` | `tests/unit/skills/test_skill_tool_policy_middleware.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_archive_root.py` | `tests/unit/skills/test_skills_archive_root.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_bundled.py` | `tests/unit/skills/test_skills_bundled.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_custom_router.py` | `tests/unit/skills/test_skills_custom_router.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_reload.py` | `tests/unit/skills/test_skills_reload.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_skills_router_authz.py` | `tests/unit/skills/test_skills_router_authz.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_slash_skill_contract.py` | `tests/contracts/test_slash_skill_contract.py` (relayered to contracts on review — cross-stack fixture contract) | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_str_replace_empty_file.py` | `tests/unit/sandbox/test_str_replace_empty_file.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_tenki_provider.py` | `tests/unit/sandbox/test_tenki_provider.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_three_way_skills_mount_e2e.py` | `tests/unit/sandbox/test_three_way_skills_mount_e2e.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_tool_receipt_middleware.py` | `tests/unit/agentplatform/test_tool_receipt_middleware.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_user_scoped_skill_storage.py` | `tests/unit/skills/test_user_scoped_skill_storage.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_view_image_remote_sandbox.py` | `tests/unit/sandbox/test_view_image_remote_sandbox.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_view_image_tool_cancellation.py` | `tests/unit/sandbox/test_view_image_tool_cancellation.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+| `tests/test_write_file_tool_size_guard.py` | `tests/unit/sandbox/test_write_file_tool_size_guard.py` | pure move — no assertion change | focused lane 4333 passed / 42 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — unit/gateway (layering batch 7 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/unit/gateway -q -m "not serial and not requires_llm and not live and not external"` → 5996 passed / 22 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_agent_assembly_descriptor.py` | `tests/unit/gateway/test_agent_assembly_descriptor.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agent_display_name.py` | `tests/unit/gateway/test_agent_display_name.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agent_guidance_check.py` | `tests/unit/gateway/test_agent_guidance_check.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agent_model_settings.py` | `tests/unit/gateway/test_agent_model_settings.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_agents_router_model_settings.py` | `tests/unit/gateway/test_agents_router_model_settings.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_app_config_name_indexes.py` | `tests/unit/gateway/test_app_config_name_indexes.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_artifact_archive.py` | `tests/unit/gateway/test_artifact_archive.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_assistants_compat.py` | `tests/unit/gateway/test_assistants_compat.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_auth_config.py` | `tests/unit/gateway/test_auth_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_auth_errors.py` | `tests/unit/gateway/test_auth_errors.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_batch_acceptance.py` | `tests/unit/gateway/test_batch_acceptance.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_channel_user_id_env.py` | `tests/unit/gateway/test_channel_user_id_env.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_channels_router.py` | `tests/unit/gateway/test_channels_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_checkpoint_lineage.py` | `tests/unit/gateway/test_checkpoint_lineage.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_clarification_drop_siblings_graph_integration.py` | `tests/unit/gateway/test_clarification_drop_siblings_graph_integration.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_command_tool_result_semantics.py` | `tests/unit/gateway/test_command_tool_result_semantics.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_configured_extensions.py` | `tests/unit/gateway/test_configured_extensions.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_console_router.py` | `tests/unit/gateway/test_console_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_context_compaction_observation.py` | `tests/unit/gateway/test_context_compaction_observation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_access.py` | `tests/unit/gateway/test_conversation_access.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_access_edge_cases.py` | `tests/unit/gateway/test_conversation_access_edge_cases.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_message_continuation.py` | `tests/unit/gateway/test_conversation_message_continuation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_reader.py` | `tests/unit/gateway/test_conversation_reader.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_conversation_references_context_channel.py` | `tests/unit/gateway/test_conversation_references_context_channel.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_create_deerflow_agent.py` | `tests/unit/gateway/test_create_deerflow_agent.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_create_deerflow_agent_live.py` | `tests/unit/gateway/test_create_deerflow_agent_live.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_custom_agent.py` | `tests/unit/gateway/test_custom_agent.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_deferred_filter_middleware.py` | `tests/unit/gateway/test_deferred_filter_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_delegation_ledger.py` | `tests/unit/gateway/test_delegation_ledger.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_delegation_ledger_live.py` | `tests/unit/gateway/test_delegation_ledger_live.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_durable_context_middleware.py` | `tests/unit/gateway/test_durable_context_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_ensure_admin.py` | `tests/unit/gateway/test_ensure_admin.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_extension_task_store_runtime.py` | `tests/unit/gateway/test_extension_task_store_runtime.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_features_router.py` | `tests/unit/gateway/test_features_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_checkpoint_mode.py` | `tests/unit/gateway/test_gateway_checkpoint_mode.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_extension_service_lifecycle.py` | `tests/unit/gateway/test_gateway_extension_service_lifecycle.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_health.py` | `tests/unit/gateway/test_gateway_health.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_imports.py` | `tests/unit/gateway/test_gateway_imports.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_path_utils.py` | `tests/unit/gateway/test_gateway_path_utils.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_request_path.py` | `tests/unit/gateway/test_gateway_request_path.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_run_drain_repeated_cancellation.py` | `tests/unit/gateway/test_gateway_run_drain_repeated_cancellation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_gateway_run_drain_shutdown.py` | `tests/unit/gateway/test_gateway_run_drain_shutdown.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_agents_config.py` | `tests/unit/gateway/test_github_agents_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_app_auth.py` | `tests/unit/gateway/test_github_app_auth.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_dispatcher.py` | `tests/unit/gateway/test_github_dispatcher.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_identity.py` | `tests/unit/gateway/test_github_identity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_prompts.py` | `tests/unit/gateway/test_github_prompts.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_registry.py` | `tests/unit/gateway/test_github_registry.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_github_triggers.py` | `tests/unit/gateway/test_github_triggers.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_human_input.py` | `tests/unit/gateway/test_human_input.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_input_polish_router.py` | `tests/unit/gateway/test_input_polish_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_input_sanitization_middleware.py` | `tests/unit/gateway/test_input_sanitization_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_langgraph_graph_entrypoint.py` | `tests/unit/gateway/test_langgraph_graph_entrypoint.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_langgraph_studio_lifespan.py` | `tests/unit/gateway/test_langgraph_studio_lifespan.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_langgraph_studio_routes.py` | `tests/unit/gateway/test_langgraph_studio_routes.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_lead_agent_skills.py` | `tests/unit/gateway/test_lead_agent_skills.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_loop_detection_config.py` | `tests/unit/gateway/test_loop_detection_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_loop_detection_stop_reason.py` | `tests/unit/gateway/test_loop_detection_stop_reason.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_managed_subagent_registry.py` | `tests/unit/gateway/test_managed_subagent_registry.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_mcp_routing_config.py` | `tests/unit/gateway/test_mcp_routing_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_memory_middleware.py` | `tests/unit/gateway/test_memory_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_message_provenance.py` | `tests/unit/gateway/test_message_provenance.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_middleware_documentation.py` | `tests/unit/gateway/test_middleware_documentation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_middleware_release_policy.py` | `tests/unit/gateway/test_middleware_release_policy.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_model_length_finish_reason_middleware.py` | `tests/unit/gateway/test_model_length_finish_reason_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_model_length_termination_detectors.py` | `tests/unit/gateway/test_model_length_termination_detectors.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_monocle_tracing.py` | `tests/unit/gateway/test_monocle_tracing.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_multi_worker_postgres_gate.py` | `tests/unit/gateway/test_multi_worker_postgres_gate.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_multiturn_message_stream_graph_integration.py` | `tests/unit/gateway/test_multiturn_message_stream_graph_integration.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_oidc_auth.py` | `tests/unit/gateway/test_oidc_auth.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_openapi_operation_ids.py` | `tests/unit/gateway/test_openapi_operation_ids.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_projects_config.py` | `tests/unit/gateway/test_projects_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_receipt_verification.py` | `tests/unit/gateway/test_receipt_verification.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_reflection_resolvers.py` | `tests/unit/gateway/test_reflection_resolvers.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_reload_boundary.py` | `tests/unit/gateway/test_reload_boundary.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_run_creation_route_contract.py` | `tests/unit/gateway/test_run_creation_route_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_run_events_endpoint.py` | `tests/unit/gateway/test_run_events_endpoint.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_run_request_validation.py` | `tests/unit/gateway/test_run_request_validation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_safety_termination_detectors.py` | `tests/unit/gateway/test_safety_termination_detectors.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sandbox_network_config.py` | `tests/unit/gateway/test_sandbox_network_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sandbox_network_proxy_workflow.py` | `tests/unit/gateway/test_sandbox_network_proxy_workflow.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_skill_context.py` | `tests/unit/gateway/test_skill_context.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_soul_prompt_injection.py` | `tests/unit/gateway/test_soul_prompt_injection.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sse_format.py` | `tests/unit/gateway/test_sse_format.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_sse_observer_disconnect.py` | `tests/unit/gateway/test_sse_observer_disconnect.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_stream_get_action_rejected.py` | `tests/unit/gateway/test_stream_get_action_rejected.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_acceptance_followup.py` | `tests/unit/gateway/test_subagent_acceptance_followup.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_batch_service.py` | `tests/unit/gateway/test_subagent_batch_service.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_batches_router.py` | `tests/unit/gateway/test_subagent_batches_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_capacity.py` | `tests/unit/gateway/test_subagent_capacity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_capacity_config.py` | `tests/unit/gateway/test_subagent_capacity_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_checkpointer_isolation.py` | `tests/unit/gateway/test_subagent_checkpointer_isolation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_context_snapshot.py` | `tests/unit/gateway/test_subagent_context_snapshot.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_description_injection.py` | `tests/unit/gateway/test_subagent_description_injection.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_execution_capacity.py` | `tests/unit/gateway/test_subagent_execution_capacity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_report_contract.py` | `tests/unit/gateway/test_subagent_report_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_routing_prompt.py` | `tests/unit/gateway/test_subagent_routing_prompt.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_runtime.py` | `tests/unit/gateway/test_subagent_runtime.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_status_contract.py` | `tests/unit/gateway/test_subagent_status_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_step_events.py` | `tests/unit/gateway/test_subagent_step_events.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagent_turn_budget.py` | `tests/unit/gateway/test_subagent_turn_budget.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_subagents_router.py` | `tests/unit/gateway/test_subagents_router.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_summarization_middleware.py` | `tests/unit/gateway/test_summarization_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_summarization_summary_text.py` | `tests/unit/gateway/test_summarization_summary_text.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_system_message_coalescing_middleware.py` | `tests/unit/gateway/test_system_message_coalescing_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_task_continuity.py` | `tests/unit/gateway/test_task_continuity.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_terminal_response_middleware.py` | `tests/unit/gateway/test_terminal_response_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_id_route_contract.py` | `tests/unit/gateway/test_thread_id_route_contract.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_messages_feedback.py` | `tests/unit/gateway/test_thread_messages_feedback.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_messages_page.py` | `tests/unit/gateway/test_thread_messages_page.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_regenerate_prepare.py` | `tests/unit/gateway/test_thread_regenerate_prepare.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_run_idempotency.py` | `tests/unit/gateway/test_thread_run_idempotency.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_run_query_validation.py` | `tests/unit/gateway/test_thread_run_query_validation.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_runs_internal_scope.py` | `tests/unit/gateway/test_thread_runs_internal_scope.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_thread_runs_page.py` | `tests/unit/gateway/test_thread_runs_page.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_todo_middleware.py` | `tests/unit/gateway/test_todo_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_token_budget_middleware.py` | `tests/unit/gateway/test_token_budget_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_token_usage_config.py` | `tests/unit/gateway/test_token_usage_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_call_args.py` | `tests/unit/gateway/test_tool_call_args.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_error_handling_subagent_stamp.py` | `tests/unit/gateway/test_tool_error_handling_subagent_stamp.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_output_budget_middleware.py` | `tests/unit/gateway/test_tool_output_budget_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_receipt.py` | `tests/unit/gateway/test_tool_receipt.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_result_meta.py` | `tests/unit/gateway/test_tool_result_meta.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_result_sanitization_middleware.py` | `tests/unit/gateway/test_tool_result_sanitization_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_tool_transform_meta.py` | `tests/unit/gateway/test_tool_transform_meta.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_trace_context.py` | `tests/unit/gateway/test_trace_context.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_trace_middleware.py` | `tests/unit/gateway/test_trace_middleware.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_verification_config.py` | `tests/unit/gateway/test_verification_config.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_wait_disconnect_handling.py` | `tests/unit/gateway/test_wait_disconnect_handling.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_warm_pool_lifecycle.py` | `tests/unit/gateway/test_warm_pool_lifecycle.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+| `tests/test_web_fetch_relative_links.py` | `tests/unit/gateway/test_web_fetch_relative_links.py` | pure move — no assertion change | focused lane 5996 passed / 22 skipped |
+## Batch 2026-10-15: backend/tests root-only layering migration — contracts, integration/* (layering batch 8 of 8)
+
+Pure layering move (issue #85, per the scope note in [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md)): file contents unchanged except root-local helper imports rewritten to `tests.`-prefixed package imports and `__file__`-anchored paths depth-adjusted (+2 hops for layer/domain destinations, +1 for `contracts/`). Validation: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests \
+  uv run --no-sync pytest tests/contracts tests/integration/api tests/integration/persistence tests/integration/channels tests/integration/memory tests/integration/runtime tests/integration/skills tests/integration/tools -q -m "not serial and not requires_llm and not live and not external"` → 3100 passed / 95 skipped;
+`ruff check` / `ruff format --check` clean on the moved trees; post-move `python3 scripts/test_inventory.py` exit 0.
+
+| Moved root file | New canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_agent_storage_backend.py` | `tests/integration/persistence/test_agent_storage_backend.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_agentplatform_extension_boundary.py` | `tests/contracts/test_agentplatform_extension_boundary.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_auth_me_permissions.py` | `tests/integration/api/test_auth_me_permissions.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_enforcement.py` | `tests/contracts/test_authorization_enforcement.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_outcome.py` | `tests/contracts/test_authorization_outcome.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_principal.py` | `tests/contracts/test_authorization_principal.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_provider.py` | `tests/contracts/test_authorization_provider.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_route_permissions.py` | `tests/contracts/test_authorization_route_permissions.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_runtime.py` | `tests/contracts/test_authorization_runtime.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_authorization_tool_filter.py` | `tests/contracts/test_authorization_tool_filter.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_channel_connections_router.py` | `tests/integration/api/test_channel_connections_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_checkpoint_cache_redis.py` | `tests/integration/runtime/test_checkpoint_cache_redis.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_local_registration_gate.py` | `tests/integration/api/test_local_registration_gate.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0004_run_ownership_dedupe.py` | `tests/integration/persistence/test_migration_0004_run_ownership_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0007_scheduled_run_active_dedupe.py` | `tests/integration/persistence/test_migration_0007_scheduled_run_active_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0009_webhook_dedupe.py` | `tests/integration/persistence/test_migration_0009_webhook_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0015_scheduled_task_enqueue.py` | `tests/integration/persistence/test_migration_0015_scheduled_task_enqueue.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0017_personal_access_tokens.py` | `tests/integration/persistence/test_migration_0017_personal_access_tokens.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0018_oauth_identity_pg_partial.py` | `tests/integration/persistence/test_migration_0018_oauth_identity_pg_partial.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0019_0020_projects.py` | `tests/integration/persistence/test_migration_0019_0020_projects.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0019_thread_incarnations.py` | `tests/integration/persistence/test_migration_0019_thread_incarnations.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0021_batch_acceptance.py` | `tests/integration/persistence/test_migration_0021_batch_acceptance.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0022_scheduled_occurrence_seq.py` | `tests/integration/persistence/test_migration_0022_scheduled_occurrence_seq.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0023_run_change_seq.py` | `tests/integration/persistence/test_migration_0023_run_change_seq.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0024_project_documents.py` | `tests/integration/persistence/test_migration_0024_project_documents.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_migration_0025_repair_run_change_seq.py` | `tests/integration/persistence/test_migration_0025_repair_run_change_seq.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_models_authorization.py` | `tests/contracts/test_models_authorization.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_multi_pod_inbound_dedupe.py` | `tests/integration/channels/test_multi_pod_inbound_dedupe.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_openviking_mcp_integration.py` | `tests/integration/tools/test_openviking_mcp_integration.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_openviking_memory_backend.py` | `tests/integration/memory/test_openviking_memory_backend.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_owner_isolation.py` | `tests/contracts/test_owner_isolation.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_parallel_mcp_user_agent.py` | `tests/integration/tools/test_parallel_mcp_user_agent.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_bootstrap_url.py` | `tests/integration/persistence/test_persistence_bootstrap_url.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_engine_postgres_config.py` | `tests/integration/persistence/test_persistence_engine_postgres_config.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_forward_revision_compat.py` | `tests/integration/persistence/test_persistence_forward_revision_compat.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_persistence_migrations_env.py` | `tests/integration/persistence/test_persistence_migrations_env.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_pg_schema_integration.py` | `tests/integration/persistence/test_pg_schema_integration.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_postgres_schema_helper.py` | `tests/integration/persistence/test_postgres_schema_helper.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_present_files_e2e_user_isolation.py` | `tests/contracts/test_present_files_e2e_user_isolation.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_project_documents_promotion.py` | `tests/integration/api/test_project_documents_promotion.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_project_documents_router.py` | `tests/integration/api/test_project_documents_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_projects_router.py` | `tests/integration/api/test_projects_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_rbac_authorization_provider.py` | `tests/contracts/test_rbac_authorization_provider.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_replay_golden.py` | `tests/integration/api/test_replay_golden.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_runtime_lifecycle_e2e.py` | `tests/integration/api/test_runtime_lifecycle_e2e.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_skillscan_native.py` | `tests/integration/skills/test_skillscan_native.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_stateless_runs_owner_isolation.py` | `tests/contracts/test_stateless_runs_owner_isolation.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+| `tests/test_trash_router.py` | `tests/integration/api/test_trash_router.py` | pure move — no assertion change | focused lane 3100 passed / 95 skipped |
+## Batch 2026-10-15: OpenSandbox fake SDK boundary extracted to tests/support (layering follow-up)
+
+Code-review follow-up to the layering batches: the blocking-io anchor
+`tests/blocking_io/test_opensandbox_acquire.py` imported its fakes from
+`tests/unit/sandbox/test_opensandbox_provider.py` through a bare module import
+plus a `sys.path` insert, so renaming the provider test would silently break
+the blocking-io lane. The shared fake SDK boundary (`_Message`, `_Result`,
+`_Logs`, `_Execution`, `_execution`, `_FakeRunCommandOpts`, `_FakeFiles`,
+`_FakeCommands`, `_FakeRemote`, `_FakeSandboxClass`, `_FakeConnectionConfig`,
+`_stub_config`, `_install`) now lives in `tests/support/opensandbox_fakes.py`
+and both consumers import it via the `tests.support` package; the sys.path
+insert is gone. No assertion moved or changed (`_box` and `_TerminalApiError`
+stay provider-test-local).
+
+| Changed file | Change | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/support/opensandbox_fakes.py` | new shared module (extracted verbatim from the provider test) | pure extraction — no assertion change | `pytest tests/unit/sandbox/test_opensandbox_provider.py tests/blocking_io/test_opensandbox_acquire.py -q` → 52 passed |
+| `tests/unit/sandbox/test_opensandbox_provider.py` | local definitions replaced by `tests.support.opensandbox_fakes` imports | pure extraction — no assertion change | same command |
+| `tests/blocking_io/test_opensandbox_acquire.py` | sys.path insert replaced by `tests.support.opensandbox_fakes` import | import rewiring only — no assertion change | same command; `backend-blocking-io` lane → 146 passed, status=0 |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — gateway (dedup batch 2 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/gateway
+-q -m "not serial and not requires_llm and not live and not external"` →
+3075 passed / 18 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_auth.py` (50 identical + 3 drifted + 40 root-only) | `tests/unit/gateway/test_auth.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_auth_middleware.py` (17 identical + 2 drifted + 14 root-only) | `tests/unit/gateway/test_auth_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_auth_type_system.py` (45 identical + 4 drifted + 21 root-only) | `tests/unit/gateway/test_auth_type_system.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_clarification_middleware.py` (9 identical + 1 drifted + 53 root-only) | `tests/unit/gateway/test_clarification_middleware.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_csrf_middleware.py` (3 identical + 12 drifted + 3 root-only) | `tests/unit/gateway/test_csrf_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_dynamic_context_middleware.py` (7 identical + 5 drifted + 32 root-only) | `tests/unit/gateway/test_dynamic_context_middleware.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_feedback.py` (25 identical + 0 drifted + 5 root-only) | `tests/unit/gateway/test_feedback.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_config_freshness.py` (4 identical + 1 drifted + 1 root-only) | `tests/unit/gateway/test_gateway_config_freshness.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_docs_toggle.py` (10 identical + 0 drifted + 1 root-only) | `tests/unit/gateway/test_gateway_docs_toggle.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_lifespan_shutdown.py` (0 identical + 1 drifted + 12 root-only) | `tests/unit/gateway/test_gateway_lifespan_shutdown.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_services.py` (29 identical + 7 drifted + 135 root-only) | `tests/unit/gateway/test_gateway_services.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_guardrail_middleware.py` (25 identical + 0 drifted + 24 root-only) | `tests/unit/gateway/test_guardrail_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_harness_boundary.py` (1 identical + 0 drifted + 0 root-only) | `tests/unit/gateway/test_harness_boundary.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_initialize_admin.py` (6 identical + 6 drifted + 2 root-only) | `tests/unit/gateway/test_initialize_admin.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_internal_auth.py` (0 identical + 2 drifted + 2 root-only) | `tests/unit/gateway/test_internal_auth.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_langgraph_auth.py` (26 identical + 1 drifted + 9 root-only) | `tests/unit/gateway/test_langgraph_auth.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir; `__file__` .parent chain normalized for unit/gateway depth | both copies green on the same candidate pre-merge |
+| `tests/test_lead_agent_prompt.py` (7 identical + 8 drifted + 14 root-only) | `tests/unit/gateway/test_lead_agent_prompt.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_llm_error_handling_middleware.py` (9 identical + 5 drifted + 63 root-only) | `tests/unit/gateway/test_llm_error_handling_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_loop_detection_middleware.py` (59 identical + 4 drifted + 54 root-only) | `tests/unit/gateway/test_loop_detection_middleware.py` | root variant wins on drifted names; 2 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_safety_finish_reason_middleware.py` (31 identical + 1 drifted + 10 root-only) | `tests/unit/gateway/test_safety_finish_reason_middleware.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_security_scanner.py` (17 identical + 0 drifted + 10 root-only) | `tests/unit/gateway/test_security_scanner.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_executor.py` (0 identical + 0 drifted + 147 root-only) | `tests/unit/gateway/test_subagent_executor.py` | root variant wins on drifted names; 0 class methods + 29 module defs carried from subdir; 3 stale-API carried tests dropped (superseded by root TestAgentConstruction evolved equivalents) | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_limit_middleware.py` (12 identical + 1 drifted + 12 root-only) | `tests/unit/gateway/test_subagent_limit_middleware.py` | root variant wins on drifted names; 2 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_prompt_security.py` (3 identical + 3 drifted + 3 root-only) | `tests/unit/gateway/test_subagent_prompt_security.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_timeout_config.py` (44 identical + 3 drifted + 8 root-only) | `tests/unit/gateway/test_subagent_timeout_config.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_token_collector.py` (12 identical + 0 drifted + 2 root-only) | `tests/unit/gateway/test_subagent_token_collector.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_title_middleware_core_logic.py` (12 identical + 5 drifted + 32 root-only) | `tests/unit/gateway/test_title_middleware_core_logic.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_token_usage_middleware.py` (0 identical + 0 drifted + 11 root-only) | `tests/unit/gateway/test_token_usage_middleware.py` | root variant wins on drifted names; 35 class methods + 7 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_uploads_manager.py` (25 identical + 0 drifted + 6 root-only) | `tests/unit/gateway/test_uploads_manager.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_uploads_middleware_core_logic.py` (24 identical + 4 drifted + 24 root-only) | `tests/unit/gateway/test_uploads_middleware_core_logic.py` | root variant wins on drifted names; 10 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_user_context.py` (10 identical + 0 drifted + 16 root-only) | `tests/unit/gateway/test_user_context.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_view_image_middleware.py` (22 identical + 5 drifted + 16 root-only) | `tests/unit/gateway/test_view_image_middleware.py` | root variant wins on drifted names; 2 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — runtime (dedup batch 3 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/runtime -q -m "not serial and not requires_llm and not live and not external"` → 1380 passed / 8 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_cancel_run_idempotent.py` (4 identical + 3 drifted + 0 root-only) | `tests/unit/runtime/test_cancel_run_idempotent.py` | root variant wins on drifted names; 2 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_checkpointer.py` (19 identical + 7 drifted + 30 root-only) | `tests/unit/runtime/test_checkpointer.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_detect_thread_boundaries.py` (4 identical + 2 drifted + 8 root-only) | `tests/unit/runtime/test_detect_thread_boundaries.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_run_recovery.py` (0 identical + 2 drifted + 4 root-only) | `tests/unit/runtime/test_gateway_run_recovery.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_gateway_runtime_cleanup.py` (5 identical + 1 drifted + 10 root-only) | `tests/unit/runtime/test_gateway_runtime_cleanup.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_event_store.py` (46 identical + 0 drifted + 44 root-only) | `tests/unit/runtime/test_run_event_store.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_manager.py` (38 identical + 5 drifted + 31 root-only) | `tests/unit/runtime/test_run_manager.py` | root variant wins on drifted names; 0 class methods + 56 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_repository.py` (25 identical + 9 drifted + 35 root-only) | `tests/unit/runtime/test_run_repository.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_run_worker_rollback.py` (12 identical + 5 drifted + 91 root-only) | `tests/unit/runtime/test_run_worker_rollback.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir; carried test id literals adapted to the root helper defaults (ckpt-1) | both copies green on the same candidate pre-merge |
+| `tests/test_safety_finish_reason_graph_integration.py` (3 identical + 0 drifted + 2 root-only) | `tests/unit/runtime/test_safety_finish_reason_graph_integration.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_serialization.py` (16 identical + 1 drifted + 9 root-only) | `tests/unit/runtime/test_serialization.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_stream_bridge.py` (10 identical + 1 drifted + 47 root-only) | `tests/unit/runtime/test_stream_bridge.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_data_middleware.py` (4 identical + 0 drifted + 2 root-only) | `tests/unit/runtime/test_thread_data_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_meta_repo.py` (46 identical + 1 drifted + 20 root-only) | `tests/unit/runtime/test_thread_meta_repo.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_run_messages_pagination.py` (9 identical + 1 drifted + 8 root-only) | `tests/unit/runtime/test_thread_run_messages_pagination.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_state_reducers.py` (10 identical + 2 drifted + 33 root-only) | `tests/unit/runtime/test_thread_state_reducers.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_thread_token_usage.py` (0 identical + 2 drifted + 7 root-only) | `tests/unit/runtime/test_thread_token_usage.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_token_usage.py` (14 identical + 0 drifted + 0 root-only) | `tests/unit/runtime/test_token_usage.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_worker_langfuse_metadata.py` (1 identical + 3 drifted + 2 root-only) | `tests/unit/runtime/test_worker_langfuse_metadata.py` | root variant wins on drifted names; 4 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — models/persistence (dedup batch 4 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/models tests/unit/persistence -q -m "not serial and not requires_llm and not live and not external"` → 1093 passed / 1 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_client.py` (91 identical + 52 drifted + 46 root-only) | `tests/unit/models/test_client.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_langfuse_metadata.py` (1 identical + 2 drifted + 5 root-only) | `tests/unit/models/test_client_langfuse_metadata.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_live.py` (19 identical + 0 drifted + 0 root-only) | `tests/unit/models/test_client_live.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_codex_provider.py` (21 identical + 0 drifted + 5 root-only) | `tests/unit/models/test_codex_provider.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_infoquest_client.py` (0 identical + 0 drifted + 22 root-only) | `tests/unit/models/test_infoquest_client.py` | root variant wins on drifted names; 11 class methods + 10 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_lead_agent_model_resolution.py` (11 identical + 6 drifted + 31 root-only) | `tests/unit/models/test_lead_agent_model_resolution.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mindie_provider.py` (41 identical + 0 drifted + 4 root-only) | `tests/unit/models/test_mindie_provider.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_model_config.py` (2 identical + 0 drifted + 2 root-only) | `tests/unit/models/test_model_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_model_factory.py` (31 identical + 4 drifted + 34 root-only) | `tests/unit/models/test_model_factory.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_patched_deepseek.py` (9 identical + 1 drifted + 0 root-only) | `tests/unit/models/test_patched_deepseek.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_patched_minimax.py` (1 identical + 3 drifted + 1 root-only) | `tests/unit/models/test_patched_minimax.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_persistence_scaffold.py` (21 identical + 1 drifted + 17 root-only) | `tests/unit/persistence/test_persistence_scaffold.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_vllm_provider.py` (0 identical + 0 drifted + 16 root-only) | `tests/unit/models/test_vllm_provider.py` | root variant wins on drifted names; 0 class methods + 8 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — tools (dedup batch 5 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/tools -q -m "not serial and not requires_llm and not live and not external"` → 1981 passed / 2 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_dangling_tool_call_middleware.py` (24 identical + 2 drifted + 32 root-only) | `tests/unit/tools/test_dangling_tool_call_middleware.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_deferred_tool_promotion_real_llm.py` (0 identical + 1 drifted + 0 root-only) | `tests/unit/tools/test_deferred_tool_promotion_real_llm.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_file_conversion.py` (18 identical + 12 drifted + 2 root-only) | `tests/unit/tools/test_file_conversion.py` | root variant wins on drifted names; 5 class methods + 2 module defs carried from subdir; spliced docx/xlsx routing tests re-bound to the legacy app.agentplatform seam via alias import | both copies green on the same candidate pre-merge |
+| `tests/test_invoke_acp_agent_tool.py` (7 identical + 9 drifted + 3 root-only) | `tests/unit/tools/test_invoke_acp_agent_tool.py` | root variant wins on drifted names; 0 class methods + 14 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_jina_client.py` (12 identical + 1 drifted + 7 root-only) | `tests/unit/tools/test_jina_client.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_cache.py` (0 identical + 0 drifted + 19 root-only) | `tests/unit/tools/test_mcp_cache.py` | root variant wins on drifted names; 0 class methods + 6 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_client_config.py` (7 identical + 1 drifted + 6 root-only) | `tests/unit/tools/test_mcp_client_config.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_config_secrets.py` (18 identical + 0 drifted + 82 root-only) | `tests/unit/tools/test_mcp_config_secrets.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_oauth.py` (3 identical + 0 drifted + 9 root-only) | `tests/unit/tools/test_mcp_oauth.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_session_pool.py` (2 identical + 12 drifted + 46 root-only) | `tests/unit/tools/test_mcp_session_pool.py` | root variant wins on drifted names; 0 class methods + 15 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_mcp_sync_wrapper.py` (5 identical + 1 drifted + 3 root-only) | `tests/unit/tools/test_mcp_sync_wrapper.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_present_file_tool_core_logic.py` (4 identical + 0 drifted + 1 root-only) | `tests/unit/tools/test_present_file_tool_core_logic.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_serper_tools.py` (18 identical + 0 drifted + 78 root-only) | `tests/unit/tools/test_serper_tools.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_tool.py` (0 identical + 2 drifted + 8 root-only) | `tests/unit/tools/test_setup_agent_tool.py` | root variant wins on drifted names; 0 class methods + 8 module defs carried from subdir; sub _call_setup_agent/_make_runtime helpers carried under aliases for the carried user-store class | both copies green on the same candidate pre-merge |
+| `tests/test_skill_manage_tool.py` (0 identical + 0 drifted + 10 root-only) | `tests/unit/tools/test_skill_manage_tool.py` | root variant wins on drifted names; 0 class methods + 9 module defs carried from subdir; sub autouse isolation fixture scoped to the carried classes only | both copies green on the same candidate pre-merge |
+| `tests/test_task_tool_usage_recorder.py` (8 identical + 0 drifted + 1 root-only) | `tests/unit/tools/test_task_tool_usage_recorder.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_args_schema_no_pydantic_warning.py` (3 identical + 0 drifted + 4 root-only) | `tests/unit/tools/test_tool_args_schema_no_pydantic_warning.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_call_metadata.py` (0 identical + 0 drifted + 14 root-only) | `tests/unit/tools/test_tool_call_metadata.py` | root variant wins on drifted names; 0 class methods + 9 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_deduplication.py` (5 identical + 1 drifted + 1 root-only) | `tests/unit/tools/test_tool_deduplication.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_error_handling_middleware.py` (9 identical + 1 drifted + 30 root-only) | `tests/unit/tools/test_tool_error_handling_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tool_output_truncation.py` (36 identical + 0 drifted + 26 root-only) | `tests/unit/tools/test_tool_output_truncation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tracing_factory.py` (5 identical + 0 drifted + 0 root-only) | `tests/unit/tools/test_tracing_factory.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tracing_metadata.py` (9 identical + 0 drifted + 2 root-only) | `tests/unit/tools/test_tracing_metadata.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_update_agent_tool.py` (0 identical + 0 drifted + 27 root-only) | `tests/unit/tools/test_update_agent_tool.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_view_image_tool.py` (6 identical + 1 drifted + 1 root-only) | `tests/unit/tools/test_view_image_tool.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — sandbox (dedup batch 6 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/sandbox tests/integration/sandbox -q -m "not serial and not requires_llm and not live and not external"` → 2144 passed / 10 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_aio_sandbox.py` (13 identical + 3 drifted + 43 root-only) | `tests/integration/sandbox/test_aio_sandbox.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_aio_sandbox_local_backend.py` (13 identical + 1 drifted + 82 root-only) | `tests/integration/sandbox/test_aio_sandbox_local_backend.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_aio_sandbox_readiness.py` (0 identical + 3 drifted + 2 root-only) | `tests/integration/sandbox/test_aio_sandbox_readiness.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_docker_sandbox_mode_detection.py` (6 identical + 0 drifted + 20 root-only) | `tests/integration/sandbox/test_docker_sandbox_mode_detection.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_encoding.py` (5 identical + 3 drifted + 13 root-only) | `tests/unit/sandbox/test_local_sandbox_encoding.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_provider_mounts.py` (39 identical + 5 drifted + 11 root-only) | `tests/unit/sandbox/test_local_sandbox_provider_mounts.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_sandbox_virtual_path_contract.py` (14 identical + 6 drifted + 4 root-only) | `tests/unit/sandbox/test_local_sandbox_virtual_path_contract.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_provisioner_pvc_volumes.py` (2 identical + 4 drifted + 53 root-only) | `tests/integration/sandbox/test_provisioner_pvc_volumes.py` | root variant wins on drifted names; 12 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_remote_sandbox_backend.py` (19 identical + 1 drifted + 14 root-only) | `tests/integration/sandbox/test_remote_sandbox_backend.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_runtime_paths.py` (5 identical + 4 drifted + 3 root-only) | `tests/unit/sandbox/test_runtime_paths.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_audit_middleware.py` (47 identical + 0 drifted + 25 root-only) | `tests/unit/sandbox/test_sandbox_audit_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_middleware.py` (2 identical + 4 drifted + 30 root-only) | `tests/unit/sandbox/test_sandbox_middleware.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_orphan_reconciliation.py` (11 identical + 14 drifted + 65 root-only) | `tests/integration/sandbox/test_sandbox_orphan_reconciliation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_orphan_reconciliation_e2e.py` (3 identical + 0 drifted + 0 root-only) | `tests/integration/api/test_sandbox_orphan_reconciliation_e2e.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_search_tools.py` (15 identical + 4 drifted + 21 root-only) | `tests/unit/sandbox/test_sandbox_search_tools.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_sandbox_tools_security.py` (67 identical + 24 drifted + 28 root-only) | `tests/unit/sandbox/test_sandbox_tools_security.py` | root variant wins on drifted names; 0 class methods + 3 module defs carried from subdir; carried test path literals adapted to the root _THREAD_DATA binding (/tmp/deer-flow) | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — skills/scripts (dedup batch 7 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/unit/skills tests/unit/scripts -q -m "not serial and not requires_llm and not live and not external"` → 1739 passed / 1 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_acp_config.py` (13 identical + 1 drifted + 4 root-only) | `tests/unit/scripts/test_acp_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_app_config_reload.py` (8 identical + 0 drifted + 27 root-only) | `tests/unit/scripts/test_app_config_reload.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_check_script.py` (0 identical + 3 drifted + 5 root-only) | `tests/unit/scripts/test_check_script.py` | root variant wins on drifted names; 0 class methods + 4 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_config_version.py` (6 identical + 0 drifted + 7 root-only) | `tests/unit/scripts/test_config_version.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_dev_entrypoint.py` (8 identical + 1 drifted + 9 root-only) | `tests/unit/scripts/test_dev_entrypoint.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_doctor.py` (32 identical + 2 drifted + 39 root-only) | `tests/unit/scripts/test_doctor.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_local_skill_storage_write.py` (11 identical + 3 drifted + 7 root-only) | `tests/unit/skills/test_local_skill_storage_write.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_logging_level_from_config.py` (6 identical + 0 drifted + 1 root-only) | `tests/unit/scripts/test_logging_level_from_config.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_wizard.py` (29 identical + 0 drifted + 20 root-only) | `tests/unit/scripts/test_setup_wizard.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skill_creator_quick_validate.py` (0 identical + 0 drifted + 6 root-only) | `tests/unit/skills/test_skill_creator_quick_validate.py` | root variant wins on drifted names; 0 class methods + 6 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_installer.py` (28 identical + 3 drifted + 21 root-only) | `tests/unit/skills/test_skills_installer.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_loader.py` (3 identical + 1 drifted + 4 root-only) | `tests/unit/skills/test_skills_loader.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_validation.py` (19 identical + 1 drifted + 6 root-only) | `tests/unit/skills/test_skills_validation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir; stale list-only allowed-tools rejection test dropped (superseded by root test_allows_allowed_tools_string) | both copies green on the same candidate pre-merge |
+| `tests/test_subagent_skills_config.py` (42 identical + 0 drifted + 0 root-only) | `tests/unit/skills/test_subagent_skills_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_tracing_config.py` (7 identical + 0 drifted + 0 root-only) | `tests/unit/scripts/test_tracing_config.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests dedup — intentional keeps and scope boundary
+
+Ticket #66 scope closure under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
+
+1. `tests/blocking_io/` keeps (10 root files + their blocking_io twins):
+   `test_artifact_archive.py`, `test_batch_acceptance.py`,
+   `test_honcho_memory_backend.py`, `test_openviking_memory_backend.py`,
+   `test_persistence_bootstrap.py`, `test_project_documents_promotion.py`,
+   `test_project_trash.py`, `test_sandbox_authorization.py`,
+   `test_skill_export.py`, `test_skills_reload.py`. The standard lane runs
+   with `--ignore=tests/blocking_io` and the blocking-io lane runs only
+   `tests/blocking_io`, so these same-name copies never co-collect in any
+   lane run; the blocking_io twin is the strict Blockbuster-gate owner and
+   the root copy is the non-gated general home (root-only functions would
+   change semantics under the gate). Kept intentionally.
+2. 541 root-level test files without any same-name twin: no duplicate
+   collection (verified by `scripts/check_test_collection_duplicates.py`);
+   kept at root pending per-file layer assignment, which is the follow-up
+   layering migration (#69) and not part of the dual-run defect.
+   (Resolved 2026-10-15 by the root-only layering migration, batches 1-8
+   above — the root level now holds only conftest and cross-layer support
+   files.)
+
+Post-dedup, the duplicate-collection guard
+(`scripts/check_test_collection_duplicates.py`) reports zero duplicate
+test-name keys in standard lane scope; the before/after collect-only counts
+are recorded in the decision record's execution summary. Closure lane:
+backend-standard green at 4c07acbc0 — 26836 passed / 235 skipped,
+TEST_LANE_DURATION 926s (baseline pre-dedup at d8f1418d2: 29629 passed /
+236 skipped, 1128s; −2793 duplicated executions, −202s), artifact
+`logs/test-lanes/backend-standard-20261013T123933Z-2950947/run.log`. Two
+runtime-reference follow-up fixes landed after the batches: 4c07acbc0
+(module-path imports and a Path source-read repointed to keepers; the first
+closure run failed 8 tests on them) and 529d0e87d (sandbox-image-smoke
+workflow + scripts guidance repointed to keeper paths).
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — integration/api + contracts (dedup batch 8 of 8)
+
+Same protocol as batch 1. Validation: `uv run --no-sync pytest tests/integration/api tests/contracts -q -m "not serial and not requires_llm and not live and not external"` → 1628 passed / 42 skipped; ruff check/format clean.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_artifacts_router.py` (2 identical + 4 drifted + 31 root-only) | `tests/integration/api/test_artifacts_router.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_client_e2e.py` (27 identical + 16 drifted + 0 root-only) | `tests/integration/api/test_client_e2e.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_queue_user_isolation.py` (2 identical + 5 drifted + 0 root-only) | `tests/contracts/test_memory_queue_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_router.py` (0 identical + 12 drifted + 17 root-only) | `tests/integration/api/test_memory_router.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_storage_user_isolation.py` (0 identical + 8 drifted + 0 root-only) | `tests/contracts/test_memory_storage_user_isolation.py` | root variant wins on drifted names; 1 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_thread_meta_isolation.py` (8 identical + 0 drifted + 14 root-only) | `tests/contracts/test_memory_thread_meta_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_updater_user_isolation.py` (0 identical + 3 drifted + 0 root-only) | `tests/contracts/test_memory_updater_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_migration_user_isolation.py` (13 identical + 0 drifted + 11 root-only) | `tests/contracts/test_migration_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_paths_user_isolation.py` (34 identical + 0 drifted + 11 root-only) | `tests/contracts/test_paths_user_isolation.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_runs_api_endpoints.py` (10 identical + 1 drifted + 7 root-only) | `tests/integration/api/test_runs_api_endpoints.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_e2e_user_isolation.py` (5 identical + 4 drifted + 3 root-only) | `tests/contracts/test_setup_agent_e2e_user_isolation.py` | root variant wins on drifted names; 1 class methods + 3 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_setup_agent_http_e2e_real_server.py` (0 identical + 1 drifted + 0 root-only) | `tests/integration/api/test_setup_agent_http_e2e_real_server.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_suggestions_router.py` (5 identical + 4 drifted + 11 root-only) | `tests/integration/api/test_suggestions_router.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_threads_router.py` (19 identical + 1 drifted + 92 root-only) | `tests/integration/api/test_threads_router.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_update_agent_e2e_user_isolation.py` (0 identical + 3 drifted + 0 root-only) | `tests/contracts/test_update_agent_e2e_user_isolation.py` | root variant wins on drifted names; 0 class methods + 5 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_uploads_router.py` (14 identical + 16 drifted + 15 root-only) | `tests/integration/api/test_uploads_router.py` | root variant wins on drifted names; 0 class methods + 43 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+## Batch 2026-10-13: backend/tests root↔subdir dedup — channels/memory/workflows (dedup batch 1 of 8)
+
+Ticket #66 under [the dedup decision](../decisions/2026-10-13-backend-test-dedup.md):
+for every root ↔ `{unit,integration,contracts}` same-name pair the ROOT copy is
+the merge base and is deleted after its content lands at the canonical subdir
+path (`__file__` depths normalized); subdir-only tests are carried over
+(spliced into same-named classes or appended as module defs). On drifted
+same-name tests the root variant wins: both variants were green on the same
+candidate before the merge, so no retained assertion is weaker than what the
+standard lane ran. Module-global directives (`pytestmark`, `pytest_plugins`)
+are not carried from the sub copy. Per-file merge reports (spliced methods,
+carried defs, root-wins conflicts, import shadowing) are archived in the
+ticket's `dev-log/batch6/merge_report_*.json`.
+
+| Removed root copy | Kept canonical path | Assertion mapping / replacement strength | Validation |
+| --- | --- | --- | --- |
+| `tests/test_channel_file_attachments.py` (16 identical + 4 drifted + 28 root-only) | `tests/unit/channels/test_channel_file_attachments.py` | root variant wins on drifted names; 18 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_channels.py` (74 identical + 19 drifted + 259 root-only) | `tests/unit/channels/test_channels.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_dingtalk_channel.py` (66 identical + 12 drifted + 42 root-only) | `tests/unit/channels/test_dingtalk_channel.py` | root variant wins on drifted names; 0 class methods + 37 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_discord_channel.py` (0 identical + 0 drifted + 23 root-only) | `tests/unit/channels/test_discord_channel.py` | root variant wins on drifted names; 0 class methods + 22 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_feishu_parser.py` (5 identical + 1 drifted + 25 root-only) | `tests/unit/workflows/test_feishu_parser.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_prompt_injection.py` (10 identical + 1 drifted + 24 root-only) | `tests/unit/memory/test_memory_prompt_injection.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_queue.py` (0 identical + 10 drifted + 16 root-only) | `tests/unit/memory/test_memory_queue.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir; appended legacy-API test rewritten against `app.agentplatform.legacy.memory.queue` alias | both copies green on the same candidate pre-merge |
+| `tests/test_memory_storage.py` (0 identical + 11 drifted + 5 root-only) | `tests/unit/memory/test_memory_storage.py` | root variant wins on drifted names; 0 class methods + 1 module defs carried from subdir; appended legacy-API tests rewritten against `app.agentplatform.legacy.memory.storage` alias | both copies green on the same candidate pre-merge |
+| `tests/test_memory_updater.py` (13 identical + 33 drifted + 36 root-only) | `tests/unit/memory/test_memory_updater.py` | root variant wins on drifted names; 0 class methods + 2 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_memory_upload_filtering.py` (22 identical + 4 drifted + 7 root-only) | `tests/unit/memory/test_memory_upload_filtering.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_skills_parser.py` (13 identical + 3 drifted + 14 root-only) | `tests/unit/workflows/test_skills_parser.py` | root variant wins on drifted names; 0 class methods + 0 module defs carried from subdir | both copies green on the same candidate pre-merge |
+| `tests/test_wechat_channel.py` (18 identical + 11 drifted + 12 root-only) | `tests/unit/channels/test_wechat_channel.py` | root variant wins on drifted names; 0 class methods + 85 module defs carried from subdir | both copies green on the same candidate pre-merge |
+
+Validation (this batch):
+
+```bash
+cd backend
+UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \
+  uv run --no-sync pytest tests/unit/channels tests/unit/memory tests/unit/workflows \
+  -q -m "not serial and not requires_llm and not live and not external"
+# 2560 passed
+uv run --no-sync ruff check tests/unit/channels tests/unit/memory tests/unit/workflows
+uv run --no-sync ruff format --check tests/unit/channels tests/unit/memory tests/unit/workflows
+```
+
 ## Batch 2026-10-03: Thread initialization ordering duplicate
 
 Removed `frontend/tests/e2e/workflows/chat-thread-init-ordering.spec.ts` and
@@ -747,6 +1648,17 @@ cd backend
 find tests -maxdepth 1 -type f -name 'test_*.py'
 PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/unit tests/integration tests/contracts -v -m "not serial and not requires_llm"
 ```
+
+Correction (2026-10-13, ticket #66): this batch's claim was true when recorded
+(commit `60f0ef382` moved the root files verbatim, e.g. `test_channels.py` as an
+R100 rename), but subsequent batch commits between 2026-07-09 and 2026-09-06
+(e.g. `4feb26e0f` "B4b 权限/隔离 + B4c 杂项" and the legacy-harness refactor)
+recreated root-level copies without a ledger batch. Both trees then evolved in
+parallel — root copies absorbing newer product-contract assertions, subdir
+copies evolving independently — so the "no root-level tests left" statement
+above no longer described the tree. The duplicates were resolved and this entry
+superseded by the 2026-10-13 dedup batches at the top of this ledger, under
+[the dedup decision](../decisions/2026-10-13-backend-test-dedup.md).
 
 ## Batch 2026-07-09: Stable Contract Entrypoints
 
