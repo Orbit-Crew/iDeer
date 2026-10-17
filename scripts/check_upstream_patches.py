@@ -362,7 +362,11 @@ def check(root: Path, base: str, head: str | None, baseline: str) -> dict:
             if isinstance(base_basis, dict):
                 if previous_code_budget != base_basis.get("code_files") and not amendment_valid:
                     errors.append("candidate: previous_code_files must match the base ledger allocation")
-                if previous_document_budget != base_basis.get("document_files"):
+                # Same amendment escape as the code line: a candidate that
+                # re-anchors onto an advanced base (a governance sweep moved
+                # the allocation between the PR base and the merge) records
+                # the re-anchor in the amendment instead of hard-failing.
+                if previous_document_budget != base_basis.get("document_files") and not amendment_valid:
                     errors.append("candidate: previous_document_files must match the base ledger allocation")
         except ValueError as exc:
             errors.append(str(exc))

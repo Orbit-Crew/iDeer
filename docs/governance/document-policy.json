@@ -36,10 +36,10 @@
     "delta_rule": "verify hashes at the baseline commit, or recompute at a new candidate and record the delta here before relying on the inventory; never overwrite rows silently"
   },
   "inventory": {
-    "count": 367,
+    "count": 368,
     "classification_counts": {
       "engineering-body-review": 252,
-      "agent-guidance": 56,
+      "agent-guidance": 57,
       "fixture-or-manual-inventory-only": 38,
       "protected-baseline": 21
     },
@@ -55,15 +55,15 @@
         "path": "AGENTS.md",
         "classification": "agent-guidance",
         "protected": false,
-        "sha256": "ca9eccf86dffd2affed4279a3b25dc6082fb3a9519a149d6656414465036cc1c",
-        "lines": 161
+        "sha256": "817a996411e9780909208c0f4978422b1d61a5b60bdaccf70a3d2d0bd911a9d6",
+        "lines": 63
       },
       {
         "path": "CLAUDE.md",
         "classification": "agent-guidance",
         "protected": false,
-        "sha256": "ca9eccf86dffd2affed4279a3b25dc6082fb3a9519a149d6656414465036cc1c",
-        "lines": 161
+        "sha256": "817a996411e9780909208c0f4978422b1d61a5b60bdaccf70a3d2d0bd911a9d6",
+        "lines": 63
       },
       {
         "path": "CONTEXT.md",
@@ -755,15 +755,15 @@
         "path": "backend/tests/AGENTS.md",
         "classification": "agent-guidance",
         "protected": false,
-        "sha256": "f4cdfb4b268d18964bc8ceeca048534dd42c9554ac5f7ac2c68375fdcd5acdb6",
-        "lines": 15
+        "sha256": "41a780ffe1a7510797fae49a26a1cbde5b74744eaf616cf8d7f9581e7d40d53f",
+        "lines": 19
       },
       {
         "path": "backend/tests/CLAUDE.md",
         "classification": "agent-guidance",
         "protected": false,
-        "sha256": "f4cdfb4b268d18964bc8ceeca048534dd42c9554ac5f7ac2c68375fdcd5acdb6",
-        "lines": 15
+        "sha256": "41a780ffe1a7510797fae49a26a1cbde5b74744eaf616cf8d7f9581e7d40d53f",
+        "lines": 19
       },
       {
         "path": "backend/tests/fixtures/telemetry/README.md",
@@ -804,8 +804,8 @@
         "path": "docs/README.md",
         "classification": "engineering-body-review",
         "protected": false,
-        "sha256": "978fac893a8b9ac5be95f8b82a218f90890cf01f0cdfe29359332ae0574537fd",
-        "lines": 43
+        "sha256": "c0e6ceed89fc363b9e9326012eba1ab06cd320127633c0badfff3e8d55bc8b89",
+        "lines": 68
       },
       {
         "path": "docs/SKILL_NAME_CONFLICT_FIX.md",
@@ -890,6 +890,13 @@
         "protected": false,
         "sha256": "ebb100e238613b6a21a4ce156a1855c6c7b2e8bef00c11ed194468bcdba398cc",
         "lines": 69
+      },
+      {
+        "path": "docs/agents/ocr-code-review.md",
+        "classification": "agent-guidance",
+        "protected": false,
+        "sha256": "361110176c9e591fb25bd0c76da2f43e84afc556a3f563b5cb13e3aeeb2ab04e",
+        "lines": 33
       },
       {
         "path": "docs/agents/skill-routing.md",
