@@ -226,7 +226,10 @@ case "$LANE" in
     (cd "$ROOT_DIR/frontend" && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" rstest run && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" vitest run --coverage --pool=forks --no-file-parallelism --maxWorkers=2 --testTimeout=5000 --hookTimeout=5000 --reporter=verbose && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" check)
     ;;
   frontend-smoke)
-    (cd "$ROOT_DIR/frontend" && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" test:e2e:smoke)
+    # DEER_FLOW_MOCK_API_ENABLED opens the /mock/api demo routes server-side
+    # (mock-api-gate.ts) for the showcase smoke spec; client-side static mode
+    # stays OFF so the Playwright interceptors keep owning the traffic.
+    (cd "$ROOT_DIR/frontend" && DEER_FLOW_MOCK_API_ENABLED=1 XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" test:e2e:smoke)
     ;;
   frontend-auth)
     (cd "$ROOT_DIR/frontend" && PLAYWRIGHT_AUTH_ENABLED=1 XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" playwright test tests/e2e/auth tests/e2e-auth)
@@ -246,7 +249,12 @@ case "$LANE" in
     # Mock E2E owns root functional specs plus the shared smoke/workflow
     # suites. Auth, real-backend, visual, a11y, and Stagehand directories have
     # dedicated lanes and must not silently run here.
-    (cd "$ROOT_DIR/frontend" && XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" exec playwright test tests/e2e/*.spec.ts tests/e2e/smoke tests/e2e/workflows)
+    # DEER_FLOW_MOCK_API_ENABLED opens the /mock/api demo routes server-side
+    # (mock-api-gate.ts) — the showcase demo-thread requests fall through the
+    # Playwright interceptors to these routes and 404 without it (issue #93).
+    # Expected noise: the mock lane runs without a real backend, so proxy
+    # ECONNREFUSED lines for 127.0.0.1:8001 are normal and not failures.
+    (cd "$ROOT_DIR/frontend" && DEER_FLOW_MOCK_API_ENABLED=1 XDG_DATA_HOME="${TEST_PNPM_XDG:-/tmp/deer-flow-xdg}" PNPM_HOME="${TEST_PNPM_HOME:-/tmp/deer-flow-pnpm-home}" "${PNPM_CMD[@]}" exec playwright test tests/e2e/*.spec.ts tests/e2e/smoke tests/e2e/workflows)
     ;;
   backend-blocking-io)
     (cd "$ROOT_DIR/backend" && make test-blocking-io)
