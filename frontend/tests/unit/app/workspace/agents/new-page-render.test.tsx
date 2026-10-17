@@ -80,23 +80,34 @@ vi.mock("@/core/auth/AuthProvider", () => ({
   }),
 }));
 
-vi.mock("@/core/threads/hooks", () => ({
-  useThreadStream: () => ({
-    thread: {
-      values: {},
-      messages: [],
-      isLoading: false,
-      error: null,
-      stop: vi.fn(),
+// The real useThreadStream consumes the SubtaskContext (tasksRef/setTasks),
+// so the page must mount SubtasksProvider ABOVE the component calling the
+// hook — the regression behind the 2026-10 develop mock-e2e outage (issue
+// #93) threw during SSR exactly here. Mirror that contract: the mock resolves
+// the real context and fails the render when the page forgot the provider.
+vi.mock("@/core/threads/hooks", async () => {
+  const { useSubtaskContext } = await import("@/core/tasks/context");
+  return {
+    useThreadStream: () => {
+      useSubtaskContext();
+      return {
+        thread: {
+          values: {},
+          messages: [],
+          isLoading: false,
+          error: null,
+          stop: vi.fn(),
+        },
+        pendingUsageMessages: [],
+        sendMessage: vi.fn(),
+        isUploading: false,
+        isHistoryLoading: false,
+        hasMoreHistory: false,
+        loadMoreHistory: vi.fn(),
+      };
     },
-    pendingUsageMessages: [],
-    sendMessage: vi.fn(),
-    isUploading: false,
-    isHistoryLoading: false,
-    hasMoreHistory: false,
-    loadMoreHistory: vi.fn(),
-  }),
-}));
+  };
+});
 
 vi.mock("@/core/utils/uuid", () => ({
   uuid: () => "mock-uuid-123",
