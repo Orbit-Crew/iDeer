@@ -2229,6 +2229,9 @@ export const enUS = {
       roleChangeConfirm: (username, fromRole, toRole: string) =>
         'Are you sure you want to change the role of user "{username}" from {fromRole} to {toRole}?',
       roleUpdated: "User role updated",
+      roleChangeTitle: "Change role",
+      statusChangeTitle: "Change account status",
+      confirmChange: "Confirm",
       enableUserConfirm: "Are you sure you want to enable this user?",
       disableUserConfirm: "Are you sure you want to disable this user?",
       userEnabled: "User enabled",

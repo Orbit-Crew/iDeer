@@ -34,6 +34,19 @@ PENDING_CLARIFICATION_TTL_SECONDS = 30 * 60
 FEISHU_INBOUND_BATCH_WINDOW_SECONDS = 0.75
 FEISHU_MAX_INBOUND_FILE_BYTES = 20_000_000
 SOURCE_PREVIEW_METADATA_KEY = "feishu_source_preview"
+# Bounds on in-flight per-message tracking (03-L5): running cards normally
+# clear on the final card update and clarification hints on their next
+# consume; these caps only guard against leaks when a run dies before either
+# happens. Same technique as Telegram's MAX_TRACKED_STREAM_MESSAGES.
+MAX_TRACKED_RUNNING_CARDS = 256
+MAX_PENDING_CLARIFICATION_KEYS = 256
+
+
+def _pending_is_fresh(pending: dict[str, Any], now: float) -> bool:
+    created_at = pending.get("created_at")
+    return isinstance(created_at, (int, float)) and now - created_at <= PENDING_CLARIFICATION_TTL_SECONDS
+
+
 # Bounded wait for the cross-loop WS disconnect during stop(); the thread join
 # below it has its own 5s budget, mirroring the other adapters' bounded
 # cross-loop awaits (discord.py stop()).
@@ -695,6 +708,12 @@ class FeishuChannel(Channel):
         """Create the running card and cache its message ID when available."""
         running_card_id = await self._reply_card(source_message_id, self._compose_card_text(text, metadata))
         if running_card_id:
+            # Telegram's _register_stream_message shape: dropping the key
+            # first refreshes its insertion position, so a re-registered card
+            # is never the one the cap evicts.
+            self._running_card_ids.pop(source_message_id, None)
+            while len(self._running_card_ids) >= MAX_TRACKED_RUNNING_CARDS:
+                self._running_card_ids.pop(next(iter(self._running_card_ids)))
             self._running_card_ids[source_message_id] = running_card_id
             logger.info("[Feishu] running card created: source=%s card=%s", source_message_id, running_card_id)
         else:
@@ -870,8 +889,20 @@ class FeishuChannel(Channel):
         with self._thread_lock:
             # Plain-message clarification continuity is a short-lived in-memory
             # hint; explicit Feishu replies are still covered by persisted
-            # message-id mappings.
+            # message-id mappings. Expiry is enforced on consume, which only
+            # visits the same chat+user again — so the write path sweeps every
+            # key, keeping never-answered chats from leaking their hints
+            # (03-L5), and caps the key count like the other adapters.
+            now = time.time()
+            for stale_key in list(self._pending_clarifications):
+                fresh = [pending for pending in self._pending_clarifications[stale_key] if _pending_is_fresh(pending, now)]
+                if fresh:
+                    self._pending_clarifications[stale_key] = fresh
+                else:
+                    self._pending_clarifications.pop(stale_key, None)
             self._pending_clarifications.setdefault(key, []).append(pending)
+            while len(self._pending_clarifications) > MAX_PENDING_CLARIFICATION_KEYS:
+                self._pending_clarifications.pop(next(iter(self._pending_clarifications)))
         logger.info(
             "[Feishu] pending clarification remembered: chat_id=%s user_id=%s topic_id=%s thread_id=%s",
             msg.chat_id,
@@ -890,8 +921,7 @@ class FeishuChannel(Channel):
             now = time.time()
             while pending_items:
                 pending = pending_items.pop(0)
-                created_at = pending.get("created_at")
-                if isinstance(created_at, (int, float)) and now - created_at <= PENDING_CLARIFICATION_TTL_SECONDS:
+                if _pending_is_fresh(pending, now):
                     if pending_items:
                         self._pending_clarifications[key] = pending_items
                     else:

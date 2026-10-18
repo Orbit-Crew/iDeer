@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -16,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.channels.message_bus import (
+    PENDING_CLARIFICATION_METADATA_KEY,
     InboundMessage,
     InboundMessageType,
     MessageBus,
@@ -2510,3 +2512,64 @@ class TestEdgeCases:
                 assert mock_sleep.call_count == 2
                 mock_sleep.assert_any_call(1)
                 mock_sleep.assert_any_call(2)
+
+
+class TestInFlightMapBounds:
+    """03-L5: in-flight card/clarification tracking is bounded."""
+
+    @pytest.mark.asyncio
+    async def test_running_card_ids_cap_evicts_oldest(self):
+        from app.channels.feishu import MAX_TRACKED_RUNNING_CARDS
+
+        ch = _make_channel()
+        ch._running_card_ids = {f"src_{index}": f"card_{index}" for index in range(MAX_TRACKED_RUNNING_CARDS)}
+        ch._reply_card = AsyncMock(return_value="card_new")
+
+        await ch._create_running_card("src_new", "working...")
+
+        assert len(ch._running_card_ids) == MAX_TRACKED_RUNNING_CARDS
+        assert ch._running_card_ids["src_new"] == "card_new"
+        assert "src_0" not in ch._running_card_ids
+
+    def test_pending_clarification_write_sweeps_expired_keys(self):
+        from app.channels.feishu import PENDING_CLARIFICATION_TTL_SECONDS
+
+        ch = _make_channel()
+        stale = {
+            "thread_id": "thread_stale",
+            "topic_id": "topic_stale",
+            "source_message_id": "src_stale",
+            "card_message_id": "card_stale",
+            "created_at": time.time() - PENDING_CLARIFICATION_TTL_SECONDS - 1,
+        }
+        ch._pending_clarifications[("chat_stale", "user_stale")] = [stale]
+
+        ch._remember_pending_clarification(_clarification_outbound(), "card_1")
+
+        assert ("chat_stale", "user_stale") not in ch._pending_clarifications
+        assert ("chat_1", "user_1") in ch._pending_clarifications
+
+    def test_pending_clarification_keys_are_capped(self):
+        from app.channels.feishu import MAX_PENDING_CLARIFICATION_KEYS
+
+        ch = _make_channel()
+        fresh = {"created_at": time.time()}
+        for index in range(MAX_PENDING_CLARIFICATION_KEYS):
+            ch._pending_clarifications[(f"seed-chat-{index}", "user_1")] = [dict(fresh)]
+
+        ch._remember_pending_clarification(_clarification_outbound(), "card_1")
+
+        assert len(ch._pending_clarifications) == MAX_PENDING_CLARIFICATION_KEYS
+        assert ("chat_1", "user_1") in ch._pending_clarifications
+        assert ("seed-chat-0", "user_1") not in ch._pending_clarifications
+
+
+def _clarification_outbound() -> OutboundMessage:
+    return _make_outbound(
+        metadata={
+            PENDING_CLARIFICATION_METADATA_KEY: True,
+            "user_id": "user_1",
+            "topic_id": "topic_1",
+            "message_id": "src_1",
+        },
+    )

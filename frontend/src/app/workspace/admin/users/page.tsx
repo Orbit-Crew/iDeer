@@ -94,6 +94,19 @@ export default function UsersPage() {
   >("soft_delete");
   const [deleteTargetUserId, setDeleteTargetUserId] = useState("");
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  // super_admin role transitions and status toggles confirm through dialogs
+  // like the delete flow, instead of the browser's native confirm (07-L3):
+  // native dialogs are unstyleable and invisible to test selectors.
+  const [roleConfirm, setRoleConfirm] = useState<{
+    userId: string;
+    username: string;
+    currentRole: string;
+    newRole: string;
+  } | null>(null);
+  const [statusConfirm, setStatusConfirm] = useState<{
+    userId: string;
+    enabling: boolean;
+  } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -127,27 +140,7 @@ export default function UsersPage() {
 
   const isSuperAdmin = currentUser?.system_role === "super_admin";
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    if (userId === currentUser?.id) {
-      toast.error(t.admin.users.cannotChangeOwnRole);
-      return;
-    }
-    const user = users.find((u) => u.id === userId);
-    if (!user) return;
-    const currentLabel = roleLabels[user.role] ?? user.role;
-    const newLabel = roleLabels[newRole as UserRole] ?? newRole;
-    if (newRole === "super_admin" || user.role === "super_admin") {
-      if (
-        !confirm(
-          t.admin.users.roleChangeConfirm(
-            user.username,
-            currentLabel,
-            newLabel,
-          ),
-        )
-      )
-        return;
-    }
+  const applyRoleChange = async (userId: string, newRole: string) => {
     try {
       await updateUserRole(userId, newRole);
       toast.success(t.admin.users.roleUpdated);
@@ -157,23 +150,26 @@ export default function UsersPage() {
     }
   };
 
-  const handleToggleStatus = async (
-    userId: string,
-    currentlyDisabled: boolean,
-  ) => {
+  const handleRoleChange = async (userId: string, newRole: string) => {
     if (userId === currentUser?.id) {
-      toast.error(t.admin.users.cannotChangeOwnStatus);
+      toast.error(t.admin.users.cannotChangeOwnRole);
       return;
     }
-    const enabling = currentlyDisabled;
-    if (
-      !confirm(
-        enabling
-          ? t.admin.users.enableUserConfirm
-          : t.admin.users.disableUserConfirm,
-      )
-    )
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+    if (newRole === "super_admin" || user.role === "super_admin") {
+      setRoleConfirm({
+        userId,
+        username: user.username,
+        currentRole: user.role,
+        newRole,
+      });
       return;
+    }
+    await applyRoleChange(userId, newRole);
+  };
+
+  const applyToggleStatus = async (userId: string, enabling: boolean) => {
     setDisablingId(userId);
     try {
       await toggleUserStatus(userId);
@@ -186,6 +182,14 @@ export default function UsersPage() {
     } finally {
       setDisablingId(null);
     }
+  };
+
+  const handleToggleStatus = (userId: string, currentlyDisabled: boolean) => {
+    if (userId === currentUser?.id) {
+      toast.error(t.admin.users.cannotChangeOwnStatus);
+      return;
+    }
+    setStatusConfirm({ userId, enabling: currentlyDisabled });
   };
 
   const handleCreate = async () => {
@@ -776,20 +780,27 @@ export default function UsersPage() {
                   {t.admin.users.transferDesc}
                 </p>
                 {deleteStrategy === "transfer" && (
-                  <select
-                    value={deleteTargetUserId}
-                    onChange={(e) => setDeleteTargetUserId(e.target.value)}
-                    className="type-body mt-2 h-9 w-full max-w-xs rounded-md border bg-transparent px-3"
-                  >
-                    <option value="">{t.admin.users.selectTargetUser}</option>
-                    {users
-                      .filter((u) => u.id !== deletingUser?.id)
-                      .map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.username}
-                        </option>
-                      ))}
-                  </select>
+                  <div className="mt-2">
+                    <Select
+                      value={deleteTargetUserId || undefined}
+                      onValueChange={setDeleteTargetUserId}
+                    >
+                      <SelectTrigger className="h-9 w-full max-w-xs">
+                        <SelectValue
+                          placeholder={t.admin.users.selectTargetUser}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users
+                          .filter((u) => u.id !== deletingUser?.id)
+                          .map((u) => (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.username}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
             </label>
@@ -810,6 +821,88 @@ export default function UsersPage() {
               {deleteSubmitting
                 ? t.admin.users.deleting
                 : t.admin.users.confirmDelete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={roleConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open) setRoleConfirm(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.admin.users.roleChangeTitle}</DialogTitle>
+            <DialogDescription>
+              {roleConfirm &&
+                t.admin.users.roleChangeConfirm(
+                  roleConfirm.username,
+                  roleLabels[roleConfirm.currentRole] ??
+                    roleConfirm.currentRole,
+                  roleLabels[roleConfirm.newRole as UserRole] ??
+                    roleConfirm.newRole,
+                )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRoleConfirm(null)}
+              data-testid="role-change-cancel"
+            >
+              {t.admin.users.cancel}
+            </Button>
+            <Button
+              onClick={() => {
+                if (!roleConfirm) return;
+                const { userId, newRole } = roleConfirm;
+                setRoleConfirm(null);
+                void applyRoleChange(userId, newRole);
+              }}
+              data-testid="role-change-confirm"
+            >
+              {t.admin.users.confirmChange}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={statusConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open) setStatusConfirm(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.admin.users.statusChangeTitle}</DialogTitle>
+            <DialogDescription>
+              {statusConfirm &&
+                (statusConfirm.enabling
+                  ? t.admin.users.enableUserConfirm
+                  : t.admin.users.disableUserConfirm)}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setStatusConfirm(null)}
+              data-testid="status-change-cancel"
+            >
+              {t.admin.users.cancel}
+            </Button>
+            <Button
+              onClick={() => {
+                if (!statusConfirm) return;
+                const { userId, enabling } = statusConfirm;
+                setStatusConfirm(null);
+                void applyToggleStatus(userId, enabling);
+              }}
+              data-testid="status-change-confirm"
+            >
+              {t.admin.users.confirmChange}
             </Button>
           </DialogFooter>
         </DialogContent>

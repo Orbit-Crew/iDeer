@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -135,6 +136,12 @@ class LocalAuditLog:
     db_path: str | Path | None = None
 
     def __post_init__(self) -> None:
+        # The runtime loop thread and the tray UI thread both call record()
+        # (and the tray can clear() while the loop records); without
+        # serializing them, two writers compute the same MAX(seq)+1 and the
+        # loser escapes as sqlite3.IntegrityError (05-M2). Reentrant because
+        # clear() appends its marker through record().
+        self._write_lock = threading.RLock()
         self._buffer: list[AuditEntry] = []
         self._cleared: list[dict[str, Any]] = []
         self._head = GENESIS_HASH
@@ -177,39 +184,42 @@ class LocalAuditLog:
             "detail": _redacted(detail, redactor),
         }
         stamp = at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
-        if self.db_path is None:
-            seq = self._next_seq
-            self._next_seq += 1
-            entry_hash = _entry_hash(self._head, seq, stamp, row)
-            self._head = entry_hash
-            entry = _entry(seq, stamp, row, entry_hash)
-            self._buffer.append(entry)
-            return entry
-        with sqlite3.connect(self.db_path) as db:
-            head = _head(db)
-            seq = db.execute(
-                "SELECT COALESCE(MAX(seq), 0) + 1 FROM audit_entries"
-            ).fetchone()[0]
-            entry_hash = _entry_hash(head, seq, stamp, row)
-            db.execute(
-                "INSERT INTO audit_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    seq,
-                    stamp,
-                    row["kind"],
-                    row["action"],
-                    row["capability"],
-                    row["digest"],
-                    row["run_id"],
-                    row["task_id"],
-                    row["actor_id"],
-                    json.dumps(row["detail"], ensure_ascii=False, sort_keys=True),
-                    head,
-                    entry_hash,
-                ),
-            )
-            db.execute("INSERT OR REPLACE INTO audit_meta VALUES (1, ?)", (entry_hash,))
-            db.commit()
+        with self._write_lock:
+            if self.db_path is None:
+                seq = self._next_seq
+                self._next_seq += 1
+                entry_hash = _entry_hash(self._head, seq, stamp, row)
+                self._head = entry_hash
+                entry = _entry(seq, stamp, row, entry_hash)
+                self._buffer.append(entry)
+                return entry
+            with sqlite3.connect(self.db_path) as db:
+                head = _head(db)
+                seq = db.execute(
+                    "SELECT COALESCE(MAX(seq), 0) + 1 FROM audit_entries"
+                ).fetchone()[0]
+                entry_hash = _entry_hash(head, seq, stamp, row)
+                db.execute(
+                    "INSERT INTO audit_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        seq,
+                        stamp,
+                        row["kind"],
+                        row["action"],
+                        row["capability"],
+                        row["digest"],
+                        row["run_id"],
+                        row["task_id"],
+                        row["actor_id"],
+                        json.dumps(row["detail"], ensure_ascii=False, sort_keys=True),
+                        head,
+                        entry_hash,
+                    ),
+                )
+                db.execute(
+                    "INSERT OR REPLACE INTO audit_meta VALUES (1, ?)", (entry_hash,)
+                )
+                db.commit()
         return _entry(seq, stamp, row, entry_hash)
 
     # --- reading ---------------------------------------------------------
@@ -339,34 +349,37 @@ class LocalAuditLog:
         history existed — how many entries and the hash of the last one —
         survives the clear. Individual entries cannot be removed or edited.
         """
-        entries = self.recent(limit=0)
-        last = entries[0] if entries else None
-        marker = self.record(
-            AuditKind.AUDIT,
-            "cleared",
-            actor_id=actor_id,
-            detail={
-                "entries_removed": len(entries),
-                "last_entry_hash": last.entry_hash if last else None,
-            },
-        )
-        clearance = _clearance(marker, len(entries), last)
-        if self.db_path is None:
-            self._buffer = [entry for entry in self._buffer if entry.seq == marker.seq]
-            self._cleared.append(clearance)
-            return clearance
-        with sqlite3.connect(self.db_path) as db:
-            db.execute("DELETE FROM audit_entries WHERE seq < ?", (marker.seq,))
-            db.execute(
-                "INSERT INTO audit_cleared VALUES (?, ?, ?, ?)",
-                (
-                    marker.at,
-                    actor_id,
-                    len(entries),
-                    last.entry_hash if last else GENESIS_HASH,
-                ),
+        with self._write_lock:
+            entries = self.recent(limit=0)
+            last = entries[0] if entries else None
+            marker = self.record(
+                AuditKind.AUDIT,
+                "cleared",
+                actor_id=actor_id,
+                detail={
+                    "entries_removed": len(entries),
+                    "last_entry_hash": last.entry_hash if last else None,
+                },
             )
-            db.commit()
+            clearance = _clearance(marker, len(entries), last)
+            if self.db_path is None:
+                self._buffer = [
+                    entry for entry in self._buffer if entry.seq == marker.seq
+                ]
+                self._cleared.append(clearance)
+                return clearance
+            with sqlite3.connect(self.db_path) as db:
+                db.execute("DELETE FROM audit_entries WHERE seq < ?", (marker.seq,))
+                db.execute(
+                    "INSERT INTO audit_cleared VALUES (?, ?, ?, ?)",
+                    (
+                        marker.at,
+                        actor_id,
+                        len(entries),
+                        last.entry_hash if last else GENESIS_HASH,
+                    ),
+                )
+                db.commit()
         return clearance
 
 

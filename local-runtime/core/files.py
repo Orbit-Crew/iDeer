@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import posixpath
+import secrets
 import stat
 import tempfile
 from dataclasses import dataclass
@@ -306,6 +307,10 @@ class LocalFileStore:
     @classmethod
     def _open_file(cls, root: RootConfig, path: Path, flags: int) -> int:
         if os.name == "nt":
+            # No O_NOFOLLOW equivalent for the final component on Windows, so
+            # the resolve stage's link walk (_reject_link_components) is the
+            # defense; the residual junction-swap TOCTOU window is accepted
+            # for this single-user local runtime (05-L6).
             return os.open(path, flags)
         parent_fd = cls._open_directory(root, path.parent)
         try:
@@ -318,7 +323,10 @@ class LocalFileStore:
     @staticmethod
     def _mkstemp_at(parent_fd: int) -> tuple[int, str]:
         for _ in range(100):
-            name = f".local-write-{next(tempfile._get_candidate_names())}"
+            # O_EXCL makes collisions harmless, so the name only needs to be
+            # hard to guess; secrets avoids the private
+            # tempfile._get_candidate_names API (05-L6).
+            name = f".local-write-{secrets.token_hex(8)}"
             try:
                 return os.open(
                     name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=parent_fd

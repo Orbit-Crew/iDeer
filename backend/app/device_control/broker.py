@@ -46,6 +46,27 @@ class TaskStatus(StrEnum):
     FAILED = "failed"
 
 
+# Statuses whose records are only kept for late status/receipt lookups; the
+# rest of TaskStatus marks a task still in flight on a device.
+_TERMINAL_TASK_STATUSES = frozenset(
+    {
+        TaskStatus.COMPLETED,
+        TaskStatus.CANCELLED,
+        TaskStatus.DENIED,
+        TaskStatus.TIMED_OUT,
+        TaskStatus.DEVICE_OFFLINE,
+        TaskStatus.EXPIRED,
+        TaskStatus.FAILED,
+    }
+)
+# Bound on tracked task records (03-L5): records normally stay only for the
+# task's short lifetime; this guards against a device that never answers or
+# runs that leak. Oldest terminal records are evicted first so a live task is
+# never the one dropped; the receipt bookkeeping below is bounded the same way.
+MAX_TRACKED_TASK_RECORDS = 512
+MAX_RECORDED_RECEIPTS = 4096
+
+
 @dataclass
 class DeviceConnection:
     device_id: str
@@ -87,7 +108,9 @@ class DeviceBroker:
         self.connections: dict[str, DeviceConnection] = {}
         self.tasks: dict[str, TaskRecord] = {}
         self._lock = asyncio.Lock()
-        self._recorded_receipts: set[str] = set()
+        # Insertion-ordered so the cap below can evict the oldest receipt id;
+        # membership semantics are the same as the set it replaces.
+        self._recorded_receipts: dict[str, None] = {}
 
     @property
     def server_public_key(self) -> str:
@@ -213,6 +236,17 @@ class DeviceBroker:
             expires_at,
             authorization_snapshot=authorization_snapshot,
         )
+        while len(self.tasks) >= MAX_TRACKED_TASK_RECORDS:
+            stale = next(
+                (stale_id for stale_id, stale_record in self.tasks.items() if stale_record.status in _TERMINAL_TASK_STATUSES),
+                None,
+            )
+            if stale is None:
+                # Degenerate: more in-flight tasks than the cap. Drop the
+                # oldest record rather than growing without bound; its late
+                # lookups will report TASK_NOT_FOUND.
+                stale = next(iter(self.tasks))
+            self.tasks.pop(stale)
         self.tasks[task_id] = record
         if connection is None:
             record.status = TaskStatus.DEVICE_OFFLINE
@@ -411,7 +445,9 @@ class DeviceBroker:
         else:
             raise ProtocolError("MESSAGE_UNEXPECTED", f"unexpected device message: {envelope.type}")
         if record.receipt is not None and record.task_id not in self._recorded_receipts:
-            self._recorded_receipts.add(record.task_id)
+            while len(self._recorded_receipts) >= MAX_RECORDED_RECEIPTS:
+                self._recorded_receipts.pop(next(iter(self._recorded_receipts)))
+            self._recorded_receipts[record.task_id] = None
             try:
                 from agentplatform_extension.evidence import (
                     record_local_execution_receipt,
