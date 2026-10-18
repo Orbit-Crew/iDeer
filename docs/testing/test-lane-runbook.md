@@ -60,6 +60,16 @@ lane 只运行离线 serial 用例。定时和手动验证中，standard 可分�
 lane 都要求 preflight 先确认本地 socket 可创建。live/LLM、blocking-I/O、
 visual、a11y 和 real E2E 必须由各自专项 lane 显式选择。
 
+mock 浏览器 lane（`frontend-smoke`、`frontend-mock-e2e`）由 runner 注入
+`DEER_FLOW_MOCK_API_ENABLED=1`，在服务端打开 `/mock/api` demo 路由
+（`frontend/src/app/mock/api/mock-api-gate.ts`）；客户端静态模式保持关闭，
+Playwright 拦截器仍是主要流量来源，demo 线程请求才会落到真实路由。该变量
+仅限测试 harness，不得出现在面向用户的部署上。组合语义与其它开关正交：
+`frontend-auth`（`PLAYWRIGHT_AUTH_ENABLED=1`）不注入该变量，门控保持关闭；
+mock lane 同时设置 `DEER_FLOW_AUTH_DISABLED=1` 与本变量（SSR auth 桩 +
+demo 路由放行）互不影响。mock lane 不启动真实后端，日志中
+`127.0.0.1:8001` 的 proxy `ECONNREFUSED` 属预期噪声，不计入失败。
+
 ## 受限环境处理
 
 - 受限环境运行后端命令时设置 `UV_CACHE_DIR=/tmp/deer-flow-uv-cache`，避免

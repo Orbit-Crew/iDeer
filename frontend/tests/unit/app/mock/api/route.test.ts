@@ -49,6 +49,21 @@ describe("mock API static-mode gate", () => {
       mockStaticWebsiteOnly = true;
     }
   });
+
+  test("DEER_FLOW_MOCK_API_ENABLED=1 serves mock endpoints outside static mode", () => {
+    // The mock browser lanes run with client-side static mode OFF (their
+    // Playwright interceptors own the traffic) but still need the demo
+    // routes that fall through to the real server (showcase demo threads).
+    mockStaticWebsiteOnly = false;
+    process.env.DEER_FLOW_MOCK_API_ENABLED = "1";
+    try {
+      const response = GETModels();
+      expect(response.status).toBe(200);
+    } finally {
+      delete process.env.DEER_FLOW_MOCK_API_ENABLED;
+      mockStaticWebsiteOnly = true;
+    }
+  });
 });
 
 describe("mock API route - mcp/config", () => {
