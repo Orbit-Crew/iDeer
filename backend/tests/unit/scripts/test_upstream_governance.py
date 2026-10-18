@@ -271,6 +271,24 @@ def test_amendment_exempts_previous_code_files_from_base_allocation(tmp_path):
     assert any("previous_code_files must match the base ledger allocation" in error for error in errors)
 
 
+def test_amendment_exempts_previous_document_files_from_base_allocation(tmp_path):
+    """Re-anchoring onto an advanced develop base (PR #86 retro): the
+    document-line mismatch carries the same amendment escape as the code
+    line, so a cross-sweep branch re-anchors instead of hard-failing."""
+    base = growth_candidate(tmp_path)
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(previous_document_files=1))
+
+    report = gate.check(tmp_path, base, None, base)
+
+    assert report["status"] == "pass"
+
+    ledger(tmp_path, [new_patch_entry()], budget=2, basis=growth_basis(previous_document_files=1, amendment=""))
+
+    errors = gate.check(tmp_path, base, None, base)["errors"]
+
+    assert any("previous_document_files must match the base ledger allocation" in error for error in errors)
+
+
 def test_readability_patch_references_retained_root_test_file():
     ledger_text = (ROOT / "UPSTREAM_PATCH_LEDGER.md").read_text()
 

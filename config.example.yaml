@@ -757,6 +757,8 @@ tool_groups:
   # 代码证据工具组：归零代码包静态分析（analyze_code_evidence）与
   # 沙箱代码执行（code_interpreter）。
   - name: code
+  # 遥测工具组：输入区 .dat 遥测文件只读检查（read_dat），后续帧统计/解码工具同组接入。
+  - name: telemetry
 
 # ============================================================================
 # Tools Configuration
@@ -802,6 +804,24 @@ tools:
   - name: code_interpreter
     group: code
     use: app.agentplatform.community.code_interpreter.tools:code_interpreter_tool
+
+  # 遥测 .dat 裸读（ticket 73）：read_dat 只读输出会话输入区
+  # /mnt/user-data/uploads/ 内 .dat 文件的十六进制+ASCII 视图，offset/length
+  # 翻页；围栏外路径、非 .dat 后缀、超过单文件上限（512 MiB 代码常量）均
+  # 结构化拒绝并返回原因码，绝不执行文件内容。
+  - name: read_dat
+    group: telemetry
+    use: app.agentplatform.tools.read_dat_tool:read_dat_tool
+
+  # 遥测 .dat 帧解码（ticket 75）：parse_dat 接受模型传入 Frame Layout Spec
+  # （封闭词汇表：同步字、帧长（定长或经长度字段派生）、字段（名称/偏移/
+  # 基本类型/字节序/线性缩放）、校验和算法枚举），确定性解码指定帧区间并
+  # 分页返回帧表，支持按字段/通道子集筛选；布局词汇表外声明或非法值结构化
+  # 拒绝（reason_code=invalid_layout 并指明位置），围栏与原因码与 read_dat
+  # 一致，只读、绝不执行文件内容。
+  - name: parse_dat
+    group: telemetry
+    use: app.agentplatform.tools.parse_dat_tool:parse_dat_tool
 
   # 结构化数据分析（只读）：仅可读取 /mnt/user-data 与 /tmp 下的文件。
   - name: data_analyzer
