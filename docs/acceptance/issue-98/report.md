@@ -4,71 +4,180 @@ kind: reference
 status: current
 owner: repository maintainers
 scope: Candidate validation for issue 98 browser login and unified device entry
-last-verified: 2026-10-18
-verified-against: issue-98 working candidate
+last-verified: 2026-10-19
+verified-against: 9d3ee3d9cdd8bdfc0e246b7249a69d80f6134d25
 ---
 
 # Issue #98 acceptance
 
-Execution date: 2026-10-18, Asia/Shanghai. Executor: Codex. Server review baseline
-`ccb251e07e5f5934b851e4c3df00224718f28123`; Desktop baseline
-`2fbfa8528a3f77b11cbf68b8e3f338ec08c1db94`. Final candidate commits, installer
-SHA-256, lock/config/environment manifest and installed verification are pending.
-Desktop's companion record is `docs/acceptance/issue-98/report.md` in the
-iDeer-Desktop candidate. Required incomplete scenarios prevent issue closure.
+Implementation and all required modern Windows and default Linux gates pass.
+Optional external-provider cases and real Win7 remain unexecuted as below.
 
-| Scenario | Focused automatic result | Required real candidate result |
+Execution dates: 2026-10-18 and 2026-10-19, Asia/Shanghai. Executor: Codex.
+Desktop product source `307904c28df8cbd9b87674e31cbdb99551fbe887`; Server product source `49b635ac5a59085c7c5c028c09a835db48728c9a`.
+Desktop review base `2fbfa8528a3f77b11cbf68b8e3f338ec08c1db94` is the merged
+develop commit confirmed by the user. Server review base is
+`ccb251e07e5f5934b851e4c3df00224718f28123`.
+Documentation commits after these product commits do not change the tested app.
+
+Final Server validation candidate `9d3ee3d9cdd8bdfc0e246b7249a69d80f6134d25` adds only the migration-chain
+test correction to product source 49b635. No production code changed after the
+real Windows acceptance. Final Linux gates ran on this corrected candidate.
+
+## Scenario record
+
+| Scenario | Final modern Windows result | Evidence |
 | --- | --- | --- |
-| T98-01 | passed, explicit browser confirmation remains separate from Runtime exchange | incomplete, actual browser/public-entry/installed workflow evidence pending |
-| T98-02 | passed, wrong initiator/key/owner, expiry, replay and concurrent completion | incomplete for final cross-repository candidate |
-| T98-03 | passed in Desktop HTTP/stdio fault injection; bounded credential-free URL/status contract | incomplete for final OS-store/package/log inspection |
-| T98-04 | passed for existing real signed WS and MCP regression | incomplete for final nginx cut/reconnect test |
+| T98-01 | passed | Actual installed Electron UI and restricted IPC invoke the real browser opener. Existing account A signs in through the normal Server login page and explicitly confirms its device fingerprint. Browser confirmation creates no Desktop session. Runtime exchange creates separate business/device credentials and an owned, online device over signed WS. Restart restores OS credentials and the same device. |
+| T98-02 | passed | Actual Gateway returns wrong initiator/key `401 LOGIN_BINDING_INVALID`, wrong owner/confirmation `403 LOGIN_OWNER_MISMATCH`, replay `409 LOGIN_ALREADY_USED`, and expired confirmation/completion `410 LOGIN_EXPIRED`. Real 300-second TTL expires after 301 seconds. Concurrent completion yields exactly one `200`, one `409` and one new device. Unauthenticated WS closes with `4003`. |
+| T98-03 | passed | Installed renderer/stdio/status/browser URL contain no long-lived credentials. Settings contain three separate OS-store references and no plaintext session token. Real Windows Credential Manager storage and restart pass. Real CredWrite blob-size rejection produces `SECURE_STORAGE_FAILED`, zero stored credentials and zero plaintext fallback files. |
+| T98-04 | passed | Runtime reaches actual Gateway/Next through nginx's unified loopback entry. An acceptance socket guard blocks direct Gateway and all other outbound ports. Stopping the verified fixture proxy tree closes the public port and changes Runtime to `connecting`; restarting it restores the signed online connection. Final proxy tree exits and the public port closes. |
 
-From `backend/`:
+## Final checks
 
-```powershell
-.venv/Scripts/python.exe -m pytest tests/integration/api/test_desktop_login.py -q --basetemp=../dev-log/pytest-login-green-6 -p no:cacheprovider
-.venv/Scripts/python.exe -m pytest tests/integration/api/test_devices_router_auth_gate.py tests/integration/api/test_devices_router.py tests/integration/persistence/test_migration_0025_repair_run_change_seq.py -q --basetemp=../dev-log/pytest-login-regression -p no:cacheprovider
-```
+| Check | Result |
+| --- | --- |
+| Desktop source verifier / ruff / Runtime preparation | passed |
+| Desktop TypeScript, both projects | passed |
+| Desktop full Runtime tests | 237 passed, 6 platform skips; pytest 48.63 seconds |
+| Desktop full Vitest | 7 tests in 5 files passed; 11.60 seconds |
+| Windows NSIS build / install / Runtime lifecycle / signed WS and MCP | passed |
+| Real Windows T98-01 through T98-04 | passed against product sources 307904c / 49b635 |
+| Server focused login / production handler / payload checks | 23 passed; 16.04 seconds |
+| Migration-chain contract after correcting the old head assertion | 10 passed on Windows in 5.84 seconds; 10 passed on Linux in 10.59 seconds |
+| Final Linux local-runtime | passed; passed=224, skipped=4; TEST_LANE_DURATION=19 seconds; status=0 |
+| Final Linux backend-standard | passed; passed=26842, skipped=239; TEST_LANE_DURATION=1023 seconds; status=0 |
+| Final Linux frontend-standard | passed; rstestPassed=1270, vitestPassed=10558; TEST_LANE_DURATION=432 seconds; status=0 |
+| Final Linux frontend-smoke | passed; passed=34; TEST_LANE_DURATION=64 seconds; status=0 |
+| Final Linux parent pr-standard | passed; TEST_LANE_DURATION=1544 seconds; status=0 |
+| Protected default Real E2E | 7 passed, 5 optional external-service cases unexecuted; exit 0; 142.013 seconds |
+| Real E2E fixture cleanup | verified state removed and Gateway/Next ports closed |
+| Final Linux full frontend TypeScript | passed; 35.867 seconds; exit 0 |
+| Server document / upstream-patch gates / test inventory | passed; document gates replayed after final report |
 
-Observed exit code 0 for both commands: the original four login cases passed in
-10.85 seconds; adding same-device reauthentication produced 5 passed in 30.72
-seconds. The affected existing regression command passed 10 tests
-in 17.19 seconds. New/touched Python files pass ruff; new browser route passes
-Prettier and ESLint. Standard/pr-standard/protected-path lanes remain pending.
-HTTP fixture keys/accounts/database are isolated. TTL is 300 seconds, test clock
-advances 301 seconds, business/device TTL is one hour. Wrong-binding, ownership,
-expiry and replay literals are respectively `LOGIN_BINDING_INVALID`,
-`LOGIN_OWNER_MISMATCH`, `LOGIN_EXPIRED`, `LOGIN_ALREADY_USED`; exact comparisons
-have no numeric tolerance. Proxy read/send bounds are 3600 seconds.
+## Environment and artifacts
 
-Initial collection was blocked by antivirus quarantine of unchanged scanner
-sources. The user restored/trusted them. Existing Linux-only uvloop fixtures now
-retain uvloop when available and use native asyncio otherwise. HTTP regressions
-then exposed SQLite's naive/aware in-memory datetime comparison; SQL atomic
-updates now disable ORM synchronization and all focused cases pass. Existing-device
-renewal requires the same owner and proof of its private key, keeps its device ID
-and invalidates old sessions. Desktop profiles without authenticated business
-identity stay offline.
+Windows 11 Pro 10.0.26300 x64; app 0.1.0; Electron 22.3.27 with Node 16.17.1;
+build Node 22.23.3/npm 10.9.9; exact pnpm 10.26.2; test Python 3.12.8;
+bundled Python 3.12.10, cryptography 43.0.3 and websockets 13.1;
+nginx 1.31.7 and Playwright 1.59.1. Lock/config hashes and component versions
+are in the companion Desktop environment-manifest.json.
 
-The final renewal-state refinement first brings the old session online, then
-asserts the renewed response is offline until its new authenticated handshake.
-All 5 login cases passed in 43.82 seconds. A post-hoc untouched-HEAD router replay
-failed the first new HTTP assertion with `404 != 200`, 1 failed / 4 deselected
-in 27.18 seconds; `dev-log/login-baseline-replay.log` retains that session evidence.
+Installer `dist/ideer-desktop-0.1.0-windows-x64-setup.exe` SHA-256:
+`f3a94a7269025bf716792063498d32698793b73b9c004b15c00be2074450ab73`.
+It was installed through actual NSIS to
+`D:/software/iDeer Desktop/ideer-desktop`.
+Installed `app.asar` SHA-256:
+`2f7dbfd009b74024f58b62d1847a89733827b63723cf5ff0653fd12b9b0c8772`.
+All 23 installed Runtime core Python files match the tested Windows working-tree
+bytes, and their Git-normalized bytes match the product commit. All
+five current compiled `out/` files match the installed ASAR. The companion Desktop evidence contains
+`installed-runtime-source-match.json` and `installed-build-match.json`.
+The raw installation environment captured HEAD before the product commit existed;
+these byte comparisons and `candidate-source-sha256.json` bind that built working
+tree to the final product commit without rewriting the raw observation.
 
-The full-Gateway negative run later found that the global HTTPException handler
-converted new `LOGIN_*` detail dictionaries to strings. The integration fixture
-now registers the production exception handlers. It first reproduced 3 failures
-and 2 passes in 27.48 seconds. An explicit seven-code allowlist addition preserves
-HTTP status and `detail.code`, while retaining the existing top-level
-`error.code=INTERNAL_ERROR` convention and other branches. The 5 login tests plus
-global-handler/payload regressions, including all seven codes, then passed
-23 tests in 16.04 seconds; evidence is `dev-log/login-global-handler-green.log`.
-This Server-only refinement requires a fresh real-Gateway acceptance run.
+The real fixture disables auth bypass and dotenv loading, isolates both modern
+and compatibility settings, and uses SQLite under Server `dev-log/live-98`.
+Its public entry is `http://127.0.0.1:21980`; private Gateway and Next ports are
+21981 and 21982. Local HTTP is permitted only for loopback. Production login
+origins require HTTPS and Runtime refuses proxies and redirects for exchange.
 
-Real Win7 remains unexecuted, owner Neowyh, assigned to
-[#131](https://github.com/Orbit-Crew/iDeer/issues/131). Pending Win7 scenarios are
-T98-01 through T98-04 including browser handoff, Credential Manager, TLS/crypto,
-signed reconnect, bundled process ownership and installed lifecycle. Modern
-Windows evidence does not establish Win7 compatibility.
+
+## Linux source and evidence
+
+The final native WSL checkout was fast-forwarded from the original hash-verified
+49b635 snapshot to 9d3ee3d. Its only new file version is the migration test, whose
+Windows/Linux SHA-256 is
+`9bba1fc14077d75dd4d566e7a97e0b43ccf87aa3f6c4e6bd099443d3014ada30`.
+Python 3.12.3, Node 22.23.2, pnpm 10.26.2 and CI uv 0.11.1 use task-owned native
+ext4 dependencies/cache; browser engine and lock/config fingerprints are retained
+with every sub-lane record. Dependency setup did not remove tests or scanners.
+
+Full structured GitNexus change detection was retained before product/test
+commits. The new migration test function is not mapped in that index and its
+impact remains explicitly UNKNOWN; source inspection identifies only pytest as
+its caller. The exact real-Alembic regression supplies its behavior evidence.
+The optional index-refresh attempt was cancelled and the earlier FTS repair
+failed. Neither is represented as a successful graph check.
+
+## Retained failed attempts and corrections
+
+| Attempt | Original result and follow-up |
+| --- | --- |
+| Official Windows pr-standard | Failed. Runtime 222 passed / 6 skipped; backend 388 failed / 24,301 passed / 388 skipped / 62 collection errors. Frontend standard/smoke launcher exited 139. Parent duration 1,397 seconds; all sub-lane timings and raw-log hashes retained. |
+| Native Windows backend | Failed with 351 failed / 26,303 passed / 408 skipped / 3 collection errors in 1,416.23 pytest seconds. Identified groups use Linux-only modes, paths, fcntl or symlink assumptions. Not every failure is attributed to the environment. |
+| Native Windows frontend | Rstest 1,270 passed; Vitest 10,557 passed / 1 typography failure. Commit 49b635 uses the existing type-page-title role; 3 focused tests pass. Both final Linux frontend suites pass. |
+| Native Windows smoke | 32 passed / 2 documentation cold-compile timeouts; the unchanged documentation-spec retry passed 3 in 9.3 seconds. Final Linux smoke passes the complete 34-test selection. |
+| First complete Linux pr-standard on 49b635 | Backend 26,841 passed / 1 failed / 239 skipped; the old test pinned the previous migration head. Other three sub-lanes passed. Parent duration 1,714 seconds, status 1. Test-only commit 9d3ee3d retains the old merge's two parents and verifies the new unique head and its direct parent. Focused red: 1 failed in 11.22 seconds; green: 10 passed on each OS. Final complete gate passes. |
+| First protected Real E2E | Browser assertions passed 7, with 5 optional cases skipped; runner exit 0. Official cleanup refused the nested TMPDIR. Its Gateway was verified and stopped, its read-only fixture directories were made owner-writable solely for removal, and that state was removed. The final rerun uses the supported direct /tmp parent and separately verifies cleanup. |
+
+Earlier dependency/cache/DrvFS, missing-rg, antivirus-incomplete snapshot and
+cancelled collection attempts remain separate raw records, not successful gates.
+No test assertion, selection or timeout was weakened. The user restored/trusted
+the two unchanged original scanner files; global protection remains enabled.
+Curated summaries retain failed-case names and SHA-256 values of the full logs.
+
+The unchanged Real E2E cleanup also cannot remove its read-only published fixture
+directories as an ordinary user. On the final run the official stop step stopped
+the services, then scoped post-test cleanup restored owner write permission only
+inside that verified run directory and removed it. Both ports and state removal
+were verified. The original cleanup errors and this harness limitation remain
+recorded; no production cleanup script was changed in this feature.
+
+## Standards
+
+The independent Standards review and final typography follow-up report zero
+unresolved findings. The implementation uses the existing TanStack query layer,
+registered runtime patch ledger and typography role. Validation scripts isolate
+their configuration, ports, process trees and generated credential references.
+The final one-line `type-page-title` correction also passes the existing three
+typography contract tests, ESLint and Prettier.
+
+## Spec
+
+The independent Spec review and final follow-up report zero unresolved code
+findings. Fixes include rejecting legacy Desktop device-only profiles without
+business authentication, requiring existing-key proof for same-device renewal,
+invalidating the previous device session, keeping the device offline until its
+new handshake, and rechecking concurrent Desktop login admission.
+The final test-only migration-head correction was independently reviewed by both
+axes, with zero new findings and no weakened assertions. Required whole-suite
+gate results are recorded separately above.
+
+Final review findings: Standards 0; Spec 0. Neither axis has an outstanding code
+finding.
+
+## Platform limits
+
+Real Win7 is unexecuted and explicitly deferred to
+[#131](https://github.com/Orbit-Crew/iDeer/issues/131), owner Neowyh. That task must
+cover T98-01 through T98-04, browser handoff, Credential Manager, bundled
+interpreter/crypto/TLS, signed reconnect, Job Object ownership and installation,
+startup and exit on actual Win7. Modern Windows results do not establish Win7
+compatibility.
+
+The real login acceptance uses the existing local-account path. Manual enterprise
+SSO-provider configuration and login are unexecuted. The installed app calls the
+real default-browser opener; automation completes login in a separate Chromium
+instance on the same real route. The socket guard is a transport fault injection,
+not an OS firewall rule. External models and tools are disabled in the isolated
+device-authentication fixture.
+
+The protected default CI Real E2E configuration does not provision optional
+RAGFlow/model providers. Five such cases are unexecuted, not passes: Knowledge
+Center Gate4, evidence Gate7, evidence loading/error/restriction states, evaluation
+Gate8 and the real-model workflow. The default runner is unchanged and no grep
+filter was used. Their external integrations are outside this device-login scope.
+
+
+The iDeer-Desktop companion report at `docs/acceptance/issue-98/report.md`
+tracks the redacted per-scenario results, screenshots, installer and installed
+source hashes, lock/config manifest, all sub-lane metadata, full-log hashes and
+the reproducible Windows fixture scripts. Raw Server logs remain under ignored
+`dev-log/linux-validation`; credentials, SQLite fixtures and cookies are excluded.
+Run `scripts/run-test-lane.sh pr-standard` and the unfiltered
+`QA_ISOLATED=1 bash backend/scripts/run-real-e2e.sh` with its supported direct
+`/tmp` or `/var/tmp` state parent. Default Real E2E does not configure optional
+external model/RAGFlow providers. Source reports are committed separately from
+the tested product commits.
