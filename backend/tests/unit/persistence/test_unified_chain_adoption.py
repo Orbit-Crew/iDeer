@@ -50,10 +50,12 @@ def test_unified_chain_uses_default_version_table(tmp_path: Path) -> None:
 
 def test_merge_revision_joins_both_heads() -> None:
     script = _script_directory()
-    # The v2.1.0 rejoin merge revision sits on top of the unified chain.
-    assert script.get_current_head() == "20261001_rejoin_upstream_line"
     merge = script.get_revision(MERGE_REVISION)
     assert set(merge._normalized_down_revisions) == {CONTROL_PLANE_HEAD, RUNTIME_HEAD}
+    # Desktop approvals extend the v2.1.0 rejoin without splitting the chain.
+    assert script.get_heads() == ["20261018_desktop_login"]
+    desktop_login = script.get_revision("20261018_desktop_login")
+    assert desktop_login._normalized_down_revisions == ("20261001_rejoin_upstream_line",)
 
 
 def test_runtime_head_is_adopted_into_unified_table(tmp_path: Path) -> None:
