@@ -106,16 +106,22 @@ class _TrackingLock:
 
 
 def _call_getter_concurrently(getter, workers: int = 8) -> list[object]:
+    # The barrier/collect timeouts only synchronize the start and gather the
+    # results; the tested invariant (one singleton creation) does not depend
+    # on them. Keep them generous: on saturated coverage-instrumented CI
+    # runners a 3s window starved a worker past collection and failed the
+    # whole test with TimeoutError (runs 38041565262, 39014086848).
+    sync_timeout = 30
     ready = Barrier(workers + 1)
 
     def worker():
-        ready.wait(timeout=3)
+        ready.wait(timeout=sync_timeout)
         return getter()
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [executor.submit(worker) for _ in range(workers)]
-        ready.wait(timeout=3)
-        return [future.result(timeout=3) for future in futures]
+        ready.wait(timeout=sync_timeout)
+        return [future.result(timeout=sync_timeout) for future in futures]
 
 
 # ---------------------------------------------------------------------------
