@@ -7,5 +7,6 @@ tool_groups:
   - web
   - fault-zeroing
   - code
+  - telemetry
 skills:
   - fault-zeroing

@@ -4,6 +4,9 @@ T4 design decision 3 (leftover from ticket 01-03): the归零 Expert's declared
 ``tool_groups`` must include the ``code`` group so the evidence_collection
 node can actually call ``analyze_code_evidence`` — the scanner-status
 disclosure chain starts with this agent being able to run the scan.
+
+Ticket 73 adds the independent ``telemetry`` group so the same agent can
+call ``read_dat`` on uploaded telemetry ``.dat`` files.
 """
 
 from __future__ import annotations
@@ -25,6 +28,12 @@ def test_fault_zeroing_agent_declares_the_code_toolgroup() -> None:
     assert "code" in config["tool_groups"]
 
 
+def test_fault_zeroing_agent_declares_the_telemetry_toolgroup() -> None:
+    config = yaml.safe_load(AGENT_CONFIG.read_text(encoding="utf-8"))
+
+    assert "telemetry" in config["tool_groups"]
+
+
 def test_fault_zeroing_agent_assembled_toolset_includes_code_evidence_tools() -> None:
     """装配后工具集含 analyze_code_evidence / read_binary_hex / code_interpreter。"""
 
@@ -36,3 +45,4 @@ def test_fault_zeroing_agent_assembled_toolset_includes_code_evidence_tools() ->
     names = {tool.name for tool in tools}
 
     assert {"analyze_code_evidence", "read_binary_hex", "code_interpreter"} <= names
+    assert "read_dat" in names

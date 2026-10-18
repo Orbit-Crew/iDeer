@@ -41,7 +41,7 @@ verified-against: worktree docs/doc-disclosure-followup @ bf065a2d0
 | 容器暴露面与非 root 基线 | [container-non-root-evaluation.md](deployment/container-non-root-evaluation.md)（Docker socket 仅经 opt-in DooD overlay 挂载；非 root 运行评估结论） |
 | 架构基线 | [架构索引](architecture/README.md)、[项目架构概览](architecture/overview.md)、[后端架构](../backend/docs/README.md) |
 | 领域词汇 | [工程术语权威 CONTEXT.md](../CONTEXT.md)、[领域建模指南](agents/domain.md)；[UI 术语对照表](plans/2026-08-26-term-glossary.md) 仅覆盖界面显示语言 |
-| Agent 工作流 | [技能路由](agents/skill-routing.md)、[规格与工单发布](agents/issue-tracker.md) |
+| Agent 工作流 | [技能路由](agents/skill-routing.md)、[规格与工单发布](agents/issue-tracker.md)、[OCR 审查纪要](agents/ocr-code-review.md) |
 | 待实现规格与工单 | [GitHub Issues](https://github.com/Orbit-Crew/iDeer/issues)（`to-spec`/`to-tickets` 输出，`ready-for-agent` 标签；[specs/](specs/) 目录为历史归档） |
 | 架构决策 | [ADR 与决策索引](decisions/README.md) |
 | 上游兼容基线与补丁 | [上游锁定记录](upgrades/deerflow-main-0f7d8709/UPSTREAM_LOCK.md)、[根上游补丁账本](../UPSTREAM_PATCH_LEDGER.md)、[本地运行时补丁账本](local-runtime/PATCH_LEDGER.md) |

@@ -315,3 +315,55 @@ def test_prose_cites_the_contract_reference_instead_of_restating_it(workflow_yam
         contract.SCANNER_UNAVAILABLE_DISCLOSURE,
     ):
         assert item in reference, f"generated reference lost {item!r}"
+
+
+def test_telemetry_dat_evidence_channel_is_pinned_across_prose_surfaces(workflow_yaml: dict) -> None:
+    """Ticket 77: telemetry ``.dat`` is a legal evidence input of the
+    fault-zeroing evidence channel.  The workflow prompts (collection, plus
+    the review node's source re-check) and the SKILL.md reading rules must
+    route ``.dat`` through read_dat / parse_dat, and evidence_rules.md must
+    carry the pending-verification grading guidance for model-decoded
+    telemetry values.  Without this guard the prompt surfaces and the rule
+    doc drift apart again on the next edit."""
+
+    SKILL_DIR = REPO_ROOT / "resources" / "skills" / "fault-zeroing"
+
+    def prompt_of(node: dict) -> str:
+        action = node.get("action") or {}
+        params = action.get("params") or {}
+        return (params.get("prompt") or "") + "\n" + (params.get("system_prompt") or "")
+
+    # The evidence-collection node reads .dat through the telemetry tools and
+    # defers the grading of decoded values to the unified rule source.
+    collection = prompt_of(_node(workflow_yaml, "evidence_collection"))
+    for marker in (".dat", "read_dat", "parse_dat", "待验证级（pending_verification）"):
+        assert marker in collection, f"evidence_collection prompt lost {marker!r}"
+    assert "evidence_rules" in collection, "evidence_collection must defer the pending-verification rule to evidence_rules.md"
+
+    # The review node can re-check telemetry sources instead of reporting
+    # them as unverifiable.
+    review = prompt_of(_node(workflow_yaml, "assessment_review"))
+    for marker in (".dat", "read_dat", "parse_dat"):
+        assert marker in review, f"assessment_review prompt lost {marker!r}"
+
+    # The SKILL.md mirror keeps the same reading rule, and the telemetry
+    # tools stay granted via allowed-tools.
+    skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    for marker in (".dat", "read_dat", "parse_dat", "待验证级（pending_verification）"):
+        assert marker in skill, f"SKILL.md lost {marker!r}"
+    assert "\n  - read_dat\n" in skill and "\n  - parse_dat\n" in skill, "SKILL.md allowed-tools must keep read_dat/parse_dat granted"
+
+    # The unified rule source owns the grading guidance with the exact
+    # Finding Confidence terminology, and keeps the coverage matrix honest
+    # about telemetry evidence.
+    rules = (SKILL_DIR / "references" / "evidence_rules.md").read_text(encoding="utf-8")
+    for marker in (
+        ".dat",
+        "遥测格式文档（Telemetry Format Document）",
+        "Frame Layout Spec（帧布局参数）",
+        "待验证级（pending_verification）",
+        "格式文档样例或用户提供的参照结果互证",
+        "不新增定级流程",
+        "资料覆盖矩阵",
+    ):
+        assert marker in rules, f"evidence_rules.md lost {marker!r}"

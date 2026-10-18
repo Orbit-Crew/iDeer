@@ -272,6 +272,11 @@ jobs:
           path: logs/test-lanes/**
           if-no-files-found: ignore
 
+  # Legacy-name aggregation steps follow the backend-serial contract: only a
+  # real failure or cancellation goes red. A skipped underlying job (lane not
+  # selected, or selected but blocked by an upstream failure) stays green —
+  # the PR Standard Gate arbitrates required results itself via
+  # report_test_lane_summary.py (selected-but-skipped is "missing-required-result").
   backend-coverage:
     needs: [select, backend-unit-tests]
     if: always()
@@ -282,8 +287,9 @@ jobs:
           SELECTED: ${{ contains(needs.select.outputs.channels, 'backend-standard') }}
           TEST_RESULT: ${{ needs.backend-unit-tests.result }}
         run: |
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
           if [[ "$SELECTED" == "true" ]]; then
-            test "$TEST_RESULT" = "success"
             echo "Backend coverage is reserved for scheduled/manual backend-full validation."
           else
             echo "Backend coverage was not required for this candidate."
@@ -312,8 +318,13 @@ jobs:
           SELECTED: ${{ contains(needs.select.outputs.channels, 'frontend-standard') }}
           TEST_RESULT: ${{ needs.frontend-unit-tests.result }}
         run: |
-          if [[ "$SELECTED" == "true" ]]; then test "$TEST_RESULT" = "success"; fi
-          echo "Frontend coverage is reserved for scheduled/manual frontend-core validation."
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
+          if [[ "$SELECTED" == "true" ]]; then
+            echo "Frontend coverage is reserved for scheduled/manual frontend-core validation."
+          else
+            echo "Frontend coverage was not required for this candidate."
+          fi
 
   lint-frontend:
     needs: [select, lint]
@@ -325,8 +336,13 @@ jobs:
           SELECTED: ${{ contains(needs.select.outputs.channels, 'static-checks') }}
           TEST_RESULT: ${{ needs.lint.result }}
         run: |
-          if [[ "$SELECTED" == "true" ]]; then test "$TEST_RESULT" = "success"; fi
-          echo "Frontend static checks are represented by the shared lint job."
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
+          if [[ "$SELECTED" == "true" ]]; then
+            echo "Frontend static checks are represented by the shared lint job."
+          else
+            echo "Frontend static checks were not required for this candidate."
+          fi
 
   agent-guidance:
     needs: [select, test-contracts]
@@ -337,8 +353,9 @@ jobs:
         env:
           TEST_RESULT: ${{ needs.test-contracts.result }}
         run: |
-          test "$TEST_RESULT" = "success"
-          echo "Guidance synchronization ran in test-contracts."
+          test "$TEST_RESULT" != "failure"
+          test "$TEST_RESULT" != "cancelled"
+          echo "Guidance synchronization ran in test-contracts (result: $TEST_RESULT)."
 
   pr-standard-shadow:
     name: PR Standard Gate
