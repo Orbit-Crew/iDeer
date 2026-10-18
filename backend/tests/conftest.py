@@ -330,6 +330,9 @@ def _use_uvloop_for_testclient(monkeypatch):
     wakeup that TestClient requires. This is test-only; application runtime
     event-loop configuration is unchanged.
     """
+    if importlib.util.find_spec("uvloop") is None:
+        yield
+        return
     from starlette.testclient import TestClient
 
     original_init = TestClient.__init__
@@ -351,15 +354,19 @@ def event_loop_policy():
     worker threads. The runner's default selector loop cannot receive those
     notifications, while uvloop supports the required cross-thread wakeup.
     """
-    import uvloop
-
+    try:
+        import uvloop
+    except ImportError:
+        # uvloop does not support Windows. Keep its native asyncio policy so
+        # the same HTTP/database integration scenarios run on modern Windows.
+        return asyncio.DefaultEventLoopPolicy()
     return uvloop.EventLoopPolicy()
 
 
 @pytest.fixture(scope="module")
 def anyio_backend():
     """Run AnyIO tests on uvloop in the restricted test runner."""
-    return ("asyncio", {"use_uvloop": True})
+    return ("asyncio", {"use_uvloop": importlib.util.find_spec("uvloop") is not None})
 
 
 # ── Gateway-level integration fixtures ──────────────────────────────────────

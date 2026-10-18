@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import re
 
-_BOOTSTRAP_PATHS = frozenset({"/api/devices/register", "/api/devices/register/complete"})
+_BOOTSTRAP_PATHS = frozenset({"/api/devices/register", "/api/devices/register/complete", "/api/devices/login/start"})
+_LOGIN_COMPLETE_PATH = re.compile(r"^/api/devices/login/[A-Za-z0-9-]{1,64}/complete$")
 _SESSION_PATH = re.compile(r"^/api/devices/[^/]+/(?:heartbeat|disconnect)$")
 
 
@@ -39,4 +40,4 @@ def is_device_credential_route(method: str, path: str) -> bool:
     stripped = path.rstrip("/")
     if stripped in _BOOTSTRAP_PATHS:
         return True
-    return _SESSION_PATH.match(stripped) is not None
+    return _SESSION_PATH.match(stripped) is not None or _LOGIN_COMPLETE_PATH.fullmatch(stripped) is not None

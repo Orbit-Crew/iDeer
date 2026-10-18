@@ -6,6 +6,37 @@ import type { Device, DeviceSession, PairingChallenge } from "./types";
 
 const devicesURL = () => `${getBackendBaseURL()}/api/devices`;
 
+export interface DesktopLoginApproval {
+  name: string;
+  verification: string;
+  state: string;
+}
+
+export async function getDesktopLoginApproval(
+  loginId: string,
+): Promise<DesktopLoginApproval> {
+  return jsonOrThrow<DesktopLoginApproval>(
+    await fetch(`${devicesURL()}/login/${encodeURIComponent(loginId)}`, {
+      cache: "no-store",
+    }),
+    "无法读取设备登录请求",
+  );
+}
+
+export async function confirmDesktopLogin(loginId: string): Promise<void> {
+  await jsonOrThrow(
+    await fetch(
+      `${devicesURL()}/login/${encodeURIComponent(loginId)}/confirm`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm_own_device: true }),
+      },
+    ),
+    "无法确认设备登录请求",
+  );
+}
+
 async function jsonOrThrow<T>(response: Response, message: string): Promise<T> {
   if (!response.ok) return extractError(response, message);
   return response.json() as Promise<T>;

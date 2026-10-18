@@ -216,6 +216,23 @@ class DeviceControlService:
             stmt = stmt.where(DeviceModel.owner_id == owner_id)
         return list((await self.session.execute(stmt)).scalars())
 
+    async def renew_login_session(self, device_id: str, *, owner_id: str, public_key: str) -> RegisteredDevice:
+        """Renew only after browser ownership and existing-key proof succeeded."""
+        device = await self._get_device(device_id)
+        if device.owner_id != owner_id or device.public_key != public_key or device.status in {DeviceStatus.REVOKED, DeviceStatus.BLOCKED}:
+            raise DeviceControlError("LOGIN_OWNER_MISMATCH", "existing device is not eligible", 403)
+        now = datetime.now(UTC)
+        await self.session.execute(DeviceSessionModel.__table__.update().where(DeviceSessionModel.device_id == device_id).values(disconnected_at=now))
+        if DeviceStatus(device.status) != DeviceStatus.OFFLINE:
+            validate_device_transition(device.status, DeviceStatus.OFFLINE)
+            device.status = DeviceStatus.OFFLINE
+        token = secrets.token_urlsafe(32)
+        expires = now + DEVICE_SESSION_TTL
+        session_id = str(uuid4())
+        self.session.add(DeviceSessionModel(id=session_id, device_id=device_id, token_digest=hash_secret(token), expires_at=expires))
+        await self.session.commit()
+        return RegisteredDevice(device, session_id, token, expires)
+
     async def get_device(self, device_id: str, *, actor_id: str, is_admin: bool) -> DeviceModel:
         device = await self._get_device(device_id)
         if not is_admin and device.owner_id != actor_id:

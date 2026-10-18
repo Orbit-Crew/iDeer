@@ -45,7 +45,35 @@ def probe_app() -> FastAPI:
     async def api_error() -> dict:
         raise ApiException("RESOURCE_NOT_FOUND", "resource missing")
 
+    @app.get("/desktop-login-error/{code}")
+    async def desktop_login_error(code: str) -> dict:
+        raise HTTPException(status_code=409, detail={"code": code, "message": "Desktop login rejected"})
+
     return app
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "LOGIN_NOT_FOUND",
+        "LOGIN_EXPIRED",
+        "LOGIN_ALREADY_USED",
+        "LOGIN_BINDING_INVALID",
+        "LOGIN_OWNER_MISMATCH",
+        "LOGIN_ACCOUNT_UNAVAILABLE",
+        "LOGIN_CONFIRMATION_REQUIRED",
+    ],
+)
+@pytest.mark.asyncio
+async def test_desktop_login_rejection_keeps_typed_public_error(client, code):
+    response = await client.get(f"/desktop-login-error/{code}")
+    assert response.status_code == 409
+    assert response.json() == {
+        "success": False,
+        "data": None,
+        "error": {"code": "INTERNAL_ERROR", "message": "Desktop login rejected"},
+        "detail": {"code": code, "message": "Desktop login rejected"},
+    }
 
 
 @pytest_asyncio.fixture()
