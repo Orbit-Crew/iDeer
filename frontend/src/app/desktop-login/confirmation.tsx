@@ -19,7 +19,7 @@ export function DesktopLoginConfirmation({
 
   return (
     <main className="mx-auto max-w-lg space-y-6 p-8">
-      <h1 className="text-2xl font-semibold">绑定 iDeer Desktop</h1>
+      <h1 className="type-page-title">绑定 iDeer Desktop</h1>
       <p>当前账号：{account}</p>
       {approval.isPending && <p role="status">正在读取设备请求…</p>}
       {(approval.isError || confirmation.isError) && (
