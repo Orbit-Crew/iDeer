@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -880,3 +881,33 @@ class TestOnWsFileEdgeCases:
         with patch.object(ch, "_publish_ws_inbound", new_callable=AsyncMock):
             await ch._on_ws_mixed(frame)
             # Should be handled
+
+
+class TestTrackedFrameBounds:
+    """03-L5: tracked stream frames are bounded on insert."""
+
+    @pytest.mark.asyncio
+    async def test_tracked_ws_frames_are_capped(self, monkeypatch):
+        from app.channels.wecom import _WECOM_MAX_TRACKED_FRAMES
+
+        fake_aibot = MagicMock()
+        fake_aibot.generate_req_id = lambda prefix: f"{prefix}_test"
+        monkeypatch.setitem(sys.modules, "aibot", fake_aibot)
+
+        ch = _make_channel()
+        ch._ws_client = MagicMock()
+        ch._ws_client.reply_stream = AsyncMock()
+        ch._reserve_inbound = MagicMock(return_value=MagicMock())
+        ch._attach_connection_identity = AsyncMock(return_value=MagicMock())
+        ch._commit_reserved_inbound = MagicMock()
+
+        for index in range(_WECOM_MAX_TRACKED_FRAMES):
+            ch._ws_frames[f"seed_{index}"] = {"body": {"msgid": f"seed_{index}"}}
+            ch._ws_stream_ids[f"seed_{index}"] = f"stream_{index}"
+
+        await ch._publish_ws_inbound(_make_frame(body={"text": {"content": "hello"}}), "hello")
+
+        assert len(ch._ws_frames) == _WECOM_MAX_TRACKED_FRAMES
+        assert len(ch._ws_stream_ids) == _WECOM_MAX_TRACKED_FRAMES
+        assert "seed_0" not in ch._ws_frames
+        assert "msg_1" in ch._ws_frames

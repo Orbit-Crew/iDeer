@@ -58,6 +58,16 @@ export default defineConfig({
         env: {
           SKIP_ENV_VALIDATION: "1",
           ...(authDisabled ? { DEER_FLOW_AUTH_DISABLED: "1" } : {}),
+          // Playwright merges webServer env over process.env, so the mock
+          // lanes' DEER_FLOW_MOCK_API_ENABLED (set by run-test-lane.sh to
+          // open the /mock/api demo routes, issue #93) already reaches the
+          // server; mirroring it here keeps the webServer contract explicit.
+          ...(process.env.DEER_FLOW_MOCK_API_ENABLED
+            ? {
+                DEER_FLOW_MOCK_API_ENABLED:
+                  process.env.DEER_FLOW_MOCK_API_ENABLED,
+              }
+            : {}),
         },
       },
 });
