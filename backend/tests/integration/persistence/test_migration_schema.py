@@ -6,7 +6,7 @@ the DeerFlow runtime revisions (merge revision
 ``alembic_version`` table. Tests cover:
 
 - Full upgrade from an empty database to the single head
-- Head identity: ``alembic heads`` reports exactly the merge revision
+- Head identity: ``alembic heads`` reports one current descendant of the merge
 - Head schema covers the full ORM metadata (both table families)
 - Idempotent re-upgrade (``upgrade head`` at head is a no-op)
 - Gateway bootstrap after the CLI upgrade is a no-op and vice versa
@@ -35,7 +35,7 @@ from deerflow.persistence.migrations._chain_meta import (
 )
 from tests._migration_test_support import unified_alembic_config
 
-CURRENT_HEAD = "20261001_rejoin_upstream_line"
+CURRENT_HEAD = "20261018_desktop_login"
 
 # The alembic URL uses the async driver.  For post-migration verification
 # we open the same SQLite file with a synchronous engine (no greenlet needed).
@@ -119,11 +119,13 @@ def _full_orm_tables() -> set[str]:
 class TestUnifiedMigrationChain:
     """Integration tests for the unified Alembic migration chain."""
 
-    def test_single_head_is_the_merge_revision(self) -> None:
+    def test_single_head_descends_from_merge_revision(self) -> None:
         script = ScriptDirectory.from_config(make_alembic_config("sqlite+aiosqlite:///:memory:"))
         assert list(script.get_heads()) == [CURRENT_HEAD]
         merge = script.get_revision(MERGE_REVISION)
         assert set(merge._normalized_down_revisions) == {CONTROL_PLANE_HEAD, RUNTIME_HEAD}
+        head = script.get_revision(CURRENT_HEAD)
+        assert head._normalized_down_revisions == ("20261001_rejoin_upstream_line",)
 
     def test_upgrade_from_scratch_to_head(self, tmp_path: Path) -> None:
         """One ``alembic upgrade head`` takes an empty DB to the single head."""
