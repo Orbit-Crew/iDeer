@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from deerflow.persistence.base import Base
@@ -93,3 +93,19 @@ class DeviceSessionModel(Base):
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (Index("ix_device_control_sessions_device", "device_id", "expires_at"),)
+
+
+class DesktopLoginModel(Base):
+    """One-use browser approval. Only the initiator digest is persisted."""
+
+    __tablename__ = "device_control_desktop_logins"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    initiator_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    public_key: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    existing_device_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    owner_id: Mapped[str | None] = mapped_column(ForeignKey("users_ext.id", ondelete="CASCADE"), nullable=True)
+    token_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)

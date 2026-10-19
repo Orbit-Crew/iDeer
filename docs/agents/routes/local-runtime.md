@@ -18,6 +18,8 @@ scope: local device execution, consent, policy, and registered runtime patches
 
 **代码入口：** `backend/app/device_control/`、`backend/app/gateway/routers/devices.py`；harness 扩展位于 `backend/packages/harness/deerflow/`。
 
+浏览器账号登录、本人设备确认和统一 WebSocket 入口见[登录配对契约](../../local-runtime/BROWSER_LOGIN.md)；当前候选验证见[issue #98](../../acceptance/issue-98/report.md)。
+
 **首验证：** 按账本先跑 patch-specific 检查；核对 `local-runtime/tests/test_policy_denial.py`、`test_file_service.py`，再跑 `local-runtime` lane 与匹配 standard lane、`pr-standard`。
 
 **停止条件：** 按[索引的五项停止条件](../task-routing.md#停止条件)逐项核实。

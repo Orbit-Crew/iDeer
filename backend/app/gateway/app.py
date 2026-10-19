@@ -864,6 +864,13 @@ def _http_exception_payload(exc: HTTPException, *, include_auth_details: bool = 
         "user_disabled",
         "system_already_initialized",
         "registration_disabled",
+        "LOGIN_NOT_FOUND",
+        "LOGIN_EXPIRED",
+        "LOGIN_ALREADY_USED",
+        "LOGIN_BINDING_INVALID",
+        "LOGIN_OWNER_MISMATCH",
+        "LOGIN_ACCOUNT_UNAVAILABLE",
+        "LOGIN_CONFIRMATION_REQUIRED",
     }:
         return {
             "success": False,

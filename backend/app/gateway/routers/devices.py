@@ -12,15 +12,17 @@ from fastapi import (
     File,
     Header,
     HTTPException,
+    Response,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.agentplatform.rbac_models import UserModel, UserRole
 from app.device_control.artifacts import ArtifactStoreError, DeviceArtifactStore
 from app.device_control.broker import DeviceBroker, DeviceConnection, get_device_broker
+from app.device_control.desktop_login import DesktopLoginService
 from app.device_control.models import DeviceModel
 from app.device_control.protocol import (
     MessageType,
@@ -199,6 +201,66 @@ async def _run(operation):
                 status_code=exc.status_code,
                 detail={"code": exc.code, "message": str(exc)},
             ) from exc
+
+
+class DesktopLoginStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    initiator_secret: str = Field(min_length=43, max_length=128)
+    public_key: str = Field(min_length=32, max_length=4096)
+    name: str = Field(min_length=1, max_length=255)
+    existing_device_id: str | None = Field(default=None, min_length=1, max_length=36)
+
+
+class DesktopLoginCompleteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    initiator_secret: str = Field(min_length=43, max_length=128)
+    public_key: str = Field(min_length=32, max_length=4096)
+    device_proof: str | None = Field(default=None, max_length=128)
+
+
+class DesktopLoginConfirmRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    confirm_own_device: bool
+
+
+@router.post("/login/start")
+async def desktop_login_start(payload: DesktopLoginStartRequest, response: Response) -> dict:
+    response.headers["Cache-Control"] = "no-store"
+    return await _run(lambda service: DesktopLoginService(service).start(**payload.model_dump()))
+
+
+@router.get("/login/{login_id}")
+async def desktop_login_describe(login_id: str, response: Response, current_user: UserModel = Depends(get_current_rbac_user)) -> dict:
+    response.headers["Cache-Control"] = "no-store"
+    result = await _run(lambda service: DesktopLoginService(service).describe(login_id, str(current_user.id)))
+    return {**result, "account": current_user.username}
+
+
+@router.post("/login/{login_id}/confirm")
+async def desktop_login_confirm(login_id: str, payload: DesktopLoginConfirmRequest, current_user: UserModel = Depends(get_current_rbac_user)) -> dict:
+    if not payload.confirm_own_device:
+        raise HTTPException(400, detail={"code": "LOGIN_CONFIRMATION_REQUIRED"})
+    return await _run(lambda service: DesktopLoginService(service).confirm(login_id, str(current_user.id)))
+
+
+@router.post("/login/{login_id}/complete")
+async def desktop_login_complete(login_id: str, payload: DesktopLoginCompleteRequest, response: Response) -> dict:
+    response.headers["Cache-Control"] = "no-store"
+    result = await _run(lambda service: DesktopLoginService(service).complete(login_id, **payload.model_dump()))
+    if result is None:
+        response.status_code = 202
+        return {"state": "pending"}
+    registered = result.pop("registered")
+    if result.pop("reauthenticated"):
+        await get_device_broker().invalidate(registered.device.id, reason="device login renewed")
+    return {
+        **result,
+        "device": DeviceResponse.from_model(registered.device).model_dump(),
+        "session_id": registered.session_id,
+        "session_token": registered.session_token,
+        "session_expires_at": registered.session_expires_at,
+        "server_public_key": get_device_broker().server_public_key,
+    }
 
 
 @router.post("/pairing", response_model=PairingCreateResponse)

@@ -77,12 +77,12 @@ def _table_and_column_state(db_path) -> tuple[bool, bool, set[str], str | None]:
 
 
 async def test_0025_is_in_the_unified_chain():
-    # The unified chain's head moved past 0025 to the v2.1.0 rejoin merge
-    # revision; 0025 must remain an ancestor of that head.
+    # Desktop login adds an application-owned child of the v2.1.0 rejoin.
+    # 0025 must remain an ancestor of that head.
     from deerflow.persistence.bootstrap import _get_known_revisions
 
     script_head = _get_head_revision()
-    assert script_head == "20261001_rejoin_upstream_line"
+    assert script_head == "20261018_desktop_login"
     assert REVISION in _get_known_revisions()
 
 
