@@ -220,6 +220,21 @@ async def prepare_canonical_agent_run(
         local_device_id = run_context.get("local_device_id")
         local_tool_descriptors = run_context.get("local_tool_descriptors")
         if isinstance(local_context, dict) and local_device_id:
+            from app.agentplatform.resources.service import ResourceAction
+            from app.gateway.local_workspace_policy import agent_read_capabilities, platform_read_capabilities
+
+            # Published Agent configuration and the authenticated actor are the
+            # authority. Request dictionaries may only narrow these grants.
+            workspace_root = run_context.get("local_workspace_root")
+            if workspace_root:
+                local_context["agent_capabilities"] = sorted(agent_read_capabilities(definition.config) & set(local_context.get("agent_capabilities", ())))
+                local_context["caller_capabilities"] = sorted(platform_read_capabilities() & set(local_context.get("caller_capabilities", ()))) if ResourceAction.USE in actor.permissions else []
+                local_context["platform_capabilities"] = sorted(platform_read_capabilities() & set(local_context.get("platform_capabilities", ())))
+            local_tool_descriptors = dict(local_tool_descriptors or {})
+            workspace_root = run_context.get("local_workspace_root")
+            if workspace_root:
+                for capability in platform_read_capabilities():
+                    local_tool_descriptors[capability] = {"workspace_description": f" Selected logical directory: {workspace_root}."}
             from agentplatform_extension.local_runtime import (
                 LocalAuthorization,
                 LocalToolExecutor,
@@ -258,8 +273,27 @@ async def prepare_canonical_agent_run(
                 from agentplatform_extension.evidence import current_tool_call_evidence
 
                 from app.device_control.broker import TaskStatus, get_device_broker
+                from app.gateway.local_workspace_policy import READ_CAPABILITIES
 
+                if capability in READ_CAPABILITIES and not workspace_root:
+                    from langchain_core.tools import ToolException
+                    raise ToolException("CANONICAL_WORKSPACE_REQUIRED")
                 broker = get_device_broker()
+                connection = broker.connections.get(device_id) if workspace_root else None
+                if workspace_root:
+                    if (connection is None or not connection.tasks_allowed or connection.owner_id != str(user_id)
+                            or capability not in connection.capabilities or capability not in platform_read_capabilities()):
+                        from langchain_core.tools import ToolException
+                        raise ToolException("LOCAL_AUTHORIZATION_DENIED")
+                    async with session_factory() as current_session:
+                        current_user = (await current_session.execute(select(UserModel).where(
+                            UserModel.id == str(user_id), UserModel.disabled.is_not(True)))).scalar_one_or_none()
+                        if current_user is None or ResourceAction.USE not in role_permissions(current_user.role):
+                            from langchain_core.tools import ToolException
+                            raise ToolException("LOCAL_AUTHORIZATION_DENIED")
+                    if capability not in snapshot.effective:
+                        from langchain_core.tools import ToolException
+                        raise ToolException("LOCAL_AUTHORIZATION_DENIED")
                 record = await broker.send_task(
                     device_id=device_id,
                     operation=capability,
@@ -291,7 +325,8 @@ async def prepare_canonical_agent_run(
                         tool_call_id=record.tool_call_id or None,
                     )
                 if record.status is not TaskStatus.COMPLETED:
-                    raise RuntimeError(record.error or record.status.value)
+                    from langchain_core.tools import ToolException
+                    raise ToolException(record.error_code or "LOCAL_TASK_" + record.status.value.upper())
                 return record.result
 
             local_tool_executor = LocalToolExecutor(local_authorization, route, send_local)

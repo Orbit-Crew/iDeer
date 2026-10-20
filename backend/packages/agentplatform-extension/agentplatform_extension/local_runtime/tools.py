@@ -53,9 +53,12 @@ class LocalToolContributor:
         return assemble_local_tools(self.authorization, descriptors=descriptors)
 
 
+_PATH_SCHEMA = {"type": "object", "properties": {"path": {"type": "string", "description": "Absolute logical workspace path. Physical machine paths are not accepted."}}, "required": ["path"], "additionalProperties": False}
 LOCAL_TOOLS = (
-    LocalTool("local.files.list", "List files under an explicitly allowed local root."),
-    LocalTool("local.files.read", "Read a file under an explicitly allowed local root."),
+    LocalTool("local.files.list", "List files under the explicitly selected local workspace.", _PATH_SCHEMA),
+    LocalTool("local.files.read", "Read bounded UTF-8 text from the explicitly selected local workspace.", _PATH_SCHEMA),
+    LocalTool("local.files.search", "Search UTF-8 code for a literal query in the selected local workspace.",
+              {**_PATH_SCHEMA, "properties": {**_PATH_SCHEMA["properties"], "query": {"type": "string", "description": "Literal text, at most 256 characters."}}, "required": ["path", "query"]}),
     LocalTool("local.files.write", "Write a file after local consent."),
     LocalTool("local.python", "Run a Python task under an allowed local root."),
 )
@@ -72,7 +75,10 @@ def assemble_local_tools(
     announced it (device_capabilities) and every other authorization factor
     allows it, because the projection is drawn from the effective intersection.
     """
-    static = tuple(tool for tool in LOCAL_TOOLS if authorization.allows(tool.name))
+    static = tuple(
+        LocalTool(tool.name, tool.description + str((descriptors or {}).get(tool.name, {}).get("workspace_description", "")), tool.input_schema)
+        for tool in LOCAL_TOOLS if authorization.allows(tool.name)
+    )
     projected = tuple(
         _mcp_tool(
             name,
@@ -145,7 +151,7 @@ def build_langchain_local_tools(
     frozen authorization and route before dispatch.
     """
     from langchain_core.tools import StructuredTool
-    from pydantic import Field, create_model
+    from pydantic import ConfigDict, Field, create_model
 
     def schema_model(capability: str, schema: dict[str, Any] | None) -> type[Any] | None:
         if not schema or schema.get("type") != "object":
@@ -171,6 +177,7 @@ def build_langchain_local_tools(
             )
         return create_model(
             "LocalTool_" + re.sub(r"[^A-Za-z0-9_]", "_", capability),
+            __config__=ConfigDict(extra="forbid" if schema.get("additionalProperties") is False else "ignore"),
             **fields,
         )
 
@@ -190,6 +197,7 @@ def build_langchain_local_tools(
                 description=descriptor.description,
                 args_schema=args_schema,
                 infer_schema=args_schema is None,
+                handle_tool_error=True,
             )
         )
     return tuple(tools)

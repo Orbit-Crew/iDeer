@@ -120,20 +120,47 @@ def _bind_local_runtime_context(context: dict[str, Any], *, caller_id: str | Non
 
     device_id = context.get("local_device_id")
     requested = context.get("local_authorization")
-    if not device_id or not isinstance(requested, dict):
+    if not device_id:
+        context.pop("local_authorization", None)
+        context.pop("local_tool_descriptors", None)
         return
     from app.device_control.broker import get_device_broker
+    from app.gateway.local_workspace_policy import platform_read_capabilities
 
     connection = get_device_broker().connections.get(str(device_id))
     if connection is None or not connection.tasks_allowed:
         raise HTTPException(409, "The selected local device is offline or unavailable")
-    if caller_id is not None and connection.owner_id is not None and connection.owner_id != str(caller_id):
+    if caller_id is not None and connection.owner_id != str(caller_id):
         raise HTTPException(403, "The selected local device is owned by another user")
-    normalized = dict(requested)
-    normalized["device_online"] = True
-    normalized["device_capabilities"] = sorted(connection.capabilities)
+    requested = requested if isinstance(requested, dict) else {}
+    if not context.get("local_workspace_root"):
+        normalized = dict(requested)
+        normalized["device_online"] = True
+        normalized["device_capabilities"] = sorted(connection.capabilities)
+        context["local_authorization"] = normalized
+        context["local_tool_descriptors"] = {name: dict(descriptor) for name, descriptor in connection.tool_descriptors.items()}
+        return
+    platform = platform_read_capabilities()
+    normalized = {
+        "agent_capabilities": sorted(platform), "caller_capabilities": sorted(platform),
+        "platform_capabilities": sorted(platform),
+        "device_online": True,
+        "device_capabilities": sorted(connection.capabilities),
+    }
+    # Request factors can express tighter limits, never platform, caller or
+    # published Agent grants. The Runtime independently enforces local DENY.
+    for factor in ("agent_capabilities", "caller_capabilities", "platform_capabilities", "workflow_capabilities", "local_policy_capabilities"):
+        value = requested.get(factor)
+        normalized[factor] = sorted(platform & set(value)) if isinstance(value, (list, tuple, set)) else sorted(platform)
     context["local_authorization"] = normalized
     context["local_tool_descriptors"] = {name: dict(descriptor) for name, descriptor in connection.tool_descriptors.items()}
+    root = context.get("local_workspace_root")
+    if root is not None:
+        try:
+            if root != "/workspace/" + str(uuid.UUID(root.removeprefix("/workspace/"))):
+                raise ValueError()
+        except (ValueError, TypeError, AttributeError):
+            raise HTTPException(422, "Invalid logical workspace root") from None
 
 
 async def _preload_memory(agent_name: str | None, user_id: str) -> None:
