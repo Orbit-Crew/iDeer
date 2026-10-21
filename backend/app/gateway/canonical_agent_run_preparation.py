@@ -277,22 +277,24 @@ async def prepare_canonical_agent_run(
 
                 if capability in READ_CAPABILITIES and not workspace_root:
                     from langchain_core.tools import ToolException
+
                     raise ToolException("CANONICAL_WORKSPACE_REQUIRED")
                 broker = get_device_broker()
                 connection = broker.connections.get(device_id) if workspace_root else None
                 if workspace_root:
-                    if (connection is None or not connection.tasks_allowed or connection.owner_id != str(user_id)
-                            or capability not in connection.capabilities or capability not in platform_read_capabilities()):
+                    if connection is None or not connection.tasks_allowed or connection.owner_id != str(user_id) or capability not in connection.capabilities or capability not in platform_read_capabilities():
                         from langchain_core.tools import ToolException
+
                         raise ToolException("LOCAL_AUTHORIZATION_DENIED")
                     async with session_factory() as current_session:
-                        current_user = (await current_session.execute(select(UserModel).where(
-                            UserModel.id == str(user_id), UserModel.disabled.is_not(True)))).scalar_one_or_none()
+                        current_user = (await current_session.execute(select(UserModel).where(UserModel.id == str(user_id), UserModel.disabled.is_not(True)))).scalar_one_or_none()
                         if current_user is None or ResourceAction.USE not in role_permissions(current_user.role):
                             from langchain_core.tools import ToolException
+
                             raise ToolException("LOCAL_AUTHORIZATION_DENIED")
                     if capability not in snapshot.effective:
                         from langchain_core.tools import ToolException
+
                         raise ToolException("LOCAL_AUTHORIZATION_DENIED")
                 record = await broker.send_task(
                     device_id=device_id,
@@ -326,6 +328,7 @@ async def prepare_canonical_agent_run(
                     )
                 if record.status is not TaskStatus.COMPLETED:
                     from langchain_core.tools import ToolException
+
                     raise ToolException(record.error_code or "LOCAL_TASK_" + record.status.value.upper())
                 return record.result
 

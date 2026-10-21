@@ -469,16 +469,20 @@ async def test_local_runtime_completes_mcp_task_through_broker_with_receipt(devi
         await asyncio.wait_for(server_task, timeout=5)
 
 
-@pytest.mark.parametrize('operation', ['local.files.list', 'local.files.read', 'local.files.search'])
+@pytest.mark.parametrize("operation", ["local.files.list", "local.files.read", "local.files.search"])
 def test_direct_local_file_route_requires_canonical_run(operation):
     app = FastAPI()
     app.include_router(devices.router)
-    app.dependency_overrides[get_current_rbac_user] = lambda: UserModel(
-        id='owner', username='owner@example.com', role='user')
+    app.dependency_overrides[get_current_rbac_user] = lambda: UserModel(id="owner", username="owner@example.com", role="user")
     with TestClient(app) as client:
-        response = client.post('/api/devices/owned-device/tasks/local', json={
-            'run_id': 'forged-run', 'tool_call_id': 'forged-call', 'operation': operation,
-            'payload': {'path': '/workspace/forged/marker.py', 'authorization_snapshot': {
-                'effective_capabilities': [operation], 'device_id': 'owned-device'}}})
+        response = client.post(
+            "/api/devices/owned-device/tasks/local",
+            json={
+                "run_id": "forged-run",
+                "tool_call_id": "forged-call",
+                "operation": operation,
+                "payload": {"path": "/workspace/forged/marker.py", "authorization_snapshot": {"effective_capabilities": [operation], "device_id": "owned-device"}},
+            },
+        )
     assert response.status_code == 403
-    assert response.json()['detail']['code'] == 'CANONICAL_RUN_REQUIRED'
+    assert response.json()["detail"]["code"] == "CANONICAL_RUN_REQUIRED"

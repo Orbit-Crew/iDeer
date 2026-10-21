@@ -142,7 +142,8 @@ def _bind_local_runtime_context(context: dict[str, Any], *, caller_id: str | Non
         return
     platform = platform_read_capabilities()
     normalized = {
-        "agent_capabilities": sorted(platform), "caller_capabilities": sorted(platform),
+        "agent_capabilities": sorted(platform),
+        "caller_capabilities": sorted(platform),
         "platform_capabilities": sorted(platform),
         "device_online": True,
         "device_capabilities": sorted(connection.capabilities),

@@ -57,8 +57,11 @@ _PATH_SCHEMA = {"type": "object", "properties": {"path": {"type": "string", "des
 LOCAL_TOOLS = (
     LocalTool("local.files.list", "List files under the explicitly selected local workspace.", _PATH_SCHEMA),
     LocalTool("local.files.read", "Read bounded UTF-8 text from the explicitly selected local workspace.", _PATH_SCHEMA),
-    LocalTool("local.files.search", "Search UTF-8 code for a literal query in the selected local workspace.",
-              {**_PATH_SCHEMA, "properties": {**_PATH_SCHEMA["properties"], "query": {"type": "string", "description": "Literal text, at most 256 characters."}}, "required": ["path", "query"]}),
+    LocalTool(
+        "local.files.search",
+        "Search UTF-8 code for a literal query in the selected local workspace.",
+        {**_PATH_SCHEMA, "properties": {**_PATH_SCHEMA["properties"], "query": {"type": "string", "description": "Literal text, at most 256 characters."}}, "required": ["path", "query"]},
+    ),
     LocalTool("local.files.write", "Write a file after local consent."),
     LocalTool("local.python", "Run a Python task under an allowed local root."),
 )
@@ -75,10 +78,7 @@ def assemble_local_tools(
     announced it (device_capabilities) and every other authorization factor
     allows it, because the projection is drawn from the effective intersection.
     """
-    static = tuple(
-        LocalTool(tool.name, tool.description + str((descriptors or {}).get(tool.name, {}).get("workspace_description", "")), tool.input_schema)
-        for tool in LOCAL_TOOLS if authorization.allows(tool.name)
-    )
+    static = tuple(LocalTool(tool.name, tool.description + str((descriptors or {}).get(tool.name, {}).get("workspace_description", "")), tool.input_schema) for tool in LOCAL_TOOLS if authorization.allows(tool.name))
     projected = tuple(
         _mcp_tool(
             name,
