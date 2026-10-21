@@ -53,7 +53,9 @@ def test_merge_revision_joins_both_heads() -> None:
     merge = script.get_revision(MERGE_REVISION)
     assert set(merge._normalized_down_revisions) == {CONTROL_PLANE_HEAD, RUNTIME_HEAD}
     # Desktop approvals extend the v2.1.0 rejoin without splitting the chain.
-    assert script.get_heads() == ["20261018_desktop_login"]
+    assert script.get_heads() == ["20261021_receipt_outbox"]
+    receipt_outbox = script.get_revision("20261021_receipt_outbox")
+    assert receipt_outbox._normalized_down_revisions == ("20261018_desktop_login",)
     desktop_login = script.get_revision("20261018_desktop_login")
     assert desktop_login._normalized_down_revisions == ("20261001_rejoin_upstream_line",)
 

@@ -567,6 +567,17 @@ async def decide_task_consent(
     return TaskResponse.from_record(await broker.send_consent_decision(task_id, approved=payload.approved, actor_id=str(current_user.id)))
 
 
+@router.get("/receipts/{task_id}")
+async def get_execution_receipt(task_id: str, current_user: UserModel = Depends(get_current_rbac_user)) -> dict:
+    """Read persisted evidence after broker/Run memory has gone away."""
+    from app.device_control.receipt_archive import ReceiptArchive
+
+    receipt = await ReceiptArchive(get_session_factory()).get(task_id, owner_id=str(current_user.id))
+    if receipt is None:
+        raise HTTPException(status_code=404, detail={"code": "RECEIPT_NOT_FOUND"})
+    return receipt
+
+
 @router.websocket("/ws")
 async def device_websocket(websocket: WebSocket) -> None:
     """Accept only device-initiated, signed sessions."""
@@ -589,6 +600,10 @@ async def device_websocket(websocket: WebSocket) -> None:
         sf = get_session_factory()
         if sf is None:
             raise ProtocolError("PERSISTENCE_UNAVAILABLE", "device persistence is unavailable")
+        if broker.receipt_archive is not None:
+            from app.device_control.receipt_archive import ReceiptArchive
+
+            broker.receipt_archive = ReceiptArchive(sf)
         async with sf() as session:
             from app.device_control.service import DeviceControlService
 
@@ -648,11 +663,22 @@ async def device_websocket(websocket: WebSocket) -> None:
             capabilities=frozenset(str(value) for value in capabilities),
             tool_descriptors=tool_descriptors,
             owner_id=str(device.owner_id),
+            server_origin=str(websocket.url).replace("wss://", "https://", 1).replace("ws://", "http://", 1).split("/api/devices/ws")[0],
         )
         connection.tasks_allowed = compatibility == ProtocolCompatibility.COMPATIBLE
         await broker.attach(connection)
         while True:
             message = TaskEnvelope.model_validate_json(await websocket.receive_text())
+            if message.type == MessageType.RECEIPT_UPLOAD:
+                # Re-check DB-backed revocation/owner status on every replay,
+                # including sockets that were legal before the identity changed.
+                async with sf() as session:
+                    service = DeviceControlService(session)
+                    current_device = await service.heartbeat(connection.device_id, connection.session_token)
+                    _, current_session = await service._authorized_session(connection.device_id, connection.session_token)
+                    owner = await session.get(UserModel, current_device.owner_id)
+                    if current_session.id != connection.session_id or current_device.public_key != public_key_text or str(current_device.owner_id) != connection.owner_id or owner is None or owner.disabled:
+                        raise ProtocolError("RECEIPT_OWNER_MISMATCH", "receipt ownership is no longer legal")
             await broker.receive(connection, message)
             if message.type in {MessageType.HEARTBEAT, MessageType.CAPABILITY_UPDATE}:
                 sf = get_session_factory()

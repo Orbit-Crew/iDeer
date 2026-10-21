@@ -31,6 +31,8 @@ class MessageType(StrEnum):
     TASK_ACK = "task_ack"
     TASK_PROGRESS = "task_progress"
     TASK_RESULT = "task_result"
+    RECEIPT_UPLOAD = "receipt_upload"
+    RECEIPT_ACK = "receipt_ack"
     TASK_CANCEL = "task_cancel"
     CONSENT_REQUIRED = "consent_required"
     CONSENT_DECISION = "consent_decision"

@@ -1776,3 +1776,13 @@ top-level file with a superset of the tests, orphaning the moved copy. Its
 | Removed path | Replacement path | Core assertions retained | Validation |
 | --- | --- | --- | --- |
 | `backend/tests/unit/scripts/test_detect_blocking_io_static.py` | `backend/tests/test_detect_blocking_io_static.py` | Static blocking-IO detector: direct async blocking calls, sync helpers reachable from async code and via self/cls attribute chains, Path/httpx/os detection, CLI JSON and summary output, parse-error reporting | `cd backend && PYTHONPATH=.:tests PYTHONIOENCODING=utf-8 PYTHONUTF8=1 .venv/bin/python -m pytest tests/test_detect_blocking_io_static.py -q` |
+
+## Issue 101 receipt durability, 2026-10-21
+
+The existing unified-chain, schema inventory and 0025 repair tests now expect
+`20261021_receipt_outbox`, the application-owned child of
+`20261018_desktop_login`. Their previous ancestor, migration upgrade/downgrade
+and schema-drift checks remain intact. No tests moved or removed. New receipt
+archive, broker replay, identity restart and migration tests extend the existing
+device-control and persistence boundaries. The original migrated Local Runtime
+tests and pinned Server protocol snapshot remain unchanged in Desktop.
