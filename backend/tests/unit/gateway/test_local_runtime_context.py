@@ -94,3 +94,34 @@ def test_local_context_rejects_a_device_owned_by_another_user(
     }
     with pytest.raises(Exception, match="owned by another user"):
         _bind_local_runtime_context(context, caller_id="owner-b")
+
+
+def test_client_policy_cannot_grant_platform_capabilities(monkeypatch):
+    from app.device_control import broker as broker_module
+
+    broker = DeviceBroker()
+    broker.connections["device-context"] = _connection(owner_id="owner-a")
+    monkeypatch.setattr(broker_module, "get_device_broker", lambda: broker)
+    context = {
+        "local_device_id": "device-context",
+        "local_workspace_root": "/workspace/00000000-0000-0000-0000-000000000100",
+        "local_authorization": {
+            key: ["local.files.write", "local.python", "local.mcp.fs.read_file"] for key in ("agent_capabilities", "caller_capabilities", "device_capabilities", "local_policy_capabilities", "workflow_capabilities", "platform_capabilities")
+        },
+    }
+    _bind_local_runtime_context(context, caller_id="owner-a")
+    assert set(context["local_authorization"]["platform_capabilities"]) <= {"local.files.list", "local.files.read", "local.files.search"}
+    assert context["local_authorization"]["agent_capabilities"] == []
+    assert context["local_authorization"]["caller_capabilities"] == []
+
+
+def test_workspace_context_preserves_explicit_client_denial(monkeypatch):
+    from app.device_control import broker as broker_module
+
+    broker = DeviceBroker()
+    broker.connections["device-context"] = _connection(owner_id="owner-a")
+    monkeypatch.setattr(broker_module, "get_device_broker", lambda: broker)
+    context = {"local_device_id": "device-context", "local_workspace_root": "/workspace/00000000-0000-0000-0000-000000000100", "local_authorization": {"platform_capabilities": [], "agent_capabilities": []}}
+    _bind_local_runtime_context(context, caller_id="owner-a")
+    assert context["local_authorization"]["platform_capabilities"] == []
+    assert context["local_authorization"]["agent_capabilities"] == []

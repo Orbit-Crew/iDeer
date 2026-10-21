@@ -171,3 +171,28 @@ async def test_local_tool_executor_default_sink_records_run_evidence() -> None:
     with bind_run_evidence(binding):
         await LocalToolExecutor(auth, route, sender).invoke("local.python", {"tool_call_id": "call-1"})
         assert current_run_evidence().tool_receipts[0]["tool_call_id"] == "call-1"
+
+
+@pytest.mark.asyncio
+async def test_workspace_tools_require_logical_path_and_literal_search_query():
+    from agentplatform_extension.local_runtime import build_langchain_local_tools
+    from pydantic import ValidationError
+
+    allowed = {"local.files.list", "local.files.read", "local.files.search"}
+    authorization = LocalAuthorization.from_capabilities(allowed, device_online=True)
+    seen = []
+
+    async def sender(device, capability, payload):
+        seen.append((device, capability, dict(payload)))
+        return {"matches": [{"path": "/workspace/example/marker.py", "line": 1, "text": "KNOWN100"}]}
+
+    executor = LocalToolExecutor(authorization, RunDeviceRouter(DeviceRoute("private-device"), authorization), sender)
+    tools = {tool.name: tool for tool in build_langchain_local_tools(authorization, executor)}
+    assert set(tools) == allowed
+    assert tools["local.files.search"].args_schema.model_json_schema()["required"] == ["path", "query"]
+    assert "device_id" not in repr([tool.args_schema.model_json_schema() for tool in tools.values()])
+    result = await tools["local.files.search"].ainvoke({"path": "/workspace/example", "query": "KNOWN100"})
+    assert result["matches"][0]["line"] == 1
+    assert seen == [("private-device", "local.files.search", {"path": "/workspace/example", "query": "KNOWN100"})]
+    with pytest.raises(ValidationError):
+        await tools["local.files.read"].ainvoke({"path": "/workspace/example", "device_id": "other"})

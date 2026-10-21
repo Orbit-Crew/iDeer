@@ -408,6 +408,8 @@ async def send_local_task(
     payload: LocalTaskRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> TaskResponse:
+    if payload.operation in {"local.files.list", "local.files.read", "local.files.search"}:
+        raise HTTPException(403, detail={"code": "CANONICAL_RUN_REQUIRED", "message": "Workspace reads require an authorized Agent Run"})
     is_admin = current_user.role in {
         UserRole.SUPER_ADMIN.value,
         UserRole.DEPARTMENT_ADMIN.value,
