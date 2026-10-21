@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -23,6 +24,7 @@ from .protocol import (
     schema_digest,
     sign_envelope,
 )
+from .receipt_archive import ReceiptArchive, safe_logical_target
 
 
 class WebSocketLike(Protocol):
@@ -78,6 +80,7 @@ class DeviceConnection:
     capabilities: frozenset[str] = field(default_factory=frozenset)
     tool_descriptors: dict[str, dict[str, Any]] = field(default_factory=dict)
     owner_id: str | None = None
+    server_origin: str = ""
     seen_task_ids: set[str] = field(default_factory=set)
     seen_message_ids: set[str] = field(default_factory=set)
 
@@ -103,8 +106,9 @@ class TaskRecord:
 class DeviceBroker:
     """Register only device-initiated connections and route signed envelopes."""
 
-    def __init__(self, *, server_private_key: Ed25519PrivateKey | None = None) -> None:
+    def __init__(self, *, server_private_key: Ed25519PrivateKey | None = None, receipt_archive: ReceiptArchive | None = None) -> None:
         self.server_private_key = server_private_key or Ed25519PrivateKey.generate()
+        self.receipt_archive = receipt_archive
         self.connections: dict[str, DeviceConnection] = {}
         self.tasks: dict[str, TaskRecord] = {}
         self._lock = asyncio.Lock()
@@ -130,10 +134,14 @@ class DeviceBroker:
             payload={
                 "server_public_key": self.server_public_key,
                 "protocol_version": "1",
+                "receipt_replay": 1 if self.receipt_archive is not None else 0,
             },
         )
         await connection.websocket.send_text(hello.model_dump_json(by_alias=True))
         return hello
+
+    def receipt_binding(self, connection: DeviceConnection) -> dict[str, str]:
+        return {"server_origin": connection.server_origin, "user_id": connection.owner_id or "", "device_id": connection.device_id, "device_public_key": public_key_text(connection.public_key), "broker_public_key": self.server_public_key}
 
     async def detach(self, device_id: str, session_id: str) -> None:
         async with self._lock:
@@ -277,6 +285,20 @@ class DeviceBroker:
             payload=payload,
             expires_at=expires_at,
         )
+        if self.receipt_archive is not None:
+            await self.receipt_archive.admit(
+                self.receipt_binding(connection),
+                {
+                    "task_id": task_id,
+                    "run_id": run_id,
+                    "tool_call_id": tool_call_id,
+                    "capability": operation,
+                    "request_hash": envelope.payload_hash,
+                    "original_session_id": connection.session_id,
+                    "task_signature": envelope.signature,
+                    "logical_target": safe_logical_target(payload),
+                },
+            )
         await connection.websocket.send_text(envelope.model_dump_json(by_alias=True))
         record.status = TaskStatus.SENT
         return record
@@ -338,6 +360,15 @@ class DeviceBroker:
             seen_task_ids=connection.seen_task_ids,
             seen_message_ids=connection.seen_message_ids,
         )
+        if envelope.type == MessageType.RECEIPT_UPLOAD:
+            if self.connections.get(connection.device_id) is not connection or not connection.tasks_allowed or self.receipt_archive is None:
+                raise ProtocolError("RECEIPT_SESSION_INVALID", "receipt connection is no longer legal")
+            if not isinstance(envelope.payload.get("task"), dict) or envelope.task_id != envelope.payload["task"].get("task_id"):
+                raise ProtocolError("RECEIPT_TASK_MISMATCH", "receipt task identity does not match")
+            acknowledgment = await self.receipt_archive.accept(self.receipt_binding(connection), envelope.payload)
+            reply = sign_envelope(private_key=self.server_private_key, message_type=MessageType.RECEIPT_ACK, device_id=connection.device_id, session_id=connection.session_id, task_id=envelope.task_id, payload=acknowledgment)
+            await connection.websocket.send_text(reply.model_dump_json(by_alias=True))
+            return None
         if envelope.type == MessageType.HEARTBEAT:
             return None
         if envelope.type == MessageType.CAPABILITY_UPDATE:
@@ -481,8 +512,16 @@ class DeviceBroker:
             record.error = "task delivery or execution deadline elapsed"
 
 
-_broker = DeviceBroker()
+_broker: DeviceBroker | None = None
+_broker_lock = threading.Lock()
 
 
 def get_device_broker() -> DeviceBroker:
+    global _broker
+    if _broker is None:
+        with _broker_lock:
+            if _broker is None:
+                from .identity import persistent_broker_key
+
+                _broker = DeviceBroker(server_private_key=persistent_broker_key(), receipt_archive=ReceiptArchive())
     return _broker
