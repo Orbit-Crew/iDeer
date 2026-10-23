@@ -15,6 +15,15 @@ Prerequisite #102 was closed/completed before implementation on 2026-10-23.
 Branch `feat/issue-103` starts at `207b3926f`, verified against `github/develop`.
 Desktop branch `feat/issue-103` starts at `0a26bdf`.
 
+Committed implementation candidates are Server
+[`1f7a52a3d0471083fbbb580e2d1e197983e751b0`](https://github.com/Orbit-Crew/iDeer/commit/1f7a52a3d0471083fbbb580e2d1e197983e751b0)
+and Desktop
+[`2518333ae1dc71ad805e3907ab4de2dac3a42ccb`](https://github.com/Orbit-Crew/iDeer-Desktop/commit/2518333ae1dc71ad805e3907ab4de2dac3a42ccb).
+Post-commit verification matched every bound source file. Delivery documentation
+retains those product/test/build bytes. The authoritative
+[Desktop report](https://github.com/Orbit-Crew/iDeer-Desktop/blob/2518333ae1dc71ad805e3907ab4de2dac3a42ccb/docs/acceptance/issue-103/report.md)
+contains the real cross-repository scenario and installer evidence.
+
 The candidate accepts local completed write evidence only with `approved` or
 `directory:<canonical lowercase UUID>`. Live results and durable replay share
 that predicate. Current session, owner, device/public keys, original signed
@@ -100,5 +109,5 @@ ranking caps are recorded and are not evidence that missing flows are absent.
 ## Review and disposition
 
 Independent Standards and Spec reviews reported zero Server findings.
-No push, merge, release publication or issue closure is performed by this task.
+Publication, CI, merge and final disposition are recorded in the [issue timeline](https://github.com/Orbit-Crew/iDeer/issues/103).
 Modern Windows development, installed and standard gates passed. Real Win7 remains deferred to #131.

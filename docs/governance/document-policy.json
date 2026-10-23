@@ -3934,8 +3934,8 @@
       {
         "path": "docs/acceptance/issue-103/report.md",
         "registration": "post-baseline-addition",
-        "sha256": "e82b21a79ec0cde869503d363c920dc3bb0f72f0489c0b2b17dcc7fa5d5f1f04",
-        "lines": 104,
+        "sha256": "d7454c0239513b0454b1693e5a1071373e8c3463a3b8d30c2ffd612abee607fa",
+        "lines": 113,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "Issue 103 Server implementation and cross-repository acceptance evidence",
