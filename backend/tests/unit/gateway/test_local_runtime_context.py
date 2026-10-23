@@ -106,7 +106,7 @@ def test_client_policy_cannot_grant_platform_capabilities(monkeypatch):
         "local_device_id": "device-context",
         "local_workspace_root": "/workspace/00000000-0000-0000-0000-000000000100",
         "local_authorization": {
-            key: ["local.files.write", "local.python", "local.mcp.fs.read_file"] for key in ("agent_capabilities", "caller_capabilities", "device_capabilities", "local_policy_capabilities", "workflow_capabilities", "platform_capabilities")
+            key: ["local.files.delete", "local.python", "local.mcp.fs.read_file"] for key in ("agent_capabilities", "caller_capabilities", "device_capabilities", "local_policy_capabilities", "workflow_capabilities", "platform_capabilities")
         },
     }
     _bind_local_runtime_context(context, caller_id="owner-a")
@@ -125,3 +125,21 @@ def test_workspace_context_preserves_explicit_client_denial(monkeypatch):
     _bind_local_runtime_context(context, caller_id="owner-a")
     assert context["local_authorization"]["platform_capabilities"] == []
     assert context["local_authorization"]["agent_capabilities"] == []
+
+
+def test_workspace_write_default_is_owned_and_deployment_can_disable_it(monkeypatch):
+    from app.device_control import broker as broker_module
+
+    broker = DeviceBroker()
+    connection = _connection(owner_id="owner-a")
+    connection.capabilities = frozenset({"local.files.write"})
+    broker.connections["device-context"] = connection
+    monkeypatch.setattr(broker_module, "get_device_broker", lambda: broker)
+    context = {"local_device_id": "device-context", "local_workspace_root": "/workspace/00000000-0000-0000-0000-000000000100"}
+    _bind_local_runtime_context(context, caller_id="owner-a")
+    assert "local.files.write" in context["local_authorization"]["platform_capabilities"]
+    assert context["local_authorization"]["device_capabilities"] == ["local.files.write"]
+    monkeypatch.setenv("IDEER_LOCAL_WRITE_CAPABILITIES", "local.python,local.files.delete")
+    _bind_local_runtime_context(context, caller_id="owner-a")
+    assert "local.files.write" not in context["local_authorization"]["platform_capabilities"]
+    assert set(context["local_authorization"]["platform_capabilities"]) == {"local.files.list", "local.files.read", "local.files.search"}

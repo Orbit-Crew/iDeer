@@ -158,7 +158,9 @@ async def test_prepare_canonical_agent_run_freezes_visible_version_and_hides_pri
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("capability", ["local.mcp.fs.read_file", "local.files.write"])
 async def test_canonical_mcp_dispatch_nests_tool_arguments_for_local_runtime(
+    capability: str,
     session_factory: async_sessionmaker[AsyncSession],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -207,7 +209,7 @@ async def test_canonical_mcp_dispatch_nests_tool_arguments_for_local_runtime(
 
     sent = []
     device_receipt = {
-        "capability": "local.mcp.fs.read_file",
+        "capability": capability,
         "status": "completed",
         "request_hash": "a" * 64,
         "result_hash": "b" * 64,
@@ -219,6 +221,8 @@ async def test_canonical_mcp_dispatch_nests_tool_arguments_for_local_runtime(
     }
 
     class FakeBroker:
+        connections = {"device-1": SimpleNamespace(tasks_allowed=True, owner_id="runner", capabilities=frozenset({capability}))}
+
         async def send_task(self, **kwargs):
             sent.append(kwargs)
             return SimpleNamespace(
@@ -240,12 +244,13 @@ async def test_canonical_mcp_dispatch_nests_tool_arguments_for_local_runtime(
 
     monkeypatch.setattr("app.agentplatform.runtime_adapter.build_canonical_agent_factory", capture_factory)
     request = SimpleNamespace(state=SimpleNamespace(user=SimpleNamespace(id="runner")))
-    capability = "local.mcp.fs.read_file"
     await prepare_canonical_agent_run(
         resource_id,
         request,
         run_id,
+        thread_id="original-thread",
         diagnostic_context={
+            **({"local_workspace_root": "/workspace/00000000-0000-0000-0000-000000000102"} if capability == "local.files.write" else {}),
             "local_device_id": "device-1",
             "local_authorization": {
                 key: [capability]
@@ -272,11 +277,15 @@ async def test_canonical_mcp_dispatch_nests_tool_arguments_for_local_runtime(
         run_id=run_id,
     )
     with bind_run_evidence(binding), bind_tool_call_evidence("call-1"):
-        await executor.sender("device-1", capability, {"path": "marker.txt"})
+        await executor.sender("device-1", capability, {"path": "marker.txt", "run_id": "forged-run", "tool_call_id": "forged-call"})
         evidence = current_run_evidence()
 
     assert sent[0]["payload_extra"]["arguments"] == {"path": "marker.txt"}
     assert sent[0]["tool_call_id"] == "call-1"
+    assert sent[0]["run_id"] == run_id
+    assert sent[0]["payload_extra"]["thread_id"] == "original-thread"
+    if capability == "local.files.write":
+        assert sent[0]["expires_in"].total_seconds() == 305
     assert evidence is not None
     local_receipts = [item.get("local_execution_receipt") for item in evidence.tool_receipts if item.get("receipt_kind") == "tool"]
     assert any(item and item.get("capability") == capability and item.get("status") == "completed" and item.get("task_id") == "task-1" for item in local_receipts)

@@ -49,6 +49,10 @@ def probe_app() -> FastAPI:
     async def desktop_login_error(code: str) -> dict:
         raise HTTPException(status_code=409, detail={"code": code, "message": "Desktop login rejected"})
 
+    @app.get("/workspace-error/{code}")
+    async def workspace_error(code: str) -> dict:
+        raise HTTPException(status_code=403, detail={"code": code, "message": "Workspace request rejected"})
+
     return app
 
 
@@ -152,3 +156,11 @@ class TestKnownErrorPaths:
         # The raw pydantic repr (full input payload echo) must not leak.
         assert "extra_field" not in resp.text
         assert "nested" not in resp.text
+
+
+@pytest.mark.parametrize("code", ["LOCAL_APPROVAL_REQUIRED", "CANONICAL_RUN_REQUIRED"])
+@pytest.mark.asyncio
+async def test_workspace_rejection_preserves_typed_protocol_code(client, code):
+    response = await client.get(f"/workspace-error/{code}")
+    assert response.status_code == 403
+    assert response.json()["detail"] == {"code": code, "message": "Workspace request rejected"}

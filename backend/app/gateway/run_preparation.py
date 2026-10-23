@@ -125,7 +125,7 @@ def _bind_local_runtime_context(context: dict[str, Any], *, caller_id: str | Non
         context.pop("local_tool_descriptors", None)
         return
     from app.device_control.broker import get_device_broker
-    from app.gateway.local_workspace_policy import platform_read_capabilities
+    from app.gateway.local_workspace_policy import platform_workspace_capabilities
 
     connection = get_device_broker().connections.get(str(device_id))
     if connection is None or not connection.tasks_allowed:
@@ -140,7 +140,7 @@ def _bind_local_runtime_context(context: dict[str, Any], *, caller_id: str | Non
         context["local_authorization"] = normalized
         context["local_tool_descriptors"] = {name: dict(descriptor) for name, descriptor in connection.tool_descriptors.items()}
         return
-    platform = platform_read_capabilities()
+    platform = platform_workspace_capabilities()
     normalized = {
         "agent_capabilities": sorted(platform),
         "caller_capabilities": sorted(platform),

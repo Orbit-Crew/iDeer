@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
 )
+from sqlalchemy.exc import SQLAlchemyError
 
 from .protocol import (
     MessageType,
@@ -41,11 +42,13 @@ class TaskStatus(StrEnum):
     PROGRESS = "progress"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+    CANCEL_REQUESTED = "cancel_requested"
     DENIED = "denied"
     TIMED_OUT = "timed_out"
     DEVICE_OFFLINE = "device_offline"
     EXPIRED = "expired"
     FAILED = "failed"
+    RESULT_NOT_VERIFIED = "result_not_verified"
 
 
 # Statuses whose records are only kept for late status/receipt lookups; the
@@ -59,6 +62,7 @@ _TERMINAL_TASK_STATUSES = frozenset(
         TaskStatus.DEVICE_OFFLINE,
         TaskStatus.EXPIRED,
         TaskStatus.FAILED,
+        TaskStatus.RESULT_NOT_VERIFIED,
     }
 )
 # Bound on tracked task records (03-L5): records normally stay only for the
@@ -159,11 +163,13 @@ class DeviceBroker:
                         TaskStatus.SENT,
                         TaskStatus.ACKED,
                         TaskStatus.CONSENT_REQUIRED,
+                        TaskStatus.CANCEL_REQUESTED,
                         TaskStatus.PROGRESS,
                     }
                 ):
-                    task.status = TaskStatus.DEVICE_OFFLINE
-                    task.error = "device disconnected before task completion"
+                    task.status = TaskStatus.RESULT_NOT_VERIFIED if task.payload.get("operation") == "local.files.write" else TaskStatus.DEVICE_OFFLINE
+                    task.error_code = "RESULT_UNCERTAIN" if task.status is TaskStatus.RESULT_NOT_VERIFIED else None
+                    task.error = "device disconnected before task completion; write effects require verification"
                     task.expires_at = max(task.expires_at, now + timedelta(seconds=1))
 
     async def invalidate(self, device_id: str, *, reason: str) -> None:
@@ -183,10 +189,12 @@ class DeviceBroker:
                     TaskStatus.SENT,
                     TaskStatus.ACKED,
                     TaskStatus.CONSENT_REQUIRED,
+                    TaskStatus.CANCEL_REQUESTED,
                     TaskStatus.PROGRESS,
                 }
             ):
-                task.status = TaskStatus.DEVICE_OFFLINE
+                task.status = TaskStatus.RESULT_NOT_VERIFIED if task.payload.get("operation") == "local.files.write" else TaskStatus.DEVICE_OFFLINE
+                task.error_code = "RESULT_UNCERTAIN" if task.status is TaskStatus.RESULT_NOT_VERIFIED else None
                 task.error = reason
                 task.expires_at = max(task.expires_at, now + timedelta(seconds=1))
         await connection.websocket.close(code=4003, reason=reason)
@@ -286,33 +294,43 @@ class DeviceBroker:
             expires_at=expires_at,
         )
         if self.receipt_archive is not None:
-            await self.receipt_archive.admit(
-                self.receipt_binding(connection),
-                {
-                    "task_id": task_id,
-                    "run_id": run_id,
-                    "tool_call_id": tool_call_id,
-                    "capability": operation,
-                    "request_hash": envelope.payload_hash,
-                    "original_session_id": connection.session_id,
-                    "task_signature": envelope.signature,
-                    "logical_target": safe_logical_target(payload),
-                },
-            )
-        await connection.websocket.send_text(envelope.model_dump_json(by_alias=True))
+            try:
+                await self.receipt_archive.admit(
+                    self.receipt_binding(connection),
+                    {
+                        "task_id": task_id,
+                        "run_id": run_id,
+                        "tool_call_id": tool_call_id,
+                        "capability": operation,
+                        "request_hash": envelope.payload_hash,
+                        "original_session_id": connection.session_id,
+                        "task_signature": envelope.signature,
+                        "logical_target": safe_logical_target(payload),
+                    },
+                )
+            except (OSError, SQLAlchemyError, ProtocolError):
+                record.status = TaskStatus.FAILED
+                record.error_code = "PERSISTENCE_UNAVAILABLE"
+                record.error = "task receipt admission could not be saved; nothing was dispatched"
+                return record
         record.status = TaskStatus.SENT
+        try:
+            await connection.websocket.send_text(envelope.model_dump_json(by_alias=True))
+        except asyncio.CancelledError:
+            await asyncio.shield(self.cancel_task(record.task_id))
+            raise
+        except Exception:
+            if record.status not in _TERMINAL_TASK_STATUSES and record.receipt is None:
+                record.status = TaskStatus.RESULT_NOT_VERIFIED if operation == "local.files.write" else TaskStatus.DEVICE_OFFLINE
+                record.error_code = "RESULT_UNCERTAIN" if operation == "local.files.write" else "DEVICE_OFFLINE"
+                record.error = "device delivery failed; execution outcome requires verification"
         return record
 
     async def cancel_task(self, task_id: str) -> TaskRecord:
         record = self._task(task_id)
-        if record.status in {
-            TaskStatus.COMPLETED,
-            TaskStatus.CANCELLED,
-            TaskStatus.DEVICE_OFFLINE,
-            TaskStatus.EXPIRED,
-        }:
+        if record.status in _TERMINAL_TASK_STATUSES or record.status is TaskStatus.CANCEL_REQUESTED:
             return record
-        record.status = TaskStatus.CANCELLED
+        record.status = TaskStatus.CANCEL_REQUESTED if record.payload.get("operation") == "local.files.write" else TaskStatus.CANCELLED
         connection = self.connections.get(record.device_id)
         if connection is not None and connection.session_id == record.session_id:
             envelope = sign_envelope(
@@ -323,11 +341,19 @@ class DeviceBroker:
                 task_id=record.task_id,
                 payload={"reason": "cancelled by caller"},
             )
-            await connection.websocket.send_text(envelope.model_dump_json(by_alias=True))
+            try:
+                await connection.websocket.send_text(envelope.model_dump_json(by_alias=True))
+            except Exception:
+                if record.status not in _TERMINAL_TASK_STATUSES and record.receipt is None:
+                    record.status = TaskStatus.RESULT_NOT_VERIFIED if record.payload.get("operation") == "local.files.write" else TaskStatus.DEVICE_OFFLINE
+                    record.error_code = "RESULT_UNCERTAIN" if record.status is TaskStatus.RESULT_NOT_VERIFIED else "DEVICE_OFFLINE"
+                    record.error = "cancel delivery failed; execution outcome requires verification"
         return record
 
     async def send_consent_decision(self, task_id: str, *, approved: bool, actor_id: str) -> TaskRecord:
         record = self._task(task_id)
+        if record.payload.get("operation") == "local.files.write":
+            raise ProtocolError("LOCAL_APPROVAL_REQUIRED", "workspace writes require approval on the original Desktop")
         if record.status is not TaskStatus.CONSENT_REQUIRED:
             raise ProtocolError("CONSENT_NOT_PENDING", "task is not waiting for consent")
         connection = self.connections.get(record.device_id)
@@ -360,6 +386,8 @@ class DeviceBroker:
             seen_task_ids=connection.seen_task_ids,
             seen_message_ids=connection.seen_message_ids,
         )
+        if self.connections.get(connection.device_id) is not connection or not connection.tasks_allowed:
+            raise ProtocolError("SESSION_MISMATCH", "device session is no longer current")
         if envelope.type == MessageType.RECEIPT_UPLOAD:
             if self.connections.get(connection.device_id) is not connection or not connection.tasks_allowed or self.receipt_archive is None:
                 raise ProtocolError("RECEIPT_SESSION_INVALID", "receipt connection is no longer legal")
@@ -414,15 +442,26 @@ class DeviceBroker:
         self._expire_if_needed(record)
         if record.device_id != connection.device_id or record.session_id != connection.session_id:
             raise ProtocolError("SESSION_MISMATCH", "task belongs to another device session")
-        if record.status in {
-            TaskStatus.COMPLETED,
-            TaskStatus.CANCELLED,
-            TaskStatus.DENIED,
-            TaskStatus.TIMED_OUT,
-            TaskStatus.DEVICE_OFFLINE,
-            TaskStatus.EXPIRED,
-            TaskStatus.FAILED,
-        }:
+        receipt = envelope.payload.get("receipt")
+        is_write = record.payload.get("operation") == "local.files.write"
+        if record.status in _TERMINAL_TASK_STATUSES:
+            late_write_receipt = (
+                is_write
+                and record.receipt is None
+                and record.status in {TaskStatus.CANCELLED, TaskStatus.DEVICE_OFFLINE, TaskStatus.EXPIRED, TaskStatus.RESULT_NOT_VERIFIED}
+                and envelope.type in {MessageType.TASK_RESULT, MessageType.ERROR}
+                and isinstance(receipt, dict)
+            )
+            if not late_write_receipt:
+                return record
+        if is_write and envelope.type in {MessageType.TASK_RESULT, MessageType.ERROR}:
+            if envelope.type == MessageType.TASK_RESULT or receipt is not None:
+                expected = {"task_id": record.task_id, "run_id": record.run_id, "capability": "local.files.write", "request_hash": payload_digest(record.payload), "payload_hash": payload_digest(record.payload)}
+                if not isinstance(receipt, dict) or any(receipt.get(key) != value for key, value in expected.items()):
+                    raise ProtocolError("RECEIPT_TASK_MISMATCH", "write receipt does not match its signed request")
+                if receipt.get("status") not in {"completed", "cancelled", "timed_out", "denied", "policy_denied", "failed", "result_not_verified"} or (receipt.get("status") == "completed" and receipt.get("consent_decision") != "approved"):
+                    raise ProtocolError("RECEIPT_TASK_MISMATCH", "write receipt has no valid per-call execution basis")
+        if record.status is TaskStatus.CANCEL_REQUESTED and envelope.type in {MessageType.TASK_ACK, MessageType.TASK_PROGRESS, MessageType.CONSENT_REQUIRED}:
             return record
         if envelope.type == MessageType.TASK_ACK:
             record.status = TaskStatus.ACKED
@@ -442,7 +481,11 @@ class DeviceBroker:
             record.result = envelope.payload.get("result")
             record.receipt = envelope.payload.get("receipt") or envelope.payload
             receipt_status = str((record.receipt or {}).get("status", "completed"))
-            if receipt_status == "cancelled":
+            if receipt_status == "result_not_verified":
+                record.status = TaskStatus.RESULT_NOT_VERIFIED
+                record.error_code = "RESULT_UNCERTAIN"
+                record.error = "write effects require verification"
+            elif receipt_status == "cancelled":
                 record.status = TaskStatus.CANCELLED
                 record.error_code = receipt_status.upper()
                 record.error = receipt_status.replace("_", " ")
@@ -460,12 +503,17 @@ class DeviceBroker:
                 record.error = receipt_status.replace("_", " ")
             else:
                 record.status = TaskStatus.COMPLETED
+                record.error_code = None
+                record.error = None
         elif envelope.type == MessageType.ERROR:
             record.error_code = str(envelope.payload.get("error_code", "DEVICE_ERROR"))
             record.error = str(envelope.payload.get("message", "device reported an error"))
             record.receipt = envelope.payload.get("receipt")
             receipt_status = str((record.receipt or {}).get("status", "failed"))
-            if receipt_status == "cancelled":
+            if receipt_status == "result_not_verified" or record.error_code == "RESULT_UNCERTAIN":
+                record.status = TaskStatus.RESULT_NOT_VERIFIED
+                record.error_code = "RESULT_UNCERTAIN"
+            elif receipt_status == "cancelled":
                 record.status = TaskStatus.CANCELLED
             elif receipt_status == "timed_out":
                 record.status = TaskStatus.TIMED_OUT
@@ -506,9 +554,12 @@ class DeviceBroker:
             TaskStatus.CREATED,
             TaskStatus.SENT,
             TaskStatus.ACKED,
+            TaskStatus.CONSENT_REQUIRED,
+            TaskStatus.CANCEL_REQUESTED,
             TaskStatus.PROGRESS,
         } and record.expires_at <= datetime.now(UTC):
-            record.status = TaskStatus.EXPIRED
+            record.status = TaskStatus.RESULT_NOT_VERIFIED if record.payload.get("operation") == "local.files.write" else TaskStatus.EXPIRED
+            record.error_code = "RESULT_UNCERTAIN" if record.status is TaskStatus.RESULT_NOT_VERIFIED else None
             record.error = "task delivery or execution deadline elapsed"
 
 

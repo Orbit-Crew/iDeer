@@ -53,6 +53,20 @@ unauthorized device capability.
   canonicalized and opened through a verified directory handle. Traversal,
   UNC, drive syntax, symlink, and junction escapes are rejected, and errors
   expose stable codes without physical paths.
+- `local.files.write` is a Level 1 operation. It accepts a logical workspace
+  relative path and UTF-8 text up to 65,536 bytes without NUL. The parent directory
+  must exist. Every write requires a fresh local Desktop approval for the exact
+  task, payload hash, Thread, and Run. Web approval returns
+  `LOCAL_APPROVAL_REQUIRED`; local DENY and boundary restrictions still apply.
+  `IDEER_LOCAL_WRITE_CAPABILITIES` defaults to `local.files.write`; setting it to
+  an empty value disables Server delegation. The read capability setting does
+  not grant writes.
+- A write is admitted durably before any file effect, then verified by actual
+  readback. A completion-storage failure pauses further writes. Disconnect,
+  timeout, or cancellation cannot prove that a write had no effect. Unknown
+  write outcomes are never redispatched. A valid late receipt stays attached to
+  its original Run and does not resume a cancelled Run. A signed terminal
+  receipt remains authoritative if the transport subsequently reports an error.
 - Local Python output is redacted incrementally per stream. Long logs are kept
   on disk with incremental hashes and only a bounded preview is returned; a
   timeout, cancellation, or disconnect terminates the process group before a
@@ -72,7 +86,8 @@ unauthorized device capability.
   (`secret-set` / `secret-rotate` / `secret-delete` / `secret-list`), and
   listing exposes names only.
 - The built-in task surface is the harmless echo task, the bounded Level 0
-  `local.files.list`/`local.files.read` operations, consent-gated Level 1
+  `local.files.list`/`local.files.read` operations, consent-gated
+  `local.files.write`, consent-gated Level 1
   `local.python` execution, and consent-gated projected `local.mcp.*` tools.
   There is no system/shell command capability, and unannounced `local.*`
   operations are rejected before dispatch.
