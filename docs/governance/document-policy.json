@@ -3348,7 +3348,7 @@
     }
   ],
   "supplements": {
-    "count": 58,
+    "count": 59,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3930,6 +3930,16 @@
         "protected": false,
         "role": "Issue 102 Server implementation and acceptance evidence",
         "referenced_by": "GitHub issue 102"
+      },
+      {
+        "path": "docs/acceptance/issue-103/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "d7454c0239513b0454b1693e5a1071373e8c3463a3b8d30c2ffd612abee607fa",
+        "lines": 113,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 103 Server implementation and cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 103"
       }
     ]
   },

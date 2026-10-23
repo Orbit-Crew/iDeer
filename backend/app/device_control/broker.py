@@ -20,6 +20,7 @@ from .protocol import (
     MessageType,
     ProtocolError,
     TaskEnvelope,
+    is_write_consent_basis,
     payload_digest,
     public_key_text,
     schema_digest,
@@ -459,8 +460,10 @@ class DeviceBroker:
                 expected = {"task_id": record.task_id, "run_id": record.run_id, "capability": "local.files.write", "request_hash": payload_digest(record.payload), "payload_hash": payload_digest(record.payload)}
                 if not isinstance(receipt, dict) or any(receipt.get(key) != value for key, value in expected.items()):
                     raise ProtocolError("RECEIPT_TASK_MISMATCH", "write receipt does not match its signed request")
-                if receipt.get("status") not in {"completed", "cancelled", "timed_out", "denied", "policy_denied", "failed", "result_not_verified"} or (receipt.get("status") == "completed" and receipt.get("consent_decision") != "approved"):
-                    raise ProtocolError("RECEIPT_TASK_MISMATCH", "write receipt has no valid per-call execution basis")
+                if receipt.get("status") not in {"completed", "cancelled", "timed_out", "denied", "policy_denied", "failed", "result_not_verified"} or (
+                    receipt.get("status") == "completed" and not is_write_consent_basis(receipt.get("consent_decision"))
+                ):
+                    raise ProtocolError("RECEIPT_TASK_MISMATCH", "write receipt has no valid local execution basis")
         if record.status is TaskStatus.CANCEL_REQUESTED and envelope.type in {MessageType.TASK_ACK, MessageType.TASK_PROGRESS, MessageType.CONSENT_REQUIRED}:
             return record
         if envelope.type == MessageType.TASK_ACK:
