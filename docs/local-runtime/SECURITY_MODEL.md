@@ -55,9 +55,19 @@ unauthorized device capability.
   expose stable codes without physical paths.
 - `local.files.write` is a Level 1 operation. It accepts a logical workspace
   relative path and UTF-8 text up to 65,536 bytes without NUL. The parent directory
-  must exist. Every write requires a fresh local Desktop approval for the exact
-  task, payload hash, Thread, and Run. Web approval returns
-  `LOCAL_APPROVAL_REQUIRED`; local DENY and boundary restrictions still apply.
+  must exist. A write requires local Desktop approval for the exact task, payload hash,
+  Thread, and Run, or a persisted local directory grant for the same user,
+  effective device identity, normalized directory, and write operation. Grants
+  are created only by an explicit local approval and can be viewed and revoked
+  in Desktop settings. Logout stops active work without transferring grants;
+  relogin restores them only for the same identity. Revocation or rebinding
+  invalidates the binding; ordinary session credential rotation does not.
+  Directory grants do not authorize protected paths or script execution.
+  Completed write receipts carry `approved` for one-time approval or
+  `directory:<canonical-lowercase-uuid>` for a directory grant. Both live results
+  and durable receipt replay validate this basis and retain the original Run
+  and task binding. Web approval returns `LOCAL_APPROVAL_REQUIRED`; local DENY
+  and boundary restrictions still apply.
   `IDEER_LOCAL_WRITE_CAPABILITIES` defaults to `local.files.write`; setting it to
   an empty value disables Server delegation. The read capability setting does
   not grant writes.

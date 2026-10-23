@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -65,6 +66,11 @@ class ProtocolError(ValueError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+def is_write_consent_basis(value: Any) -> bool:
+    """Recognize local execution evidence without granting execution consent."""
+    return value == "approved" or (isinstance(value, str) and re.fullmatch(r"directory:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value) is not None)
 
 
 def canonical_json(value: Any) -> bytes:

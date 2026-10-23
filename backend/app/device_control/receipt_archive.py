@@ -9,7 +9,7 @@ from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
-from .protocol import ProtocolError, payload_digest
+from .protocol import ProtocolError, is_write_consent_basis, payload_digest
 from .receipt_models import DeviceTaskReceiptModel
 
 BINDING_FIELDS = frozenset(("server_origin", "user_id", "device_id", "device_public_key", "broker_public_key"))
@@ -99,6 +99,8 @@ class ReceiptArchive:
                     raise ProtocolError("RECEIPT_TASK_MISMATCH", "receipt does not match original signed task")
             if receipt.get("payload_hash") != task["request_hash"]:
                 raise ProtocolError("RECEIPT_TASK_MISMATCH", "receipt request hash does not match")
+            if task["capability"] == "local.files.write" and receipt.get("status") == "completed" and not is_write_consent_basis(receipt.get("consent_decision")):
+                raise ProtocolError("RECEIPT_TASK_MISMATCH", "write receipt has no valid local execution basis")
             if row.receipt_hash is None:
                 from agentplatform_extension.local_runtime.receipts import tool_receipt_from_local
 
