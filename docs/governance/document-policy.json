@@ -3348,7 +3348,7 @@
     }
   ],
   "supplements": {
-    "count": 57,
+    "count": 58,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3920,6 +3920,16 @@
         "protected": false,
         "role": "Issue 98 cross-repository candidate acceptance and explicit incomplete evidence",
         "referenced_by": "docs/agents/routes/local-runtime.md"
+      },
+      {
+        "path": "docs/acceptance/issue-102/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "d18748aa8b557d8c481068b27101d6084780a54918183c8006cb65ab585582ca",
+        "lines": 162,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 102 Server implementation and acceptance evidence",
+        "referenced_by": "GitHub issue 102"
       }
     ]
   },

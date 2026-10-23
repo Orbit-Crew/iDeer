@@ -62,7 +62,11 @@ LOCAL_TOOLS = (
         "Search UTF-8 code for a literal query in the selected local workspace.",
         {**_PATH_SCHEMA, "properties": {**_PATH_SCHEMA["properties"], "query": {"type": "string", "description": "Literal text, at most 256 characters."}}, "required": ["path", "query"]},
     ),
-    LocalTool("local.files.write", "Write a file after local consent."),
+    LocalTool(
+        "local.files.write",
+        "Create or overwrite UTF-8 text in the selected local workspace after one approval on the original Desktop. The parent directory must exist. Content must have no NUL and be at most 65536 UTF-8 bytes.",
+        {**_PATH_SCHEMA, "properties": {**_PATH_SCHEMA["properties"], "content": {"type": "string", "description": "Exact UTF-8 text to write, at most 65536 bytes and no NUL. Empty text is allowed."}}, "required": ["path", "content"]},
+    ),
     LocalTool("local.python", "Run a Python task under an allowed local root."),
 )
 

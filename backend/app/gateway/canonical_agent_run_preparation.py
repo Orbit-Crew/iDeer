@@ -8,6 +8,7 @@ the Run record becomes visible to the worker.
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from typing import Any
 
 from fastapi import HTTPException, Request
@@ -221,19 +222,19 @@ async def prepare_canonical_agent_run(
         local_tool_descriptors = run_context.get("local_tool_descriptors")
         if isinstance(local_context, dict) and local_device_id:
             from app.agentplatform.resources.service import ResourceAction
-            from app.gateway.local_workspace_policy import agent_read_capabilities, platform_read_capabilities
+            from app.gateway.local_workspace_policy import agent_workspace_capabilities, platform_workspace_capabilities
 
             # Published Agent configuration and the authenticated actor are the
             # authority. Request dictionaries may only narrow these grants.
             workspace_root = run_context.get("local_workspace_root")
             if workspace_root:
-                local_context["agent_capabilities"] = sorted(agent_read_capabilities(definition.config) & set(local_context.get("agent_capabilities", ())))
-                local_context["caller_capabilities"] = sorted(platform_read_capabilities() & set(local_context.get("caller_capabilities", ()))) if ResourceAction.USE in actor.permissions else []
-                local_context["platform_capabilities"] = sorted(platform_read_capabilities() & set(local_context.get("platform_capabilities", ())))
+                local_context["agent_capabilities"] = sorted(agent_workspace_capabilities(definition.config) & set(local_context.get("agent_capabilities", ())))
+                local_context["caller_capabilities"] = sorted(platform_workspace_capabilities() & set(local_context.get("caller_capabilities", ()))) if ResourceAction.USE in actor.permissions else []
+                local_context["platform_capabilities"] = sorted(platform_workspace_capabilities() & set(local_context.get("platform_capabilities", ())))
             local_tool_descriptors = dict(local_tool_descriptors or {})
             workspace_root = run_context.get("local_workspace_root")
             if workspace_root:
-                for capability in platform_read_capabilities():
+                for capability in platform_workspace_capabilities():
                     local_tool_descriptors[capability] = {"workspace_description": f" Selected logical directory: {workspace_root}."}
             from agentplatform_extension.local_runtime import (
                 LocalAuthorization,
@@ -273,16 +274,16 @@ async def prepare_canonical_agent_run(
                 from agentplatform_extension.evidence import current_tool_call_evidence
 
                 from app.device_control.broker import TaskStatus, get_device_broker
-                from app.gateway.local_workspace_policy import READ_CAPABILITIES
+                from app.gateway.local_workspace_policy import WORKSPACE_CAPABILITIES
 
-                if capability in READ_CAPABILITIES and not workspace_root:
+                if capability in WORKSPACE_CAPABILITIES and not workspace_root:
                     from langchain_core.tools import ToolException
 
                     raise ToolException("CANONICAL_WORKSPACE_REQUIRED")
                 broker = get_device_broker()
                 connection = broker.connections.get(device_id) if workspace_root else None
                 if workspace_root:
-                    if connection is None or not connection.tasks_allowed or connection.owner_id != str(user_id) or capability not in connection.capabilities or capability not in platform_read_capabilities():
+                    if connection is None or not connection.tasks_allowed or connection.owner_id != str(user_id) or capability not in connection.capabilities or capability not in platform_workspace_capabilities():
                         from langchain_core.tools import ToolException
 
                         raise ToolException("LOCAL_AUTHORIZATION_DENIED")
@@ -300,23 +301,30 @@ async def prepare_canonical_agent_run(
                     device_id=device_id,
                     operation=capability,
                     path=payload.get("path", ""),
-                    run_id=str(payload.get("run_id", run_id)),
-                    tool_call_id=str(payload.get("tool_call_id") or current_tool_call_evidence() or ""),
+                    run_id=run_id,
+                    tool_call_id=str(current_tool_call_evidence() or payload.get("tool_call_id") or ""),
+                    expires_in=timedelta(seconds=305) if capability == "local.files.write" else timedelta(minutes=5),
                     payload_extra={
                         "arguments": {key: value for key, value in payload.items() if key not in {"run_id", "tool_call_id"}},
                         "operation": capability,
+                        "thread_id": str(thread_id or "canonical"),
                     },
                     authorization_snapshot=snapshot.as_mapping(),
                 )
-                while record.status in {
-                    TaskStatus.CREATED,
-                    TaskStatus.SENT,
-                    TaskStatus.ACKED,
-                    TaskStatus.CONSENT_REQUIRED,
-                    TaskStatus.PROGRESS,
-                }:
-                    await asyncio.sleep(0.05)
-                    record = broker.get_task(record.task_id)
+                try:
+                    while record.status in {
+                        TaskStatus.CREATED,
+                        TaskStatus.SENT,
+                        TaskStatus.ACKED,
+                        TaskStatus.CONSENT_REQUIRED,
+                        TaskStatus.CANCEL_REQUESTED,
+                        TaskStatus.PROGRESS,
+                    }:
+                        await asyncio.sleep(0.05)
+                        record = broker.get_task(record.task_id)
+                except asyncio.CancelledError:
+                    await asyncio.shield(broker.cancel_task(record.task_id))
+                    raise
                 if record.receipt is not None:
                     from agentplatform_extension.evidence import (
                         record_local_execution_receipt,

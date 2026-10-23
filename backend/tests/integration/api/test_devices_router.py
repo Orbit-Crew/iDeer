@@ -469,7 +469,7 @@ async def test_local_runtime_completes_mcp_task_through_broker_with_receipt(devi
         await asyncio.wait_for(server_task, timeout=5)
 
 
-@pytest.mark.parametrize("operation", ["local.files.list", "local.files.read", "local.files.search"])
+@pytest.mark.parametrize("operation", ["local.files.list", "local.files.read", "local.files.search", "local.files.write"])
 def test_direct_local_file_route_requires_canonical_run(operation):
     app = FastAPI()
     app.include_router(devices.router)
@@ -486,3 +486,33 @@ def test_direct_local_file_route_requires_canonical_run(operation):
         )
     assert response.status_code == 403
     assert response.json()["detail"]["code"] == "CANONICAL_RUN_REQUIRED"
+
+
+@pytest.mark.parametrize("role", ["user", "super_admin"])
+def test_remote_workspace_consent_cannot_approve_for_the_owner(monkeypatch, role):
+    from types import SimpleNamespace
+
+    from app.gateway.app import register_exception_handlers
+
+    record = SimpleNamespace(device_id="owned-device", payload={"operation": "local.files.write"})
+
+    class Broker:
+        def get_task(self, task_id):
+            return record
+
+        async def send_consent_decision(self, *args, **kwargs):
+            raise AssertionError("remote write approval must never be forwarded")
+
+    async def owner_check(action):
+        return SimpleNamespace()
+
+    monkeypatch.setattr(devices, "get_device_broker", lambda: Broker())
+    monkeypatch.setattr(devices, "_run", owner_check)
+    app = FastAPI()
+    app.include_router(devices.router)
+    register_exception_handlers(app)
+    app.dependency_overrides[get_current_rbac_user] = lambda: UserModel(id="owner", username="owner@example.com", role=role)
+    with TestClient(app) as client:
+        response = client.post("/api/devices/tasks/write-task/consent", json={"approved": True, "actor_id": "owner"})
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "LOCAL_APPROVAL_REQUIRED"

@@ -217,12 +217,12 @@ async def test_consent_required_is_recorded_and_decision_is_forwarded() -> None:
         "token",
         device_key.public_key(),
         socket,
-        capabilities=frozenset({"local.files.write"}),
+        capabilities=frozenset({"local.python"}),
     )
     await broker.attach(connection)
     record = await broker.send_task(
         device_id="device-consent",
-        operation="local.files.write",
+        operation="local.python",
         path="/projects/a.txt",
         run_id="run-consent",
         tool_call_id="tool-consent",
@@ -235,7 +235,7 @@ async def test_consent_required_is_recorded_and_decision_is_forwarded() -> None:
         session_id=connection.session_id,
         task_id=record.task_id,
         payload={
-            "capability": "local.files.write",
+            "capability": "local.python",
             "payload": record.payload,
             "request_hash": payload_digest(record.payload),
         },
@@ -570,3 +570,251 @@ async def test_send_task_stays_bounded_when_every_record_is_live() -> None:
     # Every record was live (SENT), so the oldest one was dropped.
     assert records[0].task_id not in broker.tasks
     assert records[-1].task_id in broker.tasks
+
+
+@pytest.mark.asyncio
+async def test_workspace_write_cannot_be_approved_through_server_consent() -> None:
+    from app.device_control.protocol import ProtocolError
+
+    broker = DeviceBroker()
+    key = Ed25519PrivateKey.generate()
+    socket = FakeWebSocket()
+    connection = DeviceConnection("device-write", "session-write", "token", key.public_key(), socket, capabilities=frozenset({"local.files.write"}))
+    await broker.attach(connection)
+    record = await broker.send_task(
+        device_id=connection.device_id, operation="local.files.write", path="/workspace/test/new.txt", run_id="run-write", tool_call_id="call-write", payload_extra={"arguments": {"path": "/workspace/test/new.txt", "content": "AFTER"}}
+    )
+    await broker.receive(
+        connection,
+        sign_envelope(
+            private_key=key,
+            message_type=MessageType.CONSENT_REQUIRED,
+            device_id=connection.device_id,
+            session_id=connection.session_id,
+            task_id=record.task_id,
+            payload={"payload": record.payload, "request_hash": payload_digest(record.payload)},
+        ),
+    )
+    count = len(socket.sent)
+    with pytest.raises(ProtocolError) as denied:
+        await broker.send_consent_decision(record.task_id, approved=True, actor_id="owner")
+    assert denied.value.code == "LOCAL_APPROVAL_REQUIRED"
+    assert len(socket.sent) == count
+    assert record.status == TaskStatus.CONSENT_REQUIRED
+
+
+@pytest.mark.asyncio
+async def test_write_cancellation_preserves_unknown_effect_until_bound_late_receipt():
+    broker = DeviceBroker()
+    key = Ed25519PrivateKey.generate()
+    socket = FakeWebSocket()
+    connection = DeviceConnection("device-write-late", "session-write-late", "token", key.public_key(), socket, capabilities=frozenset({"local.files.write"}))
+    await broker.attach(connection)
+    record = await broker.send_task(
+        device_id=connection.device_id,
+        operation="local.files.write",
+        path="/workspace/test/target.txt",
+        run_id="original-run",
+        tool_call_id="original-call",
+        payload_extra={"arguments": {"path": "/workspace/test/target.txt", "content": "AFTER"}},
+    )
+    await broker.cancel_task(record.task_id)
+    assert record.status.value == "cancel_requested"
+    await broker.cancel_task(record.task_id)
+    assert sum(json.loads(item)["type"] == "task_cancel" for item in socket.sent) == 1
+    receipt = {
+        "task_id": record.task_id,
+        "run_id": "original-run",
+        "capability": "local.files.write",
+        "request_hash": payload_digest(record.payload),
+        "payload_hash": payload_digest(record.payload),
+        "status": "completed",
+        "consent_decision": "approved",
+    }
+    await broker.receive(
+        connection,
+        sign_envelope(private_key=key, message_type=MessageType.TASK_RESULT, device_id=connection.device_id, session_id=connection.session_id, task_id=record.task_id, payload={"result": {"written": True, "bytes": 5}, "receipt": receipt}),
+    )
+    assert record.status == TaskStatus.COMPLETED
+    assert record.result == {"written": True, "bytes": 5}
+    assert record.error_code is None
+    assert record.receipt == receipt
+    assert (record.run_id, record.tool_call_id) == ("original-run", "original-call")
+    assert sum(json.loads(item)["type"] == "task" for item in socket.sent) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fault", ["disconnect", "consent_deadline", "uncertain_receipt", "cancel_progress"])
+async def test_write_failure_state_never_claims_an_unverified_effect(fault):
+    from datetime import UTC, datetime
+
+    broker = DeviceBroker()
+    key = Ed25519PrivateKey.generate()
+    socket = FakeWebSocket()
+    connection = DeviceConnection("device-write-fault", "session-write-fault", "token", key.public_key(), socket, capabilities=frozenset({"local.files.write"}))
+    await broker.attach(connection)
+    record = await broker.send_task(device_id=connection.device_id, operation="local.files.write", path="/workspace/test/target.txt", run_id="fault-run", tool_call_id="fault-call")
+
+    async def receive(message_type, payload):
+        return await broker.receive(connection, sign_envelope(private_key=key, message_type=message_type, device_id=connection.device_id, session_id=connection.session_id, task_id=record.task_id, payload=payload))
+
+    if fault == "disconnect":
+        await broker.detach(connection.device_id, connection.session_id)
+        replacement = DeviceConnection(connection.device_id, "new-session", "token", key.public_key(), socket, capabilities=connection.capabilities)
+        await broker.attach(replacement)
+    elif fault == "consent_deadline":
+        await receive(MessageType.CONSENT_REQUIRED, {"payload": record.payload, "request_hash": payload_digest(record.payload)})
+        record.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        broker.get_task(record.task_id)
+    elif fault == "uncertain_receipt":
+        receipt = {
+            "task_id": record.task_id,
+            "run_id": "fault-run",
+            "capability": "local.files.write",
+            "request_hash": payload_digest(record.payload),
+            "payload_hash": payload_digest(record.payload),
+            "status": "result_not_verified",
+            "consent_decision": "approved",
+        }
+        await receive(MessageType.ERROR, {"error_code": "RESULT_UNCERTAIN", "message": "write receipt could not be saved", "receipt": receipt})
+        assert record.receipt == receipt
+    else:
+        await broker.cancel_task(record.task_id)
+        await receive(MessageType.TASK_PROGRESS, {"fraction": 1})
+    assert record.status.value == ("cancel_requested" if fault == "cancel_progress" else "result_not_verified")
+    if fault != "cancel_progress":
+        assert record.error_code == "RESULT_UNCERTAIN"
+    assert sum(json.loads(item)["type"] == "task" for item in socket.sent) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field", ["task_id", "run_id", "capability", "request_hash", "payload_hash", "stale_session"])
+async def test_write_receipt_rejects_changed_binding_and_superseded_session(field):
+    from app.device_control.protocol import ProtocolError
+
+    broker = DeviceBroker()
+    key = Ed25519PrivateKey.generate()
+    connection = DeviceConnection("device-binding", "session-binding", "token", key.public_key(), FakeWebSocket(), capabilities=frozenset({"local.files.write"}))
+    await broker.attach(connection)
+    record = await broker.send_task(device_id=connection.device_id, operation="local.files.write", path="/workspace/test/target.txt", run_id="bound-run", tool_call_id="bound-call")
+    receipt = {
+        "task_id": record.task_id,
+        "run_id": "bound-run",
+        "capability": "local.files.write",
+        "request_hash": payload_digest(record.payload),
+        "payload_hash": payload_digest(record.payload),
+        "status": "completed",
+        "consent_decision": "approved",
+    }
+    if field == "stale_session":
+        await broker.attach(DeviceConnection(connection.device_id, "replacement-session", "token", key.public_key(), FakeWebSocket(), capabilities=connection.capabilities))
+    else:
+        receipt[field] = "changed"
+    message = sign_envelope(private_key=key, message_type=MessageType.TASK_RESULT, device_id=connection.device_id, session_id=connection.session_id, task_id=record.task_id, payload={"result": {"written": True}, "receipt": receipt})
+    with pytest.raises(ProtocolError) as rejected:
+        await broker.receive(connection, message)
+    assert rejected.value.code == ("SESSION_MISMATCH" if field == "stale_session" else "RECEIPT_TASK_MISMATCH")
+    assert record.status != TaskStatus.COMPLETED
+    assert record.receipt is None
+
+
+@pytest.mark.asyncio
+async def test_write_persistent_admission_failure_sends_no_task():
+    class BrokenArchive:
+        async def admit(self, binding, task):
+            raise OSError("fixture storage unavailable")
+
+    broker = DeviceBroker(receipt_archive=BrokenArchive())
+    key = Ed25519PrivateKey.generate()
+    socket = FakeWebSocket()
+    connection = DeviceConnection("device-admission", "session-admission", "token", key.public_key(), socket, capabilities=frozenset({"local.files.write"}))
+    await broker.attach(connection)
+    record = await broker.send_task(device_id=connection.device_id, operation="local.files.write", path="/workspace/test/target.txt", run_id="admission-run", tool_call_id="admission-call")
+    assert record.status == TaskStatus.FAILED
+    assert record.error_code == "PERSISTENCE_UNAVAILABLE"
+    assert [json.loads(item)["type"] for item in socket.sent] == ["hello"]
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_write_delivery_propagates_task_cancel():
+    import asyncio
+
+    started = asyncio.Event()
+
+    class BlockedDelivery(FakeWebSocket):
+        async def send_text(self, data):
+            self.sent.append(data)
+            if json.loads(data)["type"] == "task":
+                started.set()
+                await asyncio.Future()
+
+    broker = DeviceBroker()
+    key = Ed25519PrivateKey.generate()
+    socket = BlockedDelivery()
+    connection = DeviceConnection("device-delivery", "session-delivery", "token", key.public_key(), socket, capabilities=frozenset({"local.files.write"}))
+    await broker.attach(connection)
+    task = asyncio.create_task(broker.send_task(device_id=connection.device_id, operation="local.files.write", path="/workspace/test/target.txt", run_id="delivery-run", tool_call_id="delivery-call"))
+    await asyncio.wait_for(started.wait(), timeout=5)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert [json.loads(item)["type"] for item in socket.sent] == ["hello", "task", "task_cancel"]
+    assert next(iter(broker.tasks.values())).status.value == "cancel_requested"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entry", ["send_task", "cancel_task"])
+@pytest.mark.parametrize("receipt_status", ["completed", "failed", "denied", "cancelled", None])
+async def test_transport_failure_preserves_signed_terminal_receipt(entry, receipt_status):
+    broker = DeviceBroker()
+    key = Ed25519PrivateKey.generate()
+    received = None
+
+    class ReceiptBeforeFailure(FakeWebSocket):
+        async def send_text(self, data):
+            nonlocal received
+            await super().send_text(data)
+            frame = json.loads(data)
+            if frame["type"] != ("task" if entry == "send_task" else "task_cancel"):
+                return
+            if receipt_status is not None:
+                task = broker.get_task(frame["task_id"])
+                receipt = {
+                    "task_id": task.task_id,
+                    "run_id": task.run_id,
+                    "capability": "local.files.write",
+                    "request_hash": payload_digest(task.payload),
+                    "payload_hash": payload_digest(task.payload),
+                    "status": receipt_status,
+                    "consent_decision": "approved" if receipt_status == "completed" else "denied",
+                }
+                received = await broker.receive(
+                    connection,
+                    sign_envelope(
+                        private_key=key,
+                        message_type=MessageType.TASK_RESULT,
+                        device_id=connection.device_id,
+                        session_id=connection.session_id,
+                        task_id=task.task_id,
+                        payload={"result": {"written": receipt_status == "completed"}, "receipt": receipt},
+                    ),
+                )
+            raise OSError("fixture socket failed after its peer replied")
+
+    socket = ReceiptBeforeFailure()
+    connection = DeviceConnection("device-transport-race", "session-transport-race", "token", key.public_key(), socket, capabilities=frozenset({"local.files.write"}))
+    await broker.attach(connection)
+    record = await broker.send_task(device_id=connection.device_id, operation="local.files.write", path="/workspace/test/target.txt", run_id="race-run", tool_call_id="race-call")
+    if entry == "cancel_task":
+        record = await broker.cancel_task(record.task_id)
+    if receipt_status is None:
+        assert record.status.value == "result_not_verified"
+        assert record.error_code == "RESULT_UNCERTAIN"
+        assert record.receipt is None
+    else:
+        assert received is record
+        assert record.status == TaskStatus(receipt_status)
+        assert record.receipt["status"] == receipt_status
+        assert record.result == {"written": receipt_status == "completed"}
+        assert record.error_code == (None if receipt_status == "completed" else receipt_status.upper())
+        assert record.error == (None if receipt_status == "completed" else receipt_status.replace("_", " "))

@@ -408,8 +408,8 @@ async def send_local_task(
     payload: LocalTaskRequest,
     current_user: UserModel = Depends(get_current_rbac_user),
 ) -> TaskResponse:
-    if payload.operation in {"local.files.list", "local.files.read", "local.files.search"}:
-        raise HTTPException(403, detail={"code": "CANONICAL_RUN_REQUIRED", "message": "Workspace reads require an authorized Agent Run"})
+    if payload.operation in {"local.files.list", "local.files.read", "local.files.search", "local.files.write"}:
+        raise HTTPException(403, detail={"code": "CANONICAL_RUN_REQUIRED", "message": "Workspace file operations require an authorized Agent Run"})
     is_admin = current_user.role in {
         UserRole.SUPER_ADMIN.value,
         UserRole.DEPARTMENT_ADMIN.value,
@@ -564,6 +564,8 @@ async def decide_task_consent(
         UserRole.DEPARTMENT_ADMIN.value,
     }
     await _run(lambda service: service.get_device(record.device_id, actor_id=str(current_user.id), is_admin=is_admin))
+    if record.payload.get("operation") == "local.files.write":
+        raise HTTPException(403, detail={"code": "LOCAL_APPROVAL_REQUIRED", "message": "Approve workspace writes on the original Desktop"})
     return TaskResponse.from_record(await broker.send_consent_decision(task_id, approved=payload.approved, actor_id=str(current_user.id)))
 
 

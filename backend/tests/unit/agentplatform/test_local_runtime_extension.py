@@ -196,3 +196,25 @@ async def test_workspace_tools_require_logical_path_and_literal_search_query():
     assert seen == [("private-device", "local.files.search", {"path": "/workspace/example", "query": "KNOWN100"})]
     with pytest.raises(ValidationError):
         await tools["local.files.read"].ainvoke({"path": "/workspace/example", "device_id": "other"})
+
+
+@pytest.mark.asyncio
+async def test_workspace_write_schema_binds_exact_text_and_rejects_routing_arguments():
+    from agentplatform_extension.local_runtime import build_langchain_local_tools
+    from pydantic import ValidationError
+
+    authorization = LocalAuthorization.from_capabilities({"local.files.write"}, device_online=True)
+    seen = []
+
+    async def sender(device, capability, payload):
+        seen.append((device, capability, dict(payload)))
+        return {"written": True, "bytes": 5}
+
+    executor = LocalToolExecutor(authorization, RunDeviceRouter(DeviceRoute("owned-device"), authorization), sender)
+    tool = build_langchain_local_tools(authorization, executor)[0]
+    result = await tool.ainvoke({"path": "/workspace/example/new.txt", "content": "AFTER"})
+    assert result == {"written": True, "bytes": 5}
+    assert seen == [("owned-device", "local.files.write", {"path": "/workspace/example/new.txt", "content": "AFTER"})]
+    for extra in ({"run_id": "forged"}, {"tool_call_id": "forged"}, {"device_id": "other"}):
+        with pytest.raises(ValidationError):
+            await tool.ainvoke({"path": "/workspace/example/new.txt", "content": "AFTER", **extra})

@@ -871,6 +871,8 @@ def _http_exception_payload(exc: HTTPException, *, include_auth_details: bool = 
         "LOGIN_OWNER_MISMATCH",
         "LOGIN_ACCOUNT_UNAVAILABLE",
         "LOGIN_CONFIRMATION_REQUIRED",
+        "LOCAL_APPROVAL_REQUIRED",
+        "CANONICAL_RUN_REQUIRED",
     }:
         return {
             "success": False,
