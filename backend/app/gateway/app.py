@@ -41,6 +41,7 @@ from app.gateway.routers import (
     input_polish,
     integrations,
     knowledge_tests,
+    local_tasks,
     mcp,
     mcp_tasks,
     memory,
@@ -1166,6 +1167,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Thread-scoped durable MCP task API
     app.include_router(mcp_tasks.router)
+    app.include_router(local_tasks.router)
 
     # Memory API is mounted at /api/memory
     app.include_router(memory.router)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -26,7 +27,9 @@ from .protocol import (
     schema_digest,
     sign_envelope,
 )
-from .receipt_archive import ReceiptArchive, safe_logical_target
+from .receipt_archive import ACTIVE_TASK_STATUSES, ReceiptArchive, safe_logical_target
+
+logger = logging.getLogger(__name__)
 
 
 class WebSocketLike(Protocol):
@@ -106,6 +109,9 @@ class TaskRecord:
     error_code: str | None = None
     consent_request: dict[str, Any] | None = None
     authorization_snapshot: dict[str, Any] | None = None
+    stop_requested: bool = False
+    owner_id: str | None = None
+    dispatch_started: bool = False
 
 
 class DeviceBroker:
@@ -149,6 +155,7 @@ class DeviceBroker:
         return {"server_origin": connection.server_origin, "user_id": connection.owner_id or "", "device_id": connection.device_id, "device_public_key": public_key_text(connection.public_key), "broker_public_key": self.server_public_key}
 
     async def detach(self, device_id: str, session_id: str) -> None:
+        affected = []
         async with self._lock:
             connection = self.connections.get(device_id)
             if connection is not None and connection.session_id == session_id:
@@ -172,6 +179,9 @@ class DeviceBroker:
                     task.error_code = "RESULT_UNCERTAIN" if task.status is TaskStatus.RESULT_NOT_VERIFIED else None
                     task.error = "device disconnected before task completion; write effects require verification"
                     task.expires_at = max(task.expires_at, now + timedelta(seconds=1))
+                    affected.append(task)
+        for task in affected:
+            await self._persist_task(task)
 
     async def invalidate(self, device_id: str, *, reason: str) -> None:
         """Stop a live device session after an administrative state change."""
@@ -179,6 +189,7 @@ class DeviceBroker:
         if connection is None:
             return
         connection.tasks_allowed = False
+        affected = []
         now = datetime.now(UTC)
         for task in self.tasks.values():
             if (
@@ -198,7 +209,12 @@ class DeviceBroker:
                 task.error_code = "RESULT_UNCERTAIN" if task.status is TaskStatus.RESULT_NOT_VERIFIED else None
                 task.error = reason
                 task.expires_at = max(task.expires_at, now + timedelta(seconds=1))
-        await connection.websocket.close(code=4003, reason=reason)
+                affected.append(task)
+        try:
+            await connection.websocket.close(code=4003, reason=reason)
+        finally:
+            for task in affected:
+                await self._persist_task(task)
 
     async def send_echo_task(
         self,
@@ -252,6 +268,7 @@ class DeviceBroker:
             payload,
             expires_at,
             authorization_snapshot=authorization_snapshot,
+            owner_id=connection.owner_id if connection else None,
         )
         while len(self.tasks) >= MAX_TRACKED_TASK_RECORDS:
             stale = next(
@@ -308,30 +325,49 @@ class DeviceBroker:
                         "task_signature": envelope.signature,
                         "logical_target": safe_logical_target(payload),
                     },
+                    thread_id=str(payload.get("thread_id", "")),
                 )
+            except asyncio.CancelledError:
+                await asyncio.shield(self._cancel_before_dispatch(record))
+                raise
             except (OSError, SQLAlchemyError, ProtocolError):
                 record.status = TaskStatus.FAILED
                 record.error_code = "PERSISTENCE_UNAVAILABLE"
                 record.error = "task receipt admission could not be saved; nothing was dispatched"
                 return record
+        if record.stop_requested:
+            await self._cancel_before_dispatch(record)
+            return record
         record.status = TaskStatus.SENT
         try:
+            await self._persist_task(record)
+            if record.stop_requested or record.status in _TERMINAL_TASK_STATUSES:
+                return record
+            record.dispatch_started = True
             await connection.websocket.send_text(envelope.model_dump_json(by_alias=True))
         except asyncio.CancelledError:
-            await asyncio.shield(self.cancel_task(record.task_id))
+            if record.dispatch_started:
+                await asyncio.shield(self.cancel_task(record.task_id))
+            else:
+                await asyncio.shield(self._cancel_before_dispatch(record))
             raise
         except Exception:
             if record.status not in _TERMINAL_TASK_STATUSES and record.receipt is None:
                 record.status = TaskStatus.RESULT_NOT_VERIFIED if operation == "local.files.write" else TaskStatus.DEVICE_OFFLINE
                 record.error_code = "RESULT_UNCERTAIN" if operation == "local.files.write" else "DEVICE_OFFLINE"
                 record.error = "device delivery failed; execution outcome requires verification"
+            await self._persist_task(record)
         return record
 
     async def cancel_task(self, task_id: str) -> TaskRecord:
         record = self._task(task_id)
         if record.status in _TERMINAL_TASK_STATUSES or record.status is TaskStatus.CANCEL_REQUESTED:
             return record
-        record.status = TaskStatus.CANCEL_REQUESTED if record.payload.get("operation") == "local.files.write" else TaskStatus.CANCELLED
+        if not record.dispatch_started:
+            await self._cancel_before_dispatch(record)
+            return record
+        record.stop_requested = True
+        record.status = TaskStatus.CANCEL_REQUESTED
         connection = self.connections.get(record.device_id)
         if connection is not None and connection.session_id == record.session_id:
             envelope = sign_envelope(
@@ -349,6 +385,7 @@ class DeviceBroker:
                     record.status = TaskStatus.RESULT_NOT_VERIFIED if record.payload.get("operation") == "local.files.write" else TaskStatus.DEVICE_OFFLINE
                     record.error_code = "RESULT_UNCERTAIN" if record.status is TaskStatus.RESULT_NOT_VERIFIED else "DEVICE_OFFLINE"
                     record.error = "cancel delivery failed; execution outcome requires verification"
+        await self._persist_task(record)
         return record
 
     async def send_consent_decision(self, task_id: str, *, approved: bool, actor_id: str) -> TaskRecord:
@@ -504,16 +541,20 @@ class DeviceBroker:
                 record.status = TaskStatus.FAILED
                 record.error_code = receipt_status.upper()
                 record.error = receipt_status.replace("_", " ")
-            else:
+            elif receipt_status == "completed":
                 record.status = TaskStatus.COMPLETED
                 record.error_code = None
                 record.error = None
+            else:
+                record.status = TaskStatus.RESULT_NOT_VERIFIED
+                record.error_code = "RESULT_UNCERTAIN"
+                record.error = "task result requires verification"
         elif envelope.type == MessageType.ERROR:
             record.error_code = str(envelope.payload.get("error_code", "DEVICE_ERROR"))
             record.error = str(envelope.payload.get("message", "device reported an error"))
             record.receipt = envelope.payload.get("receipt")
             receipt_status = str((record.receipt or {}).get("status", "failed"))
-            if receipt_status == "result_not_verified" or record.error_code == "RESULT_UNCERTAIN":
+            if receipt_status == "result_not_verified" or record.error_code in {"RESULT_UNCERTAIN", "TASK_REPLAYED"}:
                 record.status = TaskStatus.RESULT_NOT_VERIFIED
                 record.error_code = "RESULT_UNCERTAIN"
             elif receipt_status == "cancelled":
@@ -538,7 +579,47 @@ class DeviceBroker:
                 record_local_execution_receipt(record.receipt, tool_call_id=record.tool_call_id)
             except (ImportError, KeyError, RuntimeError, TypeError, ValueError):
                 pass
+        await self._persist_task(record)
         return record
+
+    async def _cancel_before_dispatch(self, record: TaskRecord) -> None:
+        record.stop_requested = True
+        record.status = TaskStatus.CANCELLED
+        record.error_code = "CANCELLED"
+        record.error = "cancelled before task dispatch"
+        await self._persist_task(record)
+
+    async def _persist_task(self, record: TaskRecord) -> None:
+        if self.receipt_archive is None or record.owner_id is None:
+            return
+        try:
+            await self.receipt_archive.observe(
+                record.task_id,
+                owner_id=record.owner_id,
+                status=record.status.value,
+                stop_requested=record.stop_requested,
+                receipt=record.receipt,
+                error_code=record.error_code,
+            )
+        except (OSError, SQLAlchemyError, ProtocolError):
+            # The signed receipt outbox can reconcile history after persistence
+            # recovers. Transport cancellation must still reach the Runtime.
+            logger.warning("Local task observation could not be persisted", exc_info=True)
+
+    async def list_thread_tasks(self, thread_id: str, *, owner_id: str, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        if self.receipt_archive is None:
+            raise ProtocolError("PERSISTENCE_UNAVAILABLE", "task history persistence is unavailable")
+        page = await self.receipt_archive.list_by_thread(thread_id, owner_id=owner_id, limit=limit, offset=offset)
+        for item in page["tasks"]:
+            live = self.tasks.get(item["task_id"])
+            if live is not None and live.owner_id == owner_id and item["receipt"] is None:
+                self._expire_if_needed(live)
+                item["status"] = live.status.value
+                item["stop_requested"] = item["stop_requested"] or live.stop_requested
+                item["error_code"] = live.error_code
+                if live.status.value in ACTIVE_TASK_STATUSES:
+                    item["recovery_status"] = live.status.value
+        return page
 
     def _task(self, task_id: str) -> TaskRecord:
         record = self.tasks.get(task_id)

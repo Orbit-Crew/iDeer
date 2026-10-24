@@ -78,7 +78,8 @@ async def test_offline_task_and_cancel_are_explicit_and_no_system_command_is_run
     await broker.attach(connection)
     record = await broker.send_echo_task(device_id="device-2", run_id="run-2", tool_call_id="tool-2", value="echo only")
     cancelled = await broker.cancel_task(record.task_id)
-    assert cancelled.status == TaskStatus.CANCELLED
+    assert cancelled.status == TaskStatus.CANCEL_REQUESTED
+    assert cancelled.stop_requested is True
     cancel_message = json.loads(socket.sent[-1])
     assert cancel_message["type"] == MessageType.TASK_CANCEL
     assert "command" not in cancel_message["payload"]
@@ -721,7 +722,7 @@ async def test_write_receipt_rejects_changed_binding_and_superseded_session(fiel
 @pytest.mark.asyncio
 async def test_write_persistent_admission_failure_sends_no_task():
     class BrokenArchive:
-        async def admit(self, binding, task):
+        async def admit(self, binding, task, *, thread_id=""):
             raise OSError("fixture storage unavailable")
 
     broker = DeviceBroker(receipt_archive=BrokenArchive())

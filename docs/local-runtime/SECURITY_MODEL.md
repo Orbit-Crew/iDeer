@@ -4,8 +4,8 @@ kind: reference
 status: current
 owner: repository maintainers
 scope: Local Runtime security model — two-layer server/device authorization, required security controls, capability risk levels and redaction rules, and the threat register with observable rejection codes
-last-verified: 2026-10-04
-verified-against: worktree docs/agent-doc-disclosure @ 4d2496136
+last-verified: 2026-10-24
+verified-against: feat/issue-104 based on 14fcfef9894b72f19fb819d186c2d800e3862062
 ---
 
 # Local Runtime security model
@@ -101,6 +101,42 @@ unauthorized device capability.
   `local.python` execution, and consent-gated projected `local.mcp.*` tools.
   There is no system/shell command capability, and unannounced `local.*`
   operations are rejected before dispatch.
+
+## Thread task recovery
+
+`GET /api/threads/{thread_id}/local-tasks?limit=50&offset=0` reads local
+task history across every Run in the original Thread. The caller needs
+`threads:read`, an existing owned Thread, and matching task ownership.
+Pages contain `tasks`, `has_more`, and `next_offset`, ordered by immutable
+admission time and task ID. `limit` is 1–100; `offset` is 0–1,000,000.
+Each task exposes `task_id`, `thread_id`, `run_id`, `tool_call_id`,
+`device_id`, `capability`, `logical_target`, `status`, `stop_requested`,
+`recovery_status`, `receipt`, `receipt_pending`, `error_code`, and
+`updated_at`. Logical targets and bounded receipt metadata exclude raw
+arguments, file contents, physical paths, credentials, and signatures.
+Unavailable history returns 503; callers must retain their prior view and
+show that verification is unavailable.
+
+`stop_requested` records intent independently of the eventual task fact.
+Before dispatch begins, cancellation records `cancelled` and sends no task.
+After dispatch begins, `cancel_requested` means an attempted Runtime stop,
+with the execution result still pending verification. Signed terminal facts
+can show completion after that request; committed writes remain committed.
+Unrecognized receipt states never become successful tool results.
+Connection cleanup fences the old session before awaiting observation storage.
+The Server persists task identity before dispatch and never reconstructs
+dispatchable tasks from history. After a Server restart, an observation that
+was still active becomes `result_not_verified`; `recovery_status` retains
+its last known consent, execution, or stop-request phase.
+
+A live signed terminal receipt may appear while `receipt_pending=true`.
+That flag becomes false only after durable receipt acceptance has an
+acknowledgment. Durable acknowledged evidence takes precedence over live
+transport observations. Replayed receipts keep their original task, Run,
+tool call and owner binding, and duplicate uploads return the same
+acknowledgment. They neither write Run status nor restart a terminal Run.
+The lifecycle columns and owner-matched legacy Run-to-Thread backfill are
+separate from the immutable signed task metadata.
 
 ## Threat register
 

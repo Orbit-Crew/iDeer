@@ -1,0 +1,76 @@
+{
+  "final_source_sha256": "715af6c8605e08354f203bca9f31031e8333704b9e4519de01bac8483305d307",
+  "attempts": [
+    {
+      "kind": "local-runtime preflight",
+      "status": "not executed",
+      "reason": "system Python lacked pytest; selected isolated interpreter"
+    },
+    {
+      "kind": "pr-standard preflight",
+      "status": "not executed",
+      "reason": "global Corepack selected pnpm11.25.0; selected installed10.26.2 per command"
+    },
+    {
+      "kind": "first complete pr-standard",
+      "status": "failed",
+      "backend": {
+        "passed": 26925,
+        "failed": 9,
+        "skipped": 237,
+        "pytest_seconds": 1153.37,
+        "lane_seconds": 1185
+      },
+      "frontend_standard": {
+        "rstest_files": 167,
+        "rstest_tests": 1270,
+        "vitest_files": 355,
+        "vitest_tests": 10565,
+        "lane_seconds": 485,
+        "status": "passed"
+      },
+      "frontend_smoke": {
+        "passed": 35,
+        "lane_seconds": 183
+      },
+      "parent_seconds": 1882,
+      "reason": "one Thread router sweep registration omission and eight inherited TEST_PNPM_BIN fake-PATH failures"
+    },
+    {
+      "kind": "pre-format parent",
+      "status": "interrupted",
+      "reason": "two modified Python modules needed formatting; AST equivalence proven; full final rerun required"
+    },
+    {
+      "kind": "formatted candidate parent",
+      "source_sha256": "21d632b0de5149b00ff4395eb88967b75ebc502f968578eef7fdd6fc85c0870f",
+      "status": "failed then interrupted after backend",
+      "backend": {
+        "passed": 26934,
+        "failed": 1,
+        "skipped": 237,
+        "pytest_seconds": 842.55,
+        "lane_seconds": 880
+      },
+      "reason": "WebSocket test queried before TASK_RESULT fully processed; exact completed assertion saw progress; remaining frontend child stopped by owner; Event observes awaited real receive after fix"
+    },
+    {
+      "kind": "related focused with serial lineage",
+      "status": "failed then repaired",
+      "passed": 195,
+      "failed": 1,
+      "reason": "serial migration ancestry assertion still expected old desktop_login as direct parent; updated exact task_history/receipt_outbox/desktop_login chain"
+    },
+    {
+      "kind": "Real E2E diagnostic cleanup",
+      "status": "browser cases passed, cleanup incomplete, then safely removed",
+      "reason": "initial TMPDIR under dev-log rejected by cleanup boundary; generated 0555 version directories needed owner permissions; one premature old-environment restart was owner-interrupted; final official /tmp run separately completed",
+      "final_source_unchanged": true
+    },
+    {
+      "kind": "detect-changes CLI with --json",
+      "status": "failed",
+      "reason": "unknown option; final run used the documented argument-free invocation"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "source_sha256": "715af6c8605e08354f203bca9f31031e8333704b9e4519de01bac8483305d307",
+  "command": "bash scripts/run-test-lane.sh pr-standard",
+  "exit_code": 0,
+  "lanes": [
+    {
+      "lane": "local-runtime",
+      "seconds": 28,
+      "status": 0
+    },
+    {
+      "lane": "backend-standard",
+      "seconds": 881,
+      "status": 0
+    },
+    {
+      "lane": "frontend-standard",
+      "seconds": 463,
+      "status": 0
+    },
+    {
+      "lane": "frontend-smoke",
+      "seconds": 93,
+      "status": 0
+    },
+    {
+      "lane": "pr-standard",
+      "seconds": 1485,
+      "status": 0
+    }
+  ],
+  "local_runtime": {
+    "passed": 230,
+    "skipped": 4,
+    "warnings": 1,
+    "pytest_seconds": 8.96
+  },
+  "backend_standard": {
+    "passed": 26935,
+    "skipped": 237,
+    "warnings": 1100,
+    "pytest_seconds": 831.01
+  },
+  "frontend_standard": {
+    "rstest_files": 167,
+    "rstest_tests": 1270,
+    "vitest_files": 355,
+    "vitest_tests": 10565
+  },
+  "frontend_smoke": {
+    "passed": 35
+  },
+  "environment": {
+    "python": "isolated backend/.venv Python3.12.3",
+    "pnpm": "10.26.2 via run-local PATH wrapper",
+    "TEST_PNPM_BIN": "unset",
+    "PYTEST_XDIST_AUTO_NUM_WORKERS": 8
+  }
+}

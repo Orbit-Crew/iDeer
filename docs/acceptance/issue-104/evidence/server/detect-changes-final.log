@@ -1,0 +1,36 @@
+
+  GitNexus Detect Changes (1.6.12)
+Changes: 43 files, 88 symbols
+Affected processes: 17
+Risk level: critical
+
+Changed symbols:
+  Variable revision → backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py
+  Variable down_revision → backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py
+  Variable branch_labels → backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py
+  Variable depends_on → backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py
+  Variable _TABLE → backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py
+  Function upgrade → backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py
+  Function downgrade → backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py
+  Variable logger → backend/app/device_control/broker.py
+  Class TaskRecord → backend/app/device_control/broker.py
+  Property stop_requested → backend/app/device_control/broker.py
+  Property owner_id → backend/app/device_control/broker.py
+  Property dispatch_started → backend/app/device_control/broker.py
+  Class DeviceBroker → backend/app/device_control/broker.py
+  Method detach → backend/app/device_control/broker.py
+  Method invalidate → backend/app/device_control/broker.py
+... and 73 more
+
+Affected execution flows:
+  • Send_echo_task → Public_receipt (7 steps) — changed: public_receipt, _persist_task, _cancel_before_dispatch, send_task, observe
+  • Send_echo_task → _factory (7 steps) — changed: _persist_task, _cancel_before_dispatch, send_task, observe
+  • Cancel_task → Canonical_json (5 steps) — changed: cancel_task
+  • Cancel_task → Signing_dict (5 steps) — changed: cancel_task
+  • Send_echo_task → Public_key_text (5 steps) — changed: send_task
+  • Cancel_task → _task (3 steps) — changed: cancel_task
+  • Cancel_task → Public_receipt (6 steps) — changed: public_receipt, _persist_task, _cancel_before_dispatch, cancel_task, observe
+  • Cancel_task → _factory (6 steps) — changed: _persist_task, _cancel_before_dispatch, cancel_task, observe
+  • Send_local_task → Public_key_text (4 steps) — changed: send_task
+  • Send_local_task → Public_receipt (6 steps) — changed: public_receipt, _persist_task, _cancel_before_dispatch, send_task, observe
+... and 7 more

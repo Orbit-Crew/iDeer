@@ -1,5 +1,6 @@
 import asyncio
 import sys
+import threading
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -125,6 +126,7 @@ async def test_device_http_gate_covers_pair_online_offline_revoke(
 @pytest.mark.asyncio
 async def test_websocket_device_initiates_and_receives_signed_echo_receipt(
     device_factory,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = FastAPI()
     app.include_router(devices.router)
@@ -134,6 +136,16 @@ async def test_websocket_device_initiates_and_receives_signed_echo_receipt(
     broker.connections.clear()
     broker.tasks.clear()
     device_key = Ed25519PrivateKey.generate()
+    result_processed = threading.Event()
+    receive = broker.receive
+
+    async def observe_receive(connection, envelope):
+        record = await receive(connection, envelope)
+        if envelope.type == MessageType.TASK_RESULT:
+            result_processed.set()
+        return record
+
+    monkeypatch.setattr(broker, "receive", observe_receive)
 
     with TestClient(app) as client:
         pairing = client.post("/api/devices/pairing").json()
@@ -217,6 +229,9 @@ async def test_websocket_device_initiates_and_receives_signed_echo_receipt(
                 )
                 websocket.send_text(response.model_dump_json(by_alias=True))
 
+            # WebSocket sends enqueue messages; wait for result processing and
+            # its durable observation before querying or tearing down the portal.
+            assert result_processed.wait(timeout=5), "signed result was not processed"
             status = client.get(f"/api/devices/tasks/{task.task_id}")
             assert status.status_code == 200
             assert status.json()["status"] == "completed"

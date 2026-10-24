@@ -1,0 +1,42 @@
+{
+  "command": "QA_ISOLATED=1 TMPDIR=/tmp bash backend/scripts/run-real-e2e.sh",
+  "default_real_model_mode": 0,
+  "skips": [
+    {
+      "file": "frontend/tests/e2e/real/knowledge-center-gate4.spec.ts",
+      "test": "owner creates, uploads, indexes, deletes, and observes no document",
+      "reason": "E2E_KNOWLEDGE_DATASET_ID for a real RAGFlow dataset is unset",
+      "selection": "pre-existing test.skip environment gate",
+      "required_issue104_case": false
+    },
+    {
+      "file": "frontend/tests/e2e/real/gate7-evidence-states.spec.ts",
+      "test": "renders loading, unavailable, and restricted responses in the real chat",
+      "reason": "E2E_GATE7_THREAD_ID, E2E_GATE7_RUN_ID and E2E_GATE7_EXPECTED_SNIPPET are unset",
+      "selection": "pre-existing test.skip environment gate",
+      "required_issue104_case": false
+    },
+    {
+      "file": "frontend/tests/e2e/real/knowledge-evaluation-gate8.spec.ts",
+      "test": "reviews retrieval evidence, comparison, and publish-gate feedback",
+      "reason": "isolated Gate 8 knowledge-base and evidence/comparison/gate markers are unset",
+      "selection": "pre-existing test.skip environment gate",
+      "required_issue104_case": false
+    },
+    {
+      "file": "frontend/tests/e2e/real/knowledge-evidence-gate7.spec.ts",
+      "test": "opens the archived item delivered by the real run",
+      "reason": "E2E_GATE7_THREAD_ID, E2E_GATE7_RUN_ID and E2E_GATE7_EXPECTED_SNIPPET are unset",
+      "selection": "pre-existing test.skip environment gate",
+      "required_issue104_case": false
+    },
+    {
+      "file": "frontend/tests/e2e/real/real-model-workflow-run.spec.ts",
+      "test": "triggers a real model run and renders its frozen knowledge snapshot",
+      "reason": "REAL_E2E_REAL_MODEL is 0; opt-in model/RAGFlow credentials and expected marker are not configured",
+      "selection": "pre-existing test.skip environment gate",
+      "required_issue104_case": false
+    }
+  ],
+  "issue104_required_coverage": "T104-01 through T104-04 passed separately in both development dev10 and installed11 on source715a"
+}

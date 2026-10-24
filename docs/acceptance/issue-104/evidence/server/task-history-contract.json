@@ -1,0 +1,56 @@
+{
+  "method": "GET",
+  "path": "/api/threads/{thread_id}/local-tasks",
+  "permission": "threads:read",
+  "ownership": "existing Thread owned by authenticated user; archive rows scoped to same user and Thread",
+  "pagination": {
+    "limit": {
+      "default": 50,
+      "min": 1,
+      "max": 100
+    },
+    "offset": {
+      "default": 0,
+      "min": 0,
+      "max": 1000000
+    },
+    "order": [
+      "created_at",
+      "task_id"
+    ]
+  },
+  "response": {
+    "tasks": [
+      "task_id",
+      "thread_id",
+      "run_id",
+      "tool_call_id",
+      "device_id",
+      "capability",
+      "logical_target",
+      "status",
+      "stop_requested",
+      "recovery_status",
+      "receipt",
+      "receipt_pending",
+      "error_code",
+      "updated_at"
+    ],
+    "has_more": "boolean",
+    "next_offset": "integer or null"
+  },
+  "safety": {
+    "receipt_pending": "no durable receipt acknowledgment yet",
+    "restart_projection": "active observations become result_not_verified with recovery_status retaining the last phase",
+    "excluded": [
+      "task arguments",
+      "file contents",
+      "session tokens",
+      "signatures"
+    ],
+    "effects": "read only; no task reconstruction, redispatch or terminal Run mutation"
+  },
+  "errors": {
+    "history_unavailable": 503
+  }
+}
