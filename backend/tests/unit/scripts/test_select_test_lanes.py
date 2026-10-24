@@ -46,13 +46,12 @@ def test_authorization_named_files_reach_the_real_e2e_channel() -> None:
 
 
 def test_runtime_and_configuration_changes_expand_validation() -> None:
-    plan = classify_changes(["config.yaml", "local-runtime/src/runtime.py"])
+    plan = classify_changes(["config.yaml"])
 
     assert plan["channels"] == [
         "governance",
         "backend-standard",
         "frontend-standard",
-        "local-runtime",
         "frontend-smoke",
         "static-checks",
     ]

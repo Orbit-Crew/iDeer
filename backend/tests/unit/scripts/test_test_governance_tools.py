@@ -45,7 +45,6 @@ def test_inventory_separates_discovery_roots_from_repository_scripts(
     for relative in (
         "backend/tests/test_backend.py",
         "frontend/tests/test_frontend.py",
-        "local-runtime/tests/test_runtime.py",
         "scripts/test_helper.py",
         "examples/test_example.py",
     ):
@@ -56,7 +55,6 @@ def test_inventory_separates_discovery_roots_from_repository_scripts(
     assert {path.relative_to(tmp_path).as_posix() for path in _iter_test_files(tmp_path)} == {
         "backend/tests/test_backend.py",
         "frontend/tests/test_frontend.py",
-        "local-runtime/tests/test_runtime.py",
     }
 
 
@@ -241,7 +239,6 @@ def test_preflight_pnpm_version_contract_fails_closed_when_pinned() -> None:
 
 def test_preflight_declares_every_runner_lane() -> None:
     expected = {
-        "local-runtime",
         "backend-standard",
         "backend-serial",
         "backend-full",
@@ -262,8 +259,7 @@ def test_preflight_declares_every_runner_lane() -> None:
     assert expected <= LANES.keys()
 
 
-def test_local_runtime_preflight_accepts_supported_python_38() -> None:
-    assert _minimum_python(LANES["local-runtime"]) == (3, 8)
+def test_backend_standard_preflight_supported_python() -> None:
     assert _minimum_python(LANES["backend-standard"]) == (3, 12)
 
 

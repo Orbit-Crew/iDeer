@@ -22,14 +22,11 @@ Gate contract proven here:
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from starlette.testclient import TestClient
-
-sys.path.insert(0, str(Path(__file__).parents[4] / "local-runtime"))
 
 from app.device_control.broker import get_device_broker
 from app.device_control.protocol import MessageType, TaskEnvelope, public_key_text, sign_envelope
