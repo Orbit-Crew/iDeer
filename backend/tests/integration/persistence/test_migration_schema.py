@@ -35,7 +35,7 @@ from deerflow.persistence.migrations._chain_meta import (
 )
 from tests._migration_test_support import unified_alembic_config
 
-CURRENT_HEAD = "20261021_receipt_outbox"
+CURRENT_HEAD = "20261024_task_history"
 
 # The alembic URL uses the async driver.  For post-migration verification
 # we open the same SQLite file with a synchronous engine (no greenlet needed).
@@ -125,11 +125,13 @@ class TestUnifiedMigrationChain:
         merge = script.get_revision(MERGE_REVISION)
         assert set(merge._normalized_down_revisions) == {CONTROL_PLANE_HEAD, RUNTIME_HEAD}
         head = script.get_revision(CURRENT_HEAD)
-        assert head._normalized_down_revisions == ("20261018_desktop_login",)
+        assert head._normalized_down_revisions == ("20261021_receipt_outbox",)
+        receipt_outbox = script.get_revision("20261021_receipt_outbox")
+        assert receipt_outbox._normalized_down_revisions == ("20261018_desktop_login",)
         desktop_login = script.get_revision("20261018_desktop_login")
         assert desktop_login._normalized_down_revisions == ("20261001_rejoin_upstream_line",)
         ancestors = {revision.revision for revision in script.walk_revisions(base=MERGE_REVISION, head=CURRENT_HEAD)}
-        assert {CURRENT_HEAD, "20261018_desktop_login", "20261001_rejoin_upstream_line", MERGE_REVISION} <= ancestors
+        assert {CURRENT_HEAD, "20261021_receipt_outbox", "20261018_desktop_login", "20261001_rejoin_upstream_line", MERGE_REVISION} <= ancestors
 
     def test_upgrade_from_scratch_to_head(self, tmp_path: Path) -> None:
         """One ``alembic upgrade head`` takes an empty DB to the single head."""

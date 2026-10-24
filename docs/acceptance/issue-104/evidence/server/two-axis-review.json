@@ -1,0 +1,32 @@
+{
+  "base": "14fcfef9894b72f19fb819d186c2d800e3862062",
+  "source_sha256": "715af6c8605e08354f203bca9f31031e8333704b9e4519de01bac8483305d307",
+  "axes": [
+    {
+      "axis": "Standards",
+      "agent": "/root/server_issue104/review_server_standards",
+      "resolved_findings": [
+        "snapshot task records before storage awaits",
+        "release broker lock before observation persistence",
+        "close invalidated connection before storage awaits",
+        "document bounded owned Thread history contract"
+      ],
+      "remaining_findings": []
+    },
+    {
+      "axis": "Spec",
+      "agent": "/root/server_issue104/review_server_spec",
+      "resolved_findings": [
+        "recheck cancellation after both admission and pre-send persistence waits",
+        "fence independent cancellation with dispatch_started"
+      ],
+      "remaining_findings": []
+    }
+  ],
+  "later_changes": {
+    "thread_id_route_sweep_registration": "both reviewers rechecked; no findings",
+    "formatter": "two files only, AST equivalence proven separately",
+    "echo_websocket_synchronization": "both reviewers rechecked awaited original broker.receive and bounded Event; no findings",
+    "serial_migration_lineage": "both reviewers rechecked exact task_history/receipt_outbox/desktop_login ancestry; no findings"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "prior_source_sha256": "21d632b0de5149b00ff4395eb88967b75ebc502f968578eef7fdd6fc85c0870f",
+  "changed_files": [
+    {
+      "path": "backend/tests/integration/api/test_devices_router.py",
+      "before": "12e805b2d8695edd14398384610a7e4048600cc41989501e3ed1bc3177eca95e",
+      "after": "92f1d120e5ee98af5fc36c6a9996ca4775238e798b47ef91eeb6fb6995808a01"
+    },
+    {
+      "path": "backend/tests/integration/persistence/test_migration_schema.py",
+      "before": "355058a49845c92d9d6d15d478701b30792516c1c116187123831ef9df312d65",
+      "after": "78e851b840de1d6b4cf9cbfeee5a2f0f1ba15cd4ebfd8f408e028af514e1ac9b"
+    }
+  ],
+  "production_files_changed": false
+}

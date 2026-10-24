@@ -1,0 +1,28 @@
+{
+  "command": "QA_ISOLATED=1 TMPDIR=/tmp bash backend/scripts/run-real-e2e.sh",
+  "started_at": "2026-10-24T02:30:15.012118+00:00",
+  "backend_port": "43979",
+  "frontend_port": "56933",
+  "real_model": false,
+  "tsconfig_before_sha256": "f99089ba1fddfed03c58b514fe97167c0fe66e387628af1e47f1581f5996879e",
+  "owned_isolation": {
+    "state_dir": "/tmp/ideer-real-e2e-test-UNh4BI",
+    "manifest_pid": 238556,
+    "manifest_sha256": "466d2b032f8479b96d87c798864ead6aadbaafde8f25ea2969a4f91f4bb6d54d",
+    "manifest_parent_verified": true,
+    "cwd_command_environment_verified": true
+  },
+  "exit_code": 0,
+  "duration_seconds": 90.355,
+  "finished_at": "2026-10-24T02:31:49.642987+00:00",
+  "tsconfig_after_sha256": "f99089ba1fddfed03c58b514fe97167c0fe66e387628af1e47f1581f5996879e",
+  "dist_removed": true,
+  "automatic_state_cleanup": false,
+  "backend_and_frontend_ports_closed": true,
+  "manual_generated_directory_cleanup": true,
+  "owner_directories_restored": 319,
+  "state_removed": true,
+  "source_sha256": "715af6c8605e08354f203bca9f31031e8333704b9e4519de01bac8483305d307",
+  "passed": 7,
+  "skipped": 5
+}

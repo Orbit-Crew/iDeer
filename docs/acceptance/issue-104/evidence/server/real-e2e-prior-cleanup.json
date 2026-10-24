@@ -1,0 +1,22 @@
+{
+  "states": [
+    {
+      "state": "ideer-real-e2e-test-JCQxIj",
+      "manifest_available": false,
+      "owned_processes_stopped": [],
+      "backend_port_closed": true,
+      "generated_readonly_directories_made_removable": 398,
+      "removed": true
+    },
+    {
+      "state": "ideer-real-e2e-test-URxyn9",
+      "manifest_available": false,
+      "owned_processes_stopped": [],
+      "backend_port_closed": true,
+      "generated_readonly_directories_made_removable": 401,
+      "removed": true
+    }
+  ],
+  "reason": "runner cleanup refuses non-/tmp path; generated version directories mode0555 needed owner permission for removal",
+  "second_diagnostic": "owner interrupted mistakenly restarted old environment before browser cases"
+}

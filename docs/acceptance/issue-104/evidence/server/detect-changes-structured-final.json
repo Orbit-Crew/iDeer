@@ -1,0 +1,976 @@
+{
+  "summary": {
+    "changed_count": 88,
+    "affected_count": 17,
+    "changed_files": 43,
+    "risk_level": "critical"
+  },
+  "changed_symbols": [
+    {
+      "id": "Variable:backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py:revision",
+      "name": "revision",
+      "type": "Variable",
+      "filePath": "backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py:down_revision",
+      "name": "down_revision",
+      "type": "Variable",
+      "filePath": "backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py:branch_labels",
+      "name": "branch_labels",
+      "type": "Variable",
+      "filePath": "backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py:depends_on",
+      "name": "depends_on",
+      "type": "Variable",
+      "filePath": "backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py:_TABLE",
+      "name": "_TABLE",
+      "type": "Variable",
+      "filePath": "backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py:upgrade",
+      "name": "upgrade",
+      "type": "Function",
+      "filePath": "backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py:downgrade",
+      "name": "downgrade",
+      "type": "Function",
+      "filePath": "backend/app/agentplatform/persistence/migrations/versions/20261024_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/device_control/broker.py:logger",
+      "name": "logger",
+      "type": "Variable",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/app/device_control/broker.py:TaskRecord",
+      "name": "TaskRecord",
+      "type": "Class",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/broker.py:TaskRecord.stop_requested",
+      "name": "stop_requested",
+      "type": "Property",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/broker.py:TaskRecord.owner_id",
+      "name": "owner_id",
+      "type": "Property",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/broker.py:TaskRecord.dispatch_started",
+      "name": "dispatch_started",
+      "type": "Property",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/app/device_control/broker.py:DeviceBroker",
+      "name": "DeviceBroker",
+      "type": "Class",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker.detach#2",
+      "name": "detach",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker.invalidate#2",
+      "name": "invalidate",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker.send_task#8",
+      "name": "send_task",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker.cancel_task#1",
+      "name": "cancel_task",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker.receive#2",
+      "name": "receive",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker._cancel_before_dispatch#1",
+      "name": "_cancel_before_dispatch",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker._persist_task#1",
+      "name": "_persist_task",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/broker.py:DeviceBroker.list_thread_tasks#4",
+      "name": "list_thread_tasks",
+      "type": "Method",
+      "filePath": "backend/app/device_control/broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/device_control/receipt_archive.py:ACTIVE_TASK_STATUSES",
+      "name": "ACTIVE_TASK_STATUSES",
+      "type": "Variable",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/device_control/receipt_archive.py:_VERIFIED_TASK_STATUSES",
+      "name": "_VERIFIED_TASK_STATUSES",
+      "type": "Variable",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/app/device_control/receipt_archive.py:public_receipt",
+      "name": "public_receipt",
+      "type": "Function",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/app/device_control/receipt_archive.py:receipt_status",
+      "name": "receipt_status",
+      "type": "Function",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/app/device_control/receipt_archive.py:ReceiptArchive",
+      "name": "ReceiptArchive",
+      "type": "Class",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/receipt_archive.py:ReceiptArchive.admit#3",
+      "name": "admit",
+      "type": "Method",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/receipt_archive.py:ReceiptArchive.accept#2",
+      "name": "accept",
+      "type": "Method",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/receipt_archive.py:ReceiptArchive.observe#6",
+      "name": "observe",
+      "type": "Method",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/app/device_control/receipt_archive.py:ReceiptArchive.list_by_thread#4",
+      "name": "list_by_thread",
+      "type": "Method",
+      "filePath": "backend/app/device_control/receipt_archive.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel",
+      "name": "DeviceTaskReceiptModel",
+      "type": "Class",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.thread_id",
+      "name": "thread_id",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.status",
+      "name": "status",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.stop_requested",
+      "name": "stop_requested",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.recovery_status",
+      "name": "recovery_status",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.error_code",
+      "name": "error_code",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.observed_receipt",
+      "name": "observed_receipt",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.created_at",
+      "name": "created_at",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:backend/app/device_control/receipt_models.py:DeviceTaskReceiptModel.updated_at",
+      "name": "updated_at",
+      "type": "Property",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/device_control/receipt_models.py:__table_args__",
+      "name": "__table_args__",
+      "type": "Variable",
+      "filePath": "backend/app/device_control/receipt_models.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/app/gateway/app.py:create_app",
+      "name": "create_app",
+      "type": "Function",
+      "filePath": "backend/app/gateway/app.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/app/gateway/routers/local_tasks.py:router",
+      "name": "router",
+      "type": "Variable",
+      "filePath": "backend/app/gateway/routers/local_tasks.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/app/gateway/routers/local_tasks.py:list_local_tasks",
+      "name": "list_local_tasks",
+      "type": "Function",
+      "filePath": "backend/app/gateway/routers/local_tasks.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/integration/api/test_devices_router.py:test_websocket_device_initiates_and_receives_signed_echo_receipt",
+      "name": "test_websocket_device_initiates_and_receives_signed_echo_receipt",
+      "type": "Function",
+      "filePath": "backend/tests/integration/api/test_devices_router.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/integration/api/test_devices_router.py:test_websocket_device_initiates_and_receives_signed_echo_receipt.observe_receive@141:4",
+      "name": "observe_receive",
+      "type": "Function",
+      "filePath": "backend/tests/integration/api/test_devices_router.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/integration/api/test_local_task_history.py:test_owned_thread_history_is_bounded_sanitized_and_never_dispatches",
+      "name": "test_owned_thread_history_is_bounded_sanitized_and_never_dispatches",
+      "type": "Function",
+      "filePath": "backend/tests/integration/api/test_local_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/integration/api/test_local_task_history.py:test_owned_thread_history_is_bounded_sanitized_and_never_dispatches.fixture_auth@48:4",
+      "name": "fixture_auth",
+      "type": "Function",
+      "filePath": "backend/tests/integration/api/test_local_task_history.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/integration/persistence/test_migration_0025_repair_run_change_seq.py:test_0025_is_in_the_unified_chain",
+      "name": "test_0025_is_in_the_unified_chain",
+      "type": "Function",
+      "filePath": "backend/tests/integration/persistence/test_migration_0025_repair_run_change_seq.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/tests/integration/persistence/test_migration_schema.py:CURRENT_HEAD",
+      "name": "CURRENT_HEAD",
+      "type": "Variable",
+      "filePath": "backend/tests/integration/persistence/test_migration_schema.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/tests/integration/persistence/test_migration_schema.py:TestUnifiedMigrationChain",
+      "name": "TestUnifiedMigrationChain",
+      "type": "Class",
+      "filePath": "backend/tests/integration/persistence/test_migration_schema.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/integration/persistence/test_migration_schema.py:TestUnifiedMigrationChain.test_single_head_descends_from_merge_revision#0",
+      "name": "test_single_head_descends_from_merge_revision",
+      "type": "Method",
+      "filePath": "backend/tests/integration/persistence/test_migration_schema.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/integration/persistence/test_receipt_migration.py:test_receipt_migration_upgrades_desktop_login_and_preserves_confirmed_evidence",
+      "name": "test_receipt_migration_upgrades_desktop_login_and_preserves_confirmed_evidence",
+      "type": "Function",
+      "filePath": "backend/tests/integration/persistence/test_receipt_migration.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/integration/persistence/test_task_history_migration.py:test_task_history_migration_backfills_only_owner_matched_original_runs",
+      "name": "test_task_history_migration_backfills_only_owner_matched_original_runs",
+      "type": "Function",
+      "filePath": "backend/tests/integration/persistence/test_task_history_migration.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_broker.py:test_offline_task_and_cancel_are_explicit_and_no_system_command_is_run",
+      "name": "test_offline_task_and_cancel_are_explicit_and_no_system_command_is_run",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_broker.py:test_write_persistent_admission_failure_sends_no_task",
+      "name": "test_write_persistent_admission_failure_sends_no_task",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/tests/unit/device_control/test_broker.py:BrokenArchive",
+      "name": "BrokenArchive",
+      "type": "Class",
+      "filePath": "backend/tests/unit/device_control/test_broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_broker.py:BrokenArchive.admit#3",
+      "name": "admit",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_broker.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/tests/unit/device_control/test_task_recovery.py:Socket",
+      "name": "Socket",
+      "type": "Class",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:Socket.__init__#0",
+      "name": "__init__",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:Socket.send_text#1",
+      "name": "send_text",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:Socket.close",
+      "name": "close",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_task_recovery.py:test_cancel_requests_runtime_stop_without_claiming_terminal_fact",
+      "name": "test_cancel_requests_runtime_stop_without_claiming_terminal_fact",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_task_recovery.py:test_thread_history_survives_broker_restart_and_late_signed_receipt",
+      "name": "test_thread_history_survives_broker_restart_and_late_signed_receipt",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_task_recovery.py:test_replay_rejection_does_not_invent_a_failure_for_the_original_write",
+      "name": "test_replay_rejection_does_not_invent_a_failure_for_the_original_write",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_task_recovery.py:test_cancellation_during_persistence_never_dispatches_and_survives_restart",
+      "name": "test_cancellation_during_persistence_never_dispatches_and_survives_restart",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/tests/unit/device_control/test_task_recovery.py:PausedArchive",
+      "name": "PausedArchive",
+      "type": "Class",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:PausedArchive.admit",
+      "name": "admit",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:PausedArchive.observe",
+      "name": "observe",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_task_recovery.py:test_stop_signal_reaches_runtime_before_database_observation_waits",
+      "name": "test_stop_signal_reaches_runtime_before_database_observation_waits",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/tests/unit/device_control/test_task_recovery.py:SlowObservation",
+      "name": "SlowObservation",
+      "type": "Class",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:SlowObservation.observe",
+      "name": "observe",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_task_recovery.py:test_unknown_receipt_status_never_becomes_tool_success",
+      "name": "test_unknown_receipt_status_never_becomes_tool_success",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/device_control/test_task_recovery.py:test_connection_cleanup_does_not_hold_attachment_or_iterate_live_tasks_during_storage",
+      "name": "test_connection_cleanup_does_not_hold_attachment_or_iterate_live_tasks_during_storage",
+      "type": "Function",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/tests/unit/device_control/test_task_recovery.py:BlockingArchive",
+      "name": "BlockingArchive",
+      "type": "Class",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:BlockingArchive.admit",
+      "name": "admit",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:BlockingArchive.observe",
+      "name": "observe",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Class:backend/tests/unit/device_control/test_task_recovery.py:TrackingSocket",
+      "name": "TrackingSocket",
+      "type": "Class",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Variable:backend/tests/unit/device_control/test_task_recovery.py:closed",
+      "name": "closed",
+      "type": "Variable",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:backend/tests/unit/device_control/test_task_recovery.py:TrackingSocket.close",
+      "name": "close",
+      "type": "Method",
+      "filePath": "backend/tests/unit/device_control/test_task_recovery.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/gateway/test_thread_id_route_contract.py:_collect_thread_id_routes",
+      "name": "_collect_thread_id_routes",
+      "type": "Function",
+      "filePath": "backend/tests/unit/gateway/test_thread_id_route_contract.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:backend/tests/unit/persistence/test_unified_chain_adoption.py:test_merge_revision_joins_both_heads",
+      "name": "test_merge_revision_joins_both_heads",
+      "type": "Function",
+      "filePath": "backend/tests/unit/persistence/test_unified_chain_adoption.py",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:docs/acceptance/issue-104/report.md:L11:Issue 104 Server acceptance",
+      "name": "Issue 104 Server acceptance",
+      "type": "Section",
+      "filePath": "docs/acceptance/issue-104/report.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:docs/acceptance/issue-104/report.md:L45:Environment and reproducibility",
+      "name": "Environment and reproducibility",
+      "type": "Section",
+      "filePath": "docs/acceptance/issue-104/report.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:docs/acceptance/issue-104/report.md:L69:Scenario evidence",
+      "name": "Scenario evidence",
+      "type": "Section",
+      "filePath": "docs/acceptance/issue-104/report.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:docs/acceptance/issue-104/report.md:L117:Checks and review",
+      "name": "Checks and review",
+      "type": "Section",
+      "filePath": "docs/acceptance/issue-104/report.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:docs/acceptance/issue-104/report.md:L214:Platform scope",
+      "name": "Platform scope",
+      "type": "Section",
+      "filePath": "docs/acceptance/issue-104/report.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:docs/local-runtime/SECURITY_MODEL.md:L11:Local Runtime security model",
+      "name": "Local Runtime security model",
+      "type": "Section",
+      "filePath": "docs/local-runtime/SECURITY_MODEL.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:docs/local-runtime/SECURITY_MODEL.md:L105:Thread task recovery",
+      "name": "Thread task recovery",
+      "type": "Section",
+      "filePath": "docs/local-runtime/SECURITY_MODEL.md",
+      "change_type": "touched"
+    }
+  ],
+  "affected_processes": [
+    {
+      "id": "proc_20_send_echo_task",
+      "name": "Send_echo_task → Public_receipt",
+      "process_type": "cross_community",
+      "step_count": 7,
+      "changed_steps": [
+        {
+          "symbol": "public_receipt",
+          "step": 7
+        },
+        {
+          "symbol": "_persist_task",
+          "step": 5
+        },
+        {
+          "symbol": "_cancel_before_dispatch",
+          "step": 4
+        },
+        {
+          "symbol": "send_task",
+          "step": 3
+        },
+        {
+          "symbol": "observe",
+          "step": 6
+        }
+      ]
+    },
+    {
+      "id": "proc_21_send_echo_task",
+      "name": "Send_echo_task → _factory",
+      "process_type": "intra_community",
+      "step_count": 7,
+      "changed_steps": [
+        {
+          "symbol": "_persist_task",
+          "step": 5
+        },
+        {
+          "symbol": "_cancel_before_dispatch",
+          "step": 4
+        },
+        {
+          "symbol": "send_task",
+          "step": 3
+        },
+        {
+          "symbol": "observe",
+          "step": 6
+        }
+      ]
+    },
+    {
+      "id": "proc_62_cancel_task",
+      "name": "Cancel_task → Canonical_json",
+      "process_type": "intra_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "cancel_task",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_63_cancel_task",
+      "name": "Cancel_task → Signing_dict",
+      "process_type": "intra_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "cancel_task",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_65_send_echo_task",
+      "name": "Send_echo_task → Public_key_text",
+      "process_type": "intra_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "send_task",
+          "step": 3
+        }
+      ]
+    },
+    {
+      "id": "proc_191_cancel_task",
+      "name": "Cancel_task → _task",
+      "process_type": "intra_community",
+      "step_count": 3,
+      "changed_steps": [
+        {
+          "symbol": "cancel_task",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_286_cancel_task",
+      "name": "Cancel_task → Public_receipt",
+      "process_type": "cross_community",
+      "step_count": 6,
+      "changed_steps": [
+        {
+          "symbol": "public_receipt",
+          "step": 6
+        },
+        {
+          "symbol": "_persist_task",
+          "step": 4
+        },
+        {
+          "symbol": "_cancel_before_dispatch",
+          "step": 3
+        },
+        {
+          "symbol": "cancel_task",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 5
+        }
+      ]
+    },
+    {
+      "id": "proc_287_cancel_task",
+      "name": "Cancel_task → _factory",
+      "process_type": "intra_community",
+      "step_count": 6,
+      "changed_steps": [
+        {
+          "symbol": "_persist_task",
+          "step": 4
+        },
+        {
+          "symbol": "_cancel_before_dispatch",
+          "step": 3
+        },
+        {
+          "symbol": "cancel_task",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 5
+        }
+      ]
+    },
+    {
+      "id": "proc_327_send_local_task",
+      "name": "Send_local_task → Public_key_text",
+      "process_type": "intra_community",
+      "step_count": 4,
+      "changed_steps": [
+        {
+          "symbol": "send_task",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_415_send_local_task",
+      "name": "Send_local_task → Public_receipt",
+      "process_type": "cross_community",
+      "step_count": 6,
+      "changed_steps": [
+        {
+          "symbol": "public_receipt",
+          "step": 6
+        },
+        {
+          "symbol": "_persist_task",
+          "step": 4
+        },
+        {
+          "symbol": "_cancel_before_dispatch",
+          "step": 3
+        },
+        {
+          "symbol": "send_task",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 5
+        }
+      ]
+    },
+    {
+      "id": "proc_416_send_local_task",
+      "name": "Send_local_task → _factory",
+      "process_type": "intra_community",
+      "step_count": 6,
+      "changed_steps": [
+        {
+          "symbol": "_persist_task",
+          "step": 4
+        },
+        {
+          "symbol": "_cancel_before_dispatch",
+          "step": 3
+        },
+        {
+          "symbol": "send_task",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 5
+        }
+      ]
+    },
+    {
+      "id": "proc_505_desktop_login_comple",
+      "name": "Desktop_login_complete → Public_receipt",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "public_receipt",
+          "step": 5
+        },
+        {
+          "symbol": "_persist_task",
+          "step": 3
+        },
+        {
+          "symbol": "invalidate",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 4
+        }
+      ]
+    },
+    {
+      "id": "proc_506_desktop_login_comple",
+      "name": "Desktop_login_complete → _factory",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "_persist_task",
+          "step": 3
+        },
+        {
+          "symbol": "invalidate",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 4
+        }
+      ]
+    },
+    {
+      "id": "proc_554_disconnect",
+      "name": "Disconnect → Public_receipt",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "public_receipt",
+          "step": 5
+        },
+        {
+          "symbol": "_persist_task",
+          "step": 3
+        },
+        {
+          "symbol": "invalidate",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 4
+        }
+      ]
+    },
+    {
+      "id": "proc_555_disconnect",
+      "name": "Disconnect → _factory",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "_persist_task",
+          "step": 3
+        },
+        {
+          "symbol": "invalidate",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 4
+        }
+      ]
+    },
+    {
+      "id": "proc_598_revoke_device",
+      "name": "Revoke_device → Public_receipt",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "public_receipt",
+          "step": 5
+        },
+        {
+          "symbol": "_persist_task",
+          "step": 3
+        },
+        {
+          "symbol": "invalidate",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 4
+        }
+      ]
+    },
+    {
+      "id": "proc_599_revoke_device",
+      "name": "Revoke_device → _factory",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "_persist_task",
+          "step": 3
+        },
+        {
+          "symbol": "invalidate",
+          "step": 2
+        },
+        {
+          "symbol": "observe",
+          "step": 4
+        }
+      ]
+    }
+  ]
+}

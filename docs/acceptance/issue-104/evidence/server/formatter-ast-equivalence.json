@@ -1,0 +1,16 @@
+[
+  {
+    "path": "backend/app/device_control/broker.py",
+    "beforeSHA256": "30e566ebb76902b3a66821396343a9832c691f5d8a5fc38d495201ba03eea8e5",
+    "afterSHA256": "9c88ff6071e987f1619eb1e726c82bcf7581d36f72498b3495407371245a9504",
+    "astSHA256": "a4687d51bf58dc08d75fb5b0527181b07b2b5498d9a585c8ef7d1abd53c6933c",
+    "astEquivalent": true
+  },
+  {
+    "path": "backend/app/device_control/receipt_archive.py",
+    "beforeSHA256": "693771a42d144a66489c68b9c572b86a57ab9dd8b53bcc0375beb559f40a9ff8",
+    "afterSHA256": "6b528dda6d50d45d8fab8300ad9efb40b156c20cdb008807537d622e94d778f7",
+    "astSHA256": "d73600323d84251d476ee5425e8507ab36c8c51249e99f50a0673a8235ac72c1",
+    "astEquivalent": true
+  }
+]

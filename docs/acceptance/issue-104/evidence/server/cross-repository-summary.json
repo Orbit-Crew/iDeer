@@ -1,0 +1,227 @@
+{
+  "server_source_sha256": "715af6c8605e08354f203bca9f31031e8333704b9e4519de01bac8483305d307",
+  "desktop_product_commit": "b84abf1d40f0b90bcc68d546f9cc58e40dbf897d",
+  "desktop_evidence_commit": "ced7692e40d0650c87a8689ed4ec270c50521138",
+  "desktop_source_sha256": "3d55ead215f80025dbc4ac6059b6bcca3f3e33ac6ce01c18a0edcdbd6a6df46b",
+  "installer_sha256": "89128b82a2857e637d686cf09ce4a2d79c5b6e0506a5f5525042c5125d8ca2f9",
+  "platform": "Microsoft Windows NT 10.0.26300.0 X64",
+  "runs": [
+    {
+      "kind": "development",
+      "label": "dev-10",
+      "command_seconds": 93.515,
+      "server_fixture_seconds": 124.762,
+      "exit_code": 0,
+      "scenario_ids": [
+        "T104-01",
+        "T104-02",
+        "T104-03",
+        "T104-04"
+      ],
+      "fault_operations": 9,
+      "read_only_recovery_checks": 2,
+      "screenshots": 8,
+      "synthetic_references_removed": 6,
+      "cleanup_failures": [],
+      "server_exited": true,
+      "evidence_files": [
+        {
+          "path": "development/credential-cleanup.json",
+          "sha256": "bfff91333be71e84f104124afb0773918d0cc47a180a77f1eb611c7eb02d24b5",
+          "bytes": 30
+        },
+        {
+          "path": "development/desktop-restart-restored.png",
+          "sha256": "590913a8398ed37faa0d943ef4ad2353ef17a9796350a218137d8e8899cb3bf6",
+          "bytes": 62356
+        },
+        {
+          "path": "development/disconnect-after-pending-upload.png",
+          "sha256": "e7a97a7ead23aa9ed650955ce1ead1410eb2a652202103537954ae20a5ace4c3",
+          "bytes": 60335
+        },
+        {
+          "path": "development/gateway-cleanup.json",
+          "sha256": "5e53c56613489af143413cbae6312dcbe5a19b4d2f8ccec76c56383620f03a75",
+          "bytes": 16
+        },
+        {
+          "path": "development/images.json",
+          "sha256": "6f6873350a189b7640ed6f862c70733227008c1f199eaec9a6bdddf91424b35f",
+          "bytes": 1099
+        },
+        {
+          "path": "development/late-stop-pending-upload.png",
+          "sha256": "4304b1b56d90ce8e819a6a03413abe85bb5475e279d85042d1c870740543b044",
+          "bytes": 60268
+        },
+        {
+          "path": "development/late-stop-stop.png",
+          "sha256": "eae8bd8053508f1dce572bb366f81c239a3f5543be31af7501a8e4181850febc",
+          "bytes": 55524
+        },
+        {
+          "path": "development/model-tool-names.json.gz",
+          "sha256": "f71bf83282e8464b5ff9f030010f9e7a34d593bd9892f1d1def5fc9a01abfe48",
+          "bytes": 44
+        },
+        {
+          "path": "development/request-summary.json.gz",
+          "sha256": "fa6fc2c36bb44c868670b2a5b6d336c7ee1ea541335b2d308bb793b5cfd42b59",
+          "bytes": 305
+        },
+        {
+          "path": "development/result.json.gz",
+          "sha256": "dbe4bd95324004b78dd081a2f8126049c7b533760687deaafa4e0dcab4a7c220",
+          "bytes": 37402
+        },
+        {
+          "path": "development/runtime-restart-restored.png",
+          "sha256": "5900155845ffe546f571afd734e9e17daaf639a8635a2a57244c752fbfab4e88",
+          "bytes": 60645
+        },
+        {
+          "path": "development/server-restart-restored.png",
+          "sha256": "49ef4e2057dc56acc44b84012fe225e88f15c4bc34bcd1ec86f129bcfee28afe",
+          "bytes": 61842
+        },
+        {
+          "path": "development/server-restarts.json",
+          "sha256": "b81933e5fe6b56c806136319dafd84ed8280d60ed50b32dd46afa009030361e4",
+          "bytes": 12
+        },
+        {
+          "path": "development/server-source-binding.json",
+          "sha256": "a169c2dfa666c7d4f112360a40e50fe267e18925fa528deb35214ee1ec5c9327",
+          "bytes": 670931
+        },
+        {
+          "path": "development/stop-after-first-write-stop.png",
+          "sha256": "b7544037bccedb6ca8948e6fd0bba336662a188b2c63e3be58e95aab693d7dd4",
+          "bytes": 70478
+        },
+        {
+          "path": "development/stop-pending-stop.png",
+          "sha256": "0e625b87e4c4f9a54e99dd5a880e66b4e1eac9efbed28838b37b6b1e43d9169f",
+          "bytes": 60651
+        },
+        {
+          "path": "development/wire-events.jsonl.gz",
+          "sha256": "1c652fabcae2cfb864d12bc4e0614da84bb3d3c636f6f6a0da1963b5a3040574",
+          "bytes": 3965
+        }
+      ]
+    },
+    {
+      "kind": "installed",
+      "label": "installed-11",
+      "command_seconds": 90.765,
+      "server_fixture_seconds": 147.444,
+      "exit_code": 0,
+      "scenario_ids": [
+        "T104-01",
+        "T104-02",
+        "T104-03",
+        "T104-04"
+      ],
+      "fault_operations": 9,
+      "read_only_recovery_checks": 2,
+      "screenshots": 8,
+      "synthetic_references_removed": 6,
+      "cleanup_failures": [],
+      "server_exited": true,
+      "evidence_files": [
+        {
+          "path": "installed/credential-cleanup.json",
+          "sha256": "bfff91333be71e84f104124afb0773918d0cc47a180a77f1eb611c7eb02d24b5",
+          "bytes": 30
+        },
+        {
+          "path": "installed/desktop-restart-restored.png",
+          "sha256": "a822c4bd13ca863cc287fdc451c609ea4b899198e77198f6eaac9e36b0fd2620",
+          "bytes": 61953
+        },
+        {
+          "path": "installed/disconnect-after-pending-upload.png",
+          "sha256": "63ea82515181407fe72f14be225ca84d15966d491c2ec7d9664c99a30212bebc",
+          "bytes": 60172
+        },
+        {
+          "path": "installed/gateway-cleanup.json",
+          "sha256": "5e53c56613489af143413cbae6312dcbe5a19b4d2f8ccec76c56383620f03a75",
+          "bytes": 16
+        },
+        {
+          "path": "installed/images.json",
+          "sha256": "d8ca30635407b807629c982de548597480889c30d3c64277e7e807bc0445f299",
+          "bytes": 1099
+        },
+        {
+          "path": "installed/late-stop-pending-upload.png",
+          "sha256": "269a2aab1adfaf349ad187144d667bdf36dce732003e30bd8d7b4000eb34805d",
+          "bytes": 60242
+        },
+        {
+          "path": "installed/late-stop-stop.png",
+          "sha256": "a6230fa56cc03f9aebfc84260c1f8014aed4d262bd1e4ba96670496fecebc8ba",
+          "bytes": 55292
+        },
+        {
+          "path": "installed/model-tool-names.json.gz",
+          "sha256": "48bfba4f7793c1d7f477172a4de620b528c82af1796ee84dd80f74781e6b8d96",
+          "bytes": 44
+        },
+        {
+          "path": "installed/profile-restoration.json",
+          "sha256": "1a6d5fb0decbc2c34b2a9cbbdf9caa31e29224a7121c6962b42a29a1f1ad2155",
+          "bytes": 742
+        },
+        {
+          "path": "installed/request-summary.json.gz",
+          "sha256": "d40c5f21951916538033a2f417f0403ec16f41d6a7c093202f640f935bc08b14",
+          "bytes": 301
+        },
+        {
+          "path": "installed/result.json.gz",
+          "sha256": "10e96a05fb53ba2b69f6b7590d087fa0f53320c22cd3353cc5f9541336e74a24",
+          "bytes": 36719
+        },
+        {
+          "path": "installed/runtime-restart-restored.png",
+          "sha256": "320e450bc6aa9cf29bfa4993d8cb5fb0075e973a9785c8a28c7db3c379ed4120",
+          "bytes": 60478
+        },
+        {
+          "path": "installed/server-restart-restored.png",
+          "sha256": "223509bde96cefd0685ba8035ced7ec6bcfdb546b149e9c361f71ccd995f80e8",
+          "bytes": 62516
+        },
+        {
+          "path": "installed/server-restarts.json",
+          "sha256": "b81933e5fe6b56c806136319dafd84ed8280d60ed50b32dd46afa009030361e4",
+          "bytes": 12
+        },
+        {
+          "path": "installed/server-source-binding.json",
+          "sha256": "5d04775c5509f8906020358c9be57d5de6a283702954d81b05a743eff004b280",
+          "bytes": 670931
+        },
+        {
+          "path": "installed/stop-after-first-write-stop.png",
+          "sha256": "9e4a3aeb122ab4e180e93f18a0e78bc1491c834f18cfaa89f614b7199ce5fe77",
+          "bytes": 71216
+        },
+        {
+          "path": "installed/stop-pending-stop.png",
+          "sha256": "54761f12ed110cc14857b1aa0919ad7ce58c7fe44750cc582f6a76480edf73d4",
+          "bytes": 60446
+        },
+        {
+          "path": "installed/wire-events.jsonl.gz",
+          "sha256": "ea58c0780dd245e06f256f903987c8747784c4ca2b5452cd5f9cd8a86e714b31",
+          "bytes": 3975
+        }
+      ]
+    }
+  ]
+}
