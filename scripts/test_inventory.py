@@ -49,7 +49,6 @@ def _iter_test_files(root: Path) -> list[Path]:
     for relative_root in (
         "backend/tests",
         "frontend/tests",
-        "local-runtime/tests",
     ):
         test_root = root / relative_root
         if not test_root.is_dir():
@@ -157,8 +156,6 @@ def _lanes(path: Path) -> list[str]:
     """
     parts = {p.lower() for p in path.parts}
     name = path.name.lower()
-    if "local-runtime" in parts:
-        return ["local-runtime"]
     if "e2e" in parts or any(part.startswith("e2e-") for part in parts):
         if "e2e-record" in parts:
             return ["frontend-record"]

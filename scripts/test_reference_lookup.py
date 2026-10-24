@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SURFACE_FILE = Path(__file__).with_name("test_reference_surfaces.json")
 
-TEST_DIRS = ("backend/tests/", "frontend/tests/", "local-runtime/tests/")
+TEST_DIRS = ("backend/tests/", "frontend/tests/")
 TEST_SUFFIXES = (".py", ".ts", ".tsx", ".mts", ".js", ".jsx")
 TEST_NAME_HINTS = ("test_", ".test.", ".spec.", "_test.")
 _SCAN_EXCLUDE = ("__pycache__/", "node_modules/")

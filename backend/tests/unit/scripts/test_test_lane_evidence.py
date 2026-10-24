@@ -64,7 +64,7 @@ def test_failed_completion_replace_keeps_start_record_incomplete(tmp_path: Path,
 def test_source_archive_records_context_without_git_metadata(tmp_path: Path) -> None:
     (tmp_path / "config.yaml").write_text("safe: true\n", encoding="utf-8")
 
-    context = build_context(tmp_path, "local-runtime", "pytest")
+    context = build_context(tmp_path, "backend-standard", "pytest")
 
     assert context["candidate_commit"] is None
     assert context["fingerprint_source"] == "visible-source-tree-no-git"

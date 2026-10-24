@@ -13,7 +13,6 @@ CHANNEL_ORDER = (
     "governance",
     "backend-standard",
     "frontend-standard",
-    "local-runtime",
     "frontend-smoke",
     "static-checks",
     "real-e2e",
@@ -119,9 +118,6 @@ def classify_changes(paths: list[str]) -> dict[str, object]:
                 add("frontend-standard", f"frontend path: {path}")
                 add("frontend-smoke", f"frontend behavior may affect browser flows: {path}")
                 add("static-checks", f"frontend path: {path}")
-            elif path.startswith("local-runtime/"):
-                add("local-runtime", f"local-runtime path: {path}")
-                add("static-checks", f"local-runtime path: {path}")
             elif path.startswith(INFRA_PATHS) or basename in INFRA_FILES:
                 for channel in BASE_CHANNELS[1:]:
                     add(channel, f"build, configuration, or workflow input: {path}")

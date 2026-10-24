@@ -13,7 +13,6 @@ CHANNEL_JOBS = {
     "governance": "test-contracts",
     "backend-standard": "backend-unit-tests",
     "frontend-standard": "frontend-unit-tests",
-    "local-runtime": "local-runtime",
     "frontend-smoke": "e2e-tests",
     "static-checks": "lint",
 }
@@ -21,7 +20,6 @@ CHANNEL_ORDER = (
     "governance",
     "backend-standard",
     "frontend-standard",
-    "local-runtime",
     "frontend-smoke",
     "static-checks",
     "real-e2e",
