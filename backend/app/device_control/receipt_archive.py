@@ -89,10 +89,20 @@ class ReceiptArchive:
             raise ProtocolError("PERSISTENCE_UNAVAILABLE", "receipt persistence is unavailable")
         return factory
 
-    async def admit(self, binding: dict, task: dict, *, thread_id: str = "") -> None:
+    async def admit(self, binding: dict, task: dict, *, thread_id: str = "", local_result: dict | None = None) -> None:
         """Persist metadata of the exact signed task before the socket send."""
         async with self._factory()() as session:
-            session.add(DeviceTaskReceiptModel(task_id=task["task_id"], owner_id=binding["user_id"], binding=dict(binding), task=dict(task), thread_id=thread_id, status="created"))
+            session.add(
+                DeviceTaskReceiptModel(
+                    task_id=task["task_id"],
+                    owner_id=binding["user_id"],
+                    binding=dict(binding),
+                    task=dict(task),
+                    thread_id=thread_id,
+                    status="created",
+                    evidence={"local_result": local_result} if local_result is not None else None,
+                )
+            )
             await session.commit()
 
     async def accept(self, binding: dict, upload: dict) -> dict:
@@ -136,7 +146,7 @@ class ReceiptArchive:
                             receipt=receipt,
                             status=receipt_status(receipt),
                             updated_at=datetime.now(UTC),
-                            evidence=tool_receipt_from_local(receipt, tool_call_id=task["tool_call_id"]),
+                            evidence={**(row.evidence or {}), **tool_receipt_from_local(receipt, tool_call_id=task["tool_call_id"])},
                             acknowledgment=acknowledgment,
                         )
                     )
@@ -154,7 +164,17 @@ class ReceiptArchive:
             row = (await session.execute(select(DeviceTaskReceiptModel).where(DeviceTaskReceiptModel.task_id == task_id, DeviceTaskReceiptModel.owner_id == owner_id))).scalar_one_or_none()
             if row is None:
                 return None
-            return {"task_id": row.task_id, "binding": row.binding, "task": row.task, "receipt_id": row.receipt_id, "receipt_hash": row.receipt_hash, "receipt": row.receipt, "evidence": row.evidence, "acknowledgment": row.acknowledgment}
+            return {
+                "task_id": row.task_id,
+                "thread_id": row.thread_id,
+                "binding": row.binding,
+                "task": row.task,
+                "receipt_id": row.receipt_id,
+                "receipt_hash": row.receipt_hash,
+                "receipt": row.receipt,
+                "evidence": row.evidence,
+                "acknowledgment": row.acknowledgment,
+            }
 
     async def observe(self, task_id: str, *, owner_id: str, status: str, stop_requested: bool = False, receipt: dict | None = None, error_code: str | None = None) -> None:
         """Persist transport observations without replacing a verified fact."""

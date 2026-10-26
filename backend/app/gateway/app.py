@@ -60,6 +60,7 @@ from app.gateway.routers import (
     threads,
     tools,
     trash,
+    updates,
     uploads,
     user_preferences,
     visibility_applications,
@@ -1149,6 +1150,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             allow_headers=["*"],
             expose_headers=list(CORS_EXPOSED_HEADERS),
         )
+
+    # Public, read-only operations-reviewed release publication.
+    app.include_router(updates.router)
 
     # Include routers
     # Models API is mounted at /api/models

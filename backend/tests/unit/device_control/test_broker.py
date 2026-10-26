@@ -722,7 +722,7 @@ async def test_write_receipt_rejects_changed_binding_and_superseded_session(fiel
 @pytest.mark.asyncio
 async def test_write_persistent_admission_failure_sends_no_task():
     class BrokenArchive:
-        async def admit(self, binding, task, *, thread_id=""):
+        async def admit(self, binding, task, *, thread_id="", local_result=None):
             raise OSError("fixture storage unavailable")
 
     broker = DeviceBroker(receipt_archive=BrokenArchive())

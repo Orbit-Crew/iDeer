@@ -541,6 +541,7 @@ def test_contributed_websocket_route_is_rejected_until_host_auth_wraps_it():
     "path",
     [
         "/health-extension",
+        "/updates/extension-payload",
         "/docs-private",
         "/redoc-private",
         "/api/webhooks/extension",

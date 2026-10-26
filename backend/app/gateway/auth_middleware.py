@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # Paths that never require authentication.
 _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/health",
+    "/updates",
     "/docs",
     "/redoc",
     "/openapi.json",
