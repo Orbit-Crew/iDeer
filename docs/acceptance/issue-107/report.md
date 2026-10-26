@@ -84,3 +84,16 @@ The first pr-standard invocation failed in preflight, before child lanes, on
 pnpm 11.25.0 versus locked 10.26.2. A task-local wrapper now selects cached
 pnpm 10.26.2 without changing the system installation. The coordinated final
 standard lane will record its own child summaries and parent duration.
+
+## Final installed acceptance (0.2.0 candidate, passed)
+
+The controlled-address chain this issue delivered was consumed end to end on
+the installed 0.2.0 Desktop: the same trust key binds the packaged anchor,
+the installer sidecar and the Server trust file; a signed patch release was
+staged, verified and installed through the single drain-and-install entry,
+and a broken release was refused into an exact rollback, both via the
+real `/updates` documents (Desktop runs C8/D1; the compatibility-declaration
+serving and signing tooling were exercised by the #110 runs E4/E6). Binding
+and evidence: Desktop repository `docs/acceptance/final-candidate-binding.md`.
+Source binding for this report: branch `codex/complete-issues-105-110`
+(f817aa9fa on 591f80cf3).

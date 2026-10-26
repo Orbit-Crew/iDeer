@@ -84,3 +84,14 @@ The first pr-standard invocation failed in preflight, before child lanes, on
 pnpm 11.25.0 versus locked 10.26.2. A task-local wrapper now selects cached
 pnpm 10.26.2 without changing the system installation. The coordinated final
 standard lane will record its own child summaries and parent duration.
+
+## Final installed acceptance (0.2.0 candidate, passed)
+
+The installed-candidate cross-repo acceptance ran on the final Desktop
+0.2.0 package against this branch's real Gateway: the explicit upload
+against the live artifact endpoint, the idempotent repeat, the second-device
+download of exact bytes and the cross-account refusal all passed (13-case
+matrix; the #106 matrix carries the same artifact flow). Binding and
+evidence: Desktop repository `docs/acceptance/final-candidate-binding.md`
+and `docs/acceptance/issue-105/evidence/`. Source binding for this report:
+branch `codex/complete-issues-105-110` (f817aa9fa on 591f80cf3).

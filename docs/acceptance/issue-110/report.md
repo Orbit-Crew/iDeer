@@ -84,3 +84,20 @@ The first pr-standard invocation failed in preflight, before child lanes, on
 pnpm 11.25.0 versus locked 10.26.2. A task-local wrapper now selects cached
 pnpm 10.26.2 without changing the system installation. The coordinated final
 standard lane will record its own child summaries and parent duration.
+
+## Final installed acceptance (0.2.0 candidate, passed)
+
+Both legs ran against this branch's real Gateway serving the
+operations-signed compatibility cases from `UPDATES_CONTROLLED_DIR` with the
+same trust key as the installed package: old-client-first (unchanged 0.1.0
+client pairing, identity-mapped through the signed legacy HELLO row and
+completing a real write against the upgraded Server) and the new-client leg
+on the installed 0.2.0 Desktop (compatible write; capability declaration
+stopping exactly the declared write with zero dispatch frames while an
+unaffected read succeeds; feature switches never granting resource or local
+permission; core declaration stopping new local work while an unconfirmed
+receipt and original file survive a restart; the Server-first old-then-new
+release order on exact declared combinations only). Evidence: Desktop
+repository `docs/acceptance/issue-110/evidence/` (runs E4/E6) and
+`docs/acceptance/final-candidate-binding.md`. Source binding for this
+report: branch `codex/complete-issues-105-110` (f817aa9fa on 591f80cf3).
