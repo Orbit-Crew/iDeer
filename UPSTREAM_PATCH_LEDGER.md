@@ -730,6 +730,33 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
 合法；`document_files` 的任何变化须携带修正案，且 `previous_document_files`
 必须与 base 注册表分配一致。
 
+
+## 2026-10-25 PATCH-030 reviewed update namespace reservation
+
+Owner: Neowyh. Issue 107 adds the public, read-only /updates/ publication route.
+The local harness extension route validator must reserve that namespace so
+third-party extension handlers cannot inherit its unauthenticated access.
+The change is one entry in extensions/gateway.py::_HOST_PUBLIC_PATH_PREFIXES,
+kept equal to the Gateway authentication list.
+
+An app-layer import into the reusable harness would violate the one-way
+dependency. Leaving the independent reservation list unchanged is unsafe and
+failed the existing equality contract. The minimal registered host patch is
+retained until the extension API supplies a host-injected public-namespace
+reservation contract; then remove this mirrored entry in favor of that contract.
+Impact is restricted to rejecting contributed routes entering /updates/.
+Other namespaces and the reviewed publication handler are unchanged.
+
+The standard lane exposed the missing reservation. A regression contributing
+/updates/extension-payload failed before the fix. The extension gateway, broker
+and controlled-address focused run then passed 106 tests in 6.25 seconds,
+including actual isolated Nginx. Logs are in dev-log/issue-110/
+red-standard-fixes.log and green-standard-fixes.log. The latter broker fixture
+now accepts the independent local_result admission metadata and still raises
+its intended storage OSError, preserving the no-task-on-storage-failure check.
+Nginx's system-package dependency is classified external; the CI backend
+workflow explicitly installs ripgrep and does not declare Nginx.
+
 <!-- upstream-registry:start -->
 ```json
 {
@@ -1018,8 +1045,12 @@ pin 一致）。`paths` 为相对仓库根的 harness 前缀路径，必须覆�
         "backend/packages/harness/deerflow/skills/frontmatter.py",
         "backend/packages/harness/deerflow/skills/projection.py"
       ],
-      "verification_status": "historical",
-      "lifecycle_status": "open"
+      "verification_status": "current",
+      "lifecycle_status": "open",
+      "current_verification": {
+        "command": "bash dev-log/issue-105/test.sh backend/tests/unit/extensions/test_extension_gateway_wiring.py backend/tests/unit/device_control/test_broker.py backend/tests/integration/api/test_updates_address.py -q",
+        "result": "106 passed in 6.25s. Verified the /updates namespace reservation, public-prefix mirror equality, storage-outage rejection with no TASK, and actual isolated Nginx. Scope is the 2026-10-25 gateway.py namespace entry."
+      }
     },
     {
       "id": "PATCH-031",

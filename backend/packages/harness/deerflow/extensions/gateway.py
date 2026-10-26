@@ -35,6 +35,7 @@ _RouteMethods = frozenset[str] | None
 _RouteScopes = frozenset[str]
 _HOST_PUBLIC_PATH_PREFIXES = (
     "/health",
+    "/updates",
     "/docs",
     "/redoc",
     "/openapi.json",

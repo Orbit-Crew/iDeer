@@ -65,27 +65,16 @@ def build_app(tmp_path, monkeypatch, *, user="owner-A", permissions=("threads:re
 
 
 @pytest.mark.asyncio
-async def test_upload_stores_payload_and_replays_the_same_artifact(tmp_path, monkeypatch):
+async def test_client_supplied_grant_cannot_store_or_replay(tmp_path, monkeypatch):
     app, seed = build_app(tmp_path, monkeypatch)
     await seed()
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://fixture.invalid") as client:
-        first = await client.post("/api/threads/thread-A/artifacts", json=payload(), headers={"Idempotency-Key": HANDLE})
-        assert first.status_code == 201, first.text
-        body = first.json()
-        assert body["duplicate"] is False and body["artifact_id"] == f"art-{DIGEST[:12]}"
-        assert body["thread_id"] == "thread-A" and body["handle"] == HANDLE
-        stored = tmp_path / "thread-A" / "user-data" / "owner-A" / "outputs" / "desktop-artifacts" / f"{DIGEST}-result-105.txt"
-        assert stored.read_bytes() == CONTENT
-        # The replayed explicit upload with the same handle and digest returns
-        # the same artifact and never writes a second payload or record.
-        replay = await client.post("/api/threads/thread-A/artifacts", json=payload(), headers={"Idempotency-Key": HANDLE})
-        assert replay.status_code == 200, replay.text
-        assert replay.json()["duplicate"] is True and replay.json()["artifact_id"] == body["artifact_id"]
-        records = list((tmp_path / "thread-A" / "user-data" / "owner-A" / "outputs" / "desktop-artifacts" / ".records").glob("*.json"))
-        assert len(records) == 1
-        meta = await client.get(f"/api/threads/thread-A/artifacts/{body['artifact_id']}")
-        assert meta.status_code == 200
-        assert meta.json()["sha256"] == DIGEST and meta.json()["task_id"] == "task-105"
+        for _ in range(2):
+            response = await client.post("/api/threads/thread-A/artifacts", json=payload(), headers={"Idempotency-Key": HANDLE})
+            assert response.status_code == 403, response.text
+            assert response.json()["detail"]["code"] == "GRANT_INVALID"
+        stored = tmp_path / "thread-A" / "user-data" / "owner-A" / "outputs" / "desktop-artifacts"
+        assert not list(stored.glob("**/*")), "unissued grants must never store artifact bytes or records"
 
 
 @pytest.mark.asyncio
@@ -129,3 +118,15 @@ async def test_owner_isolation_and_cross_thread_grant_are_refused(tmp_path, monk
         response = await client.post("/api/threads/thread-A/artifacts", json=wrong_thread, headers={"Idempotency-Key": HANDLE})
         assert response.status_code == 400
         assert response.json()["detail"]["code"] == "GRANT_MISMATCH"
+
+
+@pytest.mark.asyncio
+async def test_unissued_upload_grant_is_rejected(tmp_path, monkeypatch):
+    app, seed = build_app(tmp_path, monkeypatch)
+    await seed()
+    body = payload()
+    body["grant"]["token"] = "invented-authorization"
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://fixture.invalid") as client:
+        response = await client.post("/api/threads/thread-A/artifacts", json=body, headers={"Idempotency-Key": HANDLE})
+    assert response.status_code == 403, response.text
+    assert response.json()["detail"]["code"] == "GRANT_INVALID"

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from pathlib import PurePosixPath
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -28,6 +30,7 @@ from .protocol import (
     sign_envelope,
 )
 from .receipt_archive import ACTIVE_TASK_STATUSES, ReceiptArchive, safe_logical_target
+from .release_compatibility import evaluate_connection, server_release_version
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +92,11 @@ class DeviceConnection:
     tool_descriptors: dict[str, dict[str, Any]] = field(default_factory=dict)
     owner_id: str | None = None
     server_origin: str = ""
+    runtime_version: str = ""
+    registered_runtime_version: str = ""
+    desktop_version: str = ""
+    runtime_python: str = ""
+    protocol_version: str = "1"
     seen_task_ids: set[str] = field(default_factory=set)
     seen_message_ids: set[str] = field(default_factory=set)
 
@@ -146,6 +154,8 @@ class DeviceBroker:
                 "server_public_key": self.server_public_key,
                 "protocol_version": "1",
                 "receipt_replay": 1 if self.receipt_archive is not None else 0,
+                "server_version": server_release_version(),
+                "compatibility": (await asyncio.to_thread(evaluate_connection, connection)).public(),
             },
         )
         await connection.websocket.send_text(hello.model_dump_json(by_alias=True))
@@ -297,6 +307,12 @@ class DeviceBroker:
                 record.error_code = "AUTHORIZATION_SNAPSHOT_INVALID"
                 record.error = "local task authorization is no longer valid"
                 return record
+        compatibility = await asyncio.to_thread(evaluate_connection, connection)
+        if rejection := compatibility.rejection(operation):
+            record.status = TaskStatus.FAILED
+            record.error_code = rejection
+            record.error = "This Desktop/Runtime/Server combination requires an upgrade for this operation"
+            return record
         if operation.startswith("local.") and operation not in connection.capabilities:
             record.status = TaskStatus.FAILED
             record.error_code = "CAPABILITY_UNAVAILABLE"
@@ -312,6 +328,11 @@ class DeviceBroker:
             expires_at=expires_at,
         )
         if self.receipt_archive is not None:
+            arguments = payload.get("arguments", payload.get("args", payload))
+            local_result = None
+            if operation == "local.files.write" and isinstance(arguments, dict) and isinstance(arguments.get("content"), str):
+                raw_content = arguments["content"].encode("utf-8")
+                local_result = {"sha256": hashlib.sha256(raw_content).hexdigest(), "bytes": len(raw_content), "name": PurePosixPath(str(arguments.get("path", path))).name}
             try:
                 await self.receipt_archive.admit(
                     self.receipt_binding(connection),
@@ -326,6 +347,7 @@ class DeviceBroker:
                         "logical_target": safe_logical_target(payload),
                     },
                     thread_id=str(payload.get("thread_id", "")),
+                    local_result=local_result,
                 )
             except asyncio.CancelledError:
                 await asyncio.shield(self._cancel_before_dispatch(record))

@@ -49,6 +49,14 @@ class DeviceArtifactStore:
         self._grants[grant.token] = grant
         return grant
 
+    def get_grant(self, token: str, *, allow_consumed: bool = False) -> ArtifactUploadGrant:
+        grant = self._grants.get(token)
+        if grant is None or (grant.consumed and not allow_consumed):
+            raise ArtifactStoreError("GRANT_INVALID", "artifact upload grant is invalid")
+        if grant.expires_at.replace(tzinfo=UTC) <= datetime.now(UTC):
+            raise ArtifactStoreError("GRANT_EXPIRED", "artifact upload grant expired")
+        return grant
+
     async def upload(self, token: str, chunks: AsyncIterable[bytes]) -> tuple[str, int, str]:
         grant = self._grants.get(token)
         if grant is None or grant.consumed:

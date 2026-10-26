@@ -733,3 +733,72 @@ See `docs/` directory for detailed documentation:
 - [PATH_EXAMPLES.md](PATH_EXAMPLES.md) - Path types and usage
 - [summarization.md](summarization.md) - Context summarization
 - [plan_mode_usage.md](plan_mode_usage.md) - Plan mode with TodoList
+
+## Reviewed Desktop releases and compatibility admission
+
+The formal Gateway mounts the read-only /updates/ router. Both checked-in
+Nginx configurations forward this prefix to Gateway. UPDATES_CONTROLLED_DIR
+is the operations-reviewed publication directory. Put signed documents at
+desktop/manifest.json, desktop/manifest.sig, compatibility.json, and
+compatibility.sig. Patch payloads use desktop/files/resources/... installation
+paths; a full installer uses desktop/installer.exe and the manifest's
+installer object with path, sha256 and bytes. Gateway serves only manifest-listed
+assets with matching SHA-256 and length. Traversal, unlisted files, escaping
+symlinks and corrupt assets return 404. Download never authorizes installation.
+Desktop verifies signatures using its packaged release public key.
+
+Set UPDATES_TRUSTED_PUBLIC_KEY_FILE to the deployment's Ed25519 PEM public key
+and SERVER_RELEASE_VERSION to the actual deployed Server candidate identity.
+Keep the signing private key outside the repository, image and logs.
+Compatibility version 1 has level, disabledCapabilities, minProtocol, notes,
+and candidateCombo with desktop/runtime/server identities. Optional
+supportedCombos lists other tested exact combinations with optional level and
+disabledCapabilities overrides. The runtime identity is the bundled Python
+version; runtime_version continues reporting the Runtime package version.
+Signed device HELLO supplies desktop_version, runtime_python and protocol_version;
+signed Server HELLO reports server_version and effective compatibility.
+These claims do not authenticate a binary or grant resource access.
+A candidateCombo or supportedCombos row may explicitly include
+legacyHello with runtimeVersion and protocolVersion to identify a tested
+original client that did not report Desktop/Python fields. This mapping
+applies only when both new identity fields are absent. Its Runtime version
+must match both the signed HELLO and the device's registered Runtime version,
+its protocol and current Server identity must match, and exactly one reviewed
+row may match. Missing, contradictory or ambiguous proof fails closed.
+New clients always match their explicit Desktop/Python identities.
+
+Every new broker dispatch re-verifies publication against its connection.
+Capability incompatibility returns COMPAT_CAPABILITY_DISABLED only for its
+named operation. Core, protocol or unverified-combination failures return
+COMPAT_CORE_INCOMPATIBLE. Artifact grant/upload applies the same restriction
+for local.artifacts.upload after normal owner/thread/task/device authorization.
+No compatibility state changes local DENY or consent. Existing unknown
+outcomes, history and signed receipt replay remain available during blocking.
+
+UPDATES_STATE_DIR defaults to the configured data home / updates-state.
+Persist it across Server restarts. It records valid publication observation.
+Only before first publication does a missing declaration preserve protocol 1.
+After publication, deletion, missing/bad signature, missing trust/version,
+malformed or unmatched combinations fail closed, including after a restart.
+
+Deploy the Server supporting both tested clients before introducing the new
+Desktop. Older parsers read only the top-level level; do not claim old-client
+compatibility through a contradictory per-combination override. Record exact
+tested versions and order; arbitrary rolling upgrades are not promised.
+
+## Explicit Desktop result publication
+
+Completed local.files.write tasks retain independent content name, SHA-256 and
+length with their signed dispatch evidence. Receipt result_hash never substitutes
+for the file digest. A business session plus the original device's current
+X-Device-Session calls POST /api/threads/{thread}/artifacts/grant with exact
+device_id/run_id/task_id/name/sha256/bytes. The server-issued short-lived token
+authorizes that exact upload. Client-invented grants, revoked/changed devices,
+wrong owners/threads and changed content fail closed. Old tasks without
+independent file metadata return RESULT_METADATA_UNAVAILABLE.
+
+GET /api/threads/{thread}/artifacts lists bounded platform metadata.
+GET /api/threads/{thread}/artifacts/{id}/download returns hash-verified bytes
+with attachment/nosniff headers and thread owner controls, without the original
+device. Task-bound upload identity keeps retries idempotent and different
+tasks' provenance separate. Generation/read/list never implicitly upload.
