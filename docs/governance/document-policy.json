@@ -3348,7 +3348,7 @@
     }
   ],
   "supplements": {
-    "count": 59,
+    "count": 61,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3972,6 +3972,16 @@
         "referenced_by": "GitHub issue 107"
       },
       {
+        "path": "docs/acceptance/issue-106/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "555a4d4817e62441304e94446246985f38f5169bf561461b4206f700d2c34df9",
+        "lines": 46,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 106 Server implementation and coordinated acceptance evidence",
+        "referenced_by": "GitHub issue 106"
+      },
+      {
         "path": "docs/acceptance/issue-110/report.md",
         "registration": "post-baseline-addition",
         "sha256": "014e775b3f4c210745fe02b3c78b421a32dbd7d2540b0c9d87c8d4dc39dea1c4",
@@ -3980,6 +3990,16 @@
         "protected": false,
         "role": "Issue 110 Server implementation and coordinated acceptance evidence",
         "referenced_by": "GitHub issue 110"
+      },
+      {
+        "path": "docs/acceptance/BRANCH_BASELINE.md",
+        "registration": "post-baseline-addition",
+        "sha256": "23c9334c76e7aeaa4cf071d9167e389c2463aaa6acce650fea7cb76da56658a8",
+        "lines": 38,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Repository branch baseline record (develop is the delivery branch; main mirrors upstream)",
+        "referenced_by": "docs/acceptance/issue-111/report.md"
       },
       {
         "path": "backend/app/gateway/routers/UPDATES_ADDRESS.md",

@@ -476,6 +476,14 @@ class TestInitEngineFromConfig:
 
 
 class TestAccessors:
+    @pytest.fixture(autouse=True)
+    def _restore_engine_module(self):
+        # Assignments like ``mod._engine = MagicMock()`` must not leak into
+        # later xdist workers: any test whose teardown awaits close_engine()
+        # then hits "object MagicMock can't be used in 'await' expression".
+        yield
+        _reset_engine_module()
+
     def test_get_session_factory_returns_none_initially(self):
         mod = _reset_engine_module()
         assert mod.get_session_factory() is None
