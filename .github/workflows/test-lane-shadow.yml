@@ -172,7 +172,6 @@ jobs:
           path: logs/test-lanes/**
           if-no-files-found: ignore
 
-    needs: [select, test-contracts]
   e2e-tests:
     needs: [select, test-contracts]
     if: contains(needs.select.outputs.channels, 'frontend-smoke')
