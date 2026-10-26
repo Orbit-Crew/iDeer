@@ -996,8 +996,12 @@ def test_runner_no_submit_is_terminal_and_pre_read_hang_has_finite_deadline(tmp_
                 str(prompt),
                 "--out-dir",
                 str(out_dir),
+                # Must stay above the fake CLI's interpreter boot under a fully
+                # loaded lane (measured 9-179ms; misfiring classifies clean or
+                # usage as workspace_load) while hang's 3s sleep keeps the
+                # finite-deadline path exercisable.
                 "--startup-timeout-seconds",
-                "0.05",
+                "1.0",
             ],
             text=True,
             capture_output=True,
@@ -1014,7 +1018,7 @@ def test_runner_no_submit_is_terminal_and_pre_read_hang_has_finite_deadline(tmp_
         record = json.loads(Path(result_data["record"]).read_text(encoding="utf-8"))
         assert record["status"] == "failed"
         assert record["failure_class"] == expected_class
-        assert record["startup_timeout_seconds"] == 0.05
+        assert record["startup_timeout_seconds"] == 1.0
         if mode == "hang":
             assert result_data["startup_timed_out"] is True
             assert "no successful first read" in record["failure_reason"]
