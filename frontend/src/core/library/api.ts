@@ -221,6 +221,39 @@ export async function getLocalPublication(
   return (await res.json()) as LocalPublication;
 }
 
+// Issue 114: the caller-authorized KB sources behind one Agent. Device-local
+// KBs carry the owning device's live availability; the chat can select a
+// subset of these sources per run, which the server treats as a narrowing of
+// the frozen scope — never a widening.
+export interface AgentKnowledgeSource {
+  resource_id: string;
+  slug: string;
+  display_name: string | null;
+  origin: "local_import" | "provider" | string;
+  dataset: string;
+  revision_id: string | null;
+  revision_no: number | null;
+  manifest_hash: string | null;
+  device_id?: string;
+  device_online?: boolean;
+}
+
+export interface AgentKnowledgeScope {
+  agent_id: string;
+  sources: AgentKnowledgeSource[];
+  selection: "narrow_only" | string;
+}
+
+export async function getAgentKnowledgeScope(
+  agentId: string,
+): Promise<AgentKnowledgeScope> {
+  const res = await fetch(
+    `${getBackendBaseURL()}/api/resources/${encodeURIComponent(agentId)}/knowledge-scope`,
+  );
+  if (!res.ok) await extractError(res, "Failed to load the knowledge scope");
+  return (await res.json()) as AgentKnowledgeScope;
+}
+
 export async function listKnowledgeBases(): Promise<KnowledgeBase[]> {
   const res = await fetch(
     `${getBackendBaseURL()}/api/resources?type=knowledge_base&limit=200`,

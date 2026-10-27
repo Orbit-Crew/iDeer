@@ -2013,6 +2013,16 @@ export const zhCN: Translations = {
       modeAria: (slug: string) => `${slug} 依赖模式`,
       revisionAria: (slug: string) => `${slug} 已发布版本`,
     },
+    knowledgeScopeSelector: {
+      title: "本次对话使用的知识",
+      narrowOnly: "勾选只会缩小本次对话的授权知识范围，绝不会超出授权检索。",
+      loadError: "知识范围加载失败。",
+      deviceSource: "本机设备",
+      serverSource: "服务端知识",
+      deviceOffline: "设备离线",
+      revision: (no: number) => `v${no}`,
+      checkboxAria: (name: string) => `在本次对话中检索 ${name}`,
+    },
   },
   landing: {
     heroTitlePrefix: "用iDeer完成",

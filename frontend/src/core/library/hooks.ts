@@ -5,6 +5,7 @@ import {
   createKnowledgeEvalCase,
   createKnowledgeRevision,
   deleteKnowledgeEvalCase,
+  getAgentKnowledgeScope,
   getEvalCaseRevisionApplicability,
   getKnowledgeEvalCase,
   getKnowledgeRevision,
@@ -238,6 +239,17 @@ export function useLocalPublication(
       const publication = query.state.data;
       return publication?.status === "publishing" ? 2000 : false;
     },
+  });
+}
+
+// Issue 114: the caller-authorized KB sources behind one Agent, including the
+// caller's own device KBs with live availability. The chat selection rides
+// this view; the server still freezes and narrows the scope for every run.
+export function useAgentKnowledgeScope(agentId: string | undefined) {
+  return useQuery({
+    queryKey: ["agent-knowledge-scope", agentId],
+    queryFn: () => getAgentKnowledgeScope(agentId!),
+    enabled: Boolean(agentId),
   });
 }
 

@@ -564,8 +564,13 @@ async def decide_task_consent(
         UserRole.DEPARTMENT_ADMIN.value,
     }
     await _run(lambda service: service.get_device(record.device_id, actor_id=str(current_user.id), is_admin=is_admin))
-    if record.payload.get("operation") == "local.files.write":
-        raise HTTPException(403, detail={"code": "LOCAL_APPROVAL_REQUIRED", "message": "Approve workspace writes on the original Desktop"})
+    # Issue 114: device-gated operations are decided on the originating
+    # Desktop only. A Web caller — owner or admin — may observe the wait but
+    # can never act for the device user; the Run keeps polling until the
+    # device itself allows or denies.
+    device_gated = record.payload.get("operation")
+    if device_gated in {"local.files.write", "local.knowledge.search"}:
+        raise HTTPException(403, detail={"code": "LOCAL_APPROVAL_REQUIRED", "message": "Approve this operation on the original Desktop"})
     return TaskResponse.from_record(await broker.send_consent_decision(task_id, approved=payload.approved, actor_id=str(current_user.id)))
 
 

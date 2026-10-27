@@ -14,6 +14,7 @@ import {
   useSpecificChatMode,
   useThreadChat,
 } from "@/components/workspace/chats";
+import { KnowledgeScopeSelector } from "@/components/workspace/chats/knowledge-scope-selector";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { GoalStatus } from "@/components/workspace/goal-status";
 import { InputBox } from "@/components/workspace/input-box";
@@ -41,6 +42,7 @@ import { useAgent, useAgents } from "@/core/agents/hooks";
 import { getAPIClient } from "@/core/api";
 import { useBrowserControlEnabled } from "@/core/features";
 import { useI18n } from "@/core/i18n/hooks";
+import { useAgentKnowledgeScope } from "@/core/library";
 import { hasOpenHumanInputRequest } from "@/core/messages/human-input";
 import { isHiddenFromUIMessage } from "@/core/messages/utils";
 import { useModels } from "@/core/models/hooks";
@@ -197,6 +199,26 @@ export default function ChatPage() {
   const { agent: selectedAgentDetails } = useAgent(selectedAgent?.resource_id);
   const [pendingTemplate, setPendingTemplate] = useState<string | null>(null);
   const [templateResetKey, setTemplateResetKey] = useState(0);
+  // Issue 114: the caller's own device KBs and the Agent's server KBs are
+  // selectable per chat. The selection is a narrowing of the Server-authorized
+  // scope only — it rides `runtime_knowledge_scope` and the frozen closure
+  // still decides what a Run may search.
+  const { data: agentKnowledgeScope, isError: knowledgeScopeError } =
+    useAgentKnowledgeScope(selectedAgent?.resource_id);
+  const [narrowedKnowledge, setNarrowedKnowledge] = useState<string[] | null>(
+    null,
+  );
+  const knowledgeScopeSources = agentKnowledgeScope?.sources ?? [];
+  useEffect(() => {
+    // A scope change (different Agent, new revision) resets the narrowing.
+    setNarrowedKnowledge(null);
+  }, [selectedAgent?.resource_id, knowledgeScopeSources.length]);
+  const knowledgeScopeContext = useMemo(() => {
+    if (knowledgeScopeSources.length === 0) return {};
+    if (!narrowedKnowledge) return {};
+    if (narrowedKnowledge.length >= knowledgeScopeSources.length) return {};
+    return { runtime_knowledge_scope: [...narrowedKnowledge] };
+  }, [knowledgeScopeSources.length, narrowedKnowledge]);
 
   const activeScenario = selectedScenario;
   const handleSelectScenario = useCallback(
@@ -396,7 +418,9 @@ export default function ChatPage() {
       return false;
     },
     extraContext: () =>
-      selectionBinding.valid ? selectionBinding.context : undefined,
+      selectionBinding.valid
+        ? { ...selectionBinding.context, ...knowledgeScopeContext }
+        : undefined,
     // Project-scoped pre-create on the turn-submit fence; the project param
     // is the scope so a scope change invalidates an in-flight submission.
     prepare: prepareProjectThread,
@@ -592,6 +616,21 @@ export default function ChatPage() {
                             {t.workbench.focusAnswer}
                           </span>
                         </p>
+                      )}
+                      {knowledgeScopeSources.length > 0 && (
+                        <div className="mb-2 w-full">
+                          <KnowledgeScopeSelector
+                            scope={agentKnowledgeScope}
+                            loadError={knowledgeScopeError}
+                            selected={
+                              narrowedKnowledge ??
+                              knowledgeScopeSources.map(
+                                (source) => source.resource_id,
+                              )
+                            }
+                            onChange={setNarrowedKnowledge}
+                          />
+                        </div>
                       )}
                       <InputBox
                         className="workbench-input-surface bg-background/5 w-full"

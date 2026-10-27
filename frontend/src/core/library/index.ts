@@ -1,4 +1,6 @@
 export type {
+  AgentKnowledgeScope,
+  AgentKnowledgeSource,
   CreateKnowledgeBaseRequest,
   CreateKnowledgeEvalCaseRequest,
   EvalCaseApplicabilityItem,
@@ -35,6 +37,7 @@ export {
   createKnowledgeEvalCase,
   createKnowledgeRevision,
   deleteKnowledgeEvalCase,
+  getAgentKnowledgeScope,
   getEvalCaseRevisionApplicability,
   getKnowledgeEvalCase,
   getKnowledgeRevision,
@@ -65,6 +68,7 @@ export {
   editKnowledgeDocument,
 } from "./api";
 export {
+  useAgentKnowledgeScope,
   useCreateKnowledgeBase,
   useCreateKnowledgeEvalCase,
   useCreateKnowledgeRevision,

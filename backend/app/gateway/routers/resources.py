@@ -1163,6 +1163,26 @@ async def get_knowledge_local_publication(
     return await knowledge.get_local_publication(_resource_actor(current_user), resource_id, revision_id)
 
 
+@router.get("/{resource_id}/knowledge-scope")
+@translate_resource_errors
+async def get_agent_knowledge_scope(
+    resource_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """The caller-authorized KB sources behind one Agent (#114).
+
+    The Web selection surface reads this to offer exactly what a Run would
+    bind for this caller: server provider KBs and the caller's own device
+    KBs with live availability. Authorization and freeze are the Run's own
+    closure resolution; a selection made against this view rides
+    ``runtime_knowledge_scope`` and can only narrow the frozen scope.
+    """
+    from app.gateway.hybrid_knowledge import knowledge_scope_view
+
+    async with _factory()() as session:
+        return await knowledge_scope_view(session, _resource_actor(current_user), resource_id)
+
+
 @router.post("/{resource_id}/eval-cases", status_code=201)
 @translate_resource_errors
 async def create_eval_case(

@@ -2146,6 +2146,17 @@ export const enUS = {
       modeAria: (slug: string) => `${slug} dependency mode`,
       revisionAria: (slug: string) => `${slug} published revision`,
     },
+    knowledgeScopeSelector: {
+      title: "Knowledge for this chat",
+      narrowOnly:
+        "Selection only narrows this chat's authorized knowledge; it can never search beyond it.",
+      loadError: "Unable to load the knowledge scope.",
+      deviceSource: "This device",
+      serverSource: "Server knowledge",
+      deviceOffline: "device offline",
+      revision: (no: number) => `v${no}`,
+      checkboxAria: (name: string) => `Search ${name} in this chat`,
+    },
   },
   landing: {
     heroTitlePrefix: "Get it done with iDeer",

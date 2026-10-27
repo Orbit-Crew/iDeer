@@ -412,21 +412,44 @@ async def prepare_canonical_agent_run(
         # payload carries frozen identity fields only, the device's unique
         # Runtime re-validates every document hash, and results outside the
         # frozen manifest are dropped before any receipt is built.
+        # Issue 114: a failed local leg is a structured source failure instead
+        # of a tool error — it must never impersonate "no material". Runs with
+        # other authorized datasets proceed marked incomplete; local-only runs
+        # pause. Scope, attribution, and receipts stay the frozen closure's.
         local_knowledge_search = None
+        # knowledge_scope maps logical KB id → dataset token; the dispatch
+        # specs are keyed by dataset token, so the membership check runs
+        # against the bound datasets (a latent #113 filter bug fixed here —
+        # checking the keys would silently drop every local dispatch).
         knowledge_specs = {
             dataset: spec
             for dataset, spec in build_local_knowledge_specs(revision_metadata).items()
-            if dataset in knowledge_scope
+            if dataset in set(knowledge_scope.values())
         }
         if knowledge_specs:
+            from agentplatform_extension.knowledge.scope import is_local_dataset
             from langchain_core.tools import ToolException
 
+            from app.agentplatform.resources.service import ResourceAction
             from app.device_control.broker import TaskStatus, get_device_broker
+            from app.gateway.hybrid_knowledge import (
+                local_retrieval_pause_result,
+                local_source_unavailable_result,
+                requires_local_material,
+                source_attribution,
+            )
             from app.gateway.local_knowledge import (
                 LOCAL_KNOWLEDGE_OPERATION,
                 search_task_payload,
                 validate_local_search_result,
             )
+            local_required = requires_local_material(knowledge_scope)
+
+            def _source_failure(dataset_id: str, error_code: str) -> dict[str, Any]:
+                attribution = source_attribution(dataset_id, revision_metadata.get(dataset_id) or {})
+                if local_required and is_local_dataset(dataset_id):
+                    return local_retrieval_pause_result(attribution, error_code)
+                return local_source_unavailable_result(attribution, error_code)
 
             async def search_local_knowledge(query: str, dataset_id: str) -> Any:
                 from agentplatform_extension.evidence import current_tool_call_evidence
@@ -442,13 +465,13 @@ async def prepare_canonical_agent_run(
                     or connection.owner_id != str(user_id)
                     or LOCAL_KNOWLEDGE_OPERATION not in connection.capabilities
                 ):
-                    raise ToolException("KNOWLEDGE_DEVICE_UNAVAILABLE")
+                    return _source_failure(dataset_id, "KNOWLEDGE_DEVICE_UNAVAILABLE")
                 async with session_factory() as current_session:
                     current_user = (
                         await current_session.execute(select(UserModel).where(UserModel.id == str(user_id), UserModel.disabled.is_not(True)))
                     ).scalar_one_or_none()
                     if current_user is None or ResourceAction.USE not in role_permissions(current_user.role):
-                        raise ToolException("KNOWLEDGE_DEVICE_UNAVAILABLE")
+                        return _source_failure(dataset_id, "KNOWLEDGE_DEVICE_UNAVAILABLE")
                 record = await broker.send_task(
                     device_id=spec["device_id"],
                     operation=LOCAL_KNOWLEDGE_OPERATION,
@@ -486,7 +509,7 @@ async def prepare_canonical_agent_run(
                         tool_call_id=record.tool_call_id or None,
                     )
                 if record.status is not TaskStatus.COMPLETED:
-                    raise ToolException(record.error_code or "LOCAL_KNOWLEDGE_" + record.status.value.upper())
+                    return _source_failure(dataset_id, str(record.error_code or "LOCAL_KNOWLEDGE_" + record.status.value.upper()))
                 return validate_local_search_result(record.result, spec)
 
             local_knowledge_search = search_local_knowledge
