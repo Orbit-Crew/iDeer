@@ -569,7 +569,7 @@ async def decide_task_consent(
     # can never act for the device user; the Run keeps polling until the
     # device itself allows or denies.
     device_gated = record.payload.get("operation")
-    if device_gated in {"local.files.write", "local.knowledge.search"}:
+    if device_gated in {"local.files.write", "local.knowledge.search", "local.knowledge.material"}:
         raise HTTPException(403, detail={"code": "LOCAL_APPROVAL_REQUIRED", "message": "Approve this operation on the original Desktop"})
     return TaskResponse.from_record(await broker.send_consent_decision(task_id, approved=payload.approved, actor_id=str(current_user.id)))
 

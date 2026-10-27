@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.agentplatform.knowledge.documents import KnowledgeDocumentService
 from app.agentplatform.knowledge.eval_cases import KnowledgeEvalCaseService
 from app.agentplatform.knowledge.evaluation import KnowledgeEvaluationService
+from app.agentplatform.knowledge.graph_generation import KnowledgeGraphGenerationService
 from app.agentplatform.knowledge.local_import import KnowledgeLocalImportService
 from app.agentplatform.knowledge.local_publish import KnowledgeLocalPublishService
 from app.agentplatform.knowledge.provider import KnowledgeProvider, KnowledgeProviderUnavailable
@@ -49,12 +50,16 @@ class KnowledgeFacade:
         provider_factory: ProviderFactory = configured_ragflow_provider,
         search: SearchCall | None = None,
         settings_factory: SettingsFactory | None = None,
+        graph_generator: Any | None = None,
+        graph_broker_factory: Any | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._audit = audit
         self._provider_factory = provider_factory
         self._search = search
         self._settings_factory = settings_factory
+        self._graph_generator = graph_generator
+        self._graph_broker_factory = graph_broker_factory
 
     def _documents(self, session: Any, actor: ResourceActor) -> KnowledgeDocumentService:
         return KnowledgeDocumentService(session, actor)
@@ -281,6 +286,44 @@ class KnowledgeFacade:
 
     def _local_publications(self, session: Any, actor: ResourceActor) -> KnowledgeLocalPublishService:
         return KnowledgeLocalPublishService(session, actor)
+
+    def _graph_generations(self, session: Any, actor: ResourceActor) -> KnowledgeGraphGenerationService:
+        return KnowledgeGraphGenerationService(
+            session,
+            actor,
+            generator=self._graph_generator,
+            broker_factory=self._graph_broker_factory,
+        )
+
+    async def generate_graph(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Orchestrate controlled graph generation for one frozen revision (#116).
+
+        Every model call runs on the Server; device material is requested per
+        frozen document through the authorized dispatch. The per-document
+        results — successes and fixed-category failures alike — are the
+        generation's honest outcome.
+        """
+        async with self._session_factory() as session:
+            result = await self._graph_generations(session, actor).generate(resource_id, revision_id)
+            await session.commit()
+        await self._audit(
+            actor.user_id,
+            "knowledge_graph_generated",
+            "knowledge_base",
+            resource_id,
+            {
+                "revision_id": revision_id,
+                "status": result.get("status"),
+                "generated": result.get("generated"),
+                "failed": result.get("failed"),
+            },
+        )
+        return result
+
+    async def graph_view(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Project the stored graph, its sources, and its generation status."""
+        async with self._session_factory() as session:
+            return await self._graph_generations(session, actor).view(resource_id, revision_id)
 
     async def register_local_import(
         self,

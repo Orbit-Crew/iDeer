@@ -22,7 +22,7 @@ from app.gateway.routers import devices
 
 
 @pytest.mark.parametrize("role", ["user", "super_admin"])
-@pytest.mark.parametrize("operation", ["local.knowledge.search", "local.files.write"])
+@pytest.mark.parametrize("operation", ["local.knowledge.search", "local.files.write", "local.knowledge.material"])
 def test_remote_consent_cannot_approve_device_gated_operations(monkeypatch, role, operation):
     record = SimpleNamespace(device_id="owned-device", payload={"operation": operation})
 

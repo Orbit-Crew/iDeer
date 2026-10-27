@@ -397,3 +397,48 @@ class KnowledgeEvalResult(Base):
         UniqueConstraint("run_id", "case_id", name="uq_knowledge_eval_results_case"),
         Index("ix_knowledge_eval_results_run", "run_id", "created_at"),
     )
+
+
+class KnowledgeGraphArtifact(Base):
+    """One document's controlled graph extraction for one frozen revision (#116).
+
+    Graph generation is a server-orchestrated derivation of a frozen
+    revision: one row per (revision, document) records the extracted
+    entities and relations with their document-source binding, or the fixed
+    category of the failure. Rows are keyed by revision so two revisions'
+    graphs stay isolated, and the frozen manifest hash travels with every
+    row so a view can always name the version it came from.
+    """
+
+    __tablename__ = "knowledge_graph_artifacts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    knowledge_base_id: Mapped[str] = mapped_column(
+        ForeignKey("knowledge_bases.resource_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision_id: Mapped[str] = mapped_column(
+        ForeignKey("knowledge_base_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    document_filename: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    document_content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="completed")
+    entities_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    relations_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    entity_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    relation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    generated_by: Mapped[str] = mapped_column(ForeignKey("users_ext.id", ondelete="RESTRICT"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+    __table_args__ = (
+        UniqueConstraint("revision_id", "document_id", name="uq_knowledge_graph_revision_document"),
+        CheckConstraint("status in ('completed','failed')", name="ck_knowledge_graph_artifacts_status"),
+        Index("ix_knowledge_graph_revision", "revision_id"),
+    )

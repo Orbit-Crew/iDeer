@@ -1163,6 +1163,41 @@ async def get_knowledge_local_publication(
     return await knowledge.get_local_publication(_resource_actor(current_user), resource_id, revision_id)
 
 
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/graph")
+@translate_resource_errors
+async def generate_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Orchestrate controlled graph generation for one frozen revision (#116).
+
+    Every model call runs on the Server's own configuration; a device-local
+    revision's material is requested one frozen document at a time through
+    the authorized broker dispatch, so the device never bulk-uploads its
+    library. Each document records its own success or fixed-category failure.
+    """
+    return await knowledge.generate_graph(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/graph")
+@translate_resource_errors
+async def get_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Read one revision's controlled graph with its sources and status (#116).
+
+    Entities, relations, and document sources are bound to the frozen
+    KB/Revision identity and the caller's visibility: a caller without
+    access reads a 404, and another revision's graph never bleeds in.
+    """
+    return await knowledge.graph_view(_resource_actor(current_user), resource_id, revision_id)
+
+
 @router.get("/{resource_id}/knowledge-scope")
 @translate_resource_errors
 async def get_agent_knowledge_scope(
