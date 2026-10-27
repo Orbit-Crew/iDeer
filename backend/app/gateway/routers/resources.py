@@ -1057,6 +1057,24 @@ async def register_knowledge_local_import(
     )
 
 
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/activate-local")
+@translate_resource_errors
+async def activate_knowledge_local_revision(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Anchor a device-local KnowledgeBase on one registered local import (#113).
+
+    Activation moves only the LIVE pointer so Run closure resolution can
+    freeze this revision; the device keeps the original files and no provider
+    dataset is created. A KB without an activated local revision stays
+    un-runnable instead of falling back to current device content.
+    """
+    return await knowledge.activate_local_revision(_resource_actor(current_user), resource_id, revision_id)
+
+
 @router.post("/{resource_id}/eval-cases", status_code=201)
 @translate_resource_errors
 async def create_eval_case(

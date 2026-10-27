@@ -308,6 +308,29 @@ class KnowledgeFacade:
         )
         return revision
 
+    async def activate_local_revision(
+        self,
+        actor: ResourceActor,
+        resource_id: str,
+        revision_id: str,
+    ) -> dict[str, Any]:
+        """Anchor a device-local KnowledgeBase on one local-import revision (#113)."""
+        async with self._session_factory() as session:
+            revision = await self._local_imports(session, actor).activate_local_revision(resource_id, revision_id)
+            await session.commit()
+        await self._audit(
+            actor.user_id,
+            "knowledge_local_revision_activated",
+            "knowledge_revision",
+            str(revision["id"]),
+            {
+                "resource_id": resource_id,
+                "revision_no": revision["revision_no"],
+                "manifest_hash": revision["manifest_hash"],
+            },
+        )
+        return revision
+
     # --- Eval cases --------------------------------------------------------
 
     async def create_eval_case(

@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 
 from app.gateway.authz import _cached_rbac_identity
+from app.gateway.local_knowledge import build_local_knowledge_specs
 
 
 def _scope_restriction(context: dict[str, Any], key: str) -> set[str] | None:
@@ -44,6 +45,103 @@ class SelectedSkillOutsideClosure(Exception):
         self.agent = agent
         self.requested_skill = requested_skill
         self.available_skills = available_skills
+
+
+def build_frozen_knowledge_bindings(
+    closure: list[Any],
+    *,
+    caller_user_id: str,
+) -> tuple[dict[str, str], dict[str, list[str]], dict[str, dict[str, object]], dict[str, dict[str, object]]]:
+    """Freeze KB → dataset bindings from the closure's resolved revisions.
+
+    Provider-backed revisions keep their frozen provider dataset with the
+    revision's own document allowlist. A device-local import revision (#113)
+    binds to a ``local:<revision_id>`` dataset only when the run caller owns
+    the KB and the manifest names exactly one importing device; anything else
+    stays omitted, so an unauthorized or unrouteable KB remains invisible to
+    the model instead of failing the Run.
+    """
+
+    from app.agentplatform.knowledge.revisions import is_local_import_revision
+    from app.gateway.local_knowledge import local_dataset_token
+
+    bindings: dict[str, str] = {}
+    ready_document_ids: dict[str, list[str]] = {}
+    retrieval_profiles: dict[str, dict[str, object]] = {}
+    revision_metadata: dict[str, dict[str, object]] = {}
+    for item in closure:
+        revision = item.knowledge_revision
+        if revision is None:
+            continue
+        resource = item.resource
+        if is_local_import_revision(revision):
+            if str(resource.owner_id) != str(caller_user_id):
+                continue
+            device_ids = sorted({
+                str(entry["metadata"].get("device_id"))
+                for entry in (revision.manifest_json or [])
+                if isinstance(entry, dict) and isinstance(entry.get("metadata"), dict) and entry["metadata"].get("device_id")
+            })
+            if len(device_ids) != 1 or not device_ids[0]:
+                continue
+            documents = {
+                str(entry["document_id"]): {
+                    "logical_document_id": str(entry["document_id"]),
+                    "display_name": str(entry.get("filename") or ""),
+                    "content_hash": str(entry.get("content_hash") or ""),
+                }
+                for entry in (revision.manifest_json or [])
+                if isinstance(entry, dict) and entry.get("document_id") and entry.get("filename") and entry.get("content_hash")
+            }
+            if not documents:
+                continue
+            dataset = local_dataset_token(revision.id)
+            bindings[resource.id] = dataset
+            ready_document_ids[dataset] = sorted(documents)
+            revision_metadata[dataset] = {
+                "knowledge_base_id": resource.id,
+                "revision_id": revision.id,
+                "revision_no": revision.revision_no,
+                "manifest_hash": revision.manifest_hash,
+                "configuration_source": "frozen_run_revision",
+                "origin": "local_import",
+                "device_id": device_ids[0],
+                "documents": documents,
+            }
+            continue
+        if not revision.provider_dataset_id:
+            continue
+        bindings[resource.id] = revision.provider_dataset_id
+        ready_document_ids[revision.provider_dataset_id] = [str(provider_document_id) for provider_document_id in (revision.provider_doc_map_json or {}).values()]
+        profiles = next(
+            (entry.get("knowledge_profiles") for entry in (revision.manifest_json or []) if isinstance(entry, dict) and isinstance(entry.get("knowledge_profiles"), dict)),
+            {},
+        )
+        retrieval = profiles.get("retrieval") if isinstance(profiles, dict) else None
+        if isinstance(retrieval, dict):
+            retrieval_profiles[revision.provider_dataset_id] = dict(retrieval)
+        revision_metadata[revision.provider_dataset_id] = {
+            "knowledge_base_id": resource.id,
+            "revision_id": revision.id,
+            "revision_no": revision.revision_no,
+            "manifest_hash": revision.manifest_hash,
+            "configuration_source": "frozen_run_revision",
+            "documents": {
+                str(provider_document_id): {
+                    "logical_document_id": str(document_id),
+                    "display_name": next(
+                        (entry.get("filename") for entry in (revision.manifest_json or []) if isinstance(entry, dict) and str(entry.get("document_id")) == str(document_id)),
+                        None,
+                    ),
+                    "content_hash": next(
+                        (entry.get("content_hash") for entry in (revision.manifest_json or []) if isinstance(entry, dict) and str(entry.get("document_id")) == str(document_id)),
+                        None,
+                    ),
+                }
+                for document_id, provider_document_id in (revision.provider_doc_map_json or {}).items()
+            },
+        }
+    return bindings, ready_document_ids, retrieval_profiles, revision_metadata
 
 
 async def prepare_canonical_agent_run(
@@ -149,45 +247,12 @@ async def prepare_canonical_agent_run(
             # closure (frozen at enqueue), never from the mutable draft
             # dataset binding; the allowlist is the revision's own document
             # set. A KB without a published revision was already rejected by
-            # closure resolution.
-            bindings = {}
-            ready_document_ids: dict[str, list[str]] = {}
-            retrieval_profiles: dict[str, dict[str, object]] = {}
-            revision_metadata: dict[str, dict[str, object]] = {}
-            for item in closure:
-                revision = item.knowledge_revision
-                if revision is None or not revision.provider_dataset_id:
-                    continue
-                bindings[item.resource.id] = revision.provider_dataset_id
-                ready_document_ids[revision.provider_dataset_id] = [str(provider_document_id) for provider_document_id in (revision.provider_doc_map_json or {}).values()]
-                profiles = next(
-                    (entry.get("knowledge_profiles") for entry in (revision.manifest_json or []) if isinstance(entry, dict) and isinstance(entry.get("knowledge_profiles"), dict)),
-                    {},
-                )
-                retrieval = profiles.get("retrieval") if isinstance(profiles, dict) else None
-                if isinstance(retrieval, dict):
-                    retrieval_profiles[revision.provider_dataset_id] = dict(retrieval)
-                revision_metadata[revision.provider_dataset_id] = {
-                    "knowledge_base_id": item.resource.id,
-                    "revision_id": revision.id,
-                    "revision_no": revision.revision_no,
-                    "manifest_hash": revision.manifest_hash,
-                    "configuration_source": "frozen_run_revision",
-                    "documents": {
-                        str(provider_document_id): {
-                            "logical_document_id": str(document_id),
-                            "display_name": next(
-                                (entry.get("filename") for entry in (revision.manifest_json or []) if isinstance(entry, dict) and str(entry.get("document_id")) == str(document_id)),
-                                None,
-                            ),
-                            "content_hash": next(
-                                (entry.get("content_hash") for entry in (revision.manifest_json or []) if isinstance(entry, dict) and str(entry.get("document_id")) == str(document_id)),
-                                None,
-                            ),
-                        }
-                        for document_id, provider_document_id in (revision.provider_doc_map_json or {}).items()
-                    },
-                }
+            # closure resolution. Device-local import revisions (#113) bind
+            # only for the owning caller with one importing device.
+            bindings, ready_document_ids, retrieval_profiles, revision_metadata = build_frozen_knowledge_bindings(
+                closure,
+                caller_user_id=str(user_id),
+            )
             run_context = diagnostic_context or {}
             try:
                 tool_config = get_app_config().get_tool_config("knowledge_search")
@@ -341,6 +406,90 @@ async def prepare_canonical_agent_run(
                 return record.result
 
             local_tool_executor = LocalToolExecutor(local_authorization, route, send_local)
+
+        # Issue 113: device-local KBs schedule retrieval to the one importing
+        # device through the same broker discipline as local file tasks — the
+        # payload carries frozen identity fields only, the device's unique
+        # Runtime re-validates every document hash, and results outside the
+        # frozen manifest are dropped before any receipt is built.
+        local_knowledge_search = None
+        knowledge_specs = {
+            dataset: spec
+            for dataset, spec in build_local_knowledge_specs(revision_metadata).items()
+            if dataset in knowledge_scope
+        }
+        if knowledge_specs:
+            from langchain_core.tools import ToolException
+
+            from app.device_control.broker import TaskStatus, get_device_broker
+            from app.gateway.local_knowledge import (
+                LOCAL_KNOWLEDGE_OPERATION,
+                search_task_payload,
+                validate_local_search_result,
+            )
+
+            async def search_local_knowledge(query: str, dataset_id: str) -> Any:
+                from agentplatform_extension.evidence import current_tool_call_evidence
+
+                spec = knowledge_specs.get(dataset_id)
+                if spec is None:
+                    raise ToolException("KNOWLEDGE_ACCESS_DENIED")
+                broker = get_device_broker()
+                connection = broker.connections.get(spec["device_id"])
+                if (
+                    connection is None
+                    or not connection.tasks_allowed
+                    or connection.owner_id != str(user_id)
+                    or LOCAL_KNOWLEDGE_OPERATION not in connection.capabilities
+                ):
+                    raise ToolException("KNOWLEDGE_DEVICE_UNAVAILABLE")
+                async with session_factory() as current_session:
+                    current_user = (
+                        await current_session.execute(select(UserModel).where(UserModel.id == str(user_id), UserModel.disabled.is_not(True)))
+                    ).scalar_one_or_none()
+                    if current_user is None or ResourceAction.USE not in role_permissions(current_user.role):
+                        raise ToolException("KNOWLEDGE_DEVICE_UNAVAILABLE")
+                record = await broker.send_task(
+                    device_id=spec["device_id"],
+                    operation=LOCAL_KNOWLEDGE_OPERATION,
+                    path="",
+                    run_id=run_id,
+                    tool_call_id=str(current_tool_call_evidence() or ""),
+                    expires_in=timedelta(minutes=5),
+                    payload_extra={
+                        "arguments": search_task_payload(query, spec),
+                        "operation": LOCAL_KNOWLEDGE_OPERATION,
+                        "thread_id": str(thread_id or "canonical"),
+                    },
+                )
+                try:
+                    while record.status in {
+                        TaskStatus.CREATED,
+                        TaskStatus.SENT,
+                        TaskStatus.ACKED,
+                        TaskStatus.CONSENT_REQUIRED,
+                        TaskStatus.CANCEL_REQUESTED,
+                        TaskStatus.PROGRESS,
+                    }:
+                        await asyncio.sleep(0.05)
+                        record = broker.get_task(record.task_id)
+                except asyncio.CancelledError:
+                    await asyncio.shield(broker.cancel_task(record.task_id))
+                    raise
+                if record.receipt is not None:
+                    from agentplatform_extension.evidence import (
+                        record_local_execution_receipt,
+                    )
+
+                    record_local_execution_receipt(
+                        record.receipt,
+                        tool_call_id=record.tool_call_id or None,
+                    )
+                if record.status is not TaskStatus.COMPLETED:
+                    raise ToolException(record.error_code or "LOCAL_KNOWLEDGE_" + record.status.value.upper())
+                return validate_local_search_result(record.result, spec)
+
+            local_knowledge_search = search_local_knowledge
         return build_canonical_agent_factory(
             definition,
             skills,
@@ -351,6 +500,7 @@ async def prepare_canonical_agent_run(
                 retrieval_profiles={dataset: retrieval_profiles[dataset] for dataset in knowledge_scope.values() if dataset in retrieval_profiles},
                 revision_metadata={dataset: revision_metadata[dataset] for dataset in knowledge_scope.values() if dataset in revision_metadata},
             ),
+            local_knowledge_search=local_knowledge_search,
             local_authorization=local_authorization,
             local_tool_executor=local_tool_executor,
             local_tool_descriptors=local_tool_descriptors if isinstance(local_tool_descriptors, dict) else None,

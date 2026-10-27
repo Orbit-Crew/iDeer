@@ -17,13 +17,19 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agentplatform.knowledge import documents as knowledge_documents
-from app.agentplatform.knowledge.models import KnowledgeRevision
+from app.agentplatform.knowledge.models import KnowledgeBase, KnowledgeRevision
 from app.agentplatform.knowledge.revisions import (
     LOCAL_IMPORT_ORIGIN,
     _revision_payload,
     canonical_manifest_hash,
+    is_local_import_revision,
 )
-from app.agentplatform.resources.service import ResourceActor, ResourceNotFound, ResourceService
+from app.agentplatform.resources.service import (
+    ResourceActor,
+    ResourceConflict,
+    ResourceNotFound,
+    ResourceService,
+)
 
 MAX_IMPORT_DOCUMENTS = 200
 
@@ -129,5 +135,28 @@ class KnowledgeLocalImportService:
             created_by=self.resource_service.actor.user_id,
         )
         self.session.add(revision)
+        await self.session.flush()
+        return _revision_payload(revision, documents=list(revision.manifest_json))
+
+    async def activate_local_revision(self, resource_id: str, revision_id: str) -> dict[str, object]:
+        """Anchor the KnowledgeBase's LIVE view on one local-import revision (#113).
+
+        Activation is a pointer move only: no provider dataset is created and
+        no content reaches the platform, so the frozen device manifest stays
+        the version of record. A missing activation is the "no frozen version"
+        state — runs refuse instead of falling back to draft or current
+        device content.
+        """
+
+        await self._knowledge_base(resource_id)
+        revision = await self.session.get(KnowledgeRevision, revision_id)
+        if revision is None or revision.knowledge_base_id != resource_id:
+            raise ResourceNotFound(f"Knowledge revision {revision_id} not found")
+        if not is_local_import_revision(revision) or revision.status != "draft":
+            raise ResourceConflict("Only a registered local import revision can anchor a device-local KnowledgeBase")
+        kb_row = await self.session.get(KnowledgeBase, resource_id)
+        if kb_row is None:
+            raise ResourceNotFound(f"KnowledgeBase {resource_id} not found")
+        kb_row.active_revision_id = revision.id
         await self.session.flush()
         return _revision_payload(revision, documents=list(revision.manifest_json))

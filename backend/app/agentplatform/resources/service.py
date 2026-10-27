@@ -1489,20 +1489,30 @@ class ResourceService:
         dependency anchors on one explicit revision ID. Both reject when no
         usable published revision exists — a run never falls back to draft
         content or the mutable provider binding.
+
+        A device-local import revision (#113) has no provider content, so it
+        stays ``draft`` forever; it is runnable exactly when it is anchored —
+        the LIVE pointer or an explicit PIN — and never otherwise.
         """
 
+        kb_row = await self.session.get(KnowledgeBase, resource_id)
         if forced_revision_id is not None:
             query = select(KnowledgeRevision).where(
                 KnowledgeRevision.id == forced_revision_id,
                 KnowledgeRevision.knowledge_base_id == resource_id,
             )
         else:
-            kb_row = await self.session.get(KnowledgeBase, resource_id)
             if kb_row is None or not kb_row.active_revision_id:
                 raise ResourceConflict(f"KnowledgeBase {resource_id} has no published revision to run against")
             query = select(KnowledgeRevision).where(KnowledgeRevision.id == kb_row.active_revision_id)
         revision = (await self.session.execute(query)).scalar_one_or_none()
-        if revision is None or revision.status not in {"published", "superseded"}:
+        # Imported lazily: knowledge.revisions imports this module for its
+        # service types, so a module-level import would be circular.
+        from app.agentplatform.knowledge.revisions import is_local_import_revision
+
+        anchored = forced_revision_id is not None or (kb_row is not None and revision is not None and kb_row.active_revision_id == revision.id)
+        local_statuses = {"draft"} if anchored and revision is not None and is_local_import_revision(revision) else set()
+        if revision is None or revision.status not in {"published", "superseded"} | local_statuses:
             raise ResourceConflict(f"KnowledgeBase {resource_id} has no published revision to run against")
         if revision.integrity_status in UNUSABLE_INTEGRITY:
             raise ResourceConflict(f"KnowledgeBase {resource_id} active revision is drifted; reconciliation flagged it as {revision.integrity_status}")
