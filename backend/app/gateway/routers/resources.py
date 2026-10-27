@@ -1257,6 +1257,63 @@ async def ask_knowledge_revision_graph(
     return await knowledge.graph_ask(_resource_actor(current_user), resource_id, revision_id, body.document_ids, body.question)
 
 
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/wiki")
+@translate_resource_errors
+async def generate_knowledge_revision_wiki(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Orchestrate controlled wiki generation for one frozen revision (#118).
+
+    Every model call runs on the Server's own configuration; a device-local
+    revision's material is requested one frozen document at a time through
+    the authorized broker dispatch, so the device never bulk-uploads its
+    library. Each page records its own outcome — completed, skipped with its
+    fixed category, or failed — and the frozen revision itself is never
+    modified, so a retry cannot override the Run's frozen basis.
+    """
+    return await knowledge.generate_wiki(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/wiki")
+@translate_resource_errors
+async def get_knowledge_revision_wiki(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Read one revision's wiki page list with its progress and sources (#118).
+
+    Pages are bound to the frozen KB/Revision identity and the caller's
+    visibility: a caller without access reads a 404, another revision's
+    pages never bleed in, and progress, skips, and partial failures are
+    honest per-page records.
+    """
+    return await knowledge.wiki_view(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/wiki/pages/{document_id}")
+@translate_resource_errors
+async def get_knowledge_revision_wiki_page(
+    resource_id: str,
+    revision_id: str,
+    document_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Read one wiki page with its body and frozen source binding (#118).
+
+    The document id must be frozen in this revision — anything else reads as
+    not-found, so an unauthorized or out-of-scope page never leaks a title
+    or a body. A skipped or failed page names its fixed category instead of
+    a body.
+    """
+    return await knowledge.wiki_page(_resource_actor(current_user), resource_id, revision_id, document_id)
+
+
 @router.get("/{resource_id}/knowledge-scope")
 @translate_resource_errors
 async def get_agent_knowledge_scope(

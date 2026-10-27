@@ -215,15 +215,20 @@ class RevisionMaterialSource:
     Provider originals are read from platform storage; device-local
     documents are requested per frozen identity through the authorized
     broker dispatch. Both ends re-check the frozen digest before text moves,
-    so neither side can substitute content. Graph generation (#116) and
-    scoped graph QA (#117) both read material only through this class.
+    so neither side can substitute content. Graph generation (#116), scoped
+    graph QA (#117), and wiki generation (#118) all read material only
+    through this class.
     """
 
-    def __init__(self, session: AsyncSession, actor: ResourceActor, broker_factory: Callable[[], Any] | None) -> None:
+    def __init__(self, session: AsyncSession, actor: ResourceActor, broker_factory: Callable[[], Any] | None, *, label: str = "knowledge-graph") -> None:
         self.session = session
         self.actor = actor
         self._broker_factory = broker_factory
         self._broker: Any = None
+        # The dispatch identity records which surface asked for the document
+        # (graph generation, scoped QA, wiki generation); the execution chain
+        # and its re-verification stay shared.
+        self._label = label
 
     async def document_text(self, kb: Any, revision: KnowledgeRevision, entry: dict[str, Any]) -> str:
         if _entry_origin(entry) == LOCAL_IMPORT_ORIGIN:
@@ -300,7 +305,7 @@ class RevisionMaterialSource:
             device_id=device_id,
             operation=LOCAL_KNOWLEDGE_MATERIAL_OPERATION,
             path="",
-            run_id=f"knowledge-graph:{revision.id}",
+            run_id=f"{self._label}:{revision.id}",
             tool_call_id="",
             expires_in=timedelta(minutes=5),
             payload_extra={
@@ -310,7 +315,7 @@ class RevisionMaterialSource:
                     "documents": [identity],
                 },
                 "operation": LOCAL_KNOWLEDGE_MATERIAL_OPERATION,
-                "thread_id": "knowledge-graph",
+                "thread_id": self._label,
             },
         )
         while record.status in {
