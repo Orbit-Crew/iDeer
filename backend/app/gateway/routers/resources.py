@@ -1314,6 +1314,27 @@ async def get_knowledge_revision_wiki_page(
     return await knowledge.wiki_page(_resource_actor(current_user), resource_id, revision_id, document_id)
 
 
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/wiki/navigation")
+@translate_resource_errors
+async def get_knowledge_revision_wiki_navigation(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Read one revision's wiki index with links, backlinks, and graph (#119).
+
+    A read-only navigation projection of artifacts that already exist for
+    exactly this frozen revision: the #118 page list, the links its completed
+    bodies declare (resolved only inside this revision's manifest, so a
+    missing target stays an explicit missing entry), the inverted backlinks,
+    and the #116 graph rows as the association graph. Visibility is the KB's
+    own — a caller without access reads a 404, and no other revision's or
+    account's titles, links, or relations can appear here.
+    """
+    return await knowledge.wiki_navigation(_resource_actor(current_user), resource_id, revision_id)
+
+
 @router.get("/{resource_id}/knowledge-scope")
 @translate_resource_errors
 async def get_agent_knowledge_scope(
