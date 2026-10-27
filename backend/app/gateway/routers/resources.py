@@ -252,6 +252,24 @@ class KnowledgeDocumentUpdateRequest(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
+class LocalImportDocumentRequest(BaseModel):
+    """Device-side document identity for one explicit local import (#112).
+
+    Only identity metadata crosses the seam: the original file and the
+    device-side index stay on the device that imported them.
+    """
+
+    filename: str
+    content_hash: str
+    size_bytes: int
+    mime_type: str | None = None
+
+
+class LocalImportRequest(BaseModel):
+    documents: list[LocalImportDocumentRequest] = Field(min_length=1)
+    device_id: str | None = Field(default=None, max_length=128)
+
+
 class EvalCaseCreateRequest(BaseModel):
     question: str
     expected_document_ids: list[str] = Field(default_factory=list)
@@ -1014,6 +1032,28 @@ async def publish_knowledge_revision(
         resource_id,
         revision_id,
         schedule=background_tasks.add_task,
+    )
+
+
+@router.post("/{resource_id}/knowledge-revisions/local-imports", status_code=201)
+@translate_resource_errors
+async def register_knowledge_local_import(
+    resource_id: str,
+    body: LocalImportRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Register one explicit Desktop local import as an immutable draft revision (#112).
+
+    The device keeps the original files and its index; only document
+    identities, sizes, MIME types, and content hashes reach the platform, so
+    the frozen manifest is the governance record for a KB that never uploads.
+    """
+    return await knowledge.register_local_import(
+        _resource_actor(current_user),
+        resource_id,
+        documents=[document.model_dump() for document in body.documents],
+        device_id=body.device_id,
     )
 
 

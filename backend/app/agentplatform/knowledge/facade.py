@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.agentplatform.knowledge.documents import KnowledgeDocumentService
 from app.agentplatform.knowledge.eval_cases import KnowledgeEvalCaseService
 from app.agentplatform.knowledge.evaluation import KnowledgeEvaluationService
+from app.agentplatform.knowledge.local_import import KnowledgeLocalImportService
 from app.agentplatform.knowledge.provider import KnowledgeProvider, KnowledgeProviderUnavailable
 from app.agentplatform.knowledge.ragflow import configured_ragflow_provider
 from app.agentplatform.knowledge.retrieval_test import KnowledgeRetrievalTestService, RetrievalTestStorageUnavailable
@@ -269,6 +270,41 @@ class KnowledgeFacade:
             "knowledge_revision",
             revision_id,
             {"resource_id": resource_id, "revision_no": revision["revision_no"]},
+        )
+        return revision
+
+    # --- Local imports -----------------------------------------------------
+
+    def _local_imports(self, session: Any, actor: ResourceActor) -> KnowledgeLocalImportService:
+        return KnowledgeLocalImportService(session, actor)
+
+    async def register_local_import(
+        self,
+        actor: ResourceActor,
+        resource_id: str,
+        *,
+        documents: list,
+        device_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Append one explicit local-import revision from device metadata."""
+        async with self._session_factory() as session:
+            revision = await self._local_imports(session, actor).register_local_import(
+                resource_id,
+                documents=documents,
+                device_id=device_id,
+            )
+            await session.commit()
+        await self._audit(
+            actor.user_id,
+            "knowledge_local_import_registered",
+            "knowledge_revision",
+            str(revision["id"]),
+            {
+                "resource_id": resource_id,
+                "revision_no": revision["revision_no"],
+                "manifest_hash": revision["manifest_hash"],
+                "document_count": revision["document_count"],
+            },
         )
         return revision
 
