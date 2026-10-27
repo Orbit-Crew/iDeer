@@ -12,12 +12,12 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from typing import Any
+from typing import Annotated, Any
 
 import yaml
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from starlette.background import BackgroundTask
@@ -272,6 +272,26 @@ class LocalImportRequest(BaseModel):
 
 class LocalPublicationConfirmRequest(BaseModel):
     confirmed: bool = False
+
+
+# Frozen document ids are platform UUIDs; the scoped graph surface (#117)
+# validates the shape here and the membership against the manifest inside
+# the service, so a mistyped id never widens into a whole-revision query.
+ScopedDocumentId = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")]
+
+
+class KnowledgeGraphQueryRequest(BaseModel):
+    """Selected-document scope for entity/relation retrieval (#117)."""
+
+    query: str = Field(default="", max_length=512)
+    document_ids: list[ScopedDocumentId] = Field(min_length=1, max_length=50)
+
+
+class KnowledgeGraphAskRequest(BaseModel):
+    """Selected-document scope for a scoped question (#117)."""
+
+    question: str = Field(min_length=1, max_length=4000)
+    document_ids: list[ScopedDocumentId] = Field(min_length=1, max_length=50)
 
 
 class EvalCaseCreateRequest(BaseModel):
@@ -1196,6 +1216,45 @@ async def get_knowledge_revision_graph(
     access reads a 404, and another revision's graph never bleeds in.
     """
     return await knowledge.graph_view(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/graph/query")
+@translate_resource_errors
+async def query_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    body: KnowledgeGraphQueryRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Retrieve entities and relations inside the selected document scope (#117).
+
+    The selected ids must be frozen in this revision — anything else is a
+    refused scope, not a widened query. Visibility is the KB's own, exactly
+    like knowledge retrieval: no tag filter or label stands in for
+    authorization, and every result row names its frozen document source.
+    """
+    return await knowledge.graph_query(_resource_actor(current_user), resource_id, revision_id, body.document_ids, body.query)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/graph/ask")
+@translate_resource_errors
+async def ask_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    body: KnowledgeGraphAskRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Answer one question strictly from the selected frozen documents (#117).
+
+    Material is read through the same execution chain as graph generation
+    and the model call is the Server's own. A gapped scope — missing
+    material, an unavailable device, a partial failure — refuses with
+    per-document fixed categories and never reaches the model, so no
+    unfounded conclusion forms.
+    """
+    return await knowledge.graph_ask(_resource_actor(current_user), resource_id, revision_id, body.document_ids, body.question)
 
 
 @router.get("/{resource_id}/knowledge-scope")
