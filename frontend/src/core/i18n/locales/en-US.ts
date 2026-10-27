@@ -2048,6 +2048,23 @@ export const enUS = {
       prepare: "Prepare index",
       preparing: "Preparing...",
       prepareAria: (no: number) => `Prepare index for v${no}`,
+      localPublication: {
+        title: "Server publication",
+        checking: "Checking publication status...",
+        checkFailed: "Unable to load the publication status.",
+        notPublished:
+          "Not published to the server. This device-local revision stays private; publication is an explicit owner action from the Desktop.",
+        awaitingContent: (missing: number) =>
+          `Publication awaiting content: ${missing} document(s) not uploaded yet.`,
+        readyToComplete:
+          "All content uploaded and verified; publication completion is pending.",
+        publishing: "Publishing the server copy...",
+        failed: (code: string) => `Publication failed (${code}). You can retry from the Desktop; the failed attempt stays visible.`,
+        published: (name: string) => `Published as server copy "${name}".`,
+        copyVisibility: (visibility: string) => `copy visibility: ${visibility}`,
+        governanceNote:
+          "Team access was granted through the platform visibility application flow; the source device knowledge base stays private.",
+      },
     },
     evalCaseList: {
       selectKnowledgeBase: "Select a knowledge base to maintain eval cases",

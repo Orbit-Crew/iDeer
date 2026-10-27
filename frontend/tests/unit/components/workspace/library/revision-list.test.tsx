@@ -2,6 +2,8 @@ import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { LocalPublication } from "@/core/library";
+
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockRevisions = [
@@ -76,6 +78,23 @@ vi.mock("@/core/i18n/hooks", () => ({
           prepare: "Prepare index",
           preparing: "Preparing...",
           prepareAria: (no: number) => `Prepare index for v${no}`,
+          localPublication: {
+            title: "Server publication",
+            checking: "Checking publication status...",
+            checkFailed: "Unable to load the publication status.",
+            notPublished:
+              "Not published to the server. This device-local revision stays private; publication is an explicit owner action from the Desktop.",
+            awaitingContent: (missing: number) =>
+              `Publication awaiting content: ${missing} document(s) not uploaded yet.`,
+            readyToComplete:
+              "All content uploaded and verified; publication completion is pending.",
+            publishing: "Publishing the server copy...",
+            failed: (code: string) => `Publication failed (${code}). You can retry from the Desktop; the failed attempt stays visible.`,
+            published: (name: string) => `Published as server copy "${name}".`,
+            copyVisibility: (visibility: string) => `copy visibility: ${visibility}`,
+            governanceNote:
+              "Team access was granted through the platform visibility application flow; the source device knowledge base stays private.",
+          },
         },
       },
     },
@@ -86,12 +105,80 @@ const createRevision = vi.fn();
 const publishRevision = vi.fn();
 const prepareRevision = vi.fn();
 
+const notPublished: LocalPublication = {
+  source: {
+    resource_id: "kb-1",
+    display_name: "Kb 1",
+    revision_id: "rev-1",
+    revision_no: 1,
+    manifest_hash: "a".repeat(64),
+    document_count: 1,
+  },
+  status: "none",
+  missing_documents: [],
+  copy: null,
+  revision: null,
+};
+
+const publishedCopy: LocalPublication = {
+  source: { ...notPublished.source },
+  status: "published",
+  missing_documents: [],
+  copy: {
+    resource_id: "copy-1",
+    slug: "kb-1-pub-r1",
+    display_name: "Kb 1 · Server copy R1",
+    visibility: "department",
+    document_count: 1,
+    documents: [],
+  },
+  revision: {
+    resource_id: "copy-1",
+    id: "copy-rev-1",
+    revision_no: 1,
+    status: "published",
+    manifest_hash: "b".repeat(64),
+    failure_code: null,
+    failure_message: null,
+    published_at: "2026-10-27T00:00:00Z",
+    provider_dataset_id: "dataset-1",
+  },
+};
+
+const failedCopy: LocalPublication = {
+  source: { ...notPublished.source },
+  status: "failed",
+  missing_documents: [],
+  copy: publishedCopy.copy,
+  revision: {
+    resource_id: "copy-1",
+    id: "copy-rev-1",
+    revision_no: 1,
+    status: "failed",
+    manifest_hash: "b".repeat(64),
+    failure_code: "parse_failed",
+    failure_message: "provider build failed",
+    published_at: null,
+    provider_dataset_id: null,
+  },
+};
+
+const awaitingCopy: LocalPublication = {
+  source: { ...notPublished.source },
+  status: "awaiting_content",
+  missing_documents: ["guide.txt"],
+  copy: publishedCopy.copy,
+  revision: null,
+};
+
 let mockState: {
   revisions: typeof mockRevisions;
   isLoading: boolean;
   error: Error | null;
   detail: typeof mockDetail;
   detailError: Error | null;
+  publication: typeof notPublished;
+  publicationError: Error | null;
 };
 
 vi.mock("@/core/library", () => ({
@@ -123,6 +210,14 @@ vi.mock("@/core/library", () => ({
     error: null,
     mutateAsync: prepareRevision,
   }),
+  useLocalPublication: (
+    _resourceId: string | undefined,
+    _revisionId: string | undefined,
+  ) => ({
+    data: mockState.publication,
+    isLoading: false,
+    error: mockState.publicationError,
+  }),
 }));
 
 // ── Dynamic import ───────────────────────────────────────────────────────────
@@ -137,6 +232,8 @@ beforeEach(async () => {
     error: null,
     detail: mockDetail,
     detailError: null,
+    publication: notPublished,
+    publicationError: null,
   };
   const mod = await import("@/components/workspace/library/revision-list");
   RevisionList = mod.RevisionList;
@@ -234,5 +331,69 @@ describe("RevisionList", () => {
     const toggle = screen.getByRole("button", { name: "Hide details" });
     await user.click(toggle);
     expect(screen.queryByText(/guide\.txt/)).not.toBeInTheDocument();
+  });
+
+  test("details state the publication is not started for a private revision", async () => {
+    const user = userEvent.setup();
+    render(<RevisionList knowledgeBaseId="kb-1" />);
+    await user.click(
+      screen.getAllByRole("button", { name: "View details" })[0]!,
+    );
+    const panel = screen.getByTestId("local-publication-panel");
+    expect(panel).toHaveTextContent("Not published to the server");
+  });
+
+  test("details show the published server copy and its governed visibility", async () => {
+    mockState.publication = publishedCopy;
+    const user = userEvent.setup();
+    render(<RevisionList knowledgeBaseId="kb-1" />);
+    await user.click(
+      screen.getAllByRole("button", { name: "View details" })[0]!,
+    );
+    const panel = screen.getByTestId("local-publication-panel");
+    expect(panel).toHaveTextContent(
+      'Published as server copy "Kb 1 · Server copy R1"',
+    );
+    expect(panel).toHaveTextContent("copy visibility: department");
+    expect(panel).toHaveTextContent("copy-1");
+    expect(panel).toHaveTextContent("visibility application flow");
+  });
+
+  test("details show the failed publication with its failure code", async () => {
+    mockState.publication = failedCopy;
+    const user = userEvent.setup();
+    render(<RevisionList knowledgeBaseId="kb-1" />);
+    await user.click(
+      screen.getAllByRole("button", { name: "View details" })[0]!,
+    );
+    const panel = screen.getByTestId("local-publication-panel");
+    expect(panel).toHaveTextContent("Publication failed (parse_failed)");
+    expect(panel).toHaveTextContent("provider build failed");
+  });
+
+  test("details show an interrupted upload as awaiting content", async () => {
+    mockState.publication = awaitingCopy;
+    const user = userEvent.setup();
+    render(<RevisionList knowledgeBaseId="kb-1" />);
+    await user.click(
+      screen.getAllByRole("button", { name: "View details" })[0]!,
+    );
+    const panel = screen.getByTestId("local-publication-panel");
+    expect(panel).toHaveTextContent(
+      "Publication awaiting content: 1 document(s) not uploaded yet",
+    );
+    expect(panel).toHaveTextContent("guide.txt");
+  });
+
+  test("a failed publication query surfaces an explicit load failure", async () => {
+    mockState.publicationError = new Error("boom");
+    const user = userEvent.setup();
+    render(<RevisionList knowledgeBaseId="kb-1" />);
+    await user.click(
+      screen.getAllByRole("button", { name: "View details" })[0]!,
+    );
+    expect(
+      screen.getByText("Unable to load the publication status."),
+    ).toBeInTheDocument();
   });
 });

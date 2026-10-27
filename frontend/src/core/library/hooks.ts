@@ -22,6 +22,7 @@ import {
   getKnowledgeEvaluationComparison,
   getKnowledgeEvaluationPolicy,
   publishKnowledgeRevision,
+  getLocalPublication,
   prepareKnowledgeRevision,
   runRetrievalTest,
   updateKnowledgeEvalCase,
@@ -220,6 +221,23 @@ export function usePrepareKnowledgeRevision(resourceId: string) {
       void queryClient.invalidateQueries({
         queryKey: ["knowledge-revisions", resourceId],
       }),
+  });
+}
+
+// Issue 115: derived publication state for one device-local revision. The
+// query polls only while the server-side copy is actively building.
+export function useLocalPublication(
+  resourceId: string | undefined,
+  revisionId: string | undefined,
+) {
+  return useQuery({
+    queryKey: ["knowledge-local-publication", resourceId, revisionId],
+    queryFn: () => getLocalPublication(resourceId!, revisionId!),
+    enabled: Boolean(resourceId && revisionId),
+    refetchInterval: (query) => {
+      const publication = query.state.data;
+      return publication?.status === "publishing" ? 2000 : false;
+    },
   });
 }
 

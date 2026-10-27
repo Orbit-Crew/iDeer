@@ -154,6 +154,73 @@ export async function prepareKnowledgeRevision(
   return (await res.json()) as KnowledgeRevision;
 }
 
+// Issue 115: explicit server-side publication of a device-local revision.
+// The status is derived on the server from the independent copy resource, so
+// publication state, permission, and failures stay visible without any
+// automatic two-way sync.
+export type LocalPublicationStatus =
+  | "none"
+  | "awaiting_content"
+  | "ready_to_complete"
+  | "publishing"
+  | "published"
+  | "failed"
+  | string;
+
+export interface LocalPublicationDocument {
+  filename: string;
+  content_hash: string;
+  size_bytes: number;
+  status: string;
+}
+
+export interface LocalPublicationCopy {
+  resource_id: string;
+  slug: string;
+  display_name: string;
+  visibility: "private" | "department" | "public" | string;
+  document_count: number;
+  documents: LocalPublicationDocument[];
+}
+
+export interface LocalPublicationRevision {
+  resource_id: string;
+  id: string;
+  revision_no: number;
+  status: string;
+  manifest_hash: string;
+  failure_code: string | null;
+  failure_message: string | null;
+  published_at: string | null;
+  provider_dataset_id: string | null;
+}
+
+export interface LocalPublication {
+  source: {
+    resource_id: string;
+    display_name: string;
+    revision_id: string;
+    revision_no: number;
+    manifest_hash: string;
+    document_count: number;
+  };
+  status: LocalPublicationStatus;
+  missing_documents: string[];
+  copy: LocalPublicationCopy | null;
+  revision: LocalPublicationRevision | null;
+}
+
+export async function getLocalPublication(
+  resourceId: string,
+  revisionId: string,
+): Promise<LocalPublication> {
+  const res = await fetch(
+    `${getBackendBaseURL()}/api/resources/${encodeURIComponent(resourceId)}/knowledge-revisions/${encodeURIComponent(revisionId)}/local-publication`,
+  );
+  if (!res.ok) await extractError(res, "Failed to load the publication status");
+  return (await res.json()) as LocalPublication;
+}
+
 export async function listKnowledgeBases(): Promise<KnowledgeBase[]> {
   const res = await fetch(
     `${getBackendBaseURL()}/api/resources?type=knowledge_base&limit=200`,

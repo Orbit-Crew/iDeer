@@ -270,6 +270,10 @@ class LocalImportRequest(BaseModel):
     device_id: str | None = Field(default=None, max_length=128)
 
 
+class LocalPublicationConfirmRequest(BaseModel):
+    confirmed: bool = False
+
+
 class EvalCaseCreateRequest(BaseModel):
     question: str
     expected_document_ids: list[str] = Field(default_factory=list)
@@ -1073,6 +1077,90 @@ async def activate_knowledge_local_revision(
     un-runnable instead of falling back to current device content.
     """
     return await knowledge.activate_local_revision(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/local-publication/preview")
+@translate_resource_errors
+async def preview_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Explain where an explicit publication would upload, before any upload (#115).
+
+    Read-only: the frozen document identities and the destination server copy
+    are described, but nothing is created and no content leaves the device
+    until the owner explicitly confirms the publication.
+    """
+    return await knowledge.preview_local_publication(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/local-publication")
+@translate_resource_errors
+async def confirm_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    body: LocalPublicationConfirmRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Explicitly confirm the server-side publication of one local revision (#115).
+
+    A call without ``confirmed=true`` is refused as a fixed category and
+    creates nothing: an unconfirmed preview never uploads the library and
+    never fabricates a published state. With confirmation, the private server
+    copy is created (idempotently) and the device KB stays untouched.
+    """
+    return await knowledge.confirm_local_publication(
+        _resource_actor(current_user),
+        resource_id,
+        revision_id,
+        confirmed=body.confirmed,
+    )
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/local-publication/complete")
+@translate_resource_errors
+async def complete_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Verify uploaded content against the frozen manifest and publish the copy (#115).
+
+    Content reaches the copy only through the platform's own document upload
+    endpoint; completion re-checks every hash against the frozen manifest,
+    freezes the copy's revision with the managed-origin provenance, and runs
+    the standard provider build. The source KB's revisions and LIVE pointer
+    are never modified.
+    """
+    return await knowledge.complete_local_publication(
+        _resource_actor(current_user),
+        resource_id,
+        revision_id,
+        schedule=background_tasks.add_task,
+    )
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/local-publication")
+@translate_resource_errors
+async def get_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Publication status, permission, and failure visibility for one revision (#115).
+
+    The state is derived from the copy resource on every read, so an
+    interrupted upload, a failed build, and the copy's current visibility are
+    always current. There is no auto two-way sync to report: later device
+    revisions only ever publish as new explicit publications.
+    """
+    return await knowledge.get_local_publication(_resource_actor(current_user), resource_id, revision_id)
 
 
 @router.post("/{resource_id}/eval-cases", status_code=201)
