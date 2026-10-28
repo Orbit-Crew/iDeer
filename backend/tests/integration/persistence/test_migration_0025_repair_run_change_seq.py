@@ -82,7 +82,7 @@ async def test_0025_is_in_the_unified_chain():
     from deerflow.persistence.bootstrap import _get_known_revisions
 
     script_head = _get_head_revision()
-    assert script_head == "20261027_skill_script_auth"
+    assert script_head == "20261027_connectors"
     assert REVISION in _get_known_revisions()
 
 

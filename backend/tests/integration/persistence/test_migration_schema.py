@@ -35,7 +35,7 @@ from deerflow.persistence.migrations._chain_meta import (
 )
 from tests._migration_test_support import unified_alembic_config
 
-CURRENT_HEAD = "20261027_skill_script_auth"
+CURRENT_HEAD = "20261027_connectors"
 
 # The alembic URL uses the async driver.  For post-migration verification
 # we open the same SQLite file with a synchronous engine (no greenlet needed).
@@ -125,7 +125,8 @@ class TestUnifiedMigrationChain:
         merge = script.get_revision(MERGE_REVISION)
         assert set(merge._normalized_down_revisions) == {CONTROL_PLANE_HEAD, RUNTIME_HEAD}
         head = script.get_revision(CURRENT_HEAD)
-        assert head._normalized_down_revisions == ("20261027_skill_trigger_pref",)
+        assert head._normalized_down_revisions == ("20261027_skill_script_auth",)
+        assert script.get_revision("20261027_skill_script_auth")._normalized_down_revisions == ("20261027_skill_trigger_pref",)
         assert script.get_revision("20261027_skill_trigger_pref")._normalized_down_revisions == ("20261027_knowledge_wiki_pages",)
         receipt_outbox = script.get_revision("20261021_receipt_outbox")
         assert receipt_outbox._normalized_down_revisions == ("20261018_desktop_login",)
