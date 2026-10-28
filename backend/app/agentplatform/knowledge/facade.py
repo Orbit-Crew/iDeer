@@ -27,6 +27,7 @@ from app.agentplatform.knowledge.ragflow import configured_ragflow_provider
 from app.agentplatform.knowledge.retrieval_test import KnowledgeRetrievalTestService, RetrievalTestStorageUnavailable
 from app.agentplatform.knowledge.revisions import KnowledgeRevisionService, execute_publish
 from app.agentplatform.knowledge.wiki_generation import KnowledgeWikiGenerationService
+from app.agentplatform.knowledge.wiki_navigation import KnowledgeWikiNavigationService
 from app.agentplatform.resources.service import ResourceActor
 
 AuditSink = Callable[..., Awaitable[None]]
@@ -379,6 +380,20 @@ class KnowledgeFacade:
         """
         async with self._session_factory() as session:
             return await self._wiki_generations(session, actor).read_page(resource_id, revision_id, document_id)
+
+    def _wiki_navigations(self, session: Any, actor: ResourceActor) -> KnowledgeWikiNavigationService:
+        return KnowledgeWikiNavigationService(session, actor)
+
+    async def wiki_navigation(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Project the wiki index with links, backlinks, and associations (#119).
+
+        A read-only derivation of artifacts that already exist: the #118 page
+        list, the links its completed bodies declare, and the #116 graph rows.
+        Visibility is the KB's own, and nothing from another revision or
+        account can appear here.
+        """
+        async with self._session_factory() as session:
+            return await self._wiki_navigations(session, actor).index(resource_id, revision_id)
 
     def _graph_queries(self, session: Any, actor: ResourceActor) -> KnowledgeGraphQueryService:
         return KnowledgeGraphQueryService(
