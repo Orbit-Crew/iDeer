@@ -231,9 +231,7 @@ class KnowledgeWikiGenerationService:
 
         kb = await self._knowledge_base(resource_id, modify=False)
         revision = await self._revision(resource_id, revision_id)
-        result = await self.session.execute(
-            select(KnowledgeWikiPage).where(KnowledgeWikiPage.revision_id == revision.id).order_by(KnowledgeWikiPage.document_id)
-        )
+        result = await self.session.execute(select(KnowledgeWikiPage).where(KnowledgeWikiPage.revision_id == revision.id).order_by(KnowledgeWikiPage.document_id))
         stored = {row.document_id: row for row in result.scalars()}
 
         pages: list[dict[str, Any]] = []

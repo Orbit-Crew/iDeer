@@ -283,14 +283,20 @@ def test_unauthorized_kb_is_404_while_visible_department_reads(harness) -> None:
 
     _generate(harness)
     stranger = harness.client(user_id="stranger")
-    assert stranger.post(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/query",
-        json={"query": "", "document_ids": [harness.ids["guide.txt"]]},
-    ).status_code == 404
-    assert stranger.post(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask",
-        json={"question": "问题", "document_ids": [harness.ids["guide.txt"]]},
-    ).status_code == 404
+    assert (
+        stranger.post(
+            f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/query",
+            json={"query": "", "document_ids": [harness.ids["guide.txt"]]},
+        ).status_code
+        == 404
+    )
+    assert (
+        stranger.post(
+            f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask",
+            json={"question": "问题", "document_ids": [harness.ids["guide.txt"]]},
+        ).status_code
+        == 404
+    )
 
     async def grant() -> None:
         async with harness.factory() as session:
@@ -301,17 +307,21 @@ def test_unauthorized_kb_is_404_while_visible_department_reads(harness) -> None:
 
     asyncio.run(grant())
     member = harness.client(user_id="colleague", department_id="dept-117")
-    assert member.post(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/query",
-        json={"query": "甲零件", "document_ids": [harness.ids["guide.txt"]]},
-    ).status_code == 200
-    assert member.post(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask",
-        json={"question": "乙组件由什么构成？", "document_ids": [harness.ids["guide.txt"]]},
-    ).status_code == 200
-    assert member.post(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph"
-    ).status_code == 403
+    assert (
+        member.post(
+            f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/query",
+            json={"query": "甲零件", "document_ids": [harness.ids["guide.txt"]]},
+        ).status_code
+        == 200
+    )
+    assert (
+        member.post(
+            f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask",
+            json={"question": "乙组件由什么构成？", "document_ids": [harness.ids["guide.txt"]]},
+        ).status_code
+        == 200
+    )
+    assert member.post(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph").status_code == 403
 
 
 def test_document_outside_the_frozen_revision_is_refused(harness) -> None:
@@ -352,9 +362,7 @@ def test_version_change_never_replaces_the_original_revision_sources(harness) ->
         f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/query",
         json={"query": "", "document_ids": [guide_id]},
     ).json()
-    before_ask = client.post(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask", json=ask_body
-    ).json()
+    before_ask = client.post(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask", json=ask_body).json()
 
     followup = asyncio.run(harness.register_followup_revision(harness.kb_id))
     assert followup.manifest_hash != before_query["manifest_hash"]
@@ -363,9 +371,7 @@ def test_version_change_never_replaces_the_original_revision_sources(harness) ->
         f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/query",
         json={"query": "", "document_ids": [guide_id]},
     )
-    after_ask = client.post(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask", json=ask_body
-    )
+    after_ask = client.post(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/graph/ask", json=ask_body)
     assert after_query.status_code == 200 and after_ask.status_code == 200
     assert after_query.json() == before_query
     assert after_ask.json() == before_ask

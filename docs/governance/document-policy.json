@@ -3348,7 +3348,7 @@
     }
   ],
   "supplements": {
-    "count": 61,
+    "count": 78,
     "purpose": "tracked Markdown outside the 360-path seed, registered as supplements so coverage is explicit and the seed count stays stable at 360; additions remain outside the frozen inventory until the next baseline capture",
     "files": [
       {
@@ -3984,8 +3984,8 @@
       {
         "path": "docs/acceptance/issue-110/report.md",
         "registration": "post-baseline-addition",
-        "sha256": "014e775b3f4c210745fe02b3c78b421a32dbd7d2540b0c9d87c8d4dc39dea1c4",
-        "lines": 86,
+        "sha256": "eca53ca3517bcdc13a1a310fafe8cc40c7b5c2ea86e457b94ddbc5fba05eea2f",
+        "lines": 103,
         "classification": "engineering-body-review",
         "protected": false,
         "role": "Issue 110 Server implementation and coordinated acceptance evidence",
@@ -4010,6 +4010,126 @@
         "protected": false,
         "role": "Controlled Desktop release publication and compatibility operations contract",
         "referenced_by": "backend/docs/development-reference.md"
+      },
+      {
+        "path": "docs/acceptance/issue-112/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "807c496a5e115d8fccfc9d7d32480e7cc4b0b2ccdeb3e812bc14df2599f43fde",
+        "lines": 80,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 112 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 112"
+      },
+      {
+        "path": "docs/acceptance/issue-113/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "93d5c6008712e98f12b8f9cc863ccb636a3196899622eb773c9c289ceee73f67",
+        "lines": 128,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 113 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 113"
+      },
+      {
+        "path": "docs/acceptance/issue-114/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "d1a7fd258ae0bbaadacf61d02db0f75f1bd60af79018782e8da6222e99ddb38d",
+        "lines": 99,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 114 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 114"
+      },
+      {
+        "path": "docs/acceptance/issue-115/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "1c54040efed92ab0a92a8eb4125828a31faa394c0708da6e2ce0cab2d6ec0935",
+        "lines": 148,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 115 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 115"
+      },
+      {
+        "path": "docs/acceptance/issue-116/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "aa0fa9fc915618da258555c27c3a89733356b8874ea9530af195a40e53504276",
+        "lines": 116,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 116 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 116"
+      },
+      {
+        "path": "docs/acceptance/issue-117/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "92fe72238ed18ab1cd3d124a8f2c097731d52da1e2d0cf5f76f551b85f1b516f",
+        "lines": 116,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 117 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 117"
+      },
+      {
+        "path": "docs/acceptance/issue-118/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "3702459037f226f1691212e1bed3e0691008172e0734dfe9c24919bd8d8008b9",
+        "lines": 149,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 118 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 118"
+      },
+      {
+        "path": "docs/acceptance/issue-119/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "7130c86b0fb0aae87794dddea061b767ec989cd47aa6e16ec6911aa754334288",
+        "lines": 97,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 119 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 119"
+      },
+      {
+        "path": "docs/acceptance/issue-120/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "707de1f20d99ec496c47b8e8d03d95e3fcc5ed1742035bf49f8371a444805e7c",
+        "lines": 103,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 120 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 120"
+      },
+      {
+        "path": "docs/acceptance/issue-121/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "4d4737fc4503f42cf80b2fdd0b056032b5be69673fe8ab328c0dfa9362251a2d",
+        "lines": 140,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 121 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 121"
+      },
+      {
+        "path": "docs/acceptance/issue-122/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "5ec8a14a79ca9f1d23f6336e43092acc3ecf13e199c10d5fb7512f1ea5bfb8d1",
+        "lines": 142,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 122 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 122"
+      },
+      {
+        "path": "docs/acceptance/issue-123/report.md",
+        "registration": "post-baseline-addition",
+        "sha256": "aac976f4952a38d683abd2f2890060f57c0ccc622127c7b00b1b769b27b075a8",
+        "lines": 121,
+        "classification": "engineering-body-review",
+        "protected": false,
+        "role": "Issue 123 Server implementation and staged cross-repository acceptance evidence",
+        "referenced_by": "GitHub issue 123"
       }
     ]
   },

@@ -256,9 +256,7 @@ async def test_query_results_and_scope_carry_frozen_document_sources(store) -> N
     assert result["scope"] == [
         {"document_id": ids["policy.txt"], "filename": "policy.txt", "content_hash": policy_hash, "status": "completed", "error_code": None},
     ]
-    assert result["entities"] == [
-        {"name": "检修班组", "type": "组织", "document_id": ids["policy.txt"], "filename": "policy.txt", "content_hash": policy_hash}
-    ]
+    assert result["entities"] == [{"name": "检修班组", "type": "组织", "document_id": ids["policy.txt"], "filename": "policy.txt", "content_hash": policy_hash}]
     assert result["relations"] == []
 
 
@@ -313,7 +311,9 @@ async def test_department_member_with_visibility_reads_like_retrieval(store) -> 
     await session.commit()
 
     member = KnowledgeGraphQueryService(
-        session, _actor("colleague", department_id="dept-117"), answerer=_fixed_answerer(),
+        session,
+        _actor("colleague", department_id="dept-117"),
+        answerer=_fixed_answerer(),
         broker_factory=lambda: FakeBroker(documents={ids["guide.txt"]: GUIDE.decode()}),
     )
     view = await member.query(kb.id, revision.id, [ids["guide.txt"]])
@@ -498,9 +498,7 @@ async def test_ask_overlong_answer_is_rejected_rather_than_truncated(store) -> N
     async def overrun(question: str, documents: list) -> str:
         return "长" * (MAX_SCOPED_ANSWER_CHARS + 1)
 
-    result = await _query_service(session, answerer=overrun, broker=FakeBroker(documents={ids["guide.txt"]: GUIDE.decode()})).ask(
-        kb.id, revision.id, [ids["guide.txt"]], "问题"
-    )
+    result = await _query_service(session, answerer=overrun, broker=FakeBroker(documents={ids["guide.txt"]: GUIDE.decode()})).ask(kb.id, revision.id, [ids["guide.txt"]], "问题")
     assert result["answer"] is None
     assert result["error_code"] == GRAPH_MODEL_OUTPUT_INVALID
 

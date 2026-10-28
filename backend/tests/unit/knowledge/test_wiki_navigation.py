@@ -218,12 +218,7 @@ async def _seed_linked_revision(session: AsyncSession) -> tuple[Resource, Knowle
 
 
 def test_extract_wiki_links_is_deterministic_and_internal_only() -> None:
-    body = (
-        f"参见 [[policy.txt]] 与 [{POLICY_TITLE}](policy.txt)。\n"
-        "外部引用 [官网](https://example.com/x) 与 [邮件](mailto:a@b.c) 不算。\n"
-        "锚点 [跳转](#section) 与空链接 [[]]() 以及 [空](   ) 不算。\n"
-        "重复 [[policy.txt]] 只算一次。"
-    )
+    body = f"参见 [[policy.txt]] 与 [{POLICY_TITLE}](policy.txt)。\n外部引用 [官网](https://example.com/x) 与 [邮件](mailto:a@b.c) 不算。\n锚点 [跳转](#section) 与空链接 [[]]() 以及 [空](   ) 不算。\n重复 [[policy.txt]] 只算一次。"
     # Both link shapes name the same frozen filename; dedupe keeps one row.
     assert extract_wiki_links(body) == ["policy.txt"]
     assert extract_wiki_links("没有链接的正文") == []

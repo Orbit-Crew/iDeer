@@ -297,6 +297,4 @@ class ConnectorIdentityRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now, server_default=func.now())
 
-    __table_args__ = (
-        UniqueConstraint("owner_id", "slug", name="uq_connectors_owner_slug"),
-    )
+    __table_args__ = (UniqueConstraint("owner_id", "slug", name="uq_connectors_owner_slug"),)

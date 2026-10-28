@@ -71,16 +71,20 @@ class FakePublishProvider:
         return dataset_id
 
     async def ingest(
-        self, *, dataset_id: str, filename: str, mime_type: str, content: bytes,
-        provider_document_id: str | None = None, rebuild: bool = False,
+        self,
+        *,
+        dataset_id: str,
+        filename: str,
+        mime_type: str,
+        content: bytes,
+        provider_document_id: str | None = None,
+        rebuild: bool = False,
     ) -> ProviderIngestionResult:
         self.ingest_calls.append({"dataset_id": dataset_id, "filename": filename})
         if self.fail_ingest_on_call is not None and len(self.ingest_calls) >= self.fail_ingest_on_call:
             raise KnowledgeProviderError("parse_failed", "internal parse detail")
         document_id = provider_document_id or f"copy-doc-{len(self.ingest_calls)}"
-        self.dataset_documents.setdefault(dataset_id, []).append(
-            {"id": document_id, "name": filename, "content_hash": hashlib.sha256(content).hexdigest()}
-        )
+        self.dataset_documents.setdefault(dataset_id, []).append({"id": document_id, "name": filename, "content_hash": hashlib.sha256(content).hexdigest()})
         return ProviderIngestionResult(document_id, "processing")
 
     async def get_status(self, *, dataset_id: str, provider_document_id: str) -> str:
@@ -119,14 +123,16 @@ async def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[
 
 
 def local_document(filename: str, content: bytes) -> dict:
-    return {"filename": filename, "content_hash": hashlib.sha256(content).hexdigest(),
-            "size_bytes": len(content), "mime_type": "text/markdown" if filename.endswith(".md") else "text/plain"}
+    return {"filename": filename, "content_hash": hashlib.sha256(content).hexdigest(), "size_bytes": len(content), "mime_type": "text/markdown" if filename.endswith(".md") else "text/plain"}
 
 
 async def _seed_kb(factory, user, slug: str) -> str:
     async with factory() as session:
         resource = await ResourceService(session, actor_from_user(user)).create_resource(
-            resource_type="knowledge_base", slug=slug, display_name=slug.capitalize(), storage_kind="database",
+            resource_type="knowledge_base",
+            slug=slug,
+            display_name=slug.capitalize(),
+            storage_kind="database",
         )
         await session.commit()
         return resource.id
@@ -134,7 +140,8 @@ async def _seed_kb(factory, user, slug: str) -> str:
 
 async def _register_import(factory, knowledge, owner, kb_id: str, documents: list[tuple[str, bytes]]) -> dict:
     request = resources.LocalImportRequest(
-        documents=[local_document(name, content) for name, content in documents], device_id=DEVICE_ID,
+        documents=[local_document(name, content) for name, content in documents],
+        device_id=DEVICE_ID,
     )
     return await resources.register_knowledge_local_import(kb_id, request, owner, knowledge=knowledge)
 
@@ -167,8 +174,7 @@ async def test_preview_and_unconfirmed_confirm_upload_nothing(env) -> None:
     kb_id = await _seed_kb(factory, owner, "preview")
     revision = await _register_import(factory, knowledge, owner, kb_id, [("marked.md", MARKER)])
 
-    preview = await resources.preview_knowledge_local_publication(
-        kb_id, str(revision["id"]), owner, knowledge=knowledge)
+    preview = await resources.preview_knowledge_local_publication(kb_id, str(revision["id"]), owner, knowledge=knowledge)
     assert preview["source"]["manifest_hash"] == revision["manifest_hash"]
     assert preview["documents"][0]["filename"] == "marked.md"
     assert preview["documents"][0]["content_hash"] == hashlib.sha256(MARKER).hexdigest()
@@ -180,9 +186,7 @@ async def test_preview_and_unconfirmed_confirm_upload_nothing(env) -> None:
         before = list((await session.execute(select(Resource))).scalars())
 
     with pytest.raises(HTTPException) as refusal:
-        await resources.confirm_knowledge_local_publication(
-            kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=False),
-            owner, knowledge=knowledge)
+        await resources.confirm_knowledge_local_publication(kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=False), owner, knowledge=knowledge)
     assert refusal.value.status_code == 409
     assert "LOCAL_PUBLISH_CONFIRMATION_REQUIRED" in str(refusal.value.detail)
 
@@ -204,9 +208,7 @@ async def test_confirmed_publication_builds_independent_provenanced_copy(env) ->
     # The frozen local revision anchors the device KB (the #113 LIVE pointer).
     await resources.activate_knowledge_local_revision(kb_id, str(revision["id"]), owner, knowledge=knowledge)
 
-    confirmed = await resources.confirm_knowledge_local_publication(
-        kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True),
-        owner, knowledge=knowledge)
+    confirmed = await resources.confirm_knowledge_local_publication(kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True), owner, knowledge=knowledge)
     assert confirmed["status"] == "awaiting_content"
     copy_id = confirmed["copy"]["resource_id"]
     assert confirmed["copy"]["visibility"] == "private"
@@ -217,8 +219,7 @@ async def test_confirmed_publication_builds_independent_provenanced_copy(env) ->
 
     # Drive the facade directly so the scheduled build executor is awaitable.
     scheduled: list = []
-    publication = await knowledge.complete_local_publication(
-        actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
+    publication = await knowledge.complete_local_publication(actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
     assert publication["status"] == "publishing"
     assert publication["missing_documents"] == []
     assert scheduled, "the standard provider build must be scheduled"
@@ -232,8 +233,7 @@ async def test_confirmed_publication_builds_independent_provenanced_copy(env) ->
     async with factory() as session:
         copy = await session.get(Resource, copy_id)
         source_kb = await session.get(KnowledgeBase, kb_id)
-        copy_revision = (await session.execute(
-            select(KnowledgeRevision).where(KnowledgeRevision.knowledge_base_id == copy_id))).scalar_one()
+        copy_revision = (await session.execute(select(KnowledgeRevision).where(KnowledgeRevision.knowledge_base_id == copy_id))).scalar_one()
         source_revision = await session.get(KnowledgeRevision, str(revision["id"]))
         assert copy.owner_id == owner.id and copy.visibility == "private"
         # The device KB keeps its private local identity: pointer and draft status
@@ -252,8 +252,7 @@ async def test_confirmed_publication_builds_independent_provenanced_copy(env) ->
     # while the device KB (draft-only revisions) can never expand.
     async with factory() as session:
         service = ResourceService(session, actor_from_user(owner))
-        application = await service.request_visibility(
-            copy_id, target_visibility="public", scope_department_id=None, reason="team onboarding")
+        application = await service.request_visibility(copy_id, target_visibility="public", scope_department_id=None, reason="team onboarding")
         await session.commit()
         assert application.status == "pending"
         reviewer = ResourceService(session, actor_from_user(admin))
@@ -268,25 +267,20 @@ async def test_confirmed_publication_builds_independent_provenanced_copy(env) ->
     # never through the owner's device.
     async with factory() as session:
         copy = await session.get(Resource, copy_id)
-        copy_revision = (await session.execute(
-            select(KnowledgeRevision).where(KnowledgeRevision.knowledge_base_id == copy_id))).scalar_one()
+        copy_revision = (await session.execute(select(KnowledgeRevision).where(KnowledgeRevision.knowledge_base_id == copy_id))).scalar_one()
         source_resource = await session.get(Resource, kb_id)
         source_revision_row = await session.get(KnowledgeRevision, str(revision["id"]))
-        team_bindings, _, _, team_metadata = build_frozen_knowledge_bindings(
-            [SimpleNamespace(resource=copy, knowledge_revision=copy_revision)], caller_user_id="teammate")
+        team_bindings, _, _, team_metadata = build_frozen_knowledge_bindings([SimpleNamespace(resource=copy, knowledge_revision=copy_revision)], caller_user_id="teammate")
         assert set(team_bindings.values()) == {status["revision"]["provider_dataset_id"]}
         assert team_metadata[status["revision"]["provider_dataset_id"]].get("origin") != "local_import"
         # The device-local revision binds nothing for a non-owner caller: no
         # local dataset, no dispatch to the owner's device.
-        local_bindings, _, _, local_metadata = build_frozen_knowledge_bindings(
-            [SimpleNamespace(resource=source_resource, knowledge_revision=source_revision_row)], caller_user_id="teammate")
+        local_bindings, _, _, local_metadata = build_frozen_knowledge_bindings([SimpleNamespace(resource=source_resource, knowledge_revision=source_revision_row)], caller_user_id="teammate")
         assert local_bindings == {} and local_metadata == {}
 
     # Permission failures stay explicit at the HTTP boundary too.
     with pytest.raises(HTTPException) as forbidden:
-        await resources.confirm_knowledge_local_publication(
-            kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True),
-            intruder, knowledge=knowledge)
+        await resources.confirm_knowledge_local_publication(kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True), intruder, knowledge=knowledge)
     assert forbidden.value.status_code in {403, 404}
     audited = {call[1] for call in audit_calls}
     assert "knowledge_local_publication_confirmed" in audited
@@ -298,11 +292,8 @@ async def test_completion_enforces_exact_frozen_content_and_permissions(env) -> 
     """T115-03/T115-04: partial or drifted uploads are explicit refusals, never a publish."""
     factory, knowledge, owner, teammate, intruder, *_ = env
     kb_id = await _seed_kb(factory, owner, "exact")
-    revision = await _register_import(factory, knowledge, owner, kb_id,
-                                      [("one.md", b"first\n"), ("two.md", b"second\n")])
-    confirmed = await resources.confirm_knowledge_local_publication(
-        kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True),
-        owner, knowledge=knowledge)
+    revision = await _register_import(factory, knowledge, owner, kb_id, [("one.md", b"first\n"), ("two.md", b"second\n")])
+    confirmed = await resources.confirm_knowledge_local_publication(kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True), owner, knowledge=knowledge)
     copy_id = confirmed["copy"]["resource_id"]
 
     # Interrupted upload: one document missing -> explicit incomplete state.
@@ -310,8 +301,7 @@ async def test_completion_enforces_exact_frozen_content_and_permissions(env) -> 
     await _mark_ready(factory, copy_id)
     scheduled: list = []
     with pytest.raises(HTTPException) as incomplete:
-        await resources.complete_knowledge_local_publication(
-            kb_id, str(revision["id"]), BackgroundTasks(), owner, knowledge=knowledge)
+        await resources.complete_knowledge_local_publication(kb_id, str(revision["id"]), BackgroundTasks(), owner, knowledge=knowledge)
     assert incomplete.value.status_code == 409
     assert "LOCAL_PUBLISH_CONTENT_INCOMPLETE" in str(incomplete.value.detail)
     status = await resources.get_knowledge_local_publication(kb_id, str(revision["id"]), owner, knowledge=knowledge)
@@ -321,8 +311,7 @@ async def test_completion_enforces_exact_frozen_content_and_permissions(env) -> 
     # Content drift: an extra document that is not part of the frozen manifest.
     await _upload_to_copy(factory, knowledge, owner, copy_id, [("two.md", b"second\n"), ("stray.md", b"drift\n")])
     with pytest.raises(ResourceConflict) as drifted:
-        await knowledge.complete_local_publication(
-            actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda *args, **kwargs: None)
+        await knowledge.complete_local_publication(actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda *args, **kwargs: None)
     assert "LOCAL_PUBLISH_CONTENT_DRIFTED" in str(drifted.value)
 
     # Retry after the interrupted upload: the same copy is reused, not duplicated.
@@ -334,8 +323,7 @@ async def test_completion_enforces_exact_frozen_content_and_permissions(env) -> 
             else:
                 document.status = "ready"
         await session.commit()
-    publication = await knowledge.complete_local_publication(
-        actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
+    publication = await knowledge.complete_local_publication(actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
     assert publication["status"] == "publishing"
     assert publication["copy"]["resource_id"] == copy_id
 
@@ -351,9 +339,7 @@ async def test_failed_build_is_visible_and_retry_never_replaces(env) -> None:
     factory, knowledge, owner, *_ = env
     kb_id = await _seed_kb(factory, owner, "retry")
     revision = await _register_import(factory, knowledge, owner, kb_id, [("marked.md", MARKER)])
-    await resources.confirm_knowledge_local_publication(
-        kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True),
-        owner, knowledge=knowledge)
+    await resources.confirm_knowledge_local_publication(kb_id, str(revision["id"]), resources.LocalPublicationConfirmRequest(confirmed=True), owner, knowledge=knowledge)
     status = await resources.get_knowledge_local_publication(kb_id, str(revision["id"]), owner, knowledge=knowledge)
     copy_id = status["copy"]["resource_id"]
     await _upload_to_copy(factory, knowledge, owner, copy_id, [("marked.md", MARKER)])
@@ -361,8 +347,7 @@ async def test_failed_build_is_visible_and_retry_never_replaces(env) -> None:
 
     failing = FakePublishProvider(fail_ingest_on_call=1)
     scheduled: list = []
-    await knowledge.complete_local_publication(
-        actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
+    await knowledge.complete_local_publication(actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
     await _run_builds(scheduled, failing)
 
     failed = await resources.get_knowledge_local_publication(kb_id, str(revision["id"]), owner, knowledge=knowledge)
@@ -372,8 +357,7 @@ async def test_failed_build_is_visible_and_retry_never_replaces(env) -> None:
     # Retry: the failed copy revision republishes through the same explicit gate.
     good = FakePublishProvider()
     scheduled.clear()
-    retried = await knowledge.complete_local_publication(
-        actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
+    retried = await knowledge.complete_local_publication(actor_from_user(owner), kb_id, str(revision["id"]), schedule=lambda func, *args, **kwargs: scheduled.append((func, args, kwargs)))
     await _run_builds(scheduled, good)
     assert retried["status"] == "publishing"
     retried = await resources.get_knowledge_local_publication(kb_id, str(revision["id"]), owner, knowledge=knowledge)
@@ -388,8 +372,7 @@ async def test_failed_build_is_visible_and_retry_never_replaces(env) -> None:
     assert unchanged["status"] == "published"
     assert unchanged["revision"]["id"] == retried["revision"]["id"]
     async with factory() as session:
-        copies = list((await session.execute(
-            select(Resource).where(Resource.type == "knowledge_base").order_by(Resource.created_at))).scalars())
+        copies = list((await session.execute(select(Resource).where(Resource.type == "knowledge_base").order_by(Resource.created_at))).scalars())
         published_copy = await session.get(Resource, copy_id)
         assert published_copy.visibility == "private" or published_copy.visibility == "public"
         assert len(copies) == 2  # device KB + exactly one copy: second not auto-published

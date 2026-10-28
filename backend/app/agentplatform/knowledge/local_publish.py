@@ -103,19 +103,11 @@ class KnowledgeLocalPublishService:
         return row.scalar_one_or_none()
 
     async def _copy_documents(self, copy_id: str) -> list[KnowledgeDocument]:
-        rows = await self.session.execute(
-            select(KnowledgeDocument)
-            .where(KnowledgeDocument.resource_id == copy_id, KnowledgeDocument.status != "deleted")
-            .order_by(KnowledgeDocument.created_at, KnowledgeDocument.id)
-        )
+        rows = await self.session.execute(select(KnowledgeDocument).where(KnowledgeDocument.resource_id == copy_id, KnowledgeDocument.status != "deleted").order_by(KnowledgeDocument.created_at, KnowledgeDocument.id))
         return list(rows.scalars().all())
 
     async def _copy_revision(self, copy_id: str) -> KnowledgeRevision | None:
-        row = await self.session.execute(
-            select(KnowledgeRevision)
-            .where(KnowledgeRevision.knowledge_base_id == copy_id)
-            .order_by(KnowledgeRevision.revision_no)
-        )
+        row = await self.session.execute(select(KnowledgeRevision).where(KnowledgeRevision.knowledge_base_id == copy_id).order_by(KnowledgeRevision.revision_no))
         return row.scalars().first()
 
     def _missing_documents(self, entries: list[dict], documents: list[KnowledgeDocument]) -> list[str]:
@@ -165,7 +157,9 @@ class KnowledgeLocalPublishService:
             },
             "status": self._status(copy, documents, copy_revision, entries),
             "missing_documents": self._missing_documents(entries, documents),
-            "copy": None if copy is None else {
+            "copy": None
+            if copy is None
+            else {
                 "resource_id": copy.id,
                 "slug": copy.slug,
                 "display_name": copy.display_name,
@@ -181,7 +175,9 @@ class KnowledgeLocalPublishService:
                     for document in documents
                 ],
             },
-            "revision": None if copy_revision is None else {
+            "revision": None
+            if copy_revision is None
+            else {
                 "resource_id": copy.id,
                 "id": copy_revision.id,
                 "revision_no": copy_revision.revision_no,

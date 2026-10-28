@@ -113,12 +113,14 @@ async def _register_local_revision(session: AsyncSession, kb: Resource, *, devic
     service = KnowledgeLocalImportService(session, actor)
     payload = await service.register_local_import(
         kb.id,
-        documents=[{
-            "filename": "guide.txt",
-            "content_hash": hashlib.sha256(GUIDE).hexdigest(),
-            "size_bytes": len(GUIDE),
-            "mime_type": "text/plain",
-        }],
+        documents=[
+            {
+                "filename": "guide.txt",
+                "content_hash": hashlib.sha256(GUIDE).hexdigest(),
+                "size_bytes": len(GUIDE),
+                "mime_type": "text/plain",
+            }
+        ],
         device_id=device_id,
     )
     await session.commit()
@@ -203,22 +205,30 @@ def _binding():
 
 
 def _provider_chunks() -> dict:
-    return {"chunks": [{
-        "document_id": "provider-doc-1",
-        "document_keyword": "policy.txt",
-        "content": "server policy line",
-        "similarity": 0.87,
-        "chunk_id": "chunk-1",
-    }]}
+    return {
+        "chunks": [
+            {
+                "document_id": "provider-doc-1",
+                "document_keyword": "policy.txt",
+                "content": "server policy line",
+                "similarity": 0.87,
+                "chunk_id": "chunk-1",
+            }
+        ]
+    }
 
 
 def _device_chunks() -> dict:
-    return {"chunks": [{
-        "document_id": DEVICE_DOCUMENT_ID,
-        "document_keyword": "guide.txt",
-        "content": "the launch code is ALPHA-7",
-        "position": {"logical_path": "workspace/guide.txt", "line": 1},
-    }]}
+    return {
+        "chunks": [
+            {
+                "document_id": DEVICE_DOCUMENT_ID,
+                "document_keyword": "guide.txt",
+                "content": "the launch code is ALPHA-7",
+                "position": {"logical_path": "workspace/guide.txt", "line": 1},
+            }
+        ]
+    }
 
 
 @pytest.mark.anyio
@@ -287,11 +297,7 @@ async def test_raw_scores_are_never_merged_across_engines() -> None:
     # The device engine returns text matches, not similarities: nothing may
     # fabricate a score that would rank it against the provider's scale.
     assert "similarity" not in device_chunk
-    device_receipt = next(
-        receipt
-        for receipt in (evidence.retrieval_receipts if evidence is not None else [])
-        if receipt["engine"] == ENGINE_LOCAL_DEVICE
-    )
+    device_receipt = next(receipt for receipt in (evidence.retrieval_receipts if evidence is not None else []) if receipt["engine"] == ENGINE_LOCAL_DEVICE)
     assert device_receipt["items"][0]["score"] is None
     assert device_receipt["items"][0]["engine"] == ENGINE_LOCAL_DEVICE
 
@@ -307,13 +313,16 @@ def test_mixed_scope_can_answer_partially_but_local_only_scope_must_pause() -> N
 
 
 def test_source_attribution_projects_frozen_identity() -> None:
-    attribution = source_attribution("local:rev-9", {
-        "knowledge_base_id": "kb-9",
-        "revision_id": "rev-9",
-        "revision_no": 2,
-        "manifest_hash": "c" * 64,
-        "origin": "local_import",
-    })
+    attribution = source_attribution(
+        "local:rev-9",
+        {
+            "knowledge_base_id": "kb-9",
+            "revision_id": "rev-9",
+            "revision_no": 2,
+            "manifest_hash": "c" * 64,
+            "origin": "local_import",
+        },
+    )
     assert attribution == {
         "knowledge_base_id": "kb-9",
         "revision_id": "rev-9",
@@ -329,13 +338,16 @@ def test_source_attribution_projects_frozen_identity() -> None:
 
 @pytest.mark.anyio
 async def test_unavailable_local_source_is_recorded_as_source_failure_never_empty_hit() -> None:
-    attribution = source_attribution("local:revision-114", {
-        "knowledge_base_id": "kb-device",
-        "revision_id": "revision-114",
-        "revision_no": 1,
-        "manifest_hash": "c" * 64,
-        "origin": "local_import",
-    })
+    attribution = source_attribution(
+        "local:revision-114",
+        {
+            "knowledge_base_id": "kb-device",
+            "revision_id": "revision-114",
+            "revision_no": 1,
+            "manifest_hash": "c" * 64,
+            "origin": "local_import",
+        },
+    )
 
     async def provider_search(query, *, dataset_ids, document_ids=None, retrieval_profile=None):
         return _provider_chunks()
@@ -348,11 +360,7 @@ async def test_unavailable_local_source_is_recorded_as_source_failure_never_empt
         failure_result = await adapter.search_knowledge("launch", logical_kb="device-docs")
         evidence = current_run_evidence()
 
-    receipt = next(
-        receipt
-        for receipt in (evidence.retrieval_receipts if evidence is not None else [])
-        if receipt["logical_knowledge_base"] == "device-docs"
-    )
+    receipt = next(receipt for receipt in (evidence.retrieval_receipts if evidence is not None else []) if receipt["logical_knowledge_base"] == "device-docs")
     # A failed local leg is a structured source failure, never an empty hit:
     # "no material" is exactly what it must not be able to impersonate.
     assert receipt["result_status"] == RESULT_SOURCE_UNAVAILABLE
@@ -366,13 +374,16 @@ async def test_unavailable_local_source_is_recorded_as_source_failure_never_empt
 
 @pytest.mark.anyio
 async def test_local_required_failure_pauses_instead_of_answering() -> None:
-    attribution = source_attribution("local:revision-114", {
-        "knowledge_base_id": "kb-device",
-        "revision_id": "revision-114",
-        "revision_no": 1,
-        "manifest_hash": "c" * 64,
-        "origin": "local_import",
-    })
+    attribution = source_attribution(
+        "local:revision-114",
+        {
+            "knowledge_base_id": "kb-device",
+            "revision_id": "revision-114",
+            "revision_no": 1,
+            "manifest_hash": "c" * 64,
+            "origin": "local_import",
+        },
+    )
 
     async def provider_search(query, *, dataset_ids, document_ids=None, retrieval_profile=None):
         return {"chunks": []}
@@ -405,9 +416,13 @@ class _FakeBroker:
     """Broker double: online/offline device, completed or failed task."""
 
     def __init__(self, *, online: bool, outcome: str) -> None:
-        self.connections = {} if not online else {
-            DEVICE_ID: SimpleNamespace(tasks_allowed=True, owner_id="owner", capabilities={"local.knowledge.search"}),
-        }
+        self.connections = (
+            {}
+            if not online
+            else {
+                DEVICE_ID: SimpleNamespace(tasks_allowed=True, owner_id="owner", capabilities={"local.knowledge.search"}),
+            }
+        )
         self._outcome = outcome
         self.sent: list[dict] = []
 
@@ -425,12 +440,16 @@ class _FakeBroker:
         # The unique Runtime re-validates against the frozen manifest and can
         # only ever report frozen document identities back.
         frozen = (kwargs.get("payload_extra", {}).get("arguments", {}).get("documents") or [{}])[0]
-        return {"chunks": [{
-            "document_id": frozen.get("document_id", ""),
-            "document_keyword": frozen.get("filename", "guide.txt"),
-            "content": "the launch code is ALPHA-7",
-            "position": {"logical_path": "workspace/guide.txt", "line": 1},
-        }]}
+        return {
+            "chunks": [
+                {
+                    "document_id": frozen.get("document_id", ""),
+                    "document_keyword": frozen.get("filename", "guide.txt"),
+                    "content": "the launch code is ALPHA-7",
+                    "position": {"logical_path": "workspace/guide.txt", "line": 1},
+                }
+            ]
+        }
 
     def _record(self, task_id: str, kwargs: dict | None = None) -> SimpleNamespace:
         completed = self._outcome == "completed"
@@ -604,8 +623,11 @@ def test_runtime_restriction_cannot_add_unknown_knowledge_bases() -> None:
         caller_allowed={"kb-a", "kb-b"},
         runtime_allowed={"kb-a", "kb-not-mine"},
     ) == {"kb-a": "ds-a"}
-    assert calculate_effective_knowledge_scope(
-        bindings,
-        caller_allowed={"kb-a", "kb-b"},
-        runtime_allowed=set(),
-    ) == {}
+    assert (
+        calculate_effective_knowledge_scope(
+            bindings,
+            caller_allowed={"kb-a", "kb-b"},
+            runtime_allowed=set(),
+        )
+        == {}
+    )

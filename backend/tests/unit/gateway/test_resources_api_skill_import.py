@@ -32,10 +32,7 @@ from app.agentplatform.resources.service import ResourceAction, ResourceActor, R
 from app.gateway.routers import resources
 from deerflow.persistence.base import Base
 
-SKILL_MD = (
-    "---\nname: report-skill\ndescription: Build a weekly report\n---\n\n"
-    "# Report skill\n\nUse the analyzer script and read the notes.\n"
-)
+SKILL_MD = "---\nname: report-skill\ndescription: Build a weekly report\n---\n\n# Report skill\n\nUse the analyzer script and read the notes.\n"
 SCRIPT = "print('analyze')\n"
 REFERENCE = "# Frozen reference notes\n"
 
@@ -71,8 +68,7 @@ def _canonical_hash(members: list[tuple[str, bytes]]) -> str:
 
 
 def _skill_members() -> list[tuple[str, bytes]]:
-    return [("SKILL.md", SKILL_MD.encode()), ("scripts/analyze.py", SCRIPT.encode()),
-            ("references/notes.md", REFERENCE.encode())]
+    return [("SKILL.md", SKILL_MD.encode()), ("scripts/analyze.py", SCRIPT.encode()), ("references/notes.md", REFERENCE.encode())]
 
 
 def _skill_zip() -> io.BytesIO:
@@ -436,9 +432,7 @@ async def test_confirmed_draft_publishes_through_existing_flow_and_keeps_run_fro
         latest = await service.get_published_content(resource_id)
         assert frozen_one.content_hash == preview["package_hash"]
         assert latest.version == 2 and latest.content_hash != preview["package_hash"]
-        rows = (await session.execute(
-            select(ResourceVersion).where(ResourceVersion.resource_id == resource_id)
-        )).scalars().all()
+        rows = (await session.execute(select(ResourceVersion).where(ResourceVersion.resource_id == resource_id))).scalars().all()
         assert sorted(row.version for row in rows) == [1, 2]
 
     from app.agentplatform.resources.storage import ResourceStorage
@@ -471,28 +465,32 @@ async def test_builtin_skill_is_read_only_and_changes_need_a_new_copy(
     (builtin_dir / "SKILL.md").write_text(SKILL_MD, encoding="utf-8")
     (builtin_dir / "scripts" / "analyze.py").write_text(SCRIPT, encoding="utf-8")
     async with factory() as session:
-        session.add(Resource(
-            id=builtin_id,
-            type="skill",
-            slug="builtin-report",
-            display_name="builtin-report",
-            owner_id="owner",
-            visibility="private",
-            latest_version=1,
-            storage_kind="filesystem",
-            storage_key=builtin_key,
-            provenance="bundled",
-            system_owned=True,
-        ))
-        session.add(ResourceVersion(
-            id="44444444-4444-4444-8444-444444444444",
-            resource_id=builtin_id,
-            version=1,
-            content_hash="a" * 64,
-            storage_key=builtin_key,
-            scan_result={"status": "clean"},
-            created_by="owner",
-        ))
+        session.add(
+            Resource(
+                id=builtin_id,
+                type="skill",
+                slug="builtin-report",
+                display_name="builtin-report",
+                owner_id="owner",
+                visibility="private",
+                latest_version=1,
+                storage_kind="filesystem",
+                storage_key=builtin_key,
+                provenance="bundled",
+                system_owned=True,
+            )
+        )
+        session.add(
+            ResourceVersion(
+                id="44444444-4444-4444-8444-444444444444",
+                resource_id=builtin_id,
+                version=1,
+                content_hash="a" * 64,
+                storage_key=builtin_key,
+                scan_result={"status": "clean"},
+                created_by="owner",
+            )
+        )
         await session.commit()
 
     # The in-place edit of the built-in is refused before anything is staged.
@@ -528,9 +526,7 @@ async def test_builtin_skill_is_read_only_and_changes_need_a_new_copy(
     async with factory() as session:
         original = await session.get(Resource, builtin_id)
         assert original.latest_version == 1 and original.draft_revision == 0
-        versions = (await session.execute(
-            select(ResourceVersion).where(ResourceVersion.resource_id.in_([builtin_id, copy_id]))
-        )).scalars().all()
+        versions = (await session.execute(select(ResourceVersion).where(ResourceVersion.resource_id.in_([builtin_id, copy_id])))).scalars().all()
         assert sorted((row.resource_id, row.version) for row in versions) == [
             (builtin_id, 1),
             (copy_id, 1),

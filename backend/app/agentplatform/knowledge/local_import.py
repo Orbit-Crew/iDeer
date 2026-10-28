@@ -69,9 +69,7 @@ class KnowledgeLocalImportService:
             raise LocalImportValidationError("A local import requires at least one document")
         if len(documents) > MAX_IMPORT_DOCUMENTS:
             raise LocalImportValidationError("A local import accepts at most 200 documents")
-        if device_id is not None and (
-            not isinstance(device_id, str) or not device_id.strip() or len(device_id.strip()) > 128
-        ):
+        if device_id is not None and (not isinstance(device_id, str) or not device_id.strip() or len(device_id.strip()) > 128):
             raise LocalImportValidationError("Device identity must be a short plain token")
         max_size = knowledge_documents._max_document_size()
         entries: list[dict[str, object]] = []
@@ -84,11 +82,7 @@ class KnowledgeLocalImportService:
             except knowledge_documents.DocumentValidationError as exc:
                 raise LocalImportValidationError(str(exc)) from exc
             content_hash = document.get("content_hash")
-            if (
-                not isinstance(content_hash, str)
-                or len(content_hash) != 64
-                or any(character not in "0123456789abcdef" for character in content_hash)
-            ):
+            if not isinstance(content_hash, str) or len(content_hash) != 64 or any(character not in "0123456789abcdef" for character in content_hash):
                 raise LocalImportValidationError("Document content hash must be a lowercase SHA-256 digest")
             if content_hash in seen_hashes:
                 raise LocalImportValidationError("Duplicate document content in one local import")
@@ -120,9 +114,7 @@ class KnowledgeLocalImportService:
                     "metadata": metadata,
                 }
             )
-        highest = await self.session.scalar(
-            select(func.max(KnowledgeRevision.revision_no)).where(KnowledgeRevision.knowledge_base_id == resource_id)
-        )
+        highest = await self.session.scalar(select(func.max(KnowledgeRevision.revision_no)).where(KnowledgeRevision.knowledge_base_id == resource_id))
         revision = KnowledgeRevision(
             id=str(uuid.uuid4()),
             knowledge_base_id=resource_id,

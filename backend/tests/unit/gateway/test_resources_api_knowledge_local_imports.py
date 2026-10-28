@@ -41,8 +41,7 @@ def independent_manifest_hash(documents: list[dict]) -> str:
 
 
 def local_document(filename: str, content: bytes) -> dict:
-    return {"filename": filename, "content_hash": hashlib.sha256(content).hexdigest(),
-            "size_bytes": len(content), "mime_type": "text/markdown" if filename.endswith(".md") else "text/plain"}
+    return {"filename": filename, "content_hash": hashlib.sha256(content).hexdigest(), "size_bytes": len(content), "mime_type": "text/markdown" if filename.endswith(".md") else "text/plain"}
 
 
 @pytest_asyncio.fixture
@@ -91,8 +90,7 @@ async def test_local_import_registers_private_revision_with_governance_identity(
     kb_id = await _seed_kb(factory, current_user, "imports")
 
     request = resources.LocalImportRequest(
-        documents=[local_document("guide.md", b"# marker\nlocal bytes"),
-                   local_document("notes.txt", b"plain text")],
+        documents=[local_document("guide.md", b"# marker\nlocal bytes"), local_document("notes.txt", b"plain text")],
         device_id=DEVICE_ID,
     )
     revision = await resources.register_knowledge_local_import(kb_id, request, current_user, knowledge=knowledge)
@@ -108,8 +106,7 @@ async def test_local_import_registers_private_revision_with_governance_identity(
     assert origins == {"local_import"}
     assert {entry["metadata"].get("device_id") for entry in revision["documents"]} == {DEVICE_ID}
     assert {entry["filename"] for entry in revision["documents"]} == {"guide.md", "notes.txt"}
-    assert {entry["content_hash"] for entry in revision["documents"]} == {
-        hashlib.sha256(b"# marker\nlocal bytes").hexdigest(), hashlib.sha256(b"plain text").hexdigest()}
+    assert {entry["content_hash"] for entry in revision["documents"]} == {hashlib.sha256(b"# marker\nlocal bytes").hexdigest(), hashlib.sha256(b"plain text").hexdigest()}
     assert audit_calls[-1][1] == "knowledge_local_import_registered"
     assert audit_calls[-1][3] == revision["id"]
     assert audit_calls[-1][4]["manifest_hash"] == revision["manifest_hash"]
@@ -160,16 +157,11 @@ async def test_local_import_rejects_invalid_manifests_without_registering(env, m
     monkeypatch.setattr("app.agentplatform.knowledge.documents._max_document_size", lambda: 16)
 
     rejections = [
-        (resources.LocalImportRequest(documents=[{"filename": "../escape.md", "content_hash": "a" * 64, "size_bytes": 1}]),
-         HTTPException, "plain file name"),
-        (resources.LocalImportRequest(documents=[{"filename": "back\\slash.md", "content_hash": "a" * 64, "size_bytes": 1}]),
-         HTTPException, "plain file name"),
-        (resources.LocalImportRequest(documents=[{"filename": "payload.exe", "content_hash": "a" * 64, "size_bytes": 1}]),
-         HTTPException, "Unsupported document type"),
-        (resources.LocalImportRequest(documents=[{"filename": "big.md", "content_hash": "a" * 64, "size_bytes": 64}]),
-         HTTPException, "maximum"),
-        (resources.LocalImportRequest(documents=[local_document("one.md", b"x"), local_document("two.md", b"x")]),
-         HTTPException, "duplicate"),
+        (resources.LocalImportRequest(documents=[{"filename": "../escape.md", "content_hash": "a" * 64, "size_bytes": 1}]), HTTPException, "plain file name"),
+        (resources.LocalImportRequest(documents=[{"filename": "back\\slash.md", "content_hash": "a" * 64, "size_bytes": 1}]), HTTPException, "plain file name"),
+        (resources.LocalImportRequest(documents=[{"filename": "payload.exe", "content_hash": "a" * 64, "size_bytes": 1}]), HTTPException, "Unsupported document type"),
+        (resources.LocalImportRequest(documents=[{"filename": "big.md", "content_hash": "a" * 64, "size_bytes": 64}]), HTTPException, "maximum"),
+        (resources.LocalImportRequest(documents=[local_document("one.md", b"x"), local_document("two.md", b"x")]), HTTPException, "duplicate"),
     ]
     for request, exception, message_part in rejections:
         with pytest.raises(exception) as rejection:
@@ -177,6 +169,7 @@ async def test_local_import_rejects_invalid_manifests_without_registering(env, m
         assert message_part.lower() in str(rejection.value.detail).lower()
 
     from pydantic import ValidationError
+
     with pytest.raises(ValidationError):
         resources.LocalImportRequest(documents=[])
 
@@ -217,6 +210,7 @@ async def test_reimport_creates_new_revision_and_never_overwrites_frozen_ones(en
         from sqlalchemy import select
 
         from app.agentplatform.knowledge.models import KnowledgeRevision
+
         rows = list((await session.execute(select(KnowledgeRevision).order_by(KnowledgeRevision.revision_no))).scalars())
         assert [row.manifest_hash for row in rows] == [first["manifest_hash"], second["manifest_hash"], replay["manifest_hash"]]
 

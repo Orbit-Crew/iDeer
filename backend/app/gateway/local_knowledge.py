@@ -53,11 +53,13 @@ def build_local_knowledge_specs(revision_metadata: dict[str, dict[str, Any]]) ->
             filename, content_hash = entry.get("display_name"), entry.get("content_hash")
             if not isinstance(filename, str) or not filename or not isinstance(content_hash, str) or not content_hash:
                 continue
-            frozen.append({
-                "document_id": str(document_id),
-                "filename": filename,
-                "content_hash": content_hash,
-            })
+            frozen.append(
+                {
+                    "document_id": str(document_id),
+                    "filename": filename,
+                    "content_hash": content_hash,
+                }
+            )
         if not frozen:
             continue
         specs[str(dataset)] = {

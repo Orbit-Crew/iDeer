@@ -79,10 +79,7 @@ def parse_execution_environment(raw: object) -> dict | None:
         raise _refuse("execution-environment must be a mapping with a target")
     unknown = set(raw) - {"target", *DECLARATION_FIELDS}
     if unknown:
-        raise _refuse(
-            "Unexpected key(s) in execution-environment: "
-            + ", ".join(sorted(str(key) for key in unknown))
-        )
+        raise _refuse("Unexpected key(s) in execution-environment: " + ", ".join(sorted(str(key) for key in unknown)))
     target = raw.get("target")
     if not isinstance(target, str) or target not in SCRIPT_TARGETS:
         raise _refuse("execution-environment.target must be one of: " + ", ".join(SCRIPT_TARGETS))
@@ -165,11 +162,7 @@ def os_matches(declared_os: list[str], current_system: str) -> bool:
     if not declared_os:
         return True
     current = str(current_system or "").lower()
-    return any(
-        current.startswith(entry.lower())
-        for entry in declared_os
-        if any(entry.lower().startswith(platform) for platform in _OS_PLATFORMS)
-    )
+    return any(current.startswith(entry.lower()) for entry in declared_os if any(entry.lower().startswith(platform) for platform in _OS_PLATFORMS))
 
 
 # --- content-bound grant matching (pure protocol, shared by both legs) ------

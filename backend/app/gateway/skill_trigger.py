@@ -110,11 +110,7 @@ def select_preference(
     single-preferred-Skill capacity.
     """
 
-    matches = [
-        preference
-        for preference in preferences
-        if isinstance(preference, dict) and preference_matches(preference, agent_id=agent_id, message_text=message_text)
-    ]
+    matches = [preference for preference in preferences if isinstance(preference, dict) and preference_matches(preference, agent_id=agent_id, message_text=message_text)]
     if not matches:
         return None
     return min(
@@ -230,13 +226,7 @@ class SkillTriggerPreferenceRepository:
         from app.agentplatform.resource_models import SkillTriggerPreferenceRow
 
         async with self._session() as session:
-            rows = (
-                await session.execute(
-                    select(SkillTriggerPreferenceRow)
-                    .where(SkillTriggerPreferenceRow.user_id == user_id)
-                    .order_by(SkillTriggerPreferenceRow.priority.desc(), SkillTriggerPreferenceRow.skill_resource_id)
-                )
-            ).scalars()
+            rows = (await session.execute(select(SkillTriggerPreferenceRow).where(SkillTriggerPreferenceRow.user_id == user_id).order_by(SkillTriggerPreferenceRow.priority.desc(), SkillTriggerPreferenceRow.skill_resource_id))).scalars()
             return [self._row_projection(row) for row in rows]
 
     async def get(self, user_id: str, skill_resource_id: str) -> dict[str, Any] | None:
@@ -252,13 +242,7 @@ class SkillTriggerPreferenceRepository:
         from app.agentplatform.resource_models import SkillTriggerPreferenceRow
 
         async with self._session() as session:
-            return int(
-                (
-                    await session.execute(
-                        select(func.count()).select_from(SkillTriggerPreferenceRow).where(SkillTriggerPreferenceRow.user_id == user_id)
-                    )
-                ).scalar_one()
-            )
+            return int((await session.execute(select(func.count()).select_from(SkillTriggerPreferenceRow).where(SkillTriggerPreferenceRow.user_id == user_id))).scalar_one())
 
     async def upsert(
         self,

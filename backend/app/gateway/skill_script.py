@@ -108,18 +108,22 @@ class SkillScriptAuthorizationRepository:
 
         async with self._session() as session:
             row = (
-                await session.execute(
-                    select(SkillScriptAuthorizationRow)
-                    .where(
-                        SkillScriptAuthorizationRow.user_id == user_id,
-                        SkillScriptAuthorizationRow.skill_resource_id == skill_resource_id,
-                        SkillScriptAuthorizationRow.execution_target == execution_target,
-                        SkillScriptAuthorizationRow.device_id == device_id,
-                        SkillScriptAuthorizationRow.script_path == script_path,
+                (
+                    await session.execute(
+                        select(SkillScriptAuthorizationRow)
+                        .where(
+                            SkillScriptAuthorizationRow.user_id == user_id,
+                            SkillScriptAuthorizationRow.skill_resource_id == skill_resource_id,
+                            SkillScriptAuthorizationRow.execution_target == execution_target,
+                            SkillScriptAuthorizationRow.device_id == device_id,
+                            SkillScriptAuthorizationRow.script_path == script_path,
+                        )
+                        .order_by(SkillScriptAuthorizationRow.created_at.desc())
                     )
-                    .order_by(SkillScriptAuthorizationRow.created_at.desc())
                 )
-            ).scalars().first()
+                .scalars()
+                .first()
+            )
             return self._projection(row) if row is not None else None
 
     async def grant(
@@ -156,16 +160,20 @@ class SkillScriptAuthorizationRepository:
         now = datetime.now(UTC)
         async with self._session() as session, session.begin():
             row = (
-                await session.execute(
-                    select(SkillScriptAuthorizationRow).where(
-                        SkillScriptAuthorizationRow.user_id == user_id,
-                        SkillScriptAuthorizationRow.execution_target == execution_target,
-                        SkillScriptAuthorizationRow.device_id == device_id,
-                        SkillScriptAuthorizationRow.skill_resource_id == skill_resource_id,
-                        SkillScriptAuthorizationRow.script_path == script_path,
+                (
+                    await session.execute(
+                        select(SkillScriptAuthorizationRow).where(
+                            SkillScriptAuthorizationRow.user_id == user_id,
+                            SkillScriptAuthorizationRow.execution_target == execution_target,
+                            SkillScriptAuthorizationRow.device_id == device_id,
+                            SkillScriptAuthorizationRow.skill_resource_id == skill_resource_id,
+                            SkillScriptAuthorizationRow.script_path == script_path,
+                        )
                     )
                 )
-            ).scalars().first()
+                .scalars()
+                .first()
+            )
             if row is not None and row.id != identity:
                 # Changed content or scope: the old binding's grant is replaced
                 # by a new row under the new identity; it never carries over.
@@ -173,13 +181,7 @@ class SkillScriptAuthorizationRepository:
                 await session.flush()
                 row = None
             if row is None:
-                count = len(
-                    (
-                        await session.execute(
-                            select(SkillScriptAuthorizationRow.id).where(SkillScriptAuthorizationRow.user_id == user_id)
-                        )
-                    ).all()
-                )
+                count = len((await session.execute(select(SkillScriptAuthorizationRow.id).where(SkillScriptAuthorizationRow.user_id == user_id))).all())
                 if count >= MAX_GRANTS_PER_USER:
                     raise ValueError("script authorization limit reached")
                 row = SkillScriptAuthorizationRow(
@@ -222,11 +224,5 @@ class SkillScriptAuthorizationRepository:
         if skill_resource_id is not None:
             clause.append(SkillScriptAuthorizationRow.skill_resource_id == skill_resource_id)
         async with self._session() as session:
-            rows = (
-                await session.execute(
-                    select(SkillScriptAuthorizationRow)
-                    .where(*clause)
-                    .order_by(SkillScriptAuthorizationRow.created_at.desc())
-                )
-            ).scalars()
+            rows = (await session.execute(select(SkillScriptAuthorizationRow).where(*clause).order_by(SkillScriptAuthorizationRow.created_at.desc()))).scalars()
             return [self._projection(row) for row in rows]
