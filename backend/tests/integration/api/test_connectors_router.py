@@ -44,9 +44,7 @@ async def connector_factory(
 def _client(factory, *, user_id: str = "owner") -> TestClient:
     app = FastAPI()
     app.include_router(connectors.router)
-    app.dependency_overrides[get_current_rbac_user] = lambda: UserModel(
-        id=user_id, username=f"{user_id}@example.com", role="user"
-    )
+    app.dependency_overrides[get_current_rbac_user] = lambda: UserModel(id=user_id, username=f"{user_id}@example.com", role="user")
     return TestClient(app)
 
 
@@ -97,9 +95,7 @@ def test_same_version_with_different_content_is_a_conflict(connector_factory) ->
 def test_version_upgrade_updates_the_identity_row(connector_factory) -> None:
     client = _client(connector_factory)
     first = client.post("/api/connectors", json=_register_body()).json()
-    upgraded = client.post(
-        "/api/connectors", json=_register_body(version="1.3.0", manifest_hash="c" * 64)
-    )
+    upgraded = client.post("/api/connectors", json=_register_body(version="1.3.0", manifest_hash="c" * 64))
     assert upgraded.status_code == 200
     assert upgraded.json()["connectorId"] == first["connectorId"]
     assert upgraded.json()["version"] == "1.3.0"
@@ -159,9 +155,7 @@ def test_registration_requires_authentication(connector_factory) -> None:
         assert client.post("/api/connectors", json=_register_body()).status_code in {401, 403}
 
 
-def test_registration_does_not_leak_payload_into_logs(
-    connector_factory, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_registration_does_not_leak_payload_into_logs(connector_factory, caplog: pytest.LogCaptureFixture) -> None:
     import logging
 
     client = _client(connector_factory)

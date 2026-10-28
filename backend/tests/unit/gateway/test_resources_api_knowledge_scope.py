@@ -96,12 +96,14 @@ async def _register_local_revision(session, kb: Resource, *, device_id: str | No
     service = KnowledgeLocalImportService(session, _actor(str(kb.owner_id)))
     payload = await service.register_local_import(
         kb.id,
-        documents=[{
-            "filename": "guide.txt",
-            "content_hash": hashlib.sha256(b"guide bytes\n").hexdigest(),
-            "size_bytes": 12,
-            "mime_type": "text/plain",
-        }],
+        documents=[
+            {
+                "filename": "guide.txt",
+                "content_hash": hashlib.sha256(b"guide bytes\n").hexdigest(),
+                "size_bytes": 12,
+                "mime_type": "text/plain",
+            }
+        ],
         device_id=device_id,
     )
     await session.commit()
@@ -112,9 +114,13 @@ async def _register_local_revision(session, kb: Resource, *, device_id: str | No
 
 class _Broker:
     def __init__(self, online: bool) -> None:
-        self.connections = {} if not online else {
-            DEVICE_ID: SimpleNamespace(tasks_allowed=True, owner_id="owner", capabilities={"local.knowledge.search"}),
-        }
+        self.connections = (
+            {}
+            if not online
+            else {
+                DEVICE_ID: SimpleNamespace(tasks_allowed=True, owner_id="owner", capabilities={"local.knowledge.search"}),
+            }
+        )
 
 
 async def _seed_hybrid_agent(factory, *, device_online: bool = True, monkeypatch: pytest.MonkeyPatch | None = None) -> str:

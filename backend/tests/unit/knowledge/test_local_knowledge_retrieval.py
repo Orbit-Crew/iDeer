@@ -109,12 +109,14 @@ async def _register_local_revision(session: AsyncSession, kb: Resource, *, devic
     service = KnowledgeLocalImportService(session, actor)
     payload = await service.register_local_import(
         kb.id,
-        documents=[{
-            "filename": "guide.txt",
-            "content_hash": hashlib.sha256(GUIDE).hexdigest(),
-            "size_bytes": len(GUIDE),
-            "mime_type": "text/plain",
-        }],
+        documents=[
+            {
+                "filename": "guide.txt",
+                "content_hash": hashlib.sha256(GUIDE).hexdigest(),
+                "size_bytes": len(GUIDE),
+                "mime_type": "text/plain",
+            }
+        ],
         device_id=device_id,
     )
     await session.commit()
@@ -213,11 +215,7 @@ async def test_live_local_import_moves_only_new_runs(store) -> None:
 
     from app.agentplatform.resource_models import RunResourceSnapshot
 
-    run_a = (
-        await session.execute(
-            select(RunResourceSnapshot).where(RunResourceSnapshot.run_id == "run-a", RunResourceSnapshot.resource_id == kb.id)
-        )
-    ).scalar_one()
+    run_a = (await session.execute(select(RunResourceSnapshot).where(RunResourceSnapshot.run_id == "run-a", RunResourceSnapshot.resource_id == kb.id))).scalar_one()
     assert run_a.knowledge_revision_id == revision_one.id
 
 
@@ -234,8 +232,7 @@ async def test_activation_refuses_non_local_revisions(store) -> None:
         revision_no=1,
         status="draft",
         manifest_hash=hashlib.sha256(b"provider").hexdigest(),
-        manifest_json=[{"document_id": "doc-1", "content_hash": hashlib.sha256(b"provider").hexdigest(),
-                        "filename": "guide.txt", "size_bytes": 8, "mime_type": "text/plain", "metadata": {}}],
+        manifest_json=[{"document_id": "doc-1", "content_hash": hashlib.sha256(b"provider").hexdigest(), "filename": "guide.txt", "size_bytes": 8, "mime_type": "text/plain", "metadata": {}}],
         provider_doc_map_json={"doc-1": "provider-doc-1"},
         document_count=1,
         provider_dataset_id="ds-1",
@@ -382,12 +379,14 @@ async def test_local_dataset_dispatches_to_the_device_and_records_receipt() -> N
         captured["query"] = query
         captured["dataset_id"] = dataset_id
         return {
-            "chunks": [{
-                "document_id": "11111111-1111-4111-8111-111111111111",
-                "document_keyword": "guide.txt",
-                "content": "the launch code is ALPHA-7",
-                "position": {"logical_path": "workspace/guide.txt", "line": 1},
-            }]
+            "chunks": [
+                {
+                    "document_id": "11111111-1111-4111-8111-111111111111",
+                    "document_keyword": "guide.txt",
+                    "content": "the launch code is ALPHA-7",
+                    "position": {"logical_path": "workspace/guide.txt", "line": 1},
+                }
+            ]
         }
 
     binding = RunEvidenceBinding([], AuthorizationContext("caller", "agent", "policy"), run_id="run-113")

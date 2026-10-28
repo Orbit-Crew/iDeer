@@ -147,9 +147,7 @@ def test_preference_document_bounds_are_fixed_protocol_constants() -> None:
     assert KEYWORD_MAX_CHARS == 64
     assert MAX_APPLICABLE_AGENTS == 32
     assert (PRIORITY_MIN, PRIORITY_MAX) == (-1000, 1000)
-    keywords, agents, priority = validate_preference_document(
-        keywords=["  Report "], applicable_agent_ids=[str(uuid.uuid4())], priority=7
-    )
+    keywords, agents, priority = validate_preference_document(keywords=["  Report "], applicable_agent_ids=[str(uuid.uuid4())], priority=7)
     assert keywords == ["Report"] and priority == 7 and len(agents) == 1
     with pytest.raises(ValueError):
         validate_preference_document(keywords=["ok"] * (MAX_KEYWORDS + 1), applicable_agent_ids=[], priority=0)
@@ -627,10 +625,7 @@ async def test_new_versions_and_preference_changes_never_drift_a_frozen_run(
         await publisher.publish_filesystem(skill_id, expected_draft_revision=draft.revision, scan_result={})
 
     async with factory() as session:
-        frozen_snapshots = {
-            item.resource_id: (item.version, item.content_hash)
-            for item in (await session.execute(select(RunResourceSnapshot).where(RunResourceSnapshot.run_id == frozen_run))).scalars()
-        }
+        frozen_snapshots = {item.resource_id: (item.version, item.content_hash) for item in (await session.execute(select(RunResourceSnapshot).where(RunResourceSnapshot.run_id == frozen_run))).scalars()}
         first_version = (await session.execute(select(ResourceVersion).where(ResourceVersion.resource_id == skill_id).order_by(ResourceVersion.version))).scalars().all()
         assert [row.version for row in first_version] == [1, 2]
     # The frozen run still carries V1 exactly as enqueued.
@@ -645,10 +640,7 @@ async def test_new_versions_and_preference_changes_never_drift_a_frozen_run(
         assert new_snapshots.get(skill_id) == "resolved"
         explicit_run = str(uuid.uuid4())
         await prepare_canonical_agent_run(agent_id, _runner_request(), explicit_run, preferred_skill=skill_id)
-        explicit_snapshots = {
-            item.resource_id: item.version
-            for item in (await session.execute(select(RunResourceSnapshot).where(RunResourceSnapshot.run_id == explicit_run))).scalars()
-        }
+        explicit_snapshots = {item.resource_id: item.version for item in (await session.execute(select(RunResourceSnapshot).where(RunResourceSnapshot.run_id == explicit_run))).scalars()}
         assert explicit_snapshots[skill_id] == 2
 
 

@@ -985,7 +985,6 @@ async def confirm_skill_import(
             package_path.unlink(missing_ok=True)
 
 
-
 class SkillScriptAuthorizeRequest(BaseModel):
     """One content-bound script approval (#122 AC2): exact version + script bytes."""
 
@@ -1218,9 +1217,7 @@ class SkillTriggerPreferenceUpsert(BaseModel):
     enabled: bool = True
     keywords: list[Annotated[str, StringConstraints(min_length=1, max_length=64)]] = Field(default_factory=list, max_length=16)
     always_inject: bool = False
-    applicable_agent_ids: list[
-        Annotated[str, StringConstraints(pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]
-    ] = Field(default_factory=list, max_length=32)
+    applicable_agent_ids: list[Annotated[str, StringConstraints(pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]] = Field(default_factory=list, max_length=32)
     priority: int = Field(default=0, ge=-1000, le=1000)
 
 

@@ -53,16 +53,7 @@ from deerflow.persistence.base import Base
 
 EXPECTED_OUTPUT = "weekly-report-fixed-ok\n"
 
-SKILL_MD = (
-    "---\nname: report-skill\ndescription: Build a weekly report\n"
-    "execution-environment:\n"
-    "  target: server\n"
-    "  os: ['linux']\n"
-    "  dependencies: ['python3']\n"
-    "  tools: ['python3']\n"
-    "---\n\n"
-    "# Report skill\n\nRun the analyzer script.\n"
-)
+SKILL_MD = "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  dependencies: ['python3']\n  tools: ['python3']\n---\n\n# Report skill\n\nRun the analyzer script.\n"
 DEVICE_SKILL_MD = SKILL_MD.replace("target: server", "target: user_device")
 SCRIPT_TEXT = "print('weekly-report-fixed-ok')\n"
 
@@ -159,9 +150,7 @@ async def _publish_skill(
         "content_hash": content_hash,
         "version_dir": version_dir,
         "script_sha256": script_sha256(script.encode()),
-        "requirements_hash": skill_environment.requirements_fingerprint(
-            skill_environment.declaration_from_directory(version_dir)
-        ),
+        "requirements_hash": skill_environment.requirements_fingerprint(skill_environment.declaration_from_directory(version_dir)),
     }
 
 
@@ -206,10 +195,9 @@ def _grant_for(repository: SkillScriptAuthorizationRepository, skill: dict, user
 
 # --- declaration contract ---------------------------------------------------
 
+
 def test_declaration_parses_and_normalizes() -> None:
-    declaration = skill_environment.parse_execution_environment(
-        {"target": "server", "os": ["Windows 11"], "dependencies": ["python3"], "tools": [], "data": ["quarterly CSV"]}
-    )
+    declaration = skill_environment.parse_execution_environment({"target": "server", "os": ["Windows 11"], "dependencies": ["python3"], "tools": [], "data": ["quarterly CSV"]})
     assert declaration == {
         "target": "server",
         "os": ["windows 11"],
@@ -286,14 +274,22 @@ def test_preview_projects_declared_environment(tmp_path: Path) -> None:
 
 # --- authorization protocol -------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_grant_matches_exact_content_and_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     factory = await _setup(tmp_path, monkeypatch)
     repository = SkillScriptAuthorizationRepository(lambda: factory)
     grant = await repository.grant(
-        "owner", "resource-1", execution_target="server", device_id="", slug="report-skill",
-        skill_version=1, skill_content_hash="a" * 64, script_path="scripts/analyze.py",
-        script_digest="b" * 64, requirements_hash="c" * 64,
+        "owner",
+        "resource-1",
+        execution_target="server",
+        device_id="",
+        slug="report-skill",
+        skill_version=1,
+        skill_content_hash="a" * 64,
+        script_path="scripts/analyze.py",
+        script_digest="b" * 64,
+        requirements_hash="c" * 64,
     )
     row = await repository.active("owner", "resource-1", execution_target="server", device_id="", script_path="scripts/analyze.py")
     assert row is not None and row["authorization_id"] == grant["authorization_id"]
@@ -311,19 +307,33 @@ async def test_regrant_after_content_change_replaces_binding(tmp_path: Path, mon
     factory = await _setup(tmp_path, monkeypatch)
     repository = SkillScriptAuthorizationRepository(lambda: factory)
     first = await repository.grant(
-        "owner", "resource-1", execution_target="server", device_id="", slug="s", skill_version=1,
-        skill_content_hash="a" * 64, script_path="scripts/a.py", script_digest="b" * 64, requirements_hash="c" * 64,
+        "owner",
+        "resource-1",
+        execution_target="server",
+        device_id="",
+        slug="s",
+        skill_version=1,
+        skill_content_hash="a" * 64,
+        script_path="scripts/a.py",
+        script_digest="b" * 64,
+        requirements_hash="c" * 64,
     )
     second = await repository.grant(
-        "owner", "resource-1", execution_target="server", device_id="", slug="s", skill_version=2,
-        skill_content_hash="e" * 64, script_path="scripts/a.py", script_digest="d" * 64, requirements_hash="c" * 64,
+        "owner",
+        "resource-1",
+        execution_target="server",
+        device_id="",
+        slug="s",
+        skill_version=2,
+        skill_content_hash="e" * 64,
+        script_path="scripts/a.py",
+        script_digest="d" * 64,
+        requirements_hash="c" * 64,
     )
     assert first["authorization_id"] != second["authorization_id"]
     rows = await repository.list("owner", "resource-1")
     assert len(rows) == 1 and rows[0]["script_sha256"] == "d" * 64
-    assert (
-        await repository.active("owner", "resource-1", execution_target="server", device_id="", script_path="scripts/a.py")
-    )["authorization_id"] == second["authorization_id"]
+    assert (await repository.active("owner", "resource-1", execution_target="server", device_id="", script_path="scripts/a.py"))["authorization_id"] == second["authorization_id"]
 
 
 @pytest.mark.asyncio
@@ -338,6 +348,7 @@ async def test_grants_do_not_cross_accounts_or_devices(tmp_path: Path, monkeypat
 
 
 # --- executor gate ----------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_executor_runs_representative_skill_and_binds_receipt(
@@ -379,9 +390,14 @@ async def test_executor_default_off_without_grant(tmp_path: Path, monkeypatch: p
     sandbox = FakeSandbox()
     with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
         skill_script_execution.execute_server_skill_script(
-            ResourceStorage(tmp_path), sandbox, None,
-            version_dir=skill["version_dir"], script_path="scripts/analyze.py",
-            skill_resource_id=skill["resource_id"], slug="report-skill", skill_version=1,
+            ResourceStorage(tmp_path),
+            sandbox,
+            None,
+            version_dir=skill["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=skill["resource_id"],
+            slug="report-skill",
+            skill_version=1,
             expected_content_hash=skill["content_hash"],
         )
     assert caught.value.category == APPROVAL_REQUIRED
@@ -394,24 +410,32 @@ async def test_executor_refuses_cross_environment_and_corruption(tmp_path: Path,
     factory = await _setup(tmp_path, monkeypatch)
     grant_row = {"authorization_id": "grant"}
     no_decl_header = SKILL_MD.split("execution-environment")[0] + "---\n\n# no declaration\n"
-    undeclared = await _publish_skill(factory, tmp_path, body=no_decl_header, slug="undeclared",
-                                      resource_id="22222222-2222-4222-8222-222222222222")
+    undeclared = await _publish_skill(factory, tmp_path, body=no_decl_header, slug="undeclared", resource_id="22222222-2222-4222-8222-222222222222")
     with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
         skill_script_execution.execute_server_skill_script(
-            ResourceStorage(tmp_path), FakeSandbox(), grant_row,
-            version_dir=undeclared["version_dir"], script_path="scripts/analyze.py",
-            skill_resource_id=undeclared["resource_id"], slug="undeclared", skill_version=1,
+            ResourceStorage(tmp_path),
+            FakeSandbox(),
+            grant_row,
+            version_dir=undeclared["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=undeclared["resource_id"],
+            slug="undeclared",
+            skill_version=1,
             expected_content_hash=undeclared["content_hash"],
         )
     assert caught.value.category == skill_script_execution.ENVIRONMENT_UNDECLARED
 
-    device = await _publish_skill(factory, tmp_path, body=DEVICE_SKILL_MD, slug="device-skill",
-                                  resource_id="33333333-3333-4333-8333-333333333333")
+    device = await _publish_skill(factory, tmp_path, body=DEVICE_SKILL_MD, slug="device-skill", resource_id="33333333-3333-4333-8333-333333333333")
     with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
         skill_script_execution.execute_server_skill_script(
-            ResourceStorage(tmp_path), FakeSandbox(), grant_row,
-            version_dir=device["version_dir"], script_path="scripts/analyze.py",
-            skill_resource_id=device["resource_id"], slug="device-skill", skill_version=1,
+            ResourceStorage(tmp_path),
+            FakeSandbox(),
+            grant_row,
+            version_dir=device["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=device["resource_id"],
+            slug="device-skill",
+            skill_version=1,
             expected_content_hash=device["content_hash"],
         )
     assert caught.value.category == skill_script_execution.ENVIRONMENT_MISMATCH
@@ -419,9 +443,14 @@ async def test_executor_refuses_cross_environment_and_corruption(tmp_path: Path,
     skill = await _publish_skill(factory, tmp_path)
     with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
         skill_script_execution.execute_server_skill_script(
-            ResourceStorage(tmp_path), FakeSandbox(), grant_row,
-            version_dir=skill["version_dir"], script_path="SKILL.md",
-            skill_resource_id=skill["resource_id"], slug="report-skill", skill_version=1,
+            ResourceStorage(tmp_path),
+            FakeSandbox(),
+            grant_row,
+            version_dir=skill["version_dir"],
+            script_path="SKILL.md",
+            skill_resource_id=skill["resource_id"],
+            slug="report-skill",
+            skill_version=1,
             expected_content_hash=skill["content_hash"],
         )
     assert caught.value.category == skill_script_execution.SCRIPT_NOT_FOUND
@@ -429,9 +458,14 @@ async def test_executor_refuses_cross_environment_and_corruption(tmp_path: Path,
     (skill["version_dir"] / "scripts" / "analyze.py").write_text("print('tampered')\n", encoding="utf-8")
     with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
         skill_script_execution.execute_server_skill_script(
-            ResourceStorage(tmp_path), FakeSandbox(), grant_row,
-            version_dir=skill["version_dir"], script_path="scripts/analyze.py",
-            skill_resource_id=skill["resource_id"], slug="report-skill", skill_version=1,
+            ResourceStorage(tmp_path),
+            FakeSandbox(),
+            grant_row,
+            version_dir=skill["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=skill["resource_id"],
+            slug="report-skill",
+            skill_version=1,
             expected_content_hash=skill["content_hash"],
         )
     assert caught.value.category == skill_script_execution.PACKAGE_CORRUPTED
@@ -450,14 +484,18 @@ async def test_executor_reauthorizes_on_content_or_scope_change(
     row = await repository.active("owner", skill["resource_id"], execution_target="server", device_id="", script_path="scripts/analyze.py")
 
     # Changed script content under the same path: the old grant no longer matches.
-    changed = await _publish_skill(factory, tmp_path, script="print('changed-output')\n", slug="changed-skill",
-                                   resource_id="44444444-4444-4444-8444-444444444444")
+    changed = await _publish_skill(factory, tmp_path, script="print('changed-output')\n", slug="changed-skill", resource_id="44444444-4444-4444-8444-444444444444")
     sandbox = FakeSandbox()
     with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
         skill_script_execution.execute_server_skill_script(
-            ResourceStorage(tmp_path), sandbox, row,
-            version_dir=changed["version_dir"], script_path="scripts/analyze.py",
-            skill_resource_id=changed["resource_id"], slug="changed-skill", skill_version=1,
+            ResourceStorage(tmp_path),
+            sandbox,
+            row,
+            version_dir=changed["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=changed["resource_id"],
+            slug="changed-skill",
+            skill_version=1,
             expected_content_hash=changed["content_hash"],
         )
     assert caught.value.category == REAUTHORIZATION_REQUIRED
@@ -465,38 +503,50 @@ async def test_executor_reauthorizes_on_content_or_scope_change(
 
     # A changed declared scope (dependency change) also refuses.
     changed_scope = await _publish_skill(
-        factory, tmp_path,
+        factory,
+        tmp_path,
         body=SKILL_MD.replace("dependencies: ['python3']", "dependencies: ['python3.12']"),
-        slug="changed-scope", resource_id="55555555-5555-4555-8555-555555555555",
+        slug="changed-scope",
+        resource_id="55555555-5555-4555-8555-555555555555",
     )
     assert changed_scope["requirements_hash"] != skill["requirements_hash"]
     assert changed_scope["script_sha256"] == skill["script_sha256"]
     with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
         skill_script_execution.execute_server_skill_script(
-            ResourceStorage(tmp_path), FakeSandbox(), row,
-            version_dir=changed_scope["version_dir"], script_path="scripts/analyze.py",
-            skill_resource_id=changed_scope["resource_id"], slug="changed-scope", skill_version=1,
+            ResourceStorage(tmp_path),
+            FakeSandbox(),
+            row,
+            version_dir=changed_scope["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=changed_scope["resource_id"],
+            slug="changed-scope",
+            skill_version=1,
             expected_content_hash=changed_scope["content_hash"],
         )
     assert caught.value.category == REAUTHORIZATION_REQUIRED
 
     # Prose-only version bump: new content hash, same script bytes and declaration.
     prose = SKILL_MD.replace("Run the analyzer script.", "Run the analyzer script carefully.")
-    evolved = await _publish_skill(factory, tmp_path, body=prose, slug="report-skill-2",
-                                   resource_id="66666666-6666-4666-8666-666666666666")
+    evolved = await _publish_skill(factory, tmp_path, body=prose, slug="report-skill-2", resource_id="66666666-6666-4666-8666-666666666666")
     assert evolved["script_sha256"] == skill["script_sha256"]
     assert evolved["requirements_hash"] == skill["requirements_hash"]
     assert evolved["content_hash"] != skill["content_hash"]
     receipt = skill_script_execution.execute_server_skill_script(
-        ResourceStorage(tmp_path), RealPythonSandbox(), row,
-        version_dir=evolved["version_dir"], script_path="scripts/analyze.py",
-        skill_resource_id=evolved["resource_id"], slug="report-skill-2", skill_version=1,
+        ResourceStorage(tmp_path),
+        RealPythonSandbox(),
+        row,
+        version_dir=evolved["version_dir"],
+        script_path="scripts/analyze.py",
+        skill_resource_id=evolved["resource_id"],
+        slug="report-skill-2",
+        skill_version=1,
         expected_content_hash=evolved["content_hash"],
     )
     assert EXPECTED_OUTPUT in receipt["stdout"]
 
 
 # --- router surface ---------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_authorize_execute_revoke_roundtrip(

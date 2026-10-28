@@ -192,9 +192,7 @@ def test_owner_generates_and_reads_graph_with_sources(harness) -> None:
     assert body["status"] == "completed"
     assert body["manifest_hash"]
     assert {"name": "甲零件", "type": "零件", "document_id": body["entities"][0]["document_id"], "filename": "guide.txt"} in body["entities"]
-    assert body["relations"] == [
-        {"source": "甲零件", "target": "乙组件", "relation": "属于", "document_id": body["relations"][0]["document_id"], "filename": "guide.txt"}
-    ]
+    assert body["relations"] == [{"source": "甲零件", "target": "乙组件", "relation": "属于", "document_id": body["relations"][0]["document_id"], "filename": "guide.txt"}]
     assert body["sources"][0]["filename"] == "guide.txt"
     assert body["sources"][0]["content_hash"] == hashlib.sha256(GUIDE).hexdigest()
 

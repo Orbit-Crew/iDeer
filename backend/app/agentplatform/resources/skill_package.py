@@ -123,12 +123,14 @@ def build_preview(source: Path, *, origin: str, storage: ResourceStorage) -> dic
     ):
         relative = path.relative_to(source)
         data = path.read_bytes()
-        files.append({
-            "path": relative.as_posix(),
-            "role": classify_role(relative),
-            "bytes": len(data),
-            "sha256": hashlib.sha256(data).hexdigest(),
-        })
+        files.append(
+            {
+                "path": relative.as_posix(),
+                "role": classify_role(relative),
+                "bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            }
+        )
     body = (source / SKILL_MD_FILE).read_text(encoding="utf-8")
     assert name is not None  # A valid front-matter always carries its name.
     # Issue 122: the preview projects the declared execution environment so a

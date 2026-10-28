@@ -88,6 +88,7 @@ _MATERIAL_MISSING_CODES = {
 GRAPH_MODEL_OUTPUT_INVALID = "GRAPH_MODEL_OUTPUT_INVALID"
 GRAPH_MODEL_UNAVAILABLE = "GRAPH_MODEL_UNAVAILABLE"
 
+
 class GraphMaterialFailure(Exception):
     """A fixed-category failure for one document's material or model step."""
 
@@ -288,12 +289,7 @@ class RevisionMaterialSource:
         if isinstance(metadata, dict):
             device_id = str(metadata.get("device_id") or "")
         connection = broker.connections.get(device_id) if device_id else None
-        if (
-            connection is None
-            or not getattr(connection, "tasks_allowed", False)
-            or getattr(connection, "owner_id", None) != str(self.actor.user_id)
-            or LOCAL_KNOWLEDGE_MATERIAL_OPERATION not in getattr(connection, "capabilities", set())
-        ):
+        if connection is None or not getattr(connection, "tasks_allowed", False) or getattr(connection, "owner_id", None) != str(self.actor.user_id) or LOCAL_KNOWLEDGE_MATERIAL_OPERATION not in getattr(connection, "capabilities", set()):
             raise GraphMaterialFailure(GRAPH_DEVICE_UNAVAILABLE)
 
         identity = {
@@ -332,9 +328,7 @@ class RevisionMaterialSource:
             code = str(getattr(record, "error_code", "") or "")
             # The device's own fixed categories stay verbatim; anything else
             # reads as a device denial instead of a fabricated cause.
-            raise GraphMaterialFailure(
-                code if code.startswith(("GRAPH_", "MATERIAL_", "KNOWLEDGE_", "INVALID_", "BULK_")) else GRAPH_DEVICE_DENIED
-            )
+            raise GraphMaterialFailure(code if code.startswith(("GRAPH_", "MATERIAL_", "KNOWLEDGE_", "INVALID_", "BULK_")) else GRAPH_DEVICE_DENIED)
         result = record.result
         if not isinstance(result, dict):
             raise GraphMaterialFailure(GRAPH_MATERIAL_REJECTED)
@@ -462,9 +456,7 @@ class KnowledgeGraphGenerationService:
 
         kb = await self._knowledge_base(resource_id, modify=False)
         revision = await self._revision(resource_id, revision_id)
-        result = await self.session.execute(
-            select(KnowledgeGraphArtifact).where(KnowledgeGraphArtifact.revision_id == revision.id).order_by(KnowledgeGraphArtifact.document_id)
-        )
+        result = await self.session.execute(select(KnowledgeGraphArtifact).where(KnowledgeGraphArtifact.revision_id == revision.id).order_by(KnowledgeGraphArtifact.document_id))
         artifacts = {row.document_id: row for row in result.scalars()}
 
         documents: list[dict[str, Any]] = []

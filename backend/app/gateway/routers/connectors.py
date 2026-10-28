@@ -120,15 +120,7 @@ async def list_connectors(
     """List the caller's own canonical connectors; nobody else's ever appear."""
     owner_id = str(current_user.id)
     async with _session_scope() as session:
-        rows = list(
-            (
-                await session.execute(
-                    select(ConnectorIdentityRow)
-                    .where(ConnectorIdentityRow.owner_id == owner_id)
-                    .order_by(ConnectorIdentityRow.created_at, ConnectorIdentityRow.id)
-                )
-            ).scalars()
-        )
+        rows = list((await session.execute(select(ConnectorIdentityRow).where(ConnectorIdentityRow.owner_id == owner_id).order_by(ConnectorIdentityRow.created_at, ConnectorIdentityRow.id))).scalars())
         return {"items": [_projection(row) for row in rows], "total": len(rows)}
 
 

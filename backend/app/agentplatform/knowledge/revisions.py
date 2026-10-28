@@ -97,12 +97,7 @@ def is_local_import_revision(revision: KnowledgeRevision) -> bool:
     """True when every manifest entry came from an explicit local import."""
 
     entries = revision.manifest_json or []
-    return bool(entries) and all(
-        isinstance(entry, dict)
-        and isinstance(entry.get("metadata"), dict)
-        and entry["metadata"].get("origin") == LOCAL_IMPORT_ORIGIN
-        for entry in entries
-    )
+    return bool(entries) and all(isinstance(entry, dict) and isinstance(entry.get("metadata"), dict) and entry["metadata"].get("origin") == LOCAL_IMPORT_ORIGIN for entry in entries)
 
 
 def revision_document_key(revision_id: str, document_id: str, filename: str) -> str:

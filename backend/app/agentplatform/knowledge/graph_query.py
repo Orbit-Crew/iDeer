@@ -75,10 +75,7 @@ async def answer_scoped_question(question: str, documents: list[tuple[str, str, 
     from deerflow.utils.llm_text import strip_markdown_code_fence, strip_think_blocks
     from deerflow.utils.oneshot_llm import run_oneshot_llm
 
-    parts = [
-        f'<document filename="{filename}" sha256="{content_hash}">\n{text}\n</document>'
-        for filename, content_hash, text in documents
-    ]
+    parts = [f'<document filename="{filename}" sha256="{content_hash}">\n{text}\n</document>' for filename, content_hash, text in documents]
     joined = "\n".join(parts)
     raw = await run_oneshot_llm(
         system_instruction=_SCOPED_QA_SYSTEM_INSTRUCTION,
@@ -137,9 +134,7 @@ class KnowledgeGraphQueryService:
             raise ResourceNotFound(f"Knowledge revision {revision_id} not found")
         return revision
 
-    async def _scoped_entries(
-        self, resource_id: str, revision_id: str, document_ids: object
-    ) -> tuple[Any, KnowledgeRevision, list[dict[str, Any]]]:
+    async def _scoped_entries(self, resource_id: str, revision_id: str, document_ids: object) -> tuple[Any, KnowledgeRevision, list[dict[str, Any]]]:
         """Resolve one valid KB/Revision and the selected frozen documents.
 
         The requested document ids must be a non-empty subset of the
@@ -147,9 +142,11 @@ class KnowledgeGraphQueryService:
         a widened query.
         """
 
-        if not isinstance(document_ids, list) or not document_ids or len(document_ids) > MAX_SCOPED_DOCUMENTS or any(
-            not isinstance(document_id, str) or not document_id or len(document_id) > MAX_SCOPED_DOCUMENT_ID_CHARS
-            for document_id in document_ids
+        if (
+            not isinstance(document_ids, list)
+            or not document_ids
+            or len(document_ids) > MAX_SCOPED_DOCUMENTS
+            or any(not isinstance(document_id, str) or not document_id or len(document_id) > MAX_SCOPED_DOCUMENT_ID_CHARS for document_id in document_ids)
         ):
             raise ResourceConflict("Select one or more documents frozen in this revision to scope the query")
         kb = await self._knowledge_base(resource_id)
@@ -197,9 +194,7 @@ class KnowledgeGraphQueryService:
             content_hash = str(entry.get("content_hash") or "")
             artifact = artifacts.get(document_id)
             if artifact is None:
-                scope.append(
-                    {"document_id": document_id, "filename": filename, "content_hash": content_hash, "status": STATUS_NOT_GENERATED, "error_code": None}
-                )
+                scope.append({"document_id": document_id, "filename": filename, "content_hash": content_hash, "status": STATUS_NOT_GENERATED, "error_code": None})
                 continue
             if artifact.status == STATUS_COMPLETED:
                 generated += 1
@@ -250,12 +245,7 @@ class KnowledgeGraphQueryService:
         """
 
         kb, revision, entries = await self._scoped_entries(resource_id, revision_id, document_ids)
-        if (
-            not isinstance(question, str)
-            or not question.strip()
-            or len(question.strip()) > MAX_SCOPED_QUESTION_CHARS
-            or "\x00" in question
-        ):
+        if not isinstance(question, str) or not question.strip() or len(question.strip()) > MAX_SCOPED_QUESTION_CHARS or "\x00" in question:
             raise ResourceConflict("Ask one bounded, non-empty question scoped to this revision")
         question = question.strip()
 
@@ -282,9 +272,7 @@ class KnowledgeGraphQueryService:
                     }
                 )
                 continue
-            scope.append(
-                {"document_id": document_id, "filename": filename, "content_hash": content_hash, "status": STATUS_COMPLETED, "error_code": None}
-            )
+            scope.append({"document_id": document_id, "filename": filename, "content_hash": content_hash, "status": STATUS_COMPLETED, "error_code": None})
             documents.append((filename, content_hash, text))
 
         if failures:

@@ -77,11 +77,7 @@ def build_frozen_knowledge_bindings(
         if is_local_import_revision(revision):
             if str(resource.owner_id) != str(caller_user_id):
                 continue
-            device_ids = sorted({
-                str(entry["metadata"].get("device_id"))
-                for entry in (revision.manifest_json or [])
-                if isinstance(entry, dict) and isinstance(entry.get("metadata"), dict) and entry["metadata"].get("device_id")
-            })
+            device_ids = sorted({str(entry["metadata"].get("device_id")) for entry in (revision.manifest_json or []) if isinstance(entry, dict) and isinstance(entry.get("metadata"), dict) and entry["metadata"].get("device_id")})
             if len(device_ids) != 1 or not device_ids[0]:
                 continue
             documents = {
@@ -487,11 +483,7 @@ async def prepare_canonical_agent_run(
         # specs are keyed by dataset token, so the membership check runs
         # against the bound datasets (a latent #113 filter bug fixed here —
         # checking the keys would silently drop every local dispatch).
-        knowledge_specs = {
-            dataset: spec
-            for dataset, spec in build_local_knowledge_specs(revision_metadata).items()
-            if dataset in set(knowledge_scope.values())
-        }
+        knowledge_specs = {dataset: spec for dataset, spec in build_local_knowledge_specs(revision_metadata).items() if dataset in set(knowledge_scope.values())}
         if knowledge_specs:
             from agentplatform_extension.knowledge.scope import is_local_dataset
             from langchain_core.tools import ToolException
@@ -509,6 +501,7 @@ async def prepare_canonical_agent_run(
                 search_task_payload,
                 validate_local_search_result,
             )
+
             local_required = requires_local_material(knowledge_scope)
 
             def _source_failure(dataset_id: str, error_code: str) -> dict[str, Any]:
@@ -525,17 +518,10 @@ async def prepare_canonical_agent_run(
                     raise ToolException("KNOWLEDGE_ACCESS_DENIED")
                 broker = get_device_broker()
                 connection = broker.connections.get(spec["device_id"])
-                if (
-                    connection is None
-                    or not connection.tasks_allowed
-                    or connection.owner_id != str(user_id)
-                    or LOCAL_KNOWLEDGE_OPERATION not in connection.capabilities
-                ):
+                if connection is None or not connection.tasks_allowed or connection.owner_id != str(user_id) or LOCAL_KNOWLEDGE_OPERATION not in connection.capabilities:
                     return _source_failure(dataset_id, "KNOWLEDGE_DEVICE_UNAVAILABLE")
                 async with session_factory() as current_session:
-                    current_user = (
-                        await current_session.execute(select(UserModel).where(UserModel.id == str(user_id), UserModel.disabled.is_not(True)))
-                    ).scalar_one_or_none()
+                    current_user = (await current_session.execute(select(UserModel).where(UserModel.id == str(user_id), UserModel.disabled.is_not(True)))).scalar_one_or_none()
                     if current_user is None or ResourceAction.USE not in role_permissions(current_user.role):
                         return _source_failure(dataset_id, "KNOWLEDGE_DEVICE_UNAVAILABLE")
                 record = await broker.send_task(

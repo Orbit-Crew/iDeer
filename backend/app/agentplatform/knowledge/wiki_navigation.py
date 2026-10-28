@@ -118,9 +118,7 @@ class KnowledgeWikiNavigationService:
         kb = await self._knowledge_base(resource_id)
         revision = await self._revision(resource_id, revision_id)
         entries = manifest_entries(revision)
-        result = await self.session.execute(
-            select(KnowledgeWikiPage).where(KnowledgeWikiPage.revision_id == revision.id).order_by(KnowledgeWikiPage.document_id)
-        )
+        result = await self.session.execute(select(KnowledgeWikiPage).where(KnowledgeWikiPage.revision_id == revision.id).order_by(KnowledgeWikiPage.document_id))
         stored = {row.document_id: row for row in result.scalars()}
 
         # Titles of this revision's completed pages, resolved to their
@@ -223,9 +221,7 @@ class KnowledgeWikiNavigationService:
         nothing else.
         """
 
-        result = await self.session.execute(
-            select(KnowledgeGraphArtifact).where(KnowledgeGraphArtifact.revision_id == revision.id).order_by(KnowledgeGraphArtifact.document_id)
-        )
+        result = await self.session.execute(select(KnowledgeGraphArtifact).where(KnowledgeGraphArtifact.revision_id == revision.id).order_by(KnowledgeGraphArtifact.document_id))
         artifacts = {row.document_id: row for row in result.scalars()}
         sources: list[dict[str, Any]] = []
         entities: list[dict[str, Any]] = []
@@ -237,9 +233,7 @@ class KnowledgeWikiNavigationService:
             content_hash = str(entry.get("content_hash") or "")
             artifact = artifacts.get(document_id)
             if artifact is None:
-                sources.append(
-                    {"document_id": document_id, "filename": filename, "content_hash": content_hash, "status": STATUS_NOT_GENERATED, "error_code": None}
-                )
+                sources.append({"document_id": document_id, "filename": filename, "content_hash": content_hash, "status": STATUS_NOT_GENERATED, "error_code": None})
                 continue
             if artifact.status == STATUS_COMPLETED:
                 generated += 1

@@ -292,9 +292,7 @@ def test_owner_navigates_links_backlinks_and_associations(harness) -> None:
     assert sources[str(policy_entry["document_id"])]["error_code"] == "GRAPH_DOCUMENT_TOO_LARGE"
 
     # Reading a linked target still goes through the #118 per-page read.
-    page = client.get(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/wiki/pages/{policy_entry['document_id']}"
-    )
+    page = client.get(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/wiki/pages/{policy_entry['document_id']}")
     assert page.status_code == 200 and page.json()["title"] == POLICY_TITLE
 
 
@@ -308,9 +306,7 @@ def test_navigation_permission_matrix(harness) -> None:
     assert stranger.get(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/wiki").status_code == 404
     assert stranger.get(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/wiki/navigation").status_code == 404
     policy_entry = next(entry for entry in harness.revision.manifest_json if entry["filename"] == "policy.txt")
-    assert stranger.get(
-        f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/wiki/pages/{policy_entry['document_id']}"
-    ).status_code == 404
+    assert stranger.get(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/wiki/pages/{policy_entry['document_id']}").status_code == 404
     assert stranger.post(f"/api/resources/{harness.kb_id}/knowledge-revisions/{harness.revision_id}/wiki").status_code == 404
 
     async def _make_department_visible() -> None:
@@ -384,9 +380,7 @@ def test_navigation_is_revision_bound_and_never_leaks_other_versions(harness) ->
             await session.commit()
             harness.second_revision_id = str(payload["id"])
             revision = await session.get(KnowledgeRevision, harness.second_revision_id)
-            harness.second_documents = {
-                str(entry["document_id"]): (POLICY if entry["filename"] == "policy.txt" else EXTRA).decode() for entry in revision.manifest_json
-            }
+            harness.second_documents = {str(entry["document_id"]): (POLICY if entry["filename"] == "policy.txt" else EXTRA).decode() for entry in revision.manifest_json}
 
     asyncio.run(_second_revision())
     harness.broker.documents.update(harness.second_documents)
