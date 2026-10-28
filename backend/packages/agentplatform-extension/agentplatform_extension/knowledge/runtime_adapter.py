@@ -14,7 +14,7 @@ from agentplatform_extension.knowledge.retrieval_receipts import (
     build_retrieval_receipt,
     model_facing_retrieval_result,
 )
-from agentplatform_extension.knowledge.scope import KnowledgeScope
+from agentplatform_extension.knowledge.scope import KnowledgeScope, is_local_dataset
 
 KNOWLEDGE_ACCESS_DENIED = "KNOWLEDGE_ACCESS_DENIED"
 
@@ -34,11 +34,24 @@ class KnowledgeSearchInput(BaseModel):
 
 
 class KnowledgeRuntimeAdapter:
-    """Resolve logical KB selectors and enforce the frozen dataset allowlist."""
+    """Resolve logical KB selectors and enforce the frozen dataset allowlist.
 
-    def __init__(self, scope: KnowledgeScope, search: Callable[..., Any]) -> None:
+    A device-local dataset (#113) never reaches a knowledge provider: it is
+    dispatched through ``local_search`` to the one owning device whose unique
+    Runtime re-validates the frozen revision. Without that dispatch the
+    search is denied — a local KB must not silently fall back to a provider.
+    """
+
+    def __init__(
+        self,
+        scope: KnowledgeScope,
+        search: Callable[..., Any],
+        *,
+        local_search: Callable[[str, str], Any] | None = None,
+    ) -> None:
         self.scope = scope
         self.search = search
+        self.local_search = local_search
 
     async def search_knowledge(
         self,
@@ -56,7 +69,12 @@ class KnowledgeRuntimeAdapter:
             _record_denied(query, logical_kb)
             raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED) from exc
         document_ids = self.scope.document_ids_for(resolved)
-        if _accepts_dataset_ids(self.search):
+        if is_local_dataset(resolved):
+            if self.local_search is None:
+                _record_denied(query, logical_kb)
+                raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED)
+            result = self.local_search(query, resolved)
+        elif _accepts_dataset_ids(self.search):
             if document_ids is not None and not _accepts_parameter(self.search, "document_ids"):
                 raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED)
             search_options = {"dataset_ids": [resolved]}
@@ -194,8 +212,17 @@ async def _search_legacy_ragflow(
         return provider._tool_error(exc, settings)
 
 
-def adapt_knowledge_tools(tools: list[Any], scope: KnowledgeScope) -> list[Any]:
-    """Replace a provider knowledge tool with a scope-enforcing wrapper."""
+def adapt_knowledge_tools(
+    tools: list[Any],
+    scope: KnowledgeScope,
+    *,
+    local_search: Callable[[str, str], Any] | None = None,
+) -> list[Any]:
+    """Replace a provider knowledge tool with a scope-enforcing wrapper.
+
+    ``local_search`` receives ``(query, dataset_id)`` for device-local
+    datasets and is awaited by the adapter when awaitable.
+    """
     adapted: list[Any] = []
     for tool in tools:
         if getattr(tool, "name", None) != "knowledge_search":
@@ -213,7 +240,7 @@ def adapt_knowledge_tools(tools: list[Any], scope: KnowledgeScope) -> list[Any]:
             # adapter resolves and binds arguments itself, so a TypeError past
             # that point is a provider bug and must surface as one instead of
             # being masked as a scope denial in the audit trail.
-            return await KnowledgeRuntimeAdapter(scope, provider).search_knowledge(query, logical_kb=knowledge_base)
+            return await KnowledgeRuntimeAdapter(scope, provider, local_search=local_search).search_knowledge(query, logical_kb=knowledge_base)
 
         def _sync_search(query: str, knowledge_base: str) -> Any:
             provider = getattr(original, "func", None)
@@ -221,6 +248,11 @@ def adapt_knowledge_tools(tools: list[Any], scope: KnowledgeScope) -> list[Any]:
                 raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED)
             try:
                 resolved = scope.resolve(knowledge_base)
+                # Device-local retrieval is inherently async dispatch through
+                # the device broker; a sync caller is denied instead of being
+                # routed to a provider that cannot know this dataset.
+                if is_local_dataset(resolved):
+                    raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED)
                 document_ids = scope.document_ids_for(resolved)
                 if document_ids is not None and not _accepts_parameter(provider, "document_ids"):
                     raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED)
@@ -231,6 +263,8 @@ def adapt_knowledge_tools(tools: list[Any], scope: KnowledgeScope) -> list[Any]:
                 if profile and _accepts_parameter(provider, "retrieval_profile"):
                     search_options["retrieval_profile"] = profile
                 return provider(query, **search_options)
+            except KnowledgeAccessDenied:
+                raise
             except (KeyError, TypeError) as exc:
                 raise KnowledgeAccessDenied(KNOWLEDGE_ACCESS_DENIED) from exc
 

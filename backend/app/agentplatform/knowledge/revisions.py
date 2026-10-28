@@ -87,6 +87,24 @@ def canonical_manifest_hash(entries: list[dict]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+# Device-local import origin marker (issue 112): entries carrying this
+# metadata origin were registered from a paired Desktop without any platform
+# upload, so no publishable content exists for them on the platform.
+LOCAL_IMPORT_ORIGIN = "local_import"
+
+
+def is_local_import_revision(revision: KnowledgeRevision) -> bool:
+    """True when every manifest entry came from an explicit local import."""
+
+    entries = revision.manifest_json or []
+    return bool(entries) and all(
+        isinstance(entry, dict)
+        and isinstance(entry.get("metadata"), dict)
+        and entry["metadata"].get("origin") == LOCAL_IMPORT_ORIGIN
+        for entry in entries
+    )
+
+
 def revision_document_key(revision_id: str, document_id: str, filename: str) -> str:
     return f"knowledge-revisions/{revision_id}/{document_id}-{filename}"
 
@@ -266,6 +284,8 @@ class KnowledgeRevisionService:
 
         await self._knowledge_base(resource_id, modify=True)
         revision = await self._owned_revision(resource_id, revision_id)
+        if is_local_import_revision(revision):
+            raise ResourceConflict("Local import revisions stay device-local and cannot be published")
         if revision.integrity_status in UNUSABLE_INTEGRITY:
             raise ResourceConflict(f"Revision {revision_id} failed reconciliation and is not publishable")
         if revision.status == "indexing":
@@ -330,6 +350,8 @@ class KnowledgeRevisionService:
 
         await self._knowledge_base(resource_id, modify=True)
         revision = await self._owned_revision(resource_id, revision_id)
+        if is_local_import_revision(revision):
+            raise ResourceConflict("Local import revisions stay device-local and cannot be prepared")
         if revision.integrity_status in UNUSABLE_INTEGRITY:
             raise ResourceConflict(f"Revision {revision_id} failed reconciliation and is not preparable")
         if revision.status == "indexing":

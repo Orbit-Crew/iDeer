@@ -1920,6 +1920,22 @@ export const zhCN: Translations = {
       prepare: "准备索引",
       preparing: "准备中...",
       prepareAria: (no: number) => `准备 v${no} 索引`,
+      localPublication: {
+        title: "服务端发布",
+        checking: "正在查询发布状态...",
+        checkFailed: "无法加载发布状态。",
+        notPublished:
+          "尚未发布到服务端。该设备本地版本保持私有；发布必须由所有者在桌面端显式操作。",
+        awaitingContent: (missing: number) =>
+          `发布等待内容中：还有 ${missing} 个文件未上传。`,
+        readyToComplete: "全部内容已上传并通过校验，等待完成发布。",
+        publishing: "正在构建服务端副本...",
+        failed: (code: string) => `发布失败（${code}）。可在桌面端重试，失败状态保持可见。`,
+        published: (name: string) => `已发布为服务端副本「${name}」。`,
+        copyVisibility: (visibility: string) => `副本可见性：${visibility}`,
+        governanceNote:
+          "团队访问经由平台可见性申请流程授予；原设备知识库保持私有。",
+      },
     },
     evalCaseList: {
       selectKnowledgeBase: "选择一个知识库以维护评测用例",
@@ -1996,6 +2012,16 @@ export const zhCN: Translations = {
       noPublishedRevisions: "暂无已发布版本",
       modeAria: (slug: string) => `${slug} 依赖模式`,
       revisionAria: (slug: string) => `${slug} 已发布版本`,
+    },
+    knowledgeScopeSelector: {
+      title: "本次对话使用的知识",
+      narrowOnly: "勾选只会缩小本次对话的授权知识范围，绝不会超出授权检索。",
+      loadError: "知识范围加载失败。",
+      deviceSource: "本机设备",
+      serverSource: "服务端知识",
+      deviceOffline: "设备离线",
+      revision: (no: number) => `v${no}`,
+      checkboxAria: (name: string) => `在本次对话中检索 ${name}`,
     },
   },
   landing: {

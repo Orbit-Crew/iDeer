@@ -18,6 +18,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.agentplatform.knowledge.documents import KnowledgeDocumentService
 from app.agentplatform.knowledge.eval_cases import KnowledgeEvalCaseService
 from app.agentplatform.knowledge.evaluation import KnowledgeEvaluationService
+from app.agentplatform.knowledge.graph_generation import KnowledgeGraphGenerationService
+from app.agentplatform.knowledge.local_import import KnowledgeLocalImportService
+from app.agentplatform.knowledge.local_publish import KnowledgeLocalPublishService
 from app.agentplatform.knowledge.provider import KnowledgeProvider, KnowledgeProviderUnavailable
 from app.agentplatform.knowledge.ragflow import configured_ragflow_provider
 from app.agentplatform.knowledge.retrieval_test import KnowledgeRetrievalTestService, RetrievalTestStorageUnavailable
@@ -47,12 +50,16 @@ class KnowledgeFacade:
         provider_factory: ProviderFactory = configured_ragflow_provider,
         search: SearchCall | None = None,
         settings_factory: SettingsFactory | None = None,
+        graph_generator: Any | None = None,
+        graph_broker_factory: Any | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._audit = audit
         self._provider_factory = provider_factory
         self._search = search
         self._settings_factory = settings_factory
+        self._graph_generator = graph_generator
+        self._graph_broker_factory = graph_broker_factory
 
     def _documents(self, session: Any, actor: ResourceActor) -> KnowledgeDocumentService:
         return KnowledgeDocumentService(session, actor)
@@ -271,6 +278,187 @@ class KnowledgeFacade:
             {"resource_id": resource_id, "revision_no": revision["revision_no"]},
         )
         return revision
+
+    # --- Local imports -----------------------------------------------------
+
+    def _local_imports(self, session: Any, actor: ResourceActor) -> KnowledgeLocalImportService:
+        return KnowledgeLocalImportService(session, actor)
+
+    def _local_publications(self, session: Any, actor: ResourceActor) -> KnowledgeLocalPublishService:
+        return KnowledgeLocalPublishService(session, actor)
+
+    def _graph_generations(self, session: Any, actor: ResourceActor) -> KnowledgeGraphGenerationService:
+        return KnowledgeGraphGenerationService(
+            session,
+            actor,
+            generator=self._graph_generator,
+            broker_factory=self._graph_broker_factory,
+        )
+
+    async def generate_graph(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Orchestrate controlled graph generation for one frozen revision (#116).
+
+        Every model call runs on the Server; device material is requested per
+        frozen document through the authorized dispatch. The per-document
+        results — successes and fixed-category failures alike — are the
+        generation's honest outcome.
+        """
+        async with self._session_factory() as session:
+            result = await self._graph_generations(session, actor).generate(resource_id, revision_id)
+            await session.commit()
+        await self._audit(
+            actor.user_id,
+            "knowledge_graph_generated",
+            "knowledge_base",
+            resource_id,
+            {
+                "revision_id": revision_id,
+                "status": result.get("status"),
+                "generated": result.get("generated"),
+                "failed": result.get("failed"),
+            },
+        )
+        return result
+
+    async def graph_view(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Project the stored graph, its sources, and its generation status."""
+        async with self._session_factory() as session:
+            return await self._graph_generations(session, actor).view(resource_id, revision_id)
+
+    async def register_local_import(
+        self,
+        actor: ResourceActor,
+        resource_id: str,
+        *,
+        documents: list,
+        device_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Append one explicit local-import revision from device metadata."""
+        async with self._session_factory() as session:
+            revision = await self._local_imports(session, actor).register_local_import(
+                resource_id,
+                documents=documents,
+                device_id=device_id,
+            )
+            await session.commit()
+        await self._audit(
+            actor.user_id,
+            "knowledge_local_import_registered",
+            "knowledge_revision",
+            str(revision["id"]),
+            {
+                "resource_id": resource_id,
+                "revision_no": revision["revision_no"],
+                "manifest_hash": revision["manifest_hash"],
+                "document_count": revision["document_count"],
+            },
+        )
+        return revision
+
+    async def activate_local_revision(
+        self,
+        actor: ResourceActor,
+        resource_id: str,
+        revision_id: str,
+    ) -> dict[str, Any]:
+        """Anchor a device-local KnowledgeBase on one local-import revision (#113)."""
+        async with self._session_factory() as session:
+            revision = await self._local_imports(session, actor).activate_local_revision(resource_id, revision_id)
+            await session.commit()
+        await self._audit(
+            actor.user_id,
+            "knowledge_local_revision_activated",
+            "knowledge_revision",
+            str(revision["id"]),
+            {
+                "resource_id": resource_id,
+                "revision_no": revision["revision_no"],
+                "manifest_hash": revision["manifest_hash"],
+            },
+        )
+        return revision
+
+    # --- Local publications (#115) ------------------------------------------
+
+    async def preview_local_publication(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Read-only preview of one explicit server publication; no side effects."""
+        async with self._session_factory() as session:
+            return await self._local_publications(session, actor).preview_publication(resource_id, revision_id)
+
+    async def confirm_local_publication(
+        self,
+        actor: ResourceActor,
+        resource_id: str,
+        revision_id: str,
+        *,
+        confirmed: bool,
+    ) -> dict[str, Any]:
+        """Create the private server copy after the owner's explicit confirmation."""
+        async with self._session_factory() as session:
+            publication = await self._local_publications(session, actor).confirm_publication(
+                resource_id,
+                revision_id,
+                confirmed=confirmed,
+            )
+            await session.commit()
+        if confirmed:
+            await self._audit(
+                actor.user_id,
+                "knowledge_local_publication_confirmed",
+                "knowledge_base",
+                resource_id,
+                {
+                    "revision_id": revision_id,
+                    "copy_resource_id": (publication.get("copy") or {}).get("resource_id"),
+                },
+            )
+        return publication
+
+    async def complete_local_publication(
+        self,
+        actor: ResourceActor,
+        resource_id: str,
+        revision_id: str,
+        *,
+        schedule: BuildScheduler,
+    ) -> dict[str, Any]:
+        """Verify uploaded content, freeze the copy revision, and start its build."""
+        provider = self._provider()
+        async with self._session_factory() as session:
+            publication = await self._local_publications(session, actor).complete_publication(
+                resource_id,
+                revision_id,
+                provider=provider,
+            )
+            await session.commit()
+        copy_revision = publication.get("revision") or {}
+        if copy_revision.get("status") == "indexing" and copy_revision.get("id"):
+            schedule(
+                execute_publish,
+                self._session_factory,
+                resource_id=str(copy_revision.get("resource_id")),
+                revision_id=str(copy_revision["id"]),
+                actor_id=actor.user_id,
+                provider=provider,
+                execution_token=None,
+            )
+        await self._audit(
+            actor.user_id,
+            "knowledge_local_publication_completed",
+            "knowledge_base",
+            resource_id,
+            {
+                "revision_id": revision_id,
+                "copy_resource_id": (publication.get("copy") or {}).get("resource_id"),
+                "copy_revision_status": copy_revision.get("status"),
+            },
+        )
+        return publication
+
+    async def get_local_publication(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Derived publication state for status, permission, and failure visibility."""
+        async with self._session_factory() as session:
+            return await self._local_publications(session, actor).get_publication_status(resource_id, revision_id)
 
     # --- Eval cases --------------------------------------------------------
 

@@ -252,6 +252,28 @@ class KnowledgeDocumentUpdateRequest(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
+class LocalImportDocumentRequest(BaseModel):
+    """Device-side document identity for one explicit local import (#112).
+
+    Only identity metadata crosses the seam: the original file and the
+    device-side index stay on the device that imported them.
+    """
+
+    filename: str
+    content_hash: str
+    size_bytes: int
+    mime_type: str | None = None
+
+
+class LocalImportRequest(BaseModel):
+    documents: list[LocalImportDocumentRequest] = Field(min_length=1)
+    device_id: str | None = Field(default=None, max_length=128)
+
+
+class LocalPublicationConfirmRequest(BaseModel):
+    confirmed: bool = False
+
+
 class EvalCaseCreateRequest(BaseModel):
     question: str
     expected_document_ids: list[str] = Field(default_factory=list)
@@ -1015,6 +1037,185 @@ async def publish_knowledge_revision(
         revision_id,
         schedule=background_tasks.add_task,
     )
+
+
+@router.post("/{resource_id}/knowledge-revisions/local-imports", status_code=201)
+@translate_resource_errors
+async def register_knowledge_local_import(
+    resource_id: str,
+    body: LocalImportRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Register one explicit Desktop local import as an immutable draft revision (#112).
+
+    The device keeps the original files and its index; only document
+    identities, sizes, MIME types, and content hashes reach the platform, so
+    the frozen manifest is the governance record for a KB that never uploads.
+    """
+    return await knowledge.register_local_import(
+        _resource_actor(current_user),
+        resource_id,
+        documents=[document.model_dump() for document in body.documents],
+        device_id=body.device_id,
+    )
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/activate-local")
+@translate_resource_errors
+async def activate_knowledge_local_revision(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Anchor a device-local KnowledgeBase on one registered local import (#113).
+
+    Activation moves only the LIVE pointer so Run closure resolution can
+    freeze this revision; the device keeps the original files and no provider
+    dataset is created. A KB without an activated local revision stays
+    un-runnable instead of falling back to current device content.
+    """
+    return await knowledge.activate_local_revision(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/local-publication/preview")
+@translate_resource_errors
+async def preview_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Explain where an explicit publication would upload, before any upload (#115).
+
+    Read-only: the frozen document identities and the destination server copy
+    are described, but nothing is created and no content leaves the device
+    until the owner explicitly confirms the publication.
+    """
+    return await knowledge.preview_local_publication(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/local-publication")
+@translate_resource_errors
+async def confirm_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    body: LocalPublicationConfirmRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Explicitly confirm the server-side publication of one local revision (#115).
+
+    A call without ``confirmed=true`` is refused as a fixed category and
+    creates nothing: an unconfirmed preview never uploads the library and
+    never fabricates a published state. With confirmation, the private server
+    copy is created (idempotently) and the device KB stays untouched.
+    """
+    return await knowledge.confirm_local_publication(
+        _resource_actor(current_user),
+        resource_id,
+        revision_id,
+        confirmed=body.confirmed,
+    )
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/local-publication/complete")
+@translate_resource_errors
+async def complete_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Verify uploaded content against the frozen manifest and publish the copy (#115).
+
+    Content reaches the copy only through the platform's own document upload
+    endpoint; completion re-checks every hash against the frozen manifest,
+    freezes the copy's revision with the managed-origin provenance, and runs
+    the standard provider build. The source KB's revisions and LIVE pointer
+    are never modified.
+    """
+    return await knowledge.complete_local_publication(
+        _resource_actor(current_user),
+        resource_id,
+        revision_id,
+        schedule=background_tasks.add_task,
+    )
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/local-publication")
+@translate_resource_errors
+async def get_knowledge_local_publication(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Publication status, permission, and failure visibility for one revision (#115).
+
+    The state is derived from the copy resource on every read, so an
+    interrupted upload, a failed build, and the copy's current visibility are
+    always current. There is no auto two-way sync to report: later device
+    revisions only ever publish as new explicit publications.
+    """
+    return await knowledge.get_local_publication(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/graph")
+@translate_resource_errors
+async def generate_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Orchestrate controlled graph generation for one frozen revision (#116).
+
+    Every model call runs on the Server's own configuration; a device-local
+    revision's material is requested one frozen document at a time through
+    the authorized broker dispatch, so the device never bulk-uploads its
+    library. Each document records its own success or fixed-category failure.
+    """
+    return await knowledge.generate_graph(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/graph")
+@translate_resource_errors
+async def get_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Read one revision's controlled graph with its sources and status (#116).
+
+    Entities, relations, and document sources are bound to the frozen
+    KB/Revision identity and the caller's visibility: a caller without
+    access reads a 404, and another revision's graph never bleeds in.
+    """
+    return await knowledge.graph_view(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-scope")
+@translate_resource_errors
+async def get_agent_knowledge_scope(
+    resource_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """The caller-authorized KB sources behind one Agent (#114).
+
+    The Web selection surface reads this to offer exactly what a Run would
+    bind for this caller: server provider KBs and the caller's own device
+    KBs with live availability. Authorization and freeze are the Run's own
+    closure resolution; a selection made against this view rides
+    ``runtime_knowledge_scope`` and can only narrow the frozen scope.
+    """
+    from app.gateway.hybrid_knowledge import knowledge_scope_view
+
+    async with _factory()() as session:
+        return await knowledge_scope_view(session, _resource_actor(current_user), resource_id)
 
 
 @router.post("/{resource_id}/eval-cases", status_code=201)

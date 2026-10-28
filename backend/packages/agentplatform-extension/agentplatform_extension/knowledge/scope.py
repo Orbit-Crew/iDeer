@@ -5,6 +5,17 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
+# Dataset token prefix for device-local import revisions (#113). The control
+# plane binds such KBs to ``local:<revision_id>``; the token names the frozen
+# platform revision, never a provider dataset or a device path.
+LOCAL_DATASET_PREFIX = "local:"
+
+
+def is_local_dataset(dataset_id: str) -> bool:
+    """True for device-local dataset tokens resolved from a frozen revision."""
+
+    return dataset_id.startswith(LOCAL_DATASET_PREFIX)
+
 
 @dataclass(frozen=True, slots=True)
 class KnowledgeScope:

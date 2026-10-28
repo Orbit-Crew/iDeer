@@ -14,6 +14,7 @@ interface RetrievalReceipt {
   manifest_hash?: string | null;
   configuration_source?: string | null;
   result_status?: string;
+  engine?: string;
   items?: RetrievalItem[];
   returned_count?: number;
   truncated?: boolean;
@@ -40,6 +41,21 @@ function location(item: RetrievalItem): string | null {
     return `Page ${page}`;
   }
   if (typeof position.section === "string") return position.section;
+  return null;
+}
+
+// Issue 114: a failed local source must never render as "no matching
+// content" — the failure and its meaning stay visible next to the answer.
+const FAILURE_STATUSES: Record<string, string> = {
+  source_unavailable:
+    "Source unavailable — results from the remaining sources are incomplete.",
+  paused_local_required:
+    "Retrieval paused — this task requires local knowledge that is currently unavailable.",
+};
+
+function engineLabel(engine?: string): string | null {
+  if (engine === "local_device") return "device retrieval";
+  if (engine === "server_provider") return "server retrieval";
   return null;
 }
 
@@ -81,55 +97,64 @@ export function RetrievalReceiptCard({
     <section className="rounded-lg border p-4" data-testid="retrieval-receipts">
       <h2 className="type-section-title font-medium">Retrieval evidence</h2>
       <div className="mt-3 space-y-4">
-        {receipts.map((receipt) => (
-          <article
-            key={
-              receipt.receipt_id ??
-              `${receipt.knowledge_base_id}-${receipt.revision_no}`
-            }
-          >
-            <p className="type-body text-muted-foreground">
-              KB {receipt.knowledge_base_id?.slice(0, 8) ?? "?"} · v
-              {receipt.revision_no ?? "?"} ·{" "}
-              {receipt.result_status ?? "unknown"}
-              {receipt.configuration_source
-                ? ` · ${receipt.configuration_source}`
-                : ""}
-              {receipt.truncated ? " · results truncated" : ""}
-            </p>
-            {receipt.items?.length ? (
-              <ul className="mt-2 space-y-2">
-                {receipt.items.map((item, index) => (
-                  <li
-                    key={`${receipt.receipt_id ?? "receipt"}-${index}`}
-                    className="rounded border p-2"
-                  >
-                    <p className="type-body font-medium">
-                      {item.display_name ?? "Unnamed document"}
-                      {location(item) ? ` · ${location(item)}` : ""}
-                      {typeof item.score === "number"
-                        ? ` · retrieval score ${item.score}`
-                        : ""}
-                    </p>
-                    {item.content ? (
-                      <p className="type-body text-muted-foreground mt-1 break-words whitespace-pre-wrap">
-                        {item.content}
-                      </p>
-                    ) : (
-                      <p className="type-body text-muted-foreground mt-1">
-                        Snippet unavailable
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="type-body text-muted-foreground mt-2">
-                No matching content.
+        {receipts.map((receipt) => {
+          const failure = FAILURE_STATUSES[receipt.result_status ?? ""];
+          const engine = engineLabel(receipt.engine);
+          return (
+            <article
+              key={
+                receipt.receipt_id ??
+                `${receipt.knowledge_base_id}-${receipt.revision_no}`
+              }
+            >
+              <p className="type-body text-muted-foreground">
+                KB {receipt.knowledge_base_id?.slice(0, 8) ?? "?"} · v
+                {receipt.revision_no ?? "?"}
+                {engine ? ` · ${engine}` : ""} ·{" "}
+                {receipt.result_status ?? "unknown"}
+                {receipt.configuration_source
+                  ? ` · ${receipt.configuration_source}`
+                  : ""}
+                {receipt.truncated ? " · results truncated" : ""}
               </p>
-            )}
-          </article>
-        ))}
+              {failure ? (
+                <p className="type-body mt-2" data-testid="retrieval-source-failure">
+                  {failure}
+                </p>
+              ) : receipt.items?.length ? (
+                <ul className="mt-2 space-y-2">
+                  {receipt.items.map((item, index) => (
+                    <li
+                      key={`${receipt.receipt_id ?? "receipt"}-${index}`}
+                      className="rounded border p-2"
+                    >
+                      <p className="type-body font-medium">
+                        {item.display_name ?? "Unnamed document"}
+                        {location(item) ? ` · ${location(item)}` : ""}
+                        {typeof item.score === "number"
+                          ? ` · retrieval score ${item.score}`
+                          : ""}
+                      </p>
+                      {item.content ? (
+                        <p className="type-body text-muted-foreground mt-1 break-words whitespace-pre-wrap">
+                          {item.content}
+                        </p>
+                      ) : (
+                        <p className="type-body text-muted-foreground mt-1">
+                          Snippet unavailable
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="type-body text-muted-foreground mt-2">
+                  No matching content.
+                </p>
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

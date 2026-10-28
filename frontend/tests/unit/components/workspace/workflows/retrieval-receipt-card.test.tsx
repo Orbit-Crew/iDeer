@@ -61,4 +61,93 @@ describe("RetrievalReceiptCard", () => {
     expect(screen.getByText("No matching content.")).toBeInTheDocument();
     expect(screen.queryByText("Unnamed document")).not.toBeInTheDocument();
   });
+
+  test("a failed local source is shown as unavailable, never as no matching content", () => {
+    render(
+      <RetrievalReceiptCard
+        snapshot={{
+          run_evidence: {
+            retrieval_receipts: [
+              {
+                receipt_id: "rr-2",
+                knowledge_base_id: "kb-device-1",
+                revision_no: 2,
+                engine: "local_device",
+                result_status: "source_unavailable",
+                items: [],
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("retrieval-receipts")).toBeInTheDocument();
+    expect(screen.getByTestId("retrieval-source-failure")).toHaveTextContent(
+      /source unavailable/i,
+    );
+    expect(screen.queryByText("No matching content.")).not.toBeInTheDocument();
+  });
+
+  test("a local-required pause is shown as paused, never as no matching content", () => {
+    render(
+      <RetrievalReceiptCard
+        snapshot={{
+          run_evidence: {
+            retrieval_receipts: [
+              {
+                receipt_id: "rr-3",
+                knowledge_base_id: "kb-device-1",
+                revision_no: 2,
+                engine: "local_device",
+                result_status: "paused_local_required",
+                items: [],
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("retrieval-source-failure")).toHaveTextContent(
+      /paused/i,
+    );
+    expect(screen.queryByText("No matching content.")).not.toBeInTheDocument();
+  });
+
+  test("receipts name the serving engine next to the KB identity", () => {
+    render(
+      <RetrievalReceiptCard
+        snapshot={{
+          run_evidence: {
+            retrieval_receipts: [
+              {
+                receipt_id: "rr-4",
+                knowledge_base_id: "kb-device-9",
+                revision_no: 1,
+                engine: "local_device",
+                result_status: "success",
+                items: [
+                  { display_name: "guide.txt", content: "device line" },
+                ],
+              },
+              {
+                receipt_id: "rr-5",
+                knowledge_base_id: "kb-server-9",
+                revision_no: 4,
+                engine: "server_provider",
+                result_status: "success",
+                items: [
+                  { display_name: "policy.txt", content: "server line" },
+                ],
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/device retrieval/)).toBeInTheDocument();
+    expect(screen.getByText(/server retrieval/)).toBeInTheDocument();
+  });
 });

@@ -8,6 +8,7 @@ import {
   useCreateKnowledgeRevision,
   useKnowledgeRevision,
   useKnowledgeRevisions,
+  useLocalPublication,
   usePrepareKnowledgeRevision,
   usePublishKnowledgeRevision,
 } from "@/core/library";
@@ -214,16 +215,117 @@ function RevisionDetail({
     );
   }
   return (
-    <ul className="mt-3 space-y-2">
-      {data.documents.map((document) => (
-        <li
-          key={document.document_id}
-          className="text-muted-foreground type-body"
-        >
-          {document.filename} · {document.content_hash.slice(0, 12)} ·{" "}
-          {document.size_bytes} bytes
-        </li>
-      ))}
-    </ul>
+    <div className="mt-3 space-y-3">
+      <ul className="space-y-2">
+        {data.documents.map((document) => (
+          <li
+            key={document.document_id}
+            className="text-muted-foreground type-body"
+          >
+            {document.filename} · {document.content_hash.slice(0, 12)} ·{" "}
+            {document.size_bytes} bytes
+          </li>
+        ))}
+      </ul>
+      <LocalPublicationPanel
+        knowledgeBaseId={knowledgeBaseId}
+        revisionId={revisionId}
+      />
+    </div>
+  );
+}
+
+// Issue 115: publication status, permission, and failure visibility for a
+// device-local revision. The panel reads the derived server state; it never
+// mutates anything and there is no automatic two-way sync to hide.
+function LocalPublicationPanel({
+  knowledgeBaseId,
+  revisionId,
+}: {
+  knowledgeBaseId: string;
+  revisionId: string;
+}) {
+  const { t } = useI18n();
+  const i = t.library.revisionList;
+  const { data, isLoading, error } = useLocalPublication(
+    knowledgeBaseId,
+    revisionId,
+  );
+
+  if (isLoading) {
+    return (
+      <div className="text-muted-foreground type-body">
+        {i.localPublication.checking}
+      </div>
+    );
+  }
+  if (error || !data) {
+    return (
+      <div role="alert" className="text-muted-foreground type-body">
+        {i.localPublication.checkFailed}
+      </div>
+    );
+  }
+  const copy = data.copy;
+  const revision = data.revision;
+  return (
+    <div
+      data-testid="local-publication-panel"
+      className="rounded-md border p-3"
+    >
+      <div className="type-body font-medium">{i.localPublication.title}</div>
+      {data.status === "none" ? (
+        <div className="text-muted-foreground type-body">
+          {i.localPublication.notPublished}
+        </div>
+      ) : null}
+      {data.status === "awaiting_content" ? (
+        <div role="status" className="type-body">
+          {i.localPublication.awaitingContent(data.missing_documents.length)}
+          {data.missing_documents.length > 0 ? (
+            <span className="text-muted-foreground">
+              {" "}
+              {data.missing_documents.join(", ")}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {data.status === "ready_to_complete" ? (
+        <div role="status" className="type-body">
+          {i.localPublication.readyToComplete}
+        </div>
+      ) : null}
+      {data.status === "publishing" ? (
+        <div role="status" className="type-body">
+          {i.localPublication.publishing}
+        </div>
+      ) : null}
+      {data.status === "failed" ? (
+        <div role="alert" className="text-destructive type-body">
+          {i.localPublication.failed(revision?.failure_code ?? "")}
+          {revision?.failure_message ? (
+            <span className="text-muted-foreground">
+              {" "}
+              {revision.failure_message}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {data.status === "published" && copy ? (
+        <div role="status" className="type-body">
+          {i.localPublication.published(copy.display_name)}
+          <span className="text-muted-foreground">
+            {" "}
+            {i.localPublication.copyVisibility(copy.visibility)} ·{" "}
+            {copy.resource_id}
+          </span>
+        </div>
+      ) : null}
+      {copy && copy.visibility !== "private" ? (
+        <div className="text-muted-foreground type-body">
+          {i.localPublication.governanceNote}
+        </div>
+      ) : null}
+    </div>
   );
 }

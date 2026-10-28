@@ -5,6 +5,7 @@ import {
   createKnowledgeEvalCase,
   createKnowledgeRevision,
   deleteKnowledgeEvalCase,
+  getAgentKnowledgeScope,
   getEvalCaseRevisionApplicability,
   getKnowledgeEvalCase,
   getKnowledgeRevision,
@@ -22,6 +23,7 @@ import {
   getKnowledgeEvaluationComparison,
   getKnowledgeEvaluationPolicy,
   publishKnowledgeRevision,
+  getLocalPublication,
   prepareKnowledgeRevision,
   runRetrievalTest,
   updateKnowledgeEvalCase,
@@ -220,6 +222,34 @@ export function usePrepareKnowledgeRevision(resourceId: string) {
       void queryClient.invalidateQueries({
         queryKey: ["knowledge-revisions", resourceId],
       }),
+  });
+}
+
+// Issue 115: derived publication state for one device-local revision. The
+// query polls only while the server-side copy is actively building.
+export function useLocalPublication(
+  resourceId: string | undefined,
+  revisionId: string | undefined,
+) {
+  return useQuery({
+    queryKey: ["knowledge-local-publication", resourceId, revisionId],
+    queryFn: () => getLocalPublication(resourceId!, revisionId!),
+    enabled: Boolean(resourceId && revisionId),
+    refetchInterval: (query) => {
+      const publication = query.state.data;
+      return publication?.status === "publishing" ? 2000 : false;
+    },
+  });
+}
+
+// Issue 114: the caller-authorized KB sources behind one Agent, including the
+// caller's own device KBs with live availability. The chat selection rides
+// this view; the server still freezes and narrows the scope for every run.
+export function useAgentKnowledgeScope(agentId: string | undefined) {
+  return useQuery({
+    queryKey: ["agent-knowledge-scope", agentId],
+    queryFn: () => getAgentKnowledgeScope(agentId!),
+    enabled: Boolean(agentId),
   });
 }
 

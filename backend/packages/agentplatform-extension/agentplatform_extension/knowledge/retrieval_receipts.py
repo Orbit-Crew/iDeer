@@ -29,6 +29,13 @@ def _bounded_text(value: object) -> str:
 
 
 def _status(result: object) -> str:
+    if isinstance(result, dict) and isinstance(result.get("source_failure"), dict):
+        # Issue 114: a failed local leg is a structured source failure — a
+        # distinct status, never an empty hit, so it cannot read as "no
+        # material". Local-only runs pause instead of answering.
+        if isinstance(result.get("pause"), dict):
+            return "paused_local_required"
+        return "source_unavailable"
     if isinstance(result, dict) and isinstance(result.get("chunks"), list):
         return "success" if result["chunks"] else "empty_hit"
     text = str(result or "")
@@ -95,8 +102,37 @@ def _markdown_label(label: str) -> str:
     return label.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]").replace("(", "\\(").replace(")", "\\)").replace("\n", " ")
 
 
+def _source_failure_model_text(result: dict[str, object]) -> str:
+    """The model-facing projection of a failed local leg (#114).
+
+    A partial failure says the source is unavailable and the remaining
+    answer is incomplete; a local-required pause directs the model to stop.
+    Neither may be phrased as "no material found" — that is exactly what a
+    failed local leg must not be able to impersonate.
+    """
+
+    failure = result.get("source_failure")
+    failure = failure if isinstance(failure, dict) else {}
+    label = str(failure.get("knowledge_base_id") or "the local knowledge source")
+    code = str(failure.get("error_code") or "unavailable")
+    if isinstance(result.get("pause"), dict):
+        return (
+            f'Knowledge retrieval is paused: this task requires the local knowledge source "{label}", '
+            f"which is currently unavailable ({code}). End the turn by reporting that retrieval is paused "
+            "until the source is available again; do not answer from other material and do not state "
+            "that no material exists."
+        )
+    return (
+        f'The local knowledge source "{label}" is currently unavailable ({code}); the authorized sources '
+        "that did respond are incomplete. Any answer built from them must say so explicitly, and this "
+        "must not be treated as confirmation that no material exists."
+    )
+
+
 def _model_facing_result(result: object, receipt: dict[str, object]) -> object:
     """Add opaque, run-local citation links without changing provider content."""
+    if isinstance(result, dict) and isinstance(result.get("source_failure"), dict):
+        return _source_failure_model_text(result)
     items = receipt.get("items")
     if not isinstance(items, list) or not items:
         return result
@@ -111,6 +147,12 @@ def _model_facing_result(result: object, receipt: dict[str, object]) -> object:
             return model_text
         delivered = dict(result)
         delivered.pop("__agentplatform_model_text", None)
+        source = {
+            "knowledge_base_id": receipt.get("knowledge_base_id"),
+            "revision_id": receipt.get("revision_id"),
+            "revision_no": receipt.get("revision_no"),
+            "engine": receipt.get("engine"),
+        }
         chunks = []
         item_index = 0
         for chunk in result["chunks"]:
@@ -129,6 +171,10 @@ def _model_facing_result(result: object, receipt: dict[str, object]) -> object:
             # would make the model cite text that cannot be retrieved later.
             annotated["content"] = item.get("content")
             annotated["document"] = item.get("display_name")
+            # Issue 114: every delivered chunk names its KB/revision source and
+            # engine, so a hybrid answer can attribute each citation without
+            # the two engines' raw scores ever being merged onto one scale.
+            annotated["source"] = dict(source)
             label = _markdown_label(_citation_label(item))
             annotated["evidence_id"] = evidence_id
             annotated["citation_label"] = label
@@ -179,6 +225,12 @@ def build_retrieval_receipt(
     metadata = scope.revision_metadata_for(dataset_id)
     items = _items(result, metadata)
     status = _status(result)
+    # Issue 114: name the engine that served this result. Scores are
+    # comparable only inside one engine; the label keeps a device text match
+    # from being ranked against a provider similarity as if one scale.
+    from agentplatform_extension.knowledge.scope import is_local_dataset
+
+    engine = "local_device" if is_local_dataset(str(dataset_id)) else "server_provider"
     created_at = datetime.now(UTC).isoformat()
     receipt_id = "rr_" + hashlib.sha256(f"{query}\0{logical_kb}\0{created_at}".encode()).hexdigest()[:24]
     provider_count = len(result.get("chunks", [])) if isinstance(result, dict) and isinstance(result.get("chunks"), list) else len(items)
@@ -192,6 +244,7 @@ def build_retrieval_receipt(
         "revision_no": metadata.get("revision_no"),
         "manifest_hash": metadata.get("manifest_hash"),
         "configuration_source": metadata.get("configuration_source"),
+        "engine": engine,
         "tool_call_id": tool_call_id,
         "parent_tool_receipt_id": parent_tool_receipt_id,
         "run_id": run_id,
@@ -220,6 +273,7 @@ def build_retrieval_receipt(
     for index, item in enumerate(items, start=1):
         item["evidence_id"] = f"{receipt_id}_i{index}"
         item["citation_label"] = _citation_label(item)
+        item["engine"] = engine
     return receipt
 
 

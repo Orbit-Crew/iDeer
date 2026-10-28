@@ -32,11 +32,16 @@ def build_canonical_agent_factory(
     *,
     runner_tool_groups: frozenset[str] | None,
     knowledge_scope: KnowledgeScope | None = None,
+    local_knowledge_search: Any = None,
     local_authorization: LocalAuthorization | None = None,
     local_tool_executor: LocalToolExecutor | None = None,
     local_tool_descriptors: Mapping[str, Mapping[str, Any]] | None = None,
 ):
-    """Return a factory bound to one immutable canonical resource snapshot."""
+    """Return a factory bound to one immutable canonical resource snapshot.
+
+    ``local_knowledge_search`` dispatches device-local dataset retrieval
+    (#113) to the run's owning device; provider-backed datasets are unchanged.
+    """
 
     frozen = FrozenAgentInputs(
         agent_name=definition.resource_id,
@@ -66,7 +71,7 @@ def build_canonical_agent_factory(
             def scoped_tools(*args: Any, **kwargs: Any) -> list[Any]:
                 tools = original(*args, **kwargs)
                 if knowledge_scope is not None:
-                    tools = adapt_knowledge_tools(tools, knowledge_scope)
+                    tools = adapt_knowledge_tools(tools, knowledge_scope, local_search=local_knowledge_search)
                 if local_tool_executor is not None and local_authorization is not None:
                     tools = [
                         *tools,
