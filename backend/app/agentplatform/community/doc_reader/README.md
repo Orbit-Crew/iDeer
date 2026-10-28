@@ -18,8 +18,16 @@ tool_groups:
 tools:
   - name: read_document
     group: document
-    use: ideer.community.doc_reader.tools:read_document_tool
+    use: app.agentplatform.community.doc_reader.tools:read_document_tool
 ```
+
+When upgrading an existing deployment, run `make config-upgrade` from the
+repository root against the deployed configuration, then restart the backend
+services. Set `DEER_FLOW_CONFIG_PATH` to the configuration file if it is outside
+the default location. The upgrade migrates legacy `ideer.community.doc_reader.*`
+paths even when `config_version` is already current. An import error suggesting
+`uv add ideer` for this legacy path indicates stale configuration; installing an
+`ideer` package does not migrate it.
 
 ## Usage
 

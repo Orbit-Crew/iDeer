@@ -99,8 +99,8 @@ MIGRATIONS = {
 # Runtime ownership moved from the legacy ideer harness to DeerFlow.  This
 # migration is deliberately independent of ``config_version``: an operator
 # may already have a current schema while still carrying old dotted paths.
-# Keep product-only community integrations untouched when DeerFlow has no
-# equivalent implementation; those remain explicit compatibility extensions.
+# Product-only community integrations live in the app layer; map each known
+# integration explicitly so custom community extensions remain untouched.
 RUNTIME_PATH_MIGRATIONS = [
     ('ideer.models.', 'deerflow.models.'),
     ('ideer.sandbox.', 'deerflow.sandbox.'),
@@ -112,6 +112,9 @@ RUNTIME_PATH_MIGRATIONS = [
     ('ideer.community.jina_ai.', 'deerflow.community.jina_ai.'),
     ('ideer.community.image_search.', 'deerflow.community.image_search.'),
     ('ideer.community.aio_sandbox.', 'deerflow.community.aio_sandbox.'),
+    ('ideer.community.doc_reader.', 'app.agentplatform.community.doc_reader.'),
+    ('ideer.community.code_interpreter.', 'app.agentplatform.community.code_interpreter.'),
+    ('ideer.community.data_analyzer.', 'app.agentplatform.community.data_analyzer.'),
     ('ideer.config.', 'deerflow.config.'),
 ]
 

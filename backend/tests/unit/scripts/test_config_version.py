@@ -324,6 +324,58 @@ def test_config_upgrade_migrates_legacy_runtime_paths_at_current_schema_version(
     assert upgraded["custom"]["use"].startswith("app.agentplatform.community.doc_reader.")
 
 
+@pytest.mark.skipif(SCRIPT_BASH is None, reason="repository scripts require Bash")
+@pytest.mark.parametrize("module_prefix", ["ideer.community", "src.community", "app.agentplatform.community"])
+def test_config_upgrade_migrates_product_community_tools(tmp_path, module_prefix):
+    """Upgrade legacy tool paths to loadable app integrations without changing custom tools."""
+    import subprocess
+
+    from langchain_core.tools import BaseTool
+
+    from deerflow.reflection import resolve_variable
+
+    repo_root = Path(__file__).resolve().parents[4]
+    example = yaml.safe_load((repo_root / "config.example.yaml").read_text(encoding="utf-8"))
+    config_path = tmp_path / "config.yaml"
+    integrations = {
+        "doc_reader": "read_document_tool",
+        "code_interpreter": "code_interpreter_tool",
+        "data_analyzer": "data_analyzer_tool",
+    }
+    custom_tool = {"name": "custom", "use": "company_tools.documents:read_document"}
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "config_version": 0 if module_prefix == "src.community" else example["config_version"],
+                "tools": [{"name": name, "use": f"{module_prefix}.{name}.tools:{attribute}"} for name, attribute in integrations.items()] + [custom_tool],
+            }
+        ),
+        encoding="utf-8",
+    )
+    original = config_path.read_text(encoding="utf-8")
+    command = [SCRIPT_BASH, str(repo_root / "scripts" / "config-upgrade.sh")]
+    env = {**os.environ, "DEER_FLOW_CONFIG_PATH": str(config_path)}
+
+    result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=120)
+
+    assert result.returncode == 0, result.stderr
+    upgraded = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    tools = {entry["name"]: entry for entry in upgraded["tools"]}
+    for name, attribute in integrations.items():
+        expected = f"app.agentplatform.community.{name}.tools:{attribute}"
+        assert tools[name]["use"] == expected
+        assert isinstance(resolve_variable(expected), BaseTool)
+    assert tools["custom"] == custom_tool
+    assert config_path.with_suffix(".yaml.bak").read_text(encoding="utf-8") == original
+
+    migrated = config_path.read_text(encoding="utf-8")
+    result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stderr
+    assert "No changes needed" in result.stdout
+    assert config_path.read_text(encoding="utf-8") == migrated
+    assert config_path.with_suffix(".yaml.bak").read_text(encoding="utf-8") == original
+
+
 def test_config_upgrade_registers_code_evidence_tool_in_existing_tool_lists(tmp_path):
     """Current config schemas still receive code tool registration when arrays exist."""
     import subprocess
