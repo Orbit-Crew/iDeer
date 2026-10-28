@@ -10,7 +10,7 @@ from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
-from .protocol import ProtocolError, is_write_consent_basis, payload_digest
+from .protocol import ProtocolError, is_script_authorization_basis, is_write_consent_basis, payload_digest
 from .receipt_models import DeviceTaskReceiptModel
 
 ACTIVE_TASK_STATUSES = frozenset({"created", "sent", "acked", "consent_required", "progress", "cancel_requested"})
@@ -53,6 +53,12 @@ RECEIPT_FIELDS = frozenset(
         "started_at",
         "finished_at",
         "error_code",
+        # Issue 122: skill script receipts bind the executed skill identity and
+        # the authorization basis the device accepted.
+        "skill_id",
+        "skill_version",
+        "skill_content_hash",
+        "authorization_basis",
     )
 )
 
@@ -132,6 +138,8 @@ class ReceiptArchive:
                 raise ProtocolError("RECEIPT_TASK_MISMATCH", "receipt request hash does not match")
             if task["capability"] == "local.files.write" and receipt.get("status") == "completed" and not is_write_consent_basis(receipt.get("consent_decision")):
                 raise ProtocolError("RECEIPT_TASK_MISMATCH", "write receipt has no valid local execution basis")
+            if task["capability"] == "local.skill.script" and receipt.get("status") == "completed" and not is_script_authorization_basis(receipt.get("authorization_basis")):
+                raise ProtocolError("RECEIPT_TASK_MISMATCH", "skill script receipt has no valid authorization basis")
             if row.receipt_hash is None:
                 from agentplatform_extension.local_runtime.receipts import tool_receipt_from_local
 
