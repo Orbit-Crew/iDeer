@@ -209,3 +209,28 @@ class ResourceDraft(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now, server_default=func.now())
 
     __table_args__ = (CheckConstraint("revision >= 1", name="ck_resource_drafts_revision"),)
+
+
+class SkillTriggerPreferenceRow(Base):
+    """Per-user Skill trigger preference (#121).
+
+    One row per (user, skill) describing how the Server may auto-select that
+    Skill for the user's Runs: enabled, keywords, always-inject, the applicable
+    Agent allowlist, and the priority tiebreaker. A preference is inert user
+    metadata — it never grants edit rights on the Skill's content and never
+    bypasses the Run closure's visibility/published validation; matching rides
+    the existing single preferred-Skill run-snapshot seam.
+    """
+
+    __tablename__ = "skill_trigger_preferences"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users_ext.id", ondelete="CASCADE"), primary_key=True)
+    skill_resource_id: Mapped[str] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    keywords: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    always_inject: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    applicable_agent_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now, server_default=func.now())
+
+    __table_args__ = (CheckConstraint("priority BETWEEN -1000 AND 1000", name="ck_skill_trigger_preferences_priority"),)

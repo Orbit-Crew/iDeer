@@ -149,10 +149,19 @@ async def prepare_canonical_agent_run(
     request: Request,
     run_id: str,
     preferred_skill: str | None = None,
+    preferred_skill_origin: str = "explicit",
     diagnostic_context: dict[str, Any] | None = None,
     thread_id: str | None = None,
 ) -> Any:
-    """Prepare one canonical Agent Run from the authenticated user's view."""
+    """Prepare one canonical Agent Run from the authenticated user's view.
+
+    ``preferred_skill_origin`` distinguishes the two selection entries #121
+    must validate with the same rules: ``"explicit"`` (a request-context
+    selection — the existing hard 409 on a closure miss) and ``"preference"``
+    (a user trigger-preference match — the same closure validation, but a miss
+    is audited and the Run proceeds WITHOUT the Skill, because an automatic
+    trigger must never fail a Run nor activate beyond authority).
+    """
 
     from agentplatform_extension.knowledge.scope import KnowledgeScope
     from sqlalchemy import select
@@ -225,12 +234,36 @@ async def prepare_canonical_agent_run(
                 if selected is None or selected.type != "skill":
                     agent = next(item.resource for item in closure if item.resource.id == resource_id)
                     available_skills = [{"resource_id": item.resource.id, "slug": item.resource.slug} for item in closure if item.resource.type == "skill"]
-                    raise SelectedSkillOutsideClosure(
-                        agent={"resource_id": agent.id, "slug": agent.slug},
-                        requested_skill=str(preferred_skill),
-                        available_skills=available_skills,
-                    )
-                selected_skill_id = selected.id
+                    if preferred_skill_origin == "preference":
+                        # A preference is auto-trigger metadata: the same
+                        # visibility/published/closure validation applies, but
+                        # the outcome of a miss is "not activated" — the Run
+                        # proceeds without it and the skip is audited. The user
+                        # message text is never persisted.
+                        from app.gateway.audit import record_audit
+
+                        await record_audit(
+                            str(user_id),
+                            "skill_trigger_preference_skipped",
+                            resource_type="skill",
+                            resource_id=str(preferred_skill),
+                            detail={
+                                "agent": {"resource_id": agent.id, "slug": agent.slug},
+                                "requested_skill": str(preferred_skill),
+                                "reason": "skill_outside_agent_closure",
+                                "run_attempt_id": run_id,
+                                "thread_id": thread_id,
+                            },
+                        )
+                        preferred_skill = None
+                    else:
+                        raise SelectedSkillOutsideClosure(
+                            agent={"resource_id": agent.id, "slug": agent.slug},
+                            requested_skill=str(preferred_skill),
+                            available_skills=available_skills,
+                        )
+                else:
+                    selected_skill_id = selected.id
             await service.create_run_snapshot(
                 run_id,
                 resource_id,
@@ -279,7 +312,40 @@ async def prepare_canonical_agent_run(
                 [(value.resource_id, value.version, value.content_hash) for value in skill_definitions],
                 aliases={value.resource_id: value.skill.name for value in skill_definitions},
             )
+            if selected_skill_id is not None and preferred_skill_origin == "preference":
+                # Evidence for the preference-triggered injection: the frozen
+                # identity the Run actually carries (version/hash from the
+                # snapshot). Read before the commit; recorded after it — the
+                # audit writes on its own connection and must never contend
+                # with this transaction's write lock.
+                frozen = next(
+                    (item for item in closure if item.resource.id == selected_skill_id),
+                    None,
+                )
+                applied_audit = (
+                    str(user_id),
+                    {
+                        "agent": {"resource_id": resource_id},
+                        "origin": "preference",
+                        "version": frozen.version.version if frozen is not None else None,
+                        "content_hash": frozen.version.content_hash if frozen is not None else None,
+                        "run_attempt_id": run_id,
+                        "thread_id": thread_id,
+                    },
+                )
+            else:
+                applied_audit = None
             await session.commit()
+        if applied_audit is not None:
+            from app.gateway.audit import record_audit
+
+            await record_audit(
+                applied_audit[0],
+                "skill_trigger_preference_applied",
+                resource_type="skill",
+                resource_id=selected_skill_id,
+                detail=applied_audit[1],
+            )
         local_authorization = None
         local_tool_executor = None
         local_context = run_context.get("local_authorization")

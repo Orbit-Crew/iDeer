@@ -17,7 +17,7 @@ from typing import Annotated, Any
 import yaml
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from starlette.background import BackgroundTask
@@ -982,6 +982,145 @@ async def confirm_skill_import(
         await archive.close()
         if package_path is not None:
             package_path.unlink(missing_ok=True)
+
+
+class SkillTriggerPreferenceUpsert(BaseModel):
+    """One Skill trigger preference document (#121).
+
+    Bounds are the fixed protocol constants from ``app.gateway.skill_trigger``
+    (pinned by contract tests), not negotiated with any client.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    keywords: list[Annotated[str, StringConstraints(min_length=1, max_length=64)]] = Field(default_factory=list, max_length=16)
+    always_inject: bool = False
+    applicable_agent_ids: list[
+        Annotated[str, StringConstraints(pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]
+    ] = Field(default_factory=list, max_length=32)
+    priority: int = Field(default=0, ge=-1000, le=1000)
+
+
+@router.get("/skill-trigger-preferences")
+@translate_resource_errors
+async def list_skill_trigger_preferences(
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """The caller's own Skill trigger preferences (#121).
+
+    User isolation is the composite (user, skill) key: only the calling
+    account's rows come back. The joined Skill facts are identity and
+    availability (slug, display name, published version) — never content, and
+    the projection confers no rights by itself.
+    """
+    from app.gateway.skill_trigger import SkillTriggerPreferenceRepository
+
+    repository = SkillTriggerPreferenceRepository(_factory)
+    preferences = await repository.list(str(current_user.id))
+    skill_ids = [item["skill_resource_id"] for item in preferences]
+    skills: dict[str, Resource] = {}
+    if skill_ids:
+        async with _factory()() as session:
+            rows = (await session.execute(select(Resource).where(Resource.id.in_(skill_ids)))).scalars()
+            skills = {row.id: row for row in rows}
+    items = []
+    for item in preferences:
+        resource = skills.get(item["skill_resource_id"])
+        items.append(
+            {
+                **item,
+                "skill": {
+                    "slug": resource.slug if resource else "",
+                    "display_name": resource.display_name if resource else "",
+                    "latest_version": int(resource.latest_version or 0) if resource else 0,
+                    # Availability mirrors the catalog rule: active lifecycle and
+                    # a published version. Full run-time authority (visibility,
+                    # closure) is re-validated at Run preparation either way.
+                    "available": bool(resource is not None and resource.lifecycle_status == "active" and (resource.latest_version or 0) >= 1),
+                },
+            }
+        )
+    return {"items": items, "total": len(items)}
+
+
+@router.put("/skills/{resource_id}/trigger-preference", status_code=204)
+@translate_resource_errors
+async def put_skill_trigger_preference(
+    resource_id: str,
+    body: SkillTriggerPreferenceUpsert,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> Response:
+    """Upsert the caller's own trigger preference for one Skill (#121).
+
+    Configuring a preference is not an activation and grants no rights: the
+    Skill must be visible to the caller (USE authorization, read parity with
+    the catalog), and the preference only ever feeds Server-side matching that
+    re-validates visibility, published availability, and the dependency
+    closure at Run preparation. It never touches the Skill's content.
+    """
+    from app.gateway.skill_trigger import (
+        MAX_PREFERENCES_PER_USER,
+        SkillTriggerPreferenceRepository,
+        validate_preference_document,
+    )
+
+    keywords, applicable_agent_ids, priority = validate_preference_document(
+        keywords=body.keywords,
+        applicable_agent_ids=body.applicable_agent_ids,
+        priority=body.priority,
+    )
+    user_id = str(current_user.id)
+    async with _factory()() as session:
+        service = ResourceService(session, _resource_actor(current_user))
+        resource = await service.resolve_for_use(resource_id)
+        if resource.type != "skill":
+            raise ResourceConflict("Skill trigger preferences apply to Skill resources only")
+        repository = SkillTriggerPreferenceRepository(_factory)
+        existing = await repository.get(user_id, resource.id)
+        if existing is None and await repository.count(user_id) >= MAX_PREFERENCES_PER_USER:
+            raise ResourceConflict(f"At most {MAX_PREFERENCES_PER_USER} Skill trigger preferences per account")
+        await repository.upsert(
+            user_id,
+            resource.id,
+            enabled=body.enabled,
+            keywords=keywords,
+            always_inject=body.always_inject,
+            applicable_agent_ids=applicable_agent_ids,
+            priority=priority,
+        )
+        await session.commit()
+    await record_audit(
+        user_id,
+        "skill_trigger_preference_updated",
+        "skill",
+        resource.id,
+        {
+            "enabled": body.enabled,
+            "keywords": keywords,
+            "always_inject": body.always_inject,
+            "applicable_agent_ids": applicable_agent_ids,
+            "priority": priority,
+        },
+    )
+    return Response(status_code=204)
+
+
+@router.delete("/skills/{resource_id}/trigger-preference", status_code=204)
+@translate_resource_errors
+async def delete_skill_trigger_preference(
+    resource_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> Response:
+    """Remove the caller's own trigger preference for one Skill (#121); idempotent."""
+
+    from app.gateway.skill_trigger import SkillTriggerPreferenceRepository
+
+    user_id = str(current_user.id)
+    removed = await SkillTriggerPreferenceRepository(_factory).delete(user_id, resource_id)
+    if removed:
+        await record_audit(user_id, "skill_trigger_preference_removed", "skill", resource_id, {})
+    return Response(status_code=204)
 
 
 @router.post("", status_code=201)

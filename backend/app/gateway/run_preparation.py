@@ -172,6 +172,44 @@ async def _preload_memory(agent_name: str | None, user_id: str) -> None:
         logger.debug("Memory preload failed (non-fatal)", exc_info=True)
 
 
+async def _resolve_skill_trigger_preference(request: Request, agent_resource_id: str, run_input: Any) -> str | None:
+    """Match the caller's own Skill trigger preferences for THIS run request (#121).
+
+    Returns at most one Skill resource id — the highest-priority enabled
+    preference that applies to this Agent and matches the run request's user
+    message (empty keywords / ``always_inject`` always match; otherwise any
+    keyword hit). Never raises: a preference store hiccup degrades to "no
+    trigger", never to a Run failure. The selected Skill's authority
+    (visibility, published availability, dependency closure) is validated
+    downstream by the same rules as an explicit selection.
+    """
+    from app.gateway.skill_trigger import (
+        SkillTriggerPreferenceRepository,
+        message_text_from_input,
+        select_preference,
+    )
+
+    user_id = getattr(getattr(request.state, "user", None), "id", None)
+    if user_id is None:
+        return None
+    from deerflow.persistence.engine import get_session_factory
+
+    sessions = get_session_factory()
+    if sessions is None:
+        return None
+    try:
+        preferences = await SkillTriggerPreferenceRepository(sessions).list(str(user_id))
+    except Exception:
+        logger.warning("skill trigger preference lookup failed; proceeding without a trigger", exc_info=True)
+        return None
+    matched = select_preference(
+        preferences,
+        agent_id=agent_resource_id,
+        message_text=message_text_from_input(run_input),
+    )
+    return str(matched["skill_resource_id"]) if matched else None
+
+
 async def prepare_run(
     body: Any,
     thread_id: str,
@@ -269,9 +307,26 @@ async def prepare_run(
     snapshot_started = time.perf_counter()
     canonical_run_id = str(uuid.uuid4()) if canonical_resource_id else None
     preferred_skill = body_context.get("skill_resource_id") or body_context.get("skill_name")
+    # #121: the explicit selection always wins (the existing rule). Only when
+    # the request carries none does the caller's own trigger-preference match
+    # apply — resolved Server-side against THIS run request's user message, at
+    # most one Skill (the snapshot's single preferred-Skill seam), and then
+    # validated by the same closure rules as an explicit selection. The Desktop
+    # never matches or drives the model; it only configures preferences.
+    preferred_skill_origin = "explicit"
+    if canonical_resource_id and canonical_run_id and not preferred_skill:
+        preference_matched = await _resolve_skill_trigger_preference(request, canonical_resource_id, getattr(body, "input", None))
+        if preference_matched:
+            preferred_skill = preference_matched
+            preferred_skill_origin = "preference"
+            # The server-derived actual selection feeds the selection metadata
+            # below (the same derived-context discipline as evidence_mode).
+            body_context["skill_resource_id"] = preference_matched
     canonical_factory = None
     if canonical_resource_id and canonical_run_id:
         prepare_kwargs = {"preferred_skill": preferred_skill} if preferred_skill else {}
+        if preferred_skill:
+            prepare_kwargs["preferred_skill_origin"] = preferred_skill_origin
         prepare_kwargs.update(
             diagnostic_context=body_context,
             thread_id=thread_id,
