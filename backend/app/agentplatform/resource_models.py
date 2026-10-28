@@ -271,3 +271,32 @@ class SkillScriptAuthorizationRow(Base):
         CheckConstraint("execution_target IN ('server', 'user_device')", name="ck_skill_script_authorizations_target"),
         UniqueConstraint("user_id", "execution_target", "device_id", "skill_resource_id", "script_path", name="uq_skill_script_authorizations_binding"),
     )
+
+
+class ConnectorIdentityRow(Base):
+    """One canonical Connector identity on the platform (#123).
+
+    The row is the platform-traceable identity of a component the user
+    installed on their own device: slug, display name, declared version and
+    the frozen manifest hash. It deliberately carries nothing else — no
+    visibility column, no runnable binding, no device binding, no credential:
+    the command line, environment and secrets stay on the installing device,
+    the identity is owner-scoped by construction (no share or publish path
+    exists), and reinstalling the same version with different content is a
+    frozen-binding conflict rather than a silent replacement.
+    """
+
+    __tablename__ = "connectors"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users_ext.id", ondelete="CASCADE"), nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("owner_id", "slug", name="uq_connectors_owner_slug"),
+    )

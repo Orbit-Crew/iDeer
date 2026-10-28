@@ -18,7 +18,7 @@ async def test_receipt_migration_upgrades_desktop_login_and_preserves_confirmed_
     cfg = _get_alembic_config(async_engine)
     await asyncio.to_thread(command.upgrade, cfg, "20261018_desktop_login")
     await asyncio.to_thread(command.upgrade, cfg, "head")
-    assert _get_head_revision() == "20261027_skill_script_auth"
+    assert _get_head_revision() == "20261027_connectors"
     with engine.begin() as connection:
         assert sa.inspect(connection).has_table("device_control_task_receipts")
         connection.execute(
