@@ -13,6 +13,9 @@ source, so views can locate the original document and another revision's
 graph can never bleed in. Failures are per-document structured records with
 fixed categories: a partial failure reads as partial, never as a complete
 graph and never as silence.
+
+#117 shares this material path: :class:`RevisionMaterialSource` is the one
+execution chain through which scoped graph QA reads frozen documents too.
 """
 
 from __future__ import annotations
@@ -195,7 +198,9 @@ async def generate_document_graph(document_text: str) -> dict[str, list[dict[str
     return normalize_model_graph(parsed)
 
 
-def _manifest_entries(revision: KnowledgeRevision) -> list[dict[str, Any]]:
+def manifest_entries(revision: KnowledgeRevision) -> list[dict[str, Any]]:
+    """The frozen, well-formed manifest entries of one revision."""
+
     return [entry for entry in (revision.manifest_json or []) if isinstance(entry, dict) and isinstance(entry.get("document_id"), str)]
 
 
@@ -204,190 +209,34 @@ def _entry_origin(entry: dict[str, Any]) -> str:
     return str(metadata.get("origin") or "provider") if isinstance(metadata, dict) else "provider"
 
 
-class KnowledgeGraphGenerationService:
-    """Per-Revision controlled graph generation and permission-bound views."""
+class RevisionMaterialSource:
+    """One frozen document's text, acquired through the shared execution chain.
 
-    def __init__(
-        self,
-        session: AsyncSession,
-        actor: ResourceActor,
-        *,
-        generator: Callable[[str], Any] | None = None,
-        broker_factory: Callable[[], Any] | None = None,
-    ) -> None:
+    Provider originals are read from platform storage; device-local
+    documents are requested per frozen identity through the authorized
+    broker dispatch. Both ends re-check the frozen digest before text moves,
+    so neither side can substitute content. Graph generation (#116), scoped
+    graph QA (#117), and wiki generation (#118) all read material only
+    through this class.
+    """
+
+    def __init__(self, session: AsyncSession, actor: ResourceActor, broker_factory: Callable[[], Any] | None, *, label: str = "knowledge-graph") -> None:
         self.session = session
         self.actor = actor
-        self.resource_service = ResourceService(session, actor)
-        self._generator = generator or generate_document_graph
         self._broker_factory = broker_factory
-
-    async def _knowledge_base(self, resource_id: str, *, modify: bool) -> Any:
-        resource = await self.resource_service.get_visible(resource_id)
-        if resource.type != "knowledge_base":
-            raise ResourceNotFound(f"KnowledgeBase {resource_id} not found")
-        if modify:
-            # Generation derives and rewrites this KB's graph artifacts: the
-            # same owner boundary as importing, publishing, and deleting.
-            self.resource_service.assert_modify(resource)
-        return resource
-
-    async def _revision(self, resource_id: str, revision_id: str) -> KnowledgeRevision:
-        revision = await self.session.get(KnowledgeRevision, revision_id)
-        if revision is None or revision.knowledge_base_id != resource_id:
-            raise ResourceNotFound(f"Knowledge revision {revision_id} not found")
-        return revision
-
-    async def generate(self, resource_id: str, revision_id: str) -> dict[str, Any]:
-        """Generate the graph for one frozen revision, document by document.
-
-        Material acquisition and model calls both run here, on the Server;
-        each document succeeds or fails independently and its artifact row
-        records exactly what happened.
-        """
-
-        kb = await self._knowledge_base(resource_id, modify=True)
-        revision = await self._revision(resource_id, revision_id)
-        entries = _manifest_entries(revision)
-        if not entries:
-            raise ResourceConflict("This revision has no frozen documents to generate a graph from")
         self._broker: Any = None
+        # The dispatch identity records which surface asked for the document
+        # (graph generation, scoped QA, wiki generation); the execution chain
+        # and its re-verification stay shared.
+        self._label = label
 
-        rows: dict[str, KnowledgeGraphArtifact] = {}
-        documents: list[dict[str, Any]] = []
-        generated = failed = 0
-        for entry in entries:
-            document_id = str(entry["document_id"])
-            try:
-                text = await self._material(kb, revision, entry)
-                graph = normalize_model_graph(await self._invoke_generator(text))
-                row = await self._store_artifact(kb, revision, entry, graph)
-                generated += 1
-                status, error_code = STATUS_COMPLETED, None
-            except GraphMaterialFailure as exc:
-                row = await self._store_failure(kb, revision, entry, exc.code)
-                failed += 1
-                status, error_code = "failed", exc.code
-            except ValueError:
-                row = await self._store_failure(kb, revision, entry, GRAPH_MODEL_OUTPUT_INVALID)
-                failed += 1
-                status, error_code = "failed", GRAPH_MODEL_OUTPUT_INVALID
-            except Exception:
-                row = await self._store_failure(kb, revision, entry, GRAPH_MODEL_UNAVAILABLE)
-                failed += 1
-                status, error_code = "failed", GRAPH_MODEL_UNAVAILABLE
-            rows[document_id] = row
-            documents.append(
-                {
-                    "document_id": document_id,
-                    "filename": str(entry.get("filename") or ""),
-                    "content_hash": str(entry.get("content_hash") or ""),
-                    "status": status,
-                    "entity_count": row.entity_count,
-                    "relation_count": row.relation_count,
-                    "error_code": error_code,
-                }
-            )
-        await self.session.flush()
-        return {
-            "knowledge_base_id": kb.id,
-            "revision_id": revision.id,
-            "revision_no": revision.revision_no,
-            "manifest_hash": revision.manifest_hash,
-            "status": _aggregate_status(generated, failed),
-            "generated": generated,
-            "failed": failed,
-            "documents": documents,
-        }
-
-    async def view(self, resource_id: str, revision_id: str) -> dict[str, Any]:
-        """Project the stored graph with its sources for a visible caller.
-
-        Visibility is the KB's own: a caller without access reads a 404, a
-        department member reads the same frozen bindings, and nothing from
-        another revision ever appears here.
-        """
-
-        kb = await self._knowledge_base(resource_id, modify=False)
-        revision = await self._revision(resource_id, revision_id)
-        result = await self.session.execute(
-            select(KnowledgeGraphArtifact).where(KnowledgeGraphArtifact.revision_id == revision.id).order_by(KnowledgeGraphArtifact.document_id)
-        )
-        artifacts = {row.document_id: row for row in result.scalars()}
-
-        documents: list[dict[str, Any]] = []
-        sources: list[dict[str, Any]] = []
-        entities: list[dict[str, Any]] = []
-        relations: list[dict[str, Any]] = []
-        generated = failed = 0
-        for entry in _manifest_entries(revision):
-            document_id = str(entry["document_id"])
-            filename = str(entry.get("filename") or "")
-            artifact = artifacts.get(document_id)
-            if artifact is None:
-                documents.append({"document_id": document_id, "filename": filename, "status": STATUS_NOT_GENERATED})
-                sources.append(
-                    {
-                        "document_id": document_id,
-                        "filename": filename,
-                        "content_hash": str(entry.get("content_hash") or ""),
-                        "status": STATUS_NOT_GENERATED,
-                        "error_code": None,
-                    }
-                )
-                continue
-            if artifact.status == STATUS_COMPLETED:
-                generated += 1
-            else:
-                failed += 1
-            documents.append(
-                {
-                    "document_id": document_id,
-                    "filename": filename,
-                    "status": artifact.status,
-                    "entity_count": artifact.entity_count,
-                    "relation_count": artifact.relation_count,
-                    "error_code": artifact.error_code,
-                }
-            )
-            sources.append(
-                {
-                    "document_id": document_id,
-                    "filename": filename,
-                    "content_hash": artifact.document_content_hash,
-                    "status": artifact.status,
-                    "error_code": artifact.error_code,
-                }
-            )
-            if artifact.status != STATUS_COMPLETED:
-                continue
-            for entity in artifact.entities_json or []:
-                entities.append({**entity, "document_id": document_id, "filename": filename})
-            for relation in artifact.relations_json or []:
-                relations.append({**relation, "document_id": document_id, "filename": filename})
-
-        if not artifacts:
-            status: str = STATUS_NOT_GENERATED
-        else:
-            status = _aggregate_status(generated, failed)
-        return {
-            "knowledge_base_id": kb.id,
-            "revision_id": revision.id,
-            "revision_no": revision.revision_no,
-            "manifest_hash": revision.manifest_hash,
-            "status": status,
-            "generated": generated,
-            "failed": failed,
-            "documents": documents,
-            "sources": sources,
-            "entities": entities,
-            "relations": relations,
-        }
-
-    async def _invoke_generator(self, text: str) -> dict:
-        return await self._generator(text)
+    async def document_text(self, kb: Any, revision: KnowledgeRevision, entry: dict[str, Any]) -> str:
+        if _entry_origin(entry) == LOCAL_IMPORT_ORIGIN:
+            return await self._device_material(revision, entry, self._device_broker())
+        return await self._provider_material(kb, entry)
 
     def _device_broker(self) -> Any:
-        """The device broker, constructed lazily: a provider-only generation
+        """The device broker, constructed lazily: a provider-only read
         never touches the broker at all."""
 
         if self._broker_factory is None:
@@ -395,11 +244,6 @@ class KnowledgeGraphGenerationService:
         if self._broker is None:
             self._broker = self._broker_factory()
         return self._broker
-
-    async def _material(self, kb: Any, revision: KnowledgeRevision, entry: dict[str, Any]) -> str:
-        if _entry_origin(entry) == LOCAL_IMPORT_ORIGIN:
-            return await self._device_material(revision, entry, self._device_broker())
-        return await self._provider_material(kb, entry)
 
     async def _provider_material(self, kb: Any, entry: dict[str, Any]) -> str:
         """Read one server-owned original through the platform store.
@@ -461,7 +305,7 @@ class KnowledgeGraphGenerationService:
             device_id=device_id,
             operation=LOCAL_KNOWLEDGE_MATERIAL_OPERATION,
             path="",
-            run_id=f"knowledge-graph:{revision.id}",
+            run_id=f"{self._label}:{revision.id}",
             tool_call_id="",
             expires_in=timedelta(minutes=5),
             payload_extra={
@@ -471,7 +315,7 @@ class KnowledgeGraphGenerationService:
                     "documents": [identity],
                 },
                 "operation": LOCAL_KNOWLEDGE_MATERIAL_OPERATION,
-                "thread_id": "knowledge-graph",
+                "thread_id": self._label,
             },
         )
         while record.status in {
@@ -512,6 +356,188 @@ class KnowledgeGraphGenerationService:
         if hashlib.sha256(raw).hexdigest() != str(entry.get("content_hash") or ""):
             raise GraphMaterialFailure(GRAPH_MATERIAL_REJECTED)
         return text
+
+
+class KnowledgeGraphGenerationService:
+    """Per-Revision controlled graph generation and permission-bound views."""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        actor: ResourceActor,
+        *,
+        generator: Callable[[str], Any] | None = None,
+        broker_factory: Callable[[], Any] | None = None,
+    ) -> None:
+        self.session = session
+        self.actor = actor
+        self.resource_service = ResourceService(session, actor)
+        self._generator = generator or generate_document_graph
+        self._material_source = RevisionMaterialSource(session, actor, broker_factory)
+
+    async def _knowledge_base(self, resource_id: str, *, modify: bool) -> Any:
+        resource = await self.resource_service.get_visible(resource_id)
+        if resource.type != "knowledge_base":
+            raise ResourceNotFound(f"KnowledgeBase {resource_id} not found")
+        if modify:
+            # Generation derives and rewrites this KB's graph artifacts: the
+            # same owner boundary as importing, publishing, and deleting.
+            self.resource_service.assert_modify(resource)
+        return resource
+
+    async def _revision(self, resource_id: str, revision_id: str) -> KnowledgeRevision:
+        revision = await self.session.get(KnowledgeRevision, revision_id)
+        if revision is None or revision.knowledge_base_id != resource_id:
+            raise ResourceNotFound(f"Knowledge revision {revision_id} not found")
+        return revision
+
+    async def generate(self, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Generate the graph for one frozen revision, document by document.
+
+        Material acquisition and model calls both run here, on the Server;
+        each document succeeds or fails independently and its artifact row
+        records exactly what happened.
+        """
+
+        kb = await self._knowledge_base(resource_id, modify=True)
+        revision = await self._revision(resource_id, revision_id)
+        entries = manifest_entries(revision)
+        if not entries:
+            raise ResourceConflict("This revision has no frozen documents to generate a graph from")
+
+        rows: dict[str, KnowledgeGraphArtifact] = {}
+        documents: list[dict[str, Any]] = []
+        generated = failed = 0
+        for entry in entries:
+            document_id = str(entry["document_id"])
+            try:
+                text = await self._material_source.document_text(kb, revision, entry)
+                graph = normalize_model_graph(await self._invoke_generator(text))
+                row = await self._store_artifact(kb, revision, entry, graph)
+                generated += 1
+                status, error_code = STATUS_COMPLETED, None
+            except GraphMaterialFailure as exc:
+                row = await self._store_failure(kb, revision, entry, exc.code)
+                failed += 1
+                status, error_code = "failed", exc.code
+            except ValueError:
+                row = await self._store_failure(kb, revision, entry, GRAPH_MODEL_OUTPUT_INVALID)
+                failed += 1
+                status, error_code = "failed", GRAPH_MODEL_OUTPUT_INVALID
+            except Exception:
+                row = await self._store_failure(kb, revision, entry, GRAPH_MODEL_UNAVAILABLE)
+                failed += 1
+                status, error_code = "failed", GRAPH_MODEL_UNAVAILABLE
+            rows[document_id] = row
+            documents.append(
+                {
+                    "document_id": document_id,
+                    "filename": str(entry.get("filename") or ""),
+                    "content_hash": str(entry.get("content_hash") or ""),
+                    "status": status,
+                    "entity_count": row.entity_count,
+                    "relation_count": row.relation_count,
+                    "error_code": error_code,
+                }
+            )
+        await self.session.flush()
+        return {
+            "knowledge_base_id": kb.id,
+            "revision_id": revision.id,
+            "revision_no": revision.revision_no,
+            "manifest_hash": revision.manifest_hash,
+            "status": aggregate_status(generated, failed),
+            "generated": generated,
+            "failed": failed,
+            "documents": documents,
+        }
+
+    async def view(self, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Project the stored graph with its sources for a visible caller.
+
+        Visibility is the KB's own: a caller without access reads a 404, a
+        department member reads the same frozen bindings, and nothing from
+        another revision ever appears here.
+        """
+
+        kb = await self._knowledge_base(resource_id, modify=False)
+        revision = await self._revision(resource_id, revision_id)
+        result = await self.session.execute(
+            select(KnowledgeGraphArtifact).where(KnowledgeGraphArtifact.revision_id == revision.id).order_by(KnowledgeGraphArtifact.document_id)
+        )
+        artifacts = {row.document_id: row for row in result.scalars()}
+
+        documents: list[dict[str, Any]] = []
+        sources: list[dict[str, Any]] = []
+        entities: list[dict[str, Any]] = []
+        relations: list[dict[str, Any]] = []
+        generated = failed = 0
+        for entry in manifest_entries(revision):
+            document_id = str(entry["document_id"])
+            filename = str(entry.get("filename") or "")
+            artifact = artifacts.get(document_id)
+            if artifact is None:
+                documents.append({"document_id": document_id, "filename": filename, "status": STATUS_NOT_GENERATED})
+                sources.append(
+                    {
+                        "document_id": document_id,
+                        "filename": filename,
+                        "content_hash": str(entry.get("content_hash") or ""),
+                        "status": STATUS_NOT_GENERATED,
+                        "error_code": None,
+                    }
+                )
+                continue
+            if artifact.status == STATUS_COMPLETED:
+                generated += 1
+            else:
+                failed += 1
+            documents.append(
+                {
+                    "document_id": document_id,
+                    "filename": filename,
+                    "status": artifact.status,
+                    "entity_count": artifact.entity_count,
+                    "relation_count": artifact.relation_count,
+                    "error_code": artifact.error_code,
+                }
+            )
+            sources.append(
+                {
+                    "document_id": document_id,
+                    "filename": filename,
+                    "content_hash": artifact.document_content_hash,
+                    "status": artifact.status,
+                    "error_code": artifact.error_code,
+                }
+            )
+            if artifact.status != STATUS_COMPLETED:
+                continue
+            for entity in artifact.entities_json or []:
+                entities.append({**entity, "document_id": document_id, "filename": filename})
+            for relation in artifact.relations_json or []:
+                relations.append({**relation, "document_id": document_id, "filename": filename})
+
+        if not artifacts:
+            status: str = STATUS_NOT_GENERATED
+        else:
+            status = aggregate_status(generated, failed)
+        return {
+            "knowledge_base_id": kb.id,
+            "revision_id": revision.id,
+            "revision_no": revision.revision_no,
+            "manifest_hash": revision.manifest_hash,
+            "status": status,
+            "generated": generated,
+            "failed": failed,
+            "documents": documents,
+            "sources": sources,
+            "entities": entities,
+            "relations": relations,
+        }
+
+    async def _invoke_generator(self, text: str) -> dict:
+        return await self._generator(text)
 
     async def _store_artifact(self, kb: Any, revision: KnowledgeRevision, entry: dict[str, Any], graph: dict[str, list[dict[str, str]]]) -> KnowledgeGraphArtifact:
         await self._drop_existing(revision.id, str(entry["document_id"]))
@@ -570,7 +596,7 @@ class KnowledgeGraphGenerationService:
         )
 
 
-def _aggregate_status(generated: int, failed: int) -> str:
+def aggregate_status(generated: int, failed: int) -> str:
     if generated and not failed:
         return STATUS_COMPLETED
     if generated and failed:

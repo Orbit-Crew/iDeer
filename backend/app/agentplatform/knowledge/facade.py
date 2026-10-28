@@ -19,12 +19,14 @@ from app.agentplatform.knowledge.documents import KnowledgeDocumentService
 from app.agentplatform.knowledge.eval_cases import KnowledgeEvalCaseService
 from app.agentplatform.knowledge.evaluation import KnowledgeEvaluationService
 from app.agentplatform.knowledge.graph_generation import KnowledgeGraphGenerationService
+from app.agentplatform.knowledge.graph_query import KnowledgeGraphQueryService
 from app.agentplatform.knowledge.local_import import KnowledgeLocalImportService
 from app.agentplatform.knowledge.local_publish import KnowledgeLocalPublishService
 from app.agentplatform.knowledge.provider import KnowledgeProvider, KnowledgeProviderUnavailable
 from app.agentplatform.knowledge.ragflow import configured_ragflow_provider
 from app.agentplatform.knowledge.retrieval_test import KnowledgeRetrievalTestService, RetrievalTestStorageUnavailable
 from app.agentplatform.knowledge.revisions import KnowledgeRevisionService, execute_publish
+from app.agentplatform.knowledge.wiki_generation import KnowledgeWikiGenerationService
 from app.agentplatform.resources.service import ResourceActor
 
 AuditSink = Callable[..., Awaitable[None]]
@@ -51,7 +53,9 @@ class KnowledgeFacade:
         search: SearchCall | None = None,
         settings_factory: SettingsFactory | None = None,
         graph_generator: Any | None = None,
+        graph_answerer: Any | None = None,
         graph_broker_factory: Any | None = None,
+        wiki_writer: Any | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._audit = audit
@@ -59,7 +63,9 @@ class KnowledgeFacade:
         self._search = search
         self._settings_factory = settings_factory
         self._graph_generator = graph_generator
+        self._graph_answerer = graph_answerer
         self._graph_broker_factory = graph_broker_factory
+        self._wiki_writer = wiki_writer
 
     def _documents(self, session: Any, actor: ResourceActor) -> KnowledgeDocumentService:
         return KnowledgeDocumentService(session, actor)
@@ -324,6 +330,108 @@ class KnowledgeFacade:
         """Project the stored graph, its sources, and its generation status."""
         async with self._session_factory() as session:
             return await self._graph_generations(session, actor).view(resource_id, revision_id)
+
+    def _wiki_generations(self, session: Any, actor: ResourceActor) -> KnowledgeWikiGenerationService:
+        return KnowledgeWikiGenerationService(
+            session,
+            actor,
+            writer=self._wiki_writer,
+            broker_factory=self._graph_broker_factory,
+        )
+
+    async def generate_wiki(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Orchestrate controlled wiki generation for one frozen revision (#118).
+
+        Every model call runs on the Server; device material rides the same
+        authorized per-document dispatch as graph generation, re-verified
+        against the frozen digest. The per-page results — completed, skipped,
+        and failed alike — are the generation's honest outcome, and the
+        frozen revision itself is never modified.
+        """
+        async with self._session_factory() as session:
+            result = await self._wiki_generations(session, actor).generate(resource_id, revision_id)
+            await session.commit()
+        await self._audit(
+            actor.user_id,
+            "knowledge_wiki_generated",
+            "knowledge_base",
+            resource_id,
+            {
+                "revision_id": revision_id,
+                "status": result.get("status"),
+                "generated": result.get("generated"),
+                "failed": result.get("failed"),
+                "skipped": result.get("skipped"),
+            },
+        )
+        return result
+
+    async def wiki_view(self, actor: ResourceActor, resource_id: str, revision_id: str) -> dict[str, Any]:
+        """Project the stored page list, its sources, and its progress (#118)."""
+        async with self._session_factory() as session:
+            return await self._wiki_generations(session, actor).view(resource_id, revision_id)
+
+    async def wiki_page(self, actor: ResourceActor, resource_id: str, revision_id: str, document_id: str) -> dict[str, Any]:
+        """Read one page with its body and its frozen source binding (#118).
+
+        Only pages of this revision's frozen manifest resolve; anything else
+        reads as not-found, so out-of-scope titles and bodies never leak.
+        """
+        async with self._session_factory() as session:
+            return await self._wiki_generations(session, actor).read_page(resource_id, revision_id, document_id)
+
+    def _graph_queries(self, session: Any, actor: ResourceActor) -> KnowledgeGraphQueryService:
+        return KnowledgeGraphQueryService(
+            session,
+            actor,
+            answerer=self._graph_answerer,
+            broker_factory=self._graph_broker_factory,
+        )
+
+    async def graph_query(self, actor: ResourceActor, resource_id: str, revision_id: str, document_ids: list[str], query_text: str = "") -> dict[str, Any]:
+        """Retrieve entities and relations inside the selected document scope (#117).
+
+        The scope is validated against the frozen manifest and the KB's own
+        visibility; every result row names its frozen document source.
+        """
+        async with self._session_factory() as session:
+            result = await self._graph_queries(session, actor).query(resource_id, revision_id, document_ids, query_text)
+        await self._audit(
+            actor.user_id,
+            "knowledge_graph_scoped_query",
+            "knowledge_base",
+            resource_id,
+            {
+                "revision_id": revision_id,
+                "status": result.get("status"),
+                "documents": len(result.get("scope") or []),
+                "matched": len(result.get("entities") or []) + len(result.get("relations") or []),
+            },
+        )
+        return result
+
+    async def graph_ask(self, actor: ResourceActor, resource_id: str, revision_id: str, document_ids: list[str], question: str) -> dict[str, Any]:
+        """Answer one question strictly from the selected frozen documents (#117).
+
+        Material rides the shared execution chain and the model call is the
+        Server's own; a gapped scope refuses with per-document failures and
+        never reaches the model.
+        """
+        async with self._session_factory() as session:
+            result = await self._graph_queries(session, actor).ask(resource_id, revision_id, document_ids, question)
+        await self._audit(
+            actor.user_id,
+            "knowledge_graph_scoped_ask",
+            "knowledge_base",
+            resource_id,
+            {
+                "revision_id": revision_id,
+                "status": result.get("status"),
+                "answer_available": result.get("answer_available"),
+                "documents": len(result.get("scope") or []),
+            },
+        )
+        return result
 
     async def register_local_import(
         self,

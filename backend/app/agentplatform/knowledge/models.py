@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from deerflow.persistence.base import Base
@@ -441,4 +441,48 @@ class KnowledgeGraphArtifact(Base):
         UniqueConstraint("revision_id", "document_id", name="uq_knowledge_graph_revision_document"),
         CheckConstraint("status in ('completed','failed')", name="ck_knowledge_graph_artifacts_status"),
         Index("ix_knowledge_graph_revision", "revision_id"),
+    )
+
+
+class KnowledgeWikiPage(Base):
+    """One document's wiki page for one frozen revision (#118).
+
+    Wiki generation is a server-orchestrated derivation of a frozen
+    revision: one row per (revision, document) records the generated page
+    with its document-source binding (document_id, filename, content_hash,
+    revision_no, manifest_hash), or the fixed category of why the page was
+    skipped or failed. Rows are keyed by revision, so two revisions' wikis
+    stay isolated; regeneration replaces the previous row and never touches
+    the frozen revision itself.
+    """
+
+    __tablename__ = "knowledge_wiki_pages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    knowledge_base_id: Mapped[str] = mapped_column(
+        ForeignKey("knowledge_bases.resource_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision_id: Mapped[str] = mapped_column(
+        ForeignKey("knowledge_base_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    document_filename: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    document_content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="completed")
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    generated_by: Mapped[str] = mapped_column(ForeignKey("users_ext.id", ondelete="RESTRICT"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+    __table_args__ = (
+        UniqueConstraint("revision_id", "document_id", name="uq_knowledge_wiki_revision_document"),
+        CheckConstraint("status in ('completed','skipped','failed')", name="ck_knowledge_wiki_pages_status"),
+        Index("ix_knowledge_wiki_revision", "revision_id"),
     )

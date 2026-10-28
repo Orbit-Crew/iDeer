@@ -12,12 +12,12 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from typing import Any
+from typing import Annotated, Any
 
 import yaml
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from starlette.background import BackgroundTask
@@ -272,6 +272,26 @@ class LocalImportRequest(BaseModel):
 
 class LocalPublicationConfirmRequest(BaseModel):
     confirmed: bool = False
+
+
+# Frozen document ids are platform UUIDs; the scoped graph surface (#117)
+# validates the shape here and the membership against the manifest inside
+# the service, so a mistyped id never widens into a whole-revision query.
+ScopedDocumentId = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")]
+
+
+class KnowledgeGraphQueryRequest(BaseModel):
+    """Selected-document scope for entity/relation retrieval (#117)."""
+
+    query: str = Field(default="", max_length=512)
+    document_ids: list[ScopedDocumentId] = Field(min_length=1, max_length=50)
+
+
+class KnowledgeGraphAskRequest(BaseModel):
+    """Selected-document scope for a scoped question (#117)."""
+
+    question: str = Field(min_length=1, max_length=4000)
+    document_ids: list[ScopedDocumentId] = Field(min_length=1, max_length=50)
 
 
 class EvalCaseCreateRequest(BaseModel):
@@ -1196,6 +1216,102 @@ async def get_knowledge_revision_graph(
     access reads a 404, and another revision's graph never bleeds in.
     """
     return await knowledge.graph_view(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/graph/query")
+@translate_resource_errors
+async def query_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    body: KnowledgeGraphQueryRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Retrieve entities and relations inside the selected document scope (#117).
+
+    The selected ids must be frozen in this revision — anything else is a
+    refused scope, not a widened query. Visibility is the KB's own, exactly
+    like knowledge retrieval: no tag filter or label stands in for
+    authorization, and every result row names its frozen document source.
+    """
+    return await knowledge.graph_query(_resource_actor(current_user), resource_id, revision_id, body.document_ids, body.query)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/graph/ask")
+@translate_resource_errors
+async def ask_knowledge_revision_graph(
+    resource_id: str,
+    revision_id: str,
+    body: KnowledgeGraphAskRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Answer one question strictly from the selected frozen documents (#117).
+
+    Material is read through the same execution chain as graph generation
+    and the model call is the Server's own. A gapped scope — missing
+    material, an unavailable device, a partial failure — refuses with
+    per-document fixed categories and never reaches the model, so no
+    unfounded conclusion forms.
+    """
+    return await knowledge.graph_ask(_resource_actor(current_user), resource_id, revision_id, body.document_ids, body.question)
+
+
+@router.post("/{resource_id}/knowledge-revisions/{revision_id}/wiki")
+@translate_resource_errors
+async def generate_knowledge_revision_wiki(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Orchestrate controlled wiki generation for one frozen revision (#118).
+
+    Every model call runs on the Server's own configuration; a device-local
+    revision's material is requested one frozen document at a time through
+    the authorized broker dispatch, so the device never bulk-uploads its
+    library. Each page records its own outcome — completed, skipped with its
+    fixed category, or failed — and the frozen revision itself is never
+    modified, so a retry cannot override the Run's frozen basis.
+    """
+    return await knowledge.generate_wiki(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/wiki")
+@translate_resource_errors
+async def get_knowledge_revision_wiki(
+    resource_id: str,
+    revision_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Read one revision's wiki page list with its progress and sources (#118).
+
+    Pages are bound to the frozen KB/Revision identity and the caller's
+    visibility: a caller without access reads a 404, another revision's
+    pages never bleed in, and progress, skips, and partial failures are
+    honest per-page records.
+    """
+    return await knowledge.wiki_view(_resource_actor(current_user), resource_id, revision_id)
+
+
+@router.get("/{resource_id}/knowledge-revisions/{revision_id}/wiki/pages/{document_id}")
+@translate_resource_errors
+async def get_knowledge_revision_wiki_page(
+    resource_id: str,
+    revision_id: str,
+    document_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+    knowledge: KnowledgeFacade = Depends(knowledge_facade),
+) -> dict[str, Any]:
+    """Read one wiki page with its body and frozen source binding (#118).
+
+    The document id must be frozen in this revision — anything else reads as
+    not-found, so an unauthorized or out-of-scope page never leaks a title
+    or a body. A skipped or failed page names its fixed category instead of
+    a body.
+    """
+    return await knowledge.wiki_page(_resource_actor(current_user), resource_id, revision_id, document_id)
 
 
 @router.get("/{resource_id}/knowledge-scope")
