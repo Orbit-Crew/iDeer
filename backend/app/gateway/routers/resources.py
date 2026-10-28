@@ -48,7 +48,7 @@ from app.agentplatform.resource_service import (
     ResourcePermissionDenied,
     ResourceService,
 )
-from app.agentplatform.resources import skill_package
+from app.agentplatform.resources import skill_environment, skill_package, skill_script_execution
 from app.agentplatform.resources.actors import actor_from_user
 from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
 from app.agentplatform.resources.skill_validation import _validate_skill_frontmatter
@@ -66,6 +66,7 @@ from app.gateway.audit import record_audit
 from app.gateway.authz import get_current_rbac_user
 from app.gateway.knowledge_seam import knowledge_facade, translate_resource_errors
 from app.gateway.knowledge_seam import persistence_factory as _factory
+from app.gateway.skill_script import SkillScriptAuthorizationRepository, script_sha256
 from deerflow.config.app_config import get_app_config
 from deerflow.config.paths import get_paths
 from deerflow.persistence.models.workflow_v2 import WorkflowV2RunRow
@@ -982,6 +983,227 @@ async def confirm_skill_import(
         await archive.close()
         if package_path is not None:
             package_path.unlink(missing_ok=True)
+
+
+
+class SkillScriptAuthorizeRequest(BaseModel):
+    """One content-bound script approval (#122 AC2): exact version + script bytes."""
+
+    version: int = Field(ge=1)
+    script_path: str = Field(min_length=1, max_length=512)
+    expected_script_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
+class SkillScriptExecuteRequest(BaseModel):
+    version: int = Field(ge=1)
+    script_path: str = Field(min_length=1, max_length=512)
+
+
+def _skill_script_sandbox(user_id: str):
+    """The platform sandbox a SERVER-leg script runs in (injectable for tests)."""
+    from deerflow.sandbox.sandbox_provider import get_sandbox_provider
+
+    provider = get_sandbox_provider()
+    sandbox_id = provider.acquire(None, user_id=user_id)
+    sandbox = provider.get(sandbox_id)
+    if sandbox is None:
+        raise skill_script_execution.SkillScriptRefusal(skill_script_execution.EXECUTION_FAILED)
+    return sandbox
+
+
+_SKILL_SCRIPT_REFUSAL_STATUS = {
+    skill_script_execution.PACKAGE_CORRUPTED: 409,
+    skill_script_execution.ENVIRONMENT_UNDECLARED: 409,
+    skill_script_execution.ENVIRONMENT_MISMATCH: 403,
+    skill_script_execution.SCRIPT_NOT_FOUND: 404,
+    "SCRIPT_APPROVAL_REQUIRED": 403,
+    "SCRIPT_REAUTHORIZATION_REQUIRED": 403,
+    "SCRIPT_AUTHORIZATION_REVOKED": 403,
+    skill_script_execution.EXECUTION_FAILED: 409,
+}
+
+
+def _refuse_script(refusal: skill_script_execution.SkillScriptRefusal) -> None:
+    raise HTTPException(
+        status_code=_SKILL_SCRIPT_REFUSAL_STATUS.get(refusal.category, 409),
+        detail={"code": refusal.category, "message": "skill script execution refused"},
+    )
+
+
+@router.post("/{resource_id}/scripts/authorize")
+@translate_resource_errors
+async def authorize_skill_script(
+    resource_id: str,
+    payload: SkillScriptAuthorizeRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """Approve and remember one exact Skill script content (#122 AC2).
+
+    The grant binds the owning account, the SERVER leg, the frozen version's
+    declared environment fingerprint, and the exact script SHA-256 the user
+    confirmed. A device-declared Skill refuses here: its approvals live on
+    the device, never on the Server (AC1, no cross-environment downgrade).
+    """
+    storage = ResourceStorage(get_paths().base_dir)
+    async with _factory()() as session:
+        service = ResourceService(session, _resource_actor(current_user))
+        resource = await service.get_visible(resource_id)
+        if resource.type != "skill":
+            raise ResourceNotFound(f"Resource {resource_id} is not a Skill")
+        published = await service.get_published_content(resource_id, version=payload.version)
+        expected_key = f"skills/{resource.id}/versions/{published.version}"
+        if published.storage_key != expected_key:
+            raise StorageValidationError("Published resource has an invalid storage key")
+        slug = resource.slug
+        skill_id = str(resource.id)
+        content_hash = str(published.content_hash)
+        frozen_version = int(published.version)
+    version_dir = storage.resources_root / expected_key
+    try:
+        declaration = await asyncio.to_thread(skill_environment.declaration_from_directory, version_dir)
+    except skill_environment.SkillEnvironmentError as exc:
+        raise StorageValidationError(f"Skill environment rejected: {exc}") from exc
+    if declaration is None:
+        raise StorageValidationError("Skill declares no execution environment")
+    if declaration["target"] != "server":
+        raise StorageValidationError("Skill scripts are declared for the user device; authorize them there")
+    requirements_hash = skill_environment.requirements_fingerprint(declaration)
+    script_path = skill_environment.normalize_script_path(payload.script_path)
+    try:
+        data = (version_dir / script_path).read_bytes()
+    except OSError as exc:
+        raise StorageValidationError("Script not found in the frozen Skill version") from exc
+    digest = script_sha256(data)
+    if digest != payload.expected_script_sha256:
+        raise StorageValidationError("Script does not match the confirmed content digest")
+    repository = SkillScriptAuthorizationRepository(_factory())
+    grant = await repository.grant(
+        str(current_user.id),
+        skill_id,
+        execution_target="server",
+        device_id="",
+        slug=slug,
+        skill_version=frozen_version,
+        skill_content_hash=content_hash,
+        script_path=script_path,
+        script_digest=digest,
+        requirements_hash=requirements_hash,
+    )
+    await record_audit(
+        str(current_user.id),
+        "skill_script_authorized",
+        "skill",
+        skill_id,
+        {
+            "authorization_id": grant["authorization_id"],
+            "version": frozen_version,
+            "script_sha256": digest,
+            "requirements_hash": requirements_hash,
+        },
+    )
+    return grant
+
+
+@router.get("/{resource_id}/scripts/authorizations")
+async def list_skill_script_authorizations(
+    resource_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """The owning account's remembered script grants for one Skill (#122)."""
+    repository = SkillScriptAuthorizationRepository(_factory())
+    rows = await repository.list(str(current_user.id), resource_id)
+    return {"authorizations": rows}
+
+
+@router.delete("/{resource_id}/scripts/authorizations/{authorization_id}")
+async def revoke_skill_script_authorization(
+    resource_id: str,
+    authorization_id: str,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """Revoke one owned script grant; later executions need a new approval."""
+    repository = SkillScriptAuthorizationRepository(_factory())
+    revoked = await repository.revoke(str(current_user.id), authorization_id)
+    if not revoked:
+        raise HTTPException(status_code=404, detail={"code": "AUTHORIZATION_NOT_FOUND", "message": "script authorization is unknown"})
+    await record_audit(
+        str(current_user.id),
+        "skill_script_authorization_revoked",
+        "skill",
+        resource_id,
+        {"authorization_id": authorization_id},
+    )
+    return {"revoked": True}
+
+
+@router.post("/{resource_id}/scripts/execute")
+@translate_resource_errors
+async def execute_skill_script(
+    resource_id: str,
+    payload: SkillScriptExecuteRequest,
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """Execute one frozen Skill script on the Server leg (#122).
+
+    Custom scripts are off by default: without the caller's own content-bound
+    grant the request refuses with ``SCRIPT_APPROVAL_REQUIRED`` and nothing
+    runs. The gate re-derives package integrity, the declared environment,
+    and the exact script digest from the frozen bytes before the platform
+    sandbox runs it; the receipt binds version, digests, and the
+    authorization basis (AC3).
+    """
+    storage = ResourceStorage(get_paths().base_dir)
+    async with _factory()() as session:
+        service = ResourceService(session, _resource_actor(current_user))
+        resource = await service.get_visible(resource_id)
+        if resource.type != "skill":
+            raise ResourceNotFound(f"Resource {resource_id} is not a Skill")
+        published = await service.get_published_content(resource_id, version=payload.version)
+        expected_key = f"skills/{resource.id}/versions/{published.version}"
+        if published.storage_key != expected_key:
+            raise StorageValidationError("Published resource has an invalid storage key")
+        skill_id = str(resource.id)
+        slug = resource.slug
+        frozen_version = int(published.version)
+        content_hash = str(published.content_hash)
+    version_dir = storage.resources_root / expected_key
+    repository = SkillScriptAuthorizationRepository(_factory())
+    grant = await repository.active(
+        str(current_user.id),
+        skill_id,
+        execution_target="server",
+        device_id="",
+        script_path=skill_environment.normalize_script_path(payload.script_path),
+    )
+    try:
+        receipt = await asyncio.to_thread(
+            skill_script_execution.execute_server_skill_script,
+            storage,
+            _skill_script_sandbox(str(current_user.id)),
+            grant,
+            version_dir=version_dir,
+            script_path=payload.script_path,
+            skill_resource_id=skill_id,
+            slug=slug,
+            skill_version=frozen_version,
+            expected_content_hash=content_hash,
+        )
+    except skill_script_execution.SkillScriptRefusal as refusal:
+        _refuse_script(refusal)
+        raise  # pragma: no cover - _refuse_script always raises
+    await record_audit(
+        str(current_user.id),
+        "skill_script_executed",
+        "skill",
+        skill_id,
+        {
+            "authorization_basis": receipt["authorization_basis"],
+            "version": receipt["skill_version"],
+            "script_sha256": receipt["script_sha256"],
+            "stdout_sha256": receipt["stdout_sha256"],
+        },
+    )
+    return receipt
 
 
 class SkillTriggerPreferenceUpsert(BaseModel):

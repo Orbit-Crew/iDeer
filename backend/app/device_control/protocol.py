@@ -73,6 +73,16 @@ def is_write_consent_basis(value: Any) -> bool:
     return value == "approved" or (isinstance(value, str) and re.fullmatch(r"directory:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value) is not None)
 
 
+def is_script_authorization_basis(value: Any) -> bool:
+    """Recognize a #122 Skill script receipt's authorization basis.
+
+    ``approved`` is the one-shot local consent; ``skill_script_grant:<identity>``
+    is the device's remembered content-bound grant that short-circuited the
+    ask. Nothing else proves a completed script ran with a real basis.
+    """
+    return value == "approved" or (isinstance(value, str) and re.fullmatch(r"skill_script_grant:[0-9a-f]{64}", value) is not None)
+
+
 def canonical_json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 

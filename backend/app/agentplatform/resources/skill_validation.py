@@ -44,6 +44,7 @@ ALLOWED_FRONTMATTER_PROPERTIES = {
     "icon",
     "permission_notes_zh",
     "permissions",
+    "execution-environment",
 }
 
 
@@ -120,6 +121,17 @@ def _validate_skill_frontmatter(skill_dir: Path) -> tuple[bool, str, str | None]
     try:
         parse_allowed_tools(frontmatter.get("allowed-tools"), skill_md)
     except ValueError as e:
+        return False, str(e).replace(str(skill_md), SKILL_MD_FILE), None
+
+    # Issue 122: a declared execution environment is validated at draft/import
+    # time so an unusable declaration can never enter the catalog. A Skill
+    # without the key is unchanged; enforcement of "scripts need a
+    # declaration" happens where execution is requested.
+    from app.agentplatform.resources.skill_environment import SkillEnvironmentError, parse_execution_environment
+
+    try:
+        parse_execution_environment(frontmatter.get("execution-environment"))
+    except SkillEnvironmentError as e:
         return False, str(e).replace(str(skill_md), SKILL_MD_FILE), None
 
     return True, "Skill is valid!", name

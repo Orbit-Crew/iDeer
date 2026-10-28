@@ -234,3 +234,40 @@ class SkillTriggerPreferenceRow(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now, server_default=func.now())
 
     __table_args__ = (CheckConstraint("priority BETWEEN -1000 AND 1000", name="ck_skill_trigger_preferences_priority"),)
+
+
+class SkillScriptAuthorizationRow(Base):
+    """One content-bound Skill script authorization (#122).
+
+    Custom Skill scripts are off by default; this row is the remembered
+    approval. Its identity hashes the owning account, the execution target
+    and device binding, the Skill, the script path, the exact script SHA-256,
+    and the declared-environment fingerprint — so changed content or a
+    changed scope is a different row (re-authorization), while a prose-only
+    version bump with unchanged bytes and declaration stays covered. The row
+    never grants edit rights on the Skill and never bypasses Run-closure
+    visibility; directory grants, sharing, and built-in identity do not
+    create or replace it.
+    """
+
+    __tablename__ = "skill_script_authorizations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users_ext.id", ondelete="CASCADE"), nullable=False, index=True)
+    skill_resource_id: Mapped[str] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    execution_target: Mapped[str] = mapped_column(String(16), nullable=False, default="server")
+    device_id: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    skill_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    skill_content_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    script_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    script_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    requirements_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now, server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("execution_target IN ('server', 'user_device')", name="ck_skill_script_authorizations_target"),
+        UniqueConstraint("user_id", "execution_target", "device_id", "skill_resource_id", "script_path", name="uq_skill_script_authorizations_binding"),
+    )

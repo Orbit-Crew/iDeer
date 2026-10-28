@@ -21,6 +21,7 @@ from pathlib import Path, PurePosixPath
 
 import yaml
 
+from app.agentplatform.resources import skill_environment
 from app.agentplatform.resources.skill_types import SKILL_MD_FILE
 from app.agentplatform.resources.skill_validation import _validate_skill_frontmatter
 from app.agentplatform.resources.storage import ResourceStorage, StorageValidationError
@@ -130,7 +131,15 @@ def build_preview(source: Path, *, origin: str, storage: ResourceStorage) -> dic
         })
     body = (source / SKILL_MD_FILE).read_text(encoding="utf-8")
     assert name is not None  # A valid front-matter always carries its name.
+    # Issue 122: the preview projects the declared execution environment so a
+    # confirming user sees exactly which target/needs the scripts declare.
+    try:
+        declaration = skill_environment.parse_execution_environment(metadata.get(skill_environment.EXECUTION_ENVIRONMENT_KEY))
+    except skill_environment.SkillEnvironmentError:
+        declaration = None  # Already refused by the front-matter validation above.
     return {
+        "execution_environment": declaration,
+        "requirements_hash": skill_environment.requirements_fingerprint(declaration),
         "origin": origin,
         "name": name,
         "description": description.strip() if isinstance(description, str) else "",
