@@ -48,9 +48,11 @@ from app.agentplatform.resource_service import (
     ResourcePermissionDenied,
     ResourceService,
 )
+from app.agentplatform.resources import skill_package
 from app.agentplatform.resources.actors import actor_from_user
 from app.agentplatform.resources.canonical_sandbox import canonical_sandbox_scope
 from app.agentplatform.resources.skill_validation import _validate_skill_frontmatter
+from app.agentplatform.resources.storage import StorageError
 from app.agentplatform.workflow_runtime import (
     WorkflowConcurrencyExceeded,
     WorkflowV2Store,
@@ -847,6 +849,139 @@ async def import_skill_resource(
         await archive.close()
         if archive_path is not None:
             archive_path.unlink(missing_ok=True)
+
+
+async def _write_bounded_skill_package_upload(
+    archive: UploadFile,
+    storage: ResourceStorage,
+    origin: str,
+) -> Path:
+    """Drain one package upload into a temporary file under the origin's cap."""
+    if origin not in skill_package.SKILL_PACKAGE_ORIGINS:
+        raise StorageValidationError(f"Unsupported Skill package origin: {origin}")
+    limit = storage.limits.max_file_bytes if origin == "markdown" else storage.limits.max_archive_bytes
+    with NamedTemporaryFile(suffix=".md" if origin == "markdown" else ".zip", delete=False) as temporary:
+        package_path = Path(temporary.name)
+        try:
+            total = 0
+            while chunk := await archive.read(1024 * 1024):
+                total += len(chunk)
+                if total > limit:
+                    raise StorageValidationError("Skill package exceeds size limit")
+                temporary.write(chunk)
+        except BaseException:
+            package_path.unlink(missing_ok=True)
+            raise
+    return package_path
+
+
+@router.post("/import/skill/preview")
+@translate_resource_errors
+async def preview_skill_import(
+    archive: UploadFile = File(...),
+    origin: str = Form(...),
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """Read-only Skill package preview (#120).
+
+    Projects exactly what a confirmed import would upload — body, scripts,
+    references, per-file and package hashes, and the private destination —
+    while persisting nothing: no resource, draft, or version row is created
+    and no content is stored, so an unconfirmed package never uploads into
+    the catalog.
+    """
+    storage = ResourceStorage(get_paths().base_dir)
+    package_path: Path | None = None
+    try:
+        package_path = await _write_bounded_skill_package_upload(archive, storage, origin)
+        with TemporaryDirectory(prefix="ideer-skill-preview-") as extracted:
+            source = Path(extracted) / "package"
+            await asyncio.to_thread(skill_package.materialize, origin, package_path, source, storage)
+            preview = await asyncio.to_thread(skill_package.build_preview, source, origin=origin, storage=storage)
+        preview["destination"] = {
+            "resource_type": "skill",
+            "visibility": "private",
+            "owner_id": str(current_user.id),
+        }
+        return preview
+    finally:
+        await archive.close()
+        if package_path is not None:
+            package_path.unlink(missing_ok=True)
+
+
+@router.post("/import/skill/confirm", status_code=201)
+@translate_resource_errors
+async def confirm_skill_import(
+    archive: UploadFile = File(...),
+    origin: str = Form(...),
+    expected_package_hash: str = Form(pattern="^[0-9a-f]{64}$"),
+    current_user: UserModel = Depends(get_current_rbac_user),
+) -> dict[str, Any]:
+    """Confirmed Skill import (#120).
+
+    Re-validates the package, binds it to the confirmed preview through the
+    package hash, and lands it as the importing account's private draft. No
+    version is published here: publication rides the existing draft/publish
+    flow, and the local package never becomes an executable channel — it only
+    ever becomes catalog content served to Server-orchestrated Runs.
+    """
+    storage = ResourceStorage(get_paths().base_dir)
+    package_path: Path | None = None
+    try:
+        package_path = await _write_bounded_skill_package_upload(archive, storage, origin)
+        with TemporaryDirectory(prefix="ideer-skill-confirm-") as extracted:
+            source = Path(extracted) / "package"
+            await asyncio.to_thread(skill_package.materialize, origin, package_path, source, storage)
+            preview = await asyncio.to_thread(skill_package.build_preview, source, origin=origin, storage=storage)
+            if preview["package_hash"] != expected_package_hash:
+                raise StorageValidationError("Skill package does not match the confirmed preview hash")
+            async with _factory()() as session:
+                service = ResourceService(session, _resource_actor(current_user))
+                collision = (
+                    await session.execute(
+                        select(Resource.id).where(
+                            Resource.type == "skill",
+                            Resource.owner_id == str(current_user.id),
+                            Resource.slug == preview["name"],
+                        )
+                    )
+                ).scalar_one_or_none()
+                if collision is not None:
+                    raise ResourceConflict(f"Current owner already has skill slug '{preview['name']}'")
+                resource = await service.create_resource(
+                    resource_type="skill",
+                    slug=preview["name"],
+                    display_name=preview["name"],
+                    storage_kind="filesystem",
+                )
+                publisher = ResourcePublisher(service, storage)
+                try:
+                    draft = await publisher.save_filesystem_draft(resource.id, source_dir=source, expected_revision=0)
+                except BaseException:
+                    # The publisher's rollback already removed the rows; only
+                    # the staged draft directory can linger, and reconciliation
+                    # reports orphans. Nothing partial may present as imported.
+                    try:
+                        storage.discard_draft("skill", resource.id, revision=1)
+                    except (OSError, StorageError):
+                        pass
+                    raise
+                await record_audit(
+                    str(current_user.id),
+                    "skill_import_confirmed",
+                    "skill",
+                    resource.id,
+                    {"origin": origin, "revision": draft.revision, "content_hash": draft.content_hash},
+                )
+                return {
+                    **_resource_payload(resource, current_user=current_user),
+                    "draft": {"revision": draft.revision, "content_hash": draft.content_hash},
+                }
+    finally:
+        await archive.close()
+        if package_path is not None:
+            package_path.unlink(missing_ok=True)
 
 
 @router.post("", status_code=201)
