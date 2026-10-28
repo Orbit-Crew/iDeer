@@ -18,7 +18,7 @@ tool_groups:
 tools:
   - name: code_interpreter
     group: code
-    use: ideer.community.code_interpreter.tools:code_interpreter_tool
+    use: app.agentplatform.community.code_interpreter.tools:code_interpreter_tool
 ```
 
 ## Usage

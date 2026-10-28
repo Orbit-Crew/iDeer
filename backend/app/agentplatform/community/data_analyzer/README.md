@@ -23,7 +23,7 @@ tool_groups:
 tools:
   - name: data_analyzer
     group: code
-    use: ideer.community.data_analyzer.tools:data_analyzer_tool
+    use: app.agentplatform.community.data_analyzer.tools:data_analyzer_tool
 ```
 
 ## Usage
