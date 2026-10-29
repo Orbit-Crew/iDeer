@@ -97,3 +97,17 @@ staged on model credentials; per the ticket this does not block the
 automated contract evidence above. Win7: unexecuted, owned by #131.
 `dist:win` packaging of the eventual combined candidate: pending, recorded
 in the closing acceptance pass.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-114/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-114/evidence/installed-20261029/`.
+The scope view, the frozen run surface and the device search contract passed
+as a real three-end run. The isolated Gateway's missing `knowledge_search`
+tool declaration was added to the fixture config during debugging — the
+fail-closed deployment veto (`deployment_allowed_datasets` denies an
+unconfigured tool) is by design and is what let the run-scope bindings
+freeze. Dual-UI walkthrough and provider/live-fault legs stay staged as
+recorded. Bindings identical to the #112 section. Win7 remains with #131.

@@ -146,3 +146,17 @@ keeps its original bindings, and later publications never retroactively
 touch running Runs or existing copies (each source revision publishes to its
 own deterministic copy; retries reuse the same copy by construction, never
 duplicate it).
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-115/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-115/evidence/installed-20261029/`.
+The unconfirmed-workspace guard and the UI preview-cancel walkthrough passed
+in the installed app (no model calls). The installed Runtime confirmed-publish
+stalled before any platform POST (preview GETs only; no upload, no registry
+row after 300 s) and is recorded with the wire tail as a candidate defect
+observation; the exact-bytes multipart contract remains covered by the
+automated suite above. Bindings identical to the #112 section. Win7 remains
+with #131.

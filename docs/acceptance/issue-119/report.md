@@ -95,3 +95,16 @@ Integration baseline reconciliation: the recorded #118 baseline is
   guesses).
 - `dev-log/` remains an untracked local working directory in this repo
   (ticket copy at `dev-log/ticket-119.md`), exactly as at baseline.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-119/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-119/evidence/installed-20261029/`.
+The 60 s bounded generate, the honest skipped-page record, cross-account
+invisibility and the projection-shape bounds (asserted on the real server
+payload) passed; T119-04 asserts the frozen-manifest contract beside the new
+revision. Completed-target presentation legs and the flood bounds stay staged
+on the material-consent approval-surface and provider dependencies (T112-03
+precedent). Bindings identical to the #112 section. Win7 remains with #131.

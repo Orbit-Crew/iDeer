@@ -119,3 +119,16 @@ ticket's head.
 - Win7 compatibility verification — explicitly deferred to #131; modern
   Windows results (Desktop report) must not be read as Win7 results.
 - `dist:win` packaging — recorded pending; not run in this ticket.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-123/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-123/evidence/installed-20261029/`.
+T123-01 executed: cancel registers nothing, the install registers the
+canonical identity, and the managed copy re-hash plus controlled config are
+asserted; the tray leg is recorded as a fixture observation. The bad-package
+matrix, cross-account isolation and removal legs ended before execution in
+that round and remain covered by the Server and runtime suites above, staged
+for a follow-up execution. Bindings identical to the #112 section. Win7 remains with #131.

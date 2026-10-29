@@ -140,3 +140,20 @@ inspect-first existence check like the #121 migration.
 - Win7 compatibility verification — explicitly deferred to #131; modern
   Windows results above must not be read as Win7 results.
 - `dist:win` packaging — recorded pending; not run in this ticket.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-122/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-122/evidence/installed-20261029/`
+(follow-up record; see the Desktop report for the final round). The server
+authorization/execution legs with content-bound receipts passed, the device
+gate refused server-declared skills and OS-mismatch payloads with typed
+codes (`SKILL_SCRIPT_ENVIRONMENT_UNAVAILABLE` for linux-on-Windows), and the
+local deny rule outranked every grant. The device representative execution
+and consent-remember legs stay staged: no reachable approval surface exists
+for `local.skill.script` on the installed Desktop. The driver-side
+`skill_id` omission that earlier rounds hit (the device gate rightly
+answering `SKILL_SCRIPT_INVALID`) is documented in the Desktop record.
+Bindings identical to the #112 section. Win7 remains with #131.

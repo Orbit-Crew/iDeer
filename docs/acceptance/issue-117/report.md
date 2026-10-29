@@ -114,3 +114,17 @@ Focused runner: `dev-log/issue-112/test.sh` (repo-root-relative; Python
   requires the caller's own device connection), so a member's ask over an
   owner-local document reports the unavailable material instead of
   answering — covered by `test_department_member_with_visibility_reads_like_retrieval`.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-117/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-117/evidence/installed-20261029/`.
+T117-01/02/04 passed fully and four of T117-03's cases passed with the real
+model (`agnes-3.0-flash`). Staged: the structured per-document refusal
+display (the #116 material-consent approval surface is unreachable in the
+installed app), the gapped-generation per-document category (generation
+parked on the material gap), and the deterministic `GRAPH_CONTENT_DRIFTED`
+presentation (drift injection needs device-approvable material). Bindings
+identical to the #112 section. Win7 remains with #131.

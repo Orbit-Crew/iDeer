@@ -78,3 +78,21 @@ Pre-change baseline for the same integration scope was 1212 passed, 31 skipped
 (orchestrator-recorded run). The unit suites above were green before the change
 except the new 5-test file, which was created red and turned green by the
 router implementation.
+
+## Installed combination acceptance, 2026-10-28 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-112/installed-20261028.md` with sanitized
+evidence under `docs/acceptance/issue-112/evidence/installed-20261028/`.
+Summary against this report's scenarios: T112-01 and T112-02 passed as a real
+three-end run (installed Desktop, this candidate's isolated real Gateway,
+driven UI); T112-03's immutable R1/R2 case passed, while its draft
+prepare/publish refusal pair stays unexecuted because no RAGFlow provider is
+configured in the isolated environment (the facade answers 503 before the
+local-import check; the 409 itself remains covered by the automated suite
+above); T112-04 passed including installed-app restart and cross-account
+isolation. Desktop candidate tree equals Desktop develop `de3b6ef` (PR #35);
+this repository's executed tree equals develop `f77261ce` (PR #166,
+`serverSourceSHA256 3e8a3923ba727770…` bound at Gateway startup). Win7
+remains unexecuted under #131.
