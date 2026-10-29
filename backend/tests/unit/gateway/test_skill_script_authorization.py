@@ -410,7 +410,7 @@ async def test_executor_verifies_declared_environment_before_running(tmp_path: P
     factory = await _setup(tmp_path, monkeypatch)
     skill = await _publish_skill(factory, tmp_path)
     repository = SkillScriptAuthorizationRepository(lambda: factory)
-    grant = await _grant_for(repository, skill)
+    await _grant_for(repository, skill)
     sandbox = FakeSandbox()
     receipt = skill_script_execution.execute_server_skill_script(
         ResourceStorage(tmp_path),
