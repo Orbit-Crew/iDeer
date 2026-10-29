@@ -138,3 +138,20 @@ fail at the #120 tip with no local changes; they pass here).
   tested behavior (`message_text_from_input`).
 - `dev-log/` remains an untracked local working directory in this repo
   (ticket copy at `dev-log/ticket-121.md`), exactly as at baseline.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-121/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-121/evidence/installed-20261029/`.
+T121-01/03/04 passed with the real model: the hit run injected the frozen V1
+identity (archived selection snapshot + `skill_trigger_preference_applied`
+audit pin the exact run), the endpoint rejection matrix held with unchanged
+stored rows, out-of-closure matches hard-refuse (409
+`skill_outside_agent_closure`) and skip-audit per run, and a preference
+rewrite plus V2 publication during a running run never drifted it. T121-02
+is incomplete only on the visibility-reduction dependency. The three
+UI-interaction legs are staged on the projection-refresh re-mount race with
+the server-side contracts asserted. Bindings identical to the #112 section.
+Win7 remains with #131.

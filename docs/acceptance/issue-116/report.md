@@ -114,3 +114,18 @@ runtime, AC1 device-authorization leg).
   (#113 frozen-identity dispatch, #114 fixed failure categories, #115
   owner-gated mutation boundaries); no new graph engine or algorithm tuning
   was introduced, per the ticket's out-of-scope rule.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-116/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-116/evidence/installed-20261029/`.
+Server-orchestrated generation with structured per-source failure, the honest
+empty-graph state, locate-inside-workspace, cross-account invisibility and
+reopen persistence all passed. A completed real-model graph stays unexecuted
+with the recorded observation that the Desktop candidate's
+`knowledge_seam.py` constructs KnowledgeFacade without a
+`graph_broker_factory`, so the device material dispatch chain never engages;
+the consent-card legs have no reachable approval surface. Bindings identical
+to the #112 section. Win7 remains with #131.

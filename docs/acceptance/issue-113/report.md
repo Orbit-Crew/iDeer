@@ -126,3 +126,21 @@ identity, and every Run still freezes its revision through the unchanged
 closure resolution, so a Run never observes content that was not frozen into
 its snapshot: activation between Runs moves new Runs only, and a device-side
 hash mismatch yields a structured `missing` entry instead of current content.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-113/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-113/evidence/installed-20261029/`.
+The three publication refusals (unactivated KB 409, draft local-import
+prepare 409, draft local-import publish 409) executed for real through the
+installed UI against this candidate's isolated Gateway. Every chat/run-
+dependent leg stays unexecuted: thread creation fails with `CHAT_NOT_FOUND`
+even for a freshly published agent — [iDeer#167](https://github.com/Orbit-Crew/iDeer/issues/167)
+(double-publish leaves version 1 behind and the retry refuses) plus the
+Desktop SSE defect [#37](https://github.com/Orbit-Crew/iDeer-Desktop/issues/37)
+— both filed from this campaign. Bindings: Desktop candidate tree equals
+Desktop develop `de3b6ef` package; this repository's executed tree equals
+develop `f77261ce` (`serverSourceSHA256 3e8a3923ba727770…` bound at Gateway
+startup). Win7 remains unexecuted under #131.

@@ -147,3 +147,17 @@ retry), `test_retry_keeps_each_revision_its_own_sources`,
   owner-gated mutation boundaries, #116 `RevisionMaterialSource` with only a
   task-label addition); no new device operation, engine, or algorithm tuning
   was introduced, per the ticket's out-of-scope rule.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-118/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-118/evidence/installed-20261029/`.
+The honest view-before-generation state, per-page frozen digests, skipped-page
+presentation, revision isolation and bad-command refusal legs passed; T118-03
+and T118-04 passed fully. The live model-written page stays staged on the
+material-consent approval-surface and provider dependencies, with the SSE
+defect [#37](https://github.com/Orbit-Crew/iDeer-Desktop/issues/37)
+observation recorded. Bindings identical to the #112 section. Win7 remains
+with #131.

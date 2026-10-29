@@ -101,3 +101,19 @@ Integration baseline reconciliation: the recorded #119 baseline is
   resource.
 - `dev-log/` remains an untracked local working directory in this repo
   (ticket copy at `dev-log/ticket-120.md`), exactly as at baseline.
+
+## Installed combination acceptance, 2026-10-29 (modern Windows)
+
+The staged installed-combination portion was executed on the paired Desktop
+side and recorded in that repository:
+`iDeer-Desktop/docs/acceptance/issue-120/installed-20261029.md` with sanitized
+evidence under `docs/acceptance/issue-120/evidence/installed-20261029/`.
+All four scenarios passed with the real external model: the import
+rejection matrix asserts typed codes from the Server data plane (the UI
+shows fixed fallback text by design — IPC rejections never carry bare
+codes), the publish flow freezes content hash and platform version, and the
+chat surface renders only registry-truth states. The two model-echo marker
+cases stay unexecuted with the local-sandbox mount dependency, and the
+Runtime stream observation is bound to defect
+[#37](https://github.com/Orbit-Crew/iDeer-Desktop/issues/37). Bindings
+identical to the #112 section. Win7 remains with #131.
