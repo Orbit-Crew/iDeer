@@ -1164,7 +1164,7 @@ class ResourceService:
         draft = await self.session.get(ResourceDraft, resource_id)
         if draft is None or draft.revision != expected_draft_revision or resource.draft_revision != expected_draft_revision:
             raise ResourceConflict("Draft revision changed before publication")
-        await self._assert_required_dependencies_ready(resource)
+        await self.assert_required_dependencies_ready(resource)
         version = ResourceVersion(
             id=str(uuid.uuid4()),
             resource_id=resource.id,
@@ -1353,7 +1353,7 @@ class ResourceService:
             if violation is not None
         ]
 
-    async def _assert_required_dependencies_ready(self, source: Resource) -> None:
+    async def assert_required_dependencies_ready(self, source: Resource) -> None:
         dependencies = list((await self.session.execute(select(ResourceDependency, Resource).join(Resource, Resource.id == ResourceDependency.target_resource_id).where(ResourceDependency.source_resource_id == source.id))).all())
         missing: list[str] = []
         for dependency, target in dependencies:
