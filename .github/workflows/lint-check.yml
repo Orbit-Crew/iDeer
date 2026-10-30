@@ -10,7 +10,7 @@ permissions:
 jobs:
   agent-guidance:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -22,7 +22,7 @@ jobs:
         run: python3 scripts/check_agent_guidance.py --before "$BEFORE_SHA" --after "$HEAD_SHA" --check-gitnexus
 
   document-gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # Conventional uv cache location (AGENTS.md restricted-environment path);
       # setup-uv respects a pre-set UV_CACHE_DIR and still caches it.
@@ -62,7 +62,7 @@ jobs:
         run: uv run pytest tests/unit/scripts/test_intranet_deploy_scripts.py -q
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 
@@ -86,7 +86,7 @@ jobs:
         run: make lint
 
   lint-frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 

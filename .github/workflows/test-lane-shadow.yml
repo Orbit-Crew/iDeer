@@ -14,7 +14,7 @@ permissions:
 jobs:
   select:
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       plan: ${{ steps.plan.outputs.plan }}
       channels: ${{ steps.plan.outputs.channels }}
@@ -39,7 +39,7 @@ jobs:
 
   test-contracts:
     needs: select
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -101,7 +101,7 @@ jobs:
   backend-unit-tests:
     needs: [select, test-contracts]
     if: contains(needs.select.outputs.channels, 'backend-standard')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -146,7 +146,7 @@ jobs:
   frontend-unit-tests:
     needs: [select, test-contracts]
     if: contains(needs.select.outputs.channels, 'frontend-standard')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
@@ -213,7 +213,7 @@ jobs:
   lint:
     needs: [select, test-contracts]
     if: contains(needs.select.outputs.channels, 'static-checks')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
@@ -260,7 +260,7 @@ jobs:
   backend-coverage:
     needs: [select, backend-unit-tests]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Preserve the legacy check name
         env:
@@ -278,7 +278,7 @@ jobs:
   backend-serial:
     needs: [select, backend-unit-tests]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Preserve the legacy check name
         env:
@@ -291,7 +291,7 @@ jobs:
   frontend-coverage:
     needs: [select, frontend-unit-tests]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Preserve the legacy check name
         env:
@@ -309,7 +309,7 @@ jobs:
   lint-frontend:
     needs: [select, lint]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Preserve the legacy check name
         env:
@@ -327,7 +327,7 @@ jobs:
   agent-guidance:
     needs: [select, test-contracts]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Preserve the legacy check name
         env:
@@ -352,7 +352,7 @@ jobs:
       - frontend-coverage
       - lint-frontend
       - agent-guidance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6

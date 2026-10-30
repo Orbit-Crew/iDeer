@@ -32,7 +32,7 @@ jobs:
   # ── PR: area / size / risk / needs-validation / first-time ─────────────────
   pr-labels:
     if: github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency:
       group: triage-pr-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -141,7 +141,7 @@ jobs:
   # ── PR: reviewing label on a maintainer's human review ─────────────────────
   reviewing:
     if: github.event_name == 'pull_request_review'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency:
       group: triage-review-${{ github.event.pull_request.number }}
       cancel-in-progress: false
@@ -186,7 +186,7 @@ jobs:
   # ── Issue: needs-triage on every new issue ────────────────────────────────
   issue-triage:
     if: github.event_name == 'issues'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency:
       group: triage-issue-${{ github.event.issue.number }}
       cancel-in-progress: false

@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   sandbox-image-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The CN registry pull of the multi-GB sandbox image intermittently
     # exceeds 25 minutes; two PR-gate runs died at exactly 25m on 2026-10-14.
     timeout-minutes: 40

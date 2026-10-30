@@ -17,7 +17,7 @@ permissions:
 jobs:
   backend-unit-tests:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -59,7 +59,7 @@ jobs:
 
   backend-full:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -102,7 +102,7 @@ jobs:
   backend-serial:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: backend-full
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -139,7 +139,7 @@ jobs:
 
   backend-coverage:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [backend-full, backend-serial]
     timeout-minutes: 10
     steps:
