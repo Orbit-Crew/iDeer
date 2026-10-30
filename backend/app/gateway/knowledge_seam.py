@@ -30,6 +30,7 @@ from app.agentplatform.resource_service import (
     VisibilityClosureError,
 )
 from app.agentplatform.workflow_runtime import WorkflowRunError
+from app.device_control.broker import get_device_broker
 from app.gateway.audit import record_audit
 from deerflow.persistence.engine import get_session_factory
 
@@ -43,8 +44,17 @@ def persistence_factory():
 
 
 def knowledge_facade() -> KnowledgeFacade:
-    """Wire the knowledge-domain seam with this gateway's session factory and audit sink."""
-    return KnowledgeFacade(persistence_factory(), audit=record_audit)
+    """Wire the knowledge-domain seam with this gateway's session factory,
+    audit sink, and the real device broker.
+
+    #169: without a ``graph_broker_factory`` the graph/wiki/ask material
+    source raised ``GRAPH_DEVICE_UNAVAILABLE`` for every locally imported
+    revision even when its device was online — the production factory now
+    hands over the same ``DeviceBroker`` the device socket registers with,
+    so an authorized local revision reaches its importing device through
+    ``local.knowledge.material`` instead of failing before dispatch.
+    """
+    return KnowledgeFacade(persistence_factory(), audit=record_audit, graph_broker_factory=get_device_broker)
 
 
 def translate_resource_errors(handler):

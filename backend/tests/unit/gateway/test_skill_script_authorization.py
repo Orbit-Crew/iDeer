@@ -20,6 +20,7 @@ Covers the four #122 contracts on the Server leg:
 from __future__ import annotations
 
 import hashlib
+import json
 import shlex
 import subprocess
 import uuid
@@ -154,15 +155,36 @@ async def _publish_skill(
     }
 
 
-class FakeSandbox:
-    """Records commands without running anything."""
+#: The sandbox fact snapshot a satisfying control declaration verifies
+#: against: linux sandbox, a 3.11 interpreter, ``python3`` on PATH.
+PROBE_FACTS = {"os": "linux", "python": [3, 11, 9], "modules": {}, "binaries": {"python3": True}}
 
-    def __init__(self, output: str = EXPECTED_OUTPUT) -> None:
+_UNSET = object()
+
+
+class FakeSandbox:
+    """Records commands without running anything.
+
+    The environment probe (#170) is answered with a sandbox fact snapshot so
+    a satisfying declaration verifies; script commands return the fixed
+    output. ``probe=None`` simulates a sandbox that cannot answer at all.
+    """
+
+    def __init__(self, output: str = EXPECTED_OUTPUT, *, probe: dict | str | None = _UNSET) -> None:
         self.calls: list[tuple[str, float | None]] = []
         self.output = output
+        self.probe_calls = 0
+        self.script_calls = 0
+        self.probe: dict | str | None = dict(PROBE_FACTS) if probe is _UNSET else probe
 
     def execute_command(self, command: str, env=None, timeout=None) -> str:
         self.calls.append((command, timeout))
+        if command.startswith("python3 -c"):
+            self.probe_calls += 1
+            if self.probe is None:
+                raise RuntimeError("sandbox probe unavailable")
+            return self.probe if isinstance(self.probe, str) else json.dumps(self.probe)
+        self.script_calls += 1
         return self.output
 
 
@@ -372,7 +394,7 @@ async def test_executor_runs_representative_skill_and_binds_receipt(
         skill_version=1,
         expected_content_hash=skill["content_hash"],
     )
-    assert sandbox.calls and "scripts/analyze.py" in sandbox.calls[0]
+    assert sandbox.calls and "scripts/analyze.py" in sandbox.calls[-1]
     assert receipt["status"] == "completed"
     assert receipt["skill_version"] == 1
     assert receipt["package_hash"] == skill["content_hash"]
@@ -380,6 +402,95 @@ async def test_executor_runs_representative_skill_and_binds_receipt(
     assert receipt["requirements_hash"] == skill["requirements_hash"]
     assert receipt["authorization_basis"] == f"skill_script_authorization:{grant['authorization_id']}"
     assert EXPECTED_OUTPUT in receipt["stdout"]
+
+
+@pytest.mark.asyncio
+async def test_executor_verifies_declared_environment_before_running(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """#170: a satisfying declaration probes once and runs; nothing else does."""
+    factory = await _setup(tmp_path, monkeypatch)
+    skill = await _publish_skill(factory, tmp_path)
+    repository = SkillScriptAuthorizationRepository(lambda: factory)
+    await _grant_for(repository, skill)
+    sandbox = FakeSandbox()
+    receipt = skill_script_execution.execute_server_skill_script(
+        ResourceStorage(tmp_path),
+        sandbox,
+        await repository.active("owner", skill["resource_id"], execution_target="server", device_id="", script_path="scripts/analyze.py"),
+        version_dir=skill["version_dir"],
+        script_path="scripts/analyze.py",
+        skill_resource_id=skill["resource_id"],
+        slug="report-skill",
+        skill_version=1,
+        expected_content_hash=skill["content_hash"],
+    )
+    assert receipt["status"] == "completed"
+    # Exactly one read-only probe, then the single script execution.
+    assert sandbox.probe_calls == 1 and sandbox.script_calls == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header",
+    [
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['windows']\n  dependencies: ['python3']\n  tools: ['python3']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  dependencies: ['python>=999']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  dependencies: ['pandas>=2.0']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  tools: ['definitely-missing-tool']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  data: ['quarterly CSV']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  dependencies: ['python with extra prose']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+    ],
+)
+async def test_executor_refuses_unsatisfiable_declared_environments(
+    header: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """#122 AC1 / #170: OS mismatch, missing dependency/tool, unverifiable data
+    and unsupported grammar refuse as unavailable with zero script runs."""
+    factory = await _setup(tmp_path, monkeypatch)
+    skill = await _publish_skill(factory, tmp_path, body=header)
+    repository = SkillScriptAuthorizationRepository(lambda: factory)
+    await _grant_for(repository, skill)
+    sandbox = FakeSandbox()
+    with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
+        skill_script_execution.execute_server_skill_script(
+            ResourceStorage(tmp_path),
+            sandbox,
+            await repository.active("owner", skill["resource_id"], execution_target="server", device_id="", script_path="scripts/analyze.py"),
+            version_dir=skill["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=skill["resource_id"],
+            slug="report-skill",
+            skill_version=1,
+            expected_content_hash=skill["content_hash"],
+        )
+    assert caught.value.category == skill_script_execution.ENVIRONMENT_UNAVAILABLE
+    # The probe may answer, but the script never runs on an unverified sandbox.
+    assert sandbox.script_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_executor_refuses_when_the_probe_cannot_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """#170: an unconfirmable environment is unavailable, never a downgrade."""
+    factory = await _setup(tmp_path, monkeypatch)
+    skill = await _publish_skill(factory, tmp_path)
+    repository = SkillScriptAuthorizationRepository(lambda: factory)
+    await _grant_for(repository, skill)
+    sandbox = FakeSandbox(probe=None)
+    with pytest.raises(skill_script_execution.SkillScriptRefusal) as caught:
+        skill_script_execution.execute_server_skill_script(
+            ResourceStorage(tmp_path),
+            sandbox,
+            await repository.active("owner", skill["resource_id"], execution_target="server", device_id="", script_path="scripts/analyze.py"),
+            version_dir=skill["version_dir"],
+            script_path="scripts/analyze.py",
+            skill_resource_id=skill["resource_id"],
+            slug="report-skill",
+            skill_version=1,
+            expected_content_hash=skill["content_hash"],
+        )
+    assert caught.value.category == skill_script_execution.ENVIRONMENT_UNAVAILABLE
+    assert sandbox.script_calls == 0
 
 
 @pytest.mark.asyncio
@@ -602,7 +713,7 @@ async def test_authorize_execute_revoke_roundtrip(
         _user(),
     )
     assert again["authorization_basis"] == receipt["authorization_basis"]
-    assert len(sandbox.calls) == calls_after_first + 1
+    assert len(sandbox.calls) == calls_after_first + 2  # one probe, then the script (#170)
 
     listed = await resources.list_skill_script_authorizations(skill["resource_id"], _user())
     assert [row["authorization_id"] for row in listed["authorizations"]] == [grant["authorization_id"]]
@@ -616,7 +727,7 @@ async def test_authorize_execute_revoke_roundtrip(
         )
     assert caught.value.status_code == 403
     assert caught.value.detail["code"] == AUTHORIZATION_REVOKED
-    assert len(sandbox.calls) == calls_after_first + 1  # the revoked request never ran
+    assert len(sandbox.calls) == calls_after_first + 2  # the revoked request never ran (counts stop after the remembered run)
 
 
 @pytest.mark.asyncio

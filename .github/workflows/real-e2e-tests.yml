@@ -22,7 +22,7 @@ permissions:
 jobs:
   select_real_e2e:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       run_real: ${{ steps.select.outputs.run_real }}
     steps:
@@ -57,7 +57,7 @@ jobs:
   real_e2e_tests:
     needs: select_real_e2e
     if: ${{ needs.select_real_e2e.outputs.run_real == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       CI: "true"
@@ -120,7 +120,7 @@ jobs:
   real_e2e_gate:
     name: Real E2E Gate
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [select_real_e2e, real_e2e_tests]
     steps:
       - name: Verify selected real E2E result
