@@ -44,6 +44,12 @@ jobs:
           python-version: "3.12"
 
       - name: Run offline SRS smoke (generate + validate)
+        env:
+          # The vendored officecli is a .NET single-file bundle whose
+          # background daemon and foreground client share one extraction
+          # cache; a job-local cache dir avoids the runner-only launch
+          # failures (the same smoke passes locally).
+          DOTNET_BUNDLE_EXTRACT_BASE_DIR: ${{ runner.temp }}/officecli-extract
         run: |
           python3 scripts/smoke_srs_flow.py --outputs-dir /tmp/srs-smoke-outputs
           python3 resources/skills/srs-writing/scripts/validate_srs_outputs.py --outputs-dir /tmp/srs-smoke-outputs
