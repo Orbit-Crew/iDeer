@@ -429,28 +429,21 @@ async def test_executor_verifies_declared_environment_before_running(tmp_path: P
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("header", [
-    "---\nname: report-skill\ndescription: Build a weekly report\n"
-    "execution-environment:\n  target: server\n  os: ['windows']\n"
-    "  dependencies: ['python3']\n  tools: ['python3']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
-    "---\nname: report-skill\ndescription: Build a weekly report\n"
-    "execution-environment:\n  target: server\n  os: ['linux']\n"
-    "  dependencies: ['python>=999']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
-    "---\nname: report-skill\ndescription: Build a weekly report\n"
-    "execution-environment:\n  target: server\n  os: ['linux']\n"
-    "  dependencies: ['pandas>=2.0']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
-    "---\nname: report-skill\ndescription: Build a weekly report\n"
-    "execution-environment:\n  target: server\n  os: ['linux']\n"
-    "  tools: ['definitely-missing-tool']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
-    "---\nname: report-skill\ndescription: Build a weekly report\n"
-    "execution-environment:\n  target: server\n  os: ['linux']\n"
-    "  data: ['quarterly CSV']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
-    "---\nname: report-skill\ndescription: Build a weekly report\n"
-    "execution-environment:\n  target: server\n  os: ['linux']\n"
-    "  dependencies: ['python with extra prose']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
-])
+@pytest.mark.parametrize(
+    "header",
+    [
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['windows']\n  dependencies: ['python3']\n  tools: ['python3']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  dependencies: ['python>=999']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  dependencies: ['pandas>=2.0']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  tools: ['definitely-missing-tool']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  data: ['quarterly CSV']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+        "---\nname: report-skill\ndescription: Build a weekly report\nexecution-environment:\n  target: server\n  os: ['linux']\n  dependencies: ['python with extra prose']\n---\n\n# Report skill\n\nRun the analyzer script.\n",
+    ],
+)
 async def test_executor_refuses_unsatisfiable_declared_environments(
-    header: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    header: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """#122 AC1 / #170: OS mismatch, missing dependency/tool, unverifiable data
     and unsupported grammar refuse as unavailable with zero script runs."""

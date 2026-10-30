@@ -88,22 +88,24 @@ _BARE_COMMAND = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*$")
 #: The one read-only probe the sandbox answers before any script runs: the
 #: platform OS, the interpreter version, and the availability of every named
 #: module and tool. Names travel as argv tokens, never as code.
-_PROBE_CODE = "\n".join([
-    "import json, platform, shutil, sys",
-    "from importlib import metadata",
-    "modules, binaries = {}, {}",
-    "for token in sys.argv[1:]:",
-    "    kind, _, name = token.partition(':')",
-    "    if kind == 'module':",
-    "        try:",
-    "            modules[name] = metadata.version(name)",
-    "        except Exception:",
-    "            modules[name] = None",
-    "    elif kind == 'binary':",
-    "        binaries[name] = shutil.which(name) is not None",
-    "print(json.dumps({'os': platform.system().lower(), 'python': list(sys.version_info[:3]),",
-    "                  'modules': modules, 'binaries': binaries}))",
-])
+_PROBE_CODE = "\n".join(
+    [
+        "import json, platform, shutil, sys",
+        "from importlib import metadata",
+        "modules, binaries = {}, {}",
+        "for token in sys.argv[1:]:",
+        "    kind, _, name = token.partition(':')",
+        "    if kind == 'module':",
+        "        try:",
+        "            modules[name] = metadata.version(name)",
+        "        except Exception:",
+        "            modules[name] = None",
+        "    elif kind == 'binary':",
+        "        binaries[name] = shutil.which(name) is not None",
+        "print(json.dumps({'os': platform.system().lower(), 'python': list(sys.version_info[:3]),",
+        "                  'modules': modules, 'binaries': binaries}))",
+    ]
+)
 
 
 def _parse_requirement(entry: str) -> tuple[str, str] | None:
@@ -118,7 +120,7 @@ def _constraints_satisfied(actual: tuple[int, ...], constraints: str) -> bool:
     for match in _CONSTRAINT.finditer(constraints):
         operator, raw = match.group(1), tuple(int(part) for part in match.group(2).split("."))
         target = raw + (0,) * max(0, len(actual) - len(raw))
-        prefix = actual[:len(raw)]
+        prefix = actual[: len(raw)]
         if operator == ">=" and not actual >= target:
             return False
         if operator == "<=" and not actual <= target:
@@ -131,7 +133,7 @@ def _constraints_satisfied(actual: tuple[int, ...], constraints: str) -> bool:
             return False
         if operator == "<" and not actual < target:
             return False
-        if operator == "~=" and not (actual >= target and prefix == raw[:len(prefix)]):
+        if operator == "~=" and not (actual >= target and prefix == raw[: len(prefix)]):
             return False
     return True
 
@@ -160,9 +162,7 @@ def _probe_environment(sandbox, declaration: dict, timeout: float) -> dict[str, 
         probe = json.loads(str(raw))
     except Exception:  # noqa: BLE001 - an unreadable probe refuses, never guesses
         raise SkillScriptRefusal(ENVIRONMENT_UNAVAILABLE) from None
-    if not isinstance(probe, dict) or not isinstance(probe.get("os"), str) \
-            or not isinstance(probe.get("python"), list) \
-            or not isinstance(probe.get("modules"), dict) or not isinstance(probe.get("binaries"), dict):
+    if not isinstance(probe, dict) or not isinstance(probe.get("os"), str) or not isinstance(probe.get("python"), list) or not isinstance(probe.get("modules"), dict) or not isinstance(probe.get("binaries"), dict):
         raise SkillScriptRefusal(ENVIRONMENT_UNAVAILABLE)
     return probe
 
