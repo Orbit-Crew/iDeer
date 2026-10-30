@@ -31,7 +31,7 @@ jobs:
     # ideer-X.Y.Z tag is an immutable OCI artifact (GHCR won't let you overwrite
     # --version), so a regression must fail here, not on install.
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/ideer-')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -76,7 +76,7 @@ jobs:
   publish-chart:
     if: startsWith(github.ref, 'refs/tags/ideer-')
     needs: [verify-versions, validate-chart]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

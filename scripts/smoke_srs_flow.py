@@ -125,6 +125,12 @@ def run(cmd: list[str]) -> str:
             subprocess.run(cmd, check=True, stdout=tf, stderr=tf)
             tf.seek(0)
             return tf.read()
+        except subprocess.CalledProcessError:
+            # The captured output is the only record of why the CLI refused;
+            # losing it makes every runner-only failure undebuggable.
+            tf.seek(0)
+            print(tf.read(), file=sys.stderr)
+            raise
         finally:
             tf.close()
 

@@ -39,7 +39,7 @@ env:
 jobs:
   prepare:
     if: github.repository == 'bytedance/deer-flow'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       date: ${{ steps.date.outputs.date }}
       nightly_version: ${{ steps.nightly_version.outputs.nightly_version }}
@@ -79,7 +79,7 @@ jobs:
     # Catch a broken render or a stale config_version before publish. A broken
     # chart published under an OCI version is immutable (GHCR won't let you
     # overwrite --version), so a regression must fail here, not on install.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -100,7 +100,7 @@ jobs:
   build-images:
     needs: prepare
     if: github.repository == 'bytedance/deer-flow'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -177,7 +177,7 @@ jobs:
     # would fail to pull in-cluster.
     needs: [prepare, validate-chart, build-images]
     if: github.repository == 'bytedance/deer-flow'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
