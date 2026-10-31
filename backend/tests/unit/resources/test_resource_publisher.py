@@ -15,9 +15,15 @@ import app.agentplatform.audit_model  # noqa: F401 - register audit_logs
 import app.agentplatform.rbac_models  # noqa: F401 - register users_ext
 import app.agentplatform.resource_models  # noqa: F401 - register resource tables
 import app.agentplatform.visibility_models  # noqa: F401 - register visibility tables
+from app.agentplatform.knowledge.models import KnowledgeBase, KnowledgeRevision
 from app.agentplatform.resource_models import Resource, ResourceDraft, ResourceVersion
 from app.agentplatform.resources.publisher import ResourcePublisher
-from app.agentplatform.resources.service import ResourceAction, ResourceActor, ResourceService
+from app.agentplatform.resources.service import (
+    ResourceAction,
+    ResourceActor,
+    ResourceConflict,
+    ResourceService,
+)
 from app.agentplatform.resources.storage import ResourceStorage
 from deerflow.persistence.base import Base
 
@@ -44,6 +50,13 @@ def _source(tmp_path: Path) -> Path:
     source = tmp_path / "source"
     source.mkdir(exist_ok=True)
     (source / "config.yaml").write_text("name: example\n")
+    return source
+
+
+def _skill_source(tmp_path: Path) -> Path:
+    source = tmp_path / "skill-source"
+    source.mkdir(exist_ok=True)
+    (source / "SKILL.md").write_text("---\nname: helper-skill\n---\n\nHelper skill body.\n")
     return source
 
 
@@ -361,6 +374,241 @@ async def test_agent_with_plaintext_credentials_cannot_be_published(
         resource = await verification.get(Resource, resource_id)
         assert resource is not None and resource.latest_version == 0
         assert not (storage.resources_root / f"agents/{resource_id}/versions/1").exists()
+
+
+@pytest.mark.asyncio
+async def test_dependency_conflict_publishes_nothing_and_same_draft_retries_clean(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    resource_id = await _create_resource(session_factory)
+    async with session_factory() as session:
+        dependency = await ResourceService(session, _actor()).create_resource(
+            resource_type="skill",
+            slug="helper-skill",
+            display_name="Helper Skill",
+            storage_kind="filesystem",
+        )
+        await ResourceService(session, _actor()).replace_dependencies(resource_id, [dependency.id])
+        await session.commit()
+        dependency_id = dependency.id
+
+    storage = ResourceStorage(tmp_path)
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        draft = await publisher.save_filesystem_draft(resource_id, source_dir=_source(tmp_path), expected_revision=0)
+        with pytest.raises(ResourceConflict, match="Required resource dependencies are not published"):
+            await publisher.publish_filesystem(
+                resource_id,
+                expected_draft_revision=draft.revision,
+                scan_result={"status": "clean"},
+            )
+
+    async with session_factory() as verification:
+        resource = await verification.get(Resource, resource_id)
+        versions = list((await verification.execute(select(ResourceVersion).where(ResourceVersion.resource_id == resource_id))).scalars())
+        assert resource is not None and resource.latest_version == 0
+        assert versions == []
+        assert await verification.get(ResourceDraft, resource_id) is not None
+        assert not (storage.resources_root / f"agents/{resource_id}/versions/1").exists()
+        assert (storage.resources_root / f"agents/{resource_id}/draft/1").is_dir()
+
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        skill_draft = await publisher.save_filesystem_draft(dependency_id, source_dir=_skill_source(tmp_path), expected_revision=0)
+        await publisher.publish_filesystem(dependency_id, expected_draft_revision=skill_draft.revision, scan_result={"status": "clean"})
+
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        version = await publisher.publish_filesystem(
+            resource_id,
+            expected_draft_revision=draft.revision,
+            scan_result={"status": "clean"},
+        )
+
+    assert version.version == 1
+    async with session_factory() as verification:
+        resource = await verification.get(Resource, resource_id)
+        assert resource is not None and resource.latest_version == 1
+        assert (storage.resources_root / version.storage_key).is_dir()
+
+
+@pytest.mark.asyncio
+async def test_dependency_conflict_after_publish_discards_the_unreferenced_directory(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resource_id = await _create_resource(session_factory)
+    storage = ResourceStorage(tmp_path)
+
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        draft = await publisher.save_filesystem_draft(resource_id, source_dir=_source(tmp_path), expected_revision=0)
+
+        checks = {"count": 0}
+
+        async def dependency_deactivates_midflight(source: object) -> None:
+            checks["count"] += 1
+            if checks["count"] == 1:
+                return
+            raise ResourceConflict("Required resource dependencies are not published: helper-skill")
+
+        monkeypatch.setattr(publisher.service, "assert_required_dependencies_ready", dependency_deactivates_midflight)
+        with pytest.raises(ResourceConflict, match="Required resource dependencies are not published"):
+            await publisher.publish_filesystem(
+                resource_id,
+                expected_draft_revision=draft.revision,
+                scan_result={"status": "clean"},
+            )
+
+    async with session_factory() as verification:
+        resource = await verification.get(Resource, resource_id)
+        versions = list((await verification.execute(select(ResourceVersion).where(ResourceVersion.resource_id == resource_id))).scalars())
+        assert resource is not None and resource.latest_version == 0
+        assert versions == []
+        assert await verification.get(ResourceDraft, resource_id) is not None
+        assert not (storage.resources_root / f"agents/{resource_id}/versions/1").exists()
+        assert (storage.resources_root / f"agents/{resource_id}/draft/1").is_dir()
+
+
+@pytest.mark.asyncio
+async def test_database_dependency_conflict_keeps_draft_and_retries_same_revision(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    async with session_factory() as session:
+        workflow = await ResourceService(session, _actor()).create_resource(
+            resource_type="workflow",
+            slug="dependent-flow",
+            display_name="Dependent Flow",
+            storage_kind="database",
+        )
+        dependency = await ResourceService(session, _actor()).create_resource(
+            resource_type="skill",
+            slug="helper-skill-db",
+            display_name="Helper Skill DB",
+            storage_kind="filesystem",
+        )
+        await ResourceService(session, _actor()).replace_dependencies(workflow.id, [dependency.id])
+        await session.commit()
+        workflow_id, dependency_id = workflow.id, dependency.id
+
+    content = {
+        "schema_version": 2,
+        "name": "dependent-flow",
+        "entrypoint": "start",
+        "nodes": [{"id": "start", "type": "action", "action": {"kind": "tool", "name": "noop"}}],
+        "edges": [],
+    }
+    storage = ResourceStorage(tmp_path)
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        draft = await publisher.save_database_draft(workflow_id, content=content, expected_revision=0)
+        with pytest.raises(ResourceConflict, match="Required resource dependencies are not published"):
+            await publisher.publish_database(
+                workflow_id,
+                expected_draft_revision=draft.revision,
+                scan_result={"status": "valid"},
+            )
+
+    async with session_factory() as verification:
+        resource = await verification.get(Resource, workflow_id)
+        versions = list((await verification.execute(select(ResourceVersion).where(ResourceVersion.resource_id == workflow_id))).scalars())
+        assert resource is not None and resource.latest_version == 0
+        assert versions == []
+        persisted = await verification.get(ResourceDraft, workflow_id)
+        assert persisted is not None and persisted.revision == 1
+
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        skill_draft = await publisher.save_filesystem_draft(dependency_id, source_dir=_skill_source(tmp_path), expected_revision=0)
+        await publisher.publish_filesystem(dependency_id, expected_draft_revision=skill_draft.revision, scan_result={"status": "clean"})
+
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        version = await publisher.publish_database(
+            workflow_id,
+            expected_draft_revision=1,
+            scan_result={"status": "valid"},
+        )
+
+    assert version.version == 1
+    async with session_factory() as verification:
+        resource = await verification.get(Resource, workflow_id)
+        assert resource is not None and resource.latest_version == 1
+
+
+@pytest.mark.asyncio
+async def test_knowledge_dependency_activation_unlocks_same_draft_retry(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    resource_id = await _create_resource(session_factory)
+    async with session_factory() as session:
+        knowledge_base = await ResourceService(session, _actor()).create_resource(
+            resource_type="knowledge_base",
+            slug="docs-kb",
+            display_name="Docs KB",
+            storage_kind="database",
+        )
+        await ResourceService(session, _actor()).replace_dependencies(resource_id, [knowledge_base.id])
+        await session.commit()
+        knowledge_base_id = knowledge_base.id
+
+    storage = ResourceStorage(tmp_path)
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        draft = await publisher.save_filesystem_draft(resource_id, source_dir=_source(tmp_path), expected_revision=0)
+        with pytest.raises(ResourceConflict, match="Required resource dependencies are not published: docs-kb"):
+            await publisher.publish_filesystem(
+                resource_id,
+                expected_draft_revision=draft.revision,
+                scan_result={"status": "clean"},
+            )
+
+    async with session_factory() as verification:
+        resource = await verification.get(Resource, resource_id)
+        versions = list((await verification.execute(select(ResourceVersion).where(ResourceVersion.resource_id == resource_id))).scalars())
+        assert resource is not None and resource.latest_version == 0
+        assert versions == []
+        assert await verification.get(ResourceDraft, resource_id) is not None
+        assert not (storage.resources_root / f"agents/{resource_id}/versions/1").exists()
+        assert (storage.resources_root / f"agents/{resource_id}/draft/1").is_dir()
+
+    async with session_factory() as session:
+        revision = KnowledgeRevision(
+            id="docs-kb-revision-1",
+            knowledge_base_id=knowledge_base_id,
+            revision_no=1,
+            status="published",
+            manifest_hash="a" * 64,
+            manifest_json=[],
+            provider_doc_map_json={},
+            document_count=1,
+            provider_dataset_id="docs-dataset-1",
+            publish_attempt=1,
+            created_by="owner",
+        )
+        session.add(revision)
+        binding = await session.get(KnowledgeBase, knowledge_base_id)
+        assert binding is not None
+        binding.active_revision_id = revision.id
+        await session.commit()
+
+    async with session_factory() as session:
+        publisher = ResourcePublisher(ResourceService(session, _actor()), storage)
+        version = await publisher.publish_filesystem(
+            resource_id,
+            expected_draft_revision=draft.revision,
+            scan_result={"status": "clean"},
+        )
+
+    assert version.version == 1
+    async with session_factory() as verification:
+        resource = await verification.get(Resource, resource_id)
+        assert resource is not None and resource.latest_version == 1
+        assert (storage.resources_root / version.storage_key).is_dir()
 
 
 @pytest.mark.asyncio

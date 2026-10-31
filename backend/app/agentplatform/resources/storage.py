@@ -457,13 +457,32 @@ class ResourceStorage:
         *,
         revision: int,
     ) -> bool:
+        return self._discard_numbered_directory(resource_type, resource_id, "draft", revision, "Resource draft")
+
+    def discard_published_version(
+        self,
+        resource_type: ResourceType | str,
+        resource_id: str,
+        *,
+        version: int,
+    ) -> bool:
+        return self._discard_numbered_directory(resource_type, resource_id, "versions", version, "Published resource version")
+
+    def _discard_numbered_directory(
+        self,
+        resource_type: ResourceType | str,
+        resource_id: str,
+        segment: str,
+        number: int,
+        description: str,
+    ) -> bool:
         canonical_type = self._resource_type(resource_type)
         canonical_id = self._resource_id(resource_id)
-        path = self._resource_root(canonical_type, canonical_id) / "draft" / str(revision)
+        path = self._resource_root(canonical_type, canonical_id) / segment / str(number)
         if not path.exists():
             return False
         if path.is_symlink() or not path.is_dir() or self._contains_symlink(path):
-            raise StorageValidationError("Resource draft is not a regular directory")
+            raise StorageValidationError(f"{description} is not a regular directory")
         for child in path.rglob("*"):
             child.chmod(0o755 if child.is_dir() else 0o644)
         path.chmod(0o755)

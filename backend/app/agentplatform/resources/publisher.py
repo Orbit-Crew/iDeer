@@ -153,6 +153,13 @@ class ResourcePublisher:
         draft = await self.service.session.get(ResourceDraft, resource.id)
         if draft is None or draft.revision != expected_draft_revision:
             raise ResourceConflict("Draft revision changed before filesystem publication")
+        # Dependency conflicts are deterministic rejections and must surface
+        # before any version directory is published: a conflict raised after
+        # publish_staged blocks the retry unless the best-effort discard
+        # below happens to succeed (#167). service.publish re-checks inside
+        # the transaction; this early call only decides whether storage may
+        # be touched at all.
+        await self.service.assert_required_dependencies_ready(resource)
 
         staged = self.storage.stage_draft(resource.type, resource.id, revision=draft.revision)
         if staged.content_hash != draft.content_hash:
@@ -173,6 +180,22 @@ class ResourcePublisher:
                 expected_draft_revision=expected_draft_revision,
                 scan_result=scan_result,
             )
+        except BaseException:
+            # Any rejected catalog transaction — dependency conflicts and
+            # every other in-transaction failure — rolls back its rows, so
+            # the just-published directory is unreferenced and would block
+            # the next publish_staged at the same version number (#167).
+            # Commit failures below keep the directory: the row may exist
+            # there and deleting it could destroy a published version; a
+            # leftover orphan surfaces as a storage conflict or a
+            # reconciliation gap instead.
+            await self.service.session.rollback()
+            try:
+                self.storage.discard_published_version(published.resource_type, published.resource_id, version=published.version)
+            except (OSError, StorageError):
+                logger.warning("Failed to discard unreferenced version %s", published.storage_key, exc_info=True)
+            raise
+        try:
             await self.service.session.commit()
         except BaseException:
             await self.service.session.rollback()
