@@ -712,6 +712,25 @@
 - **Owner**: harness 上游同步维护者
 - **移除条件**: 上游测试布局与本仓分层一致并被同步吸收时移除。
 
+### PATCH-044: 定时任务关联历史执行会话（#176）
+
+- **文件**: `persistence/scheduled_tasks/sql.py`。
+- **修改**: `list_by_user_and_thread` 在当前账号过滤内，以相关 EXISTS 查询纳入
+  执行记录指向目标会话的任务。保持原有配置关联、排序和任务响应结构，不引入
+  重复行，不改变调度、派发、任务状态或 Run/Thread 生命周期。
+- **原因**: `fresh_thread_per_run` 不在任务配置中保存每次执行的会话 ID，原查询
+  因而遗漏其生成的历史会话，Web 无法解释这些会话的定时任务来源。
+- **上游替代方案**: 尚无 repository 查询扩展接口。Gateway 另做跨表查询会重复
+  repository 的账号过滤和关联规则；仅按 last_thread_id 过滤仍会漏历史会话。
+  此补丁统一已有只读查询的会话关联语义，不增加企业专属执行行为。
+- **测试**: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest
+  tests/integration/test_thread_scheduled_tasks.py
+  tests/unit/scheduler/test_scheduled_task_router_behavior.py -q`，50 passed。
+  HTTP 集成覆盖历史新建会话、配置关联去重、跨账号隔离、读取权限及会话归属拒绝。
+- **Owner**: scheduler/persistence maintainers
+- **移除条件**: 上游提供等价的完整历史会话关联查询并被同步吸收，或提供可复用
+  的 repository 查询扩展接口后迁移并移除此补丁。
+
 ## Enforcement
 
 每次收敛提交前重跑对照命令并更新本台账；存在未登记差异即门禁失败。
@@ -762,13 +781,13 @@ workflow explicitly installs ripgrep and does not declare Nginx.
 {
   "schema_version": 1,
   "upstream_baseline": "345f08be00c8a9495079b732a39b46aa9af1584e",
-  "file_budget": 82,
+  "file_budget": 83,
   "budget_basis": {
-    "code_files": 48,
+    "code_files": 49,
     "document_files": 34,
     "previous_code_files": 48,
     "previous_document_files": 34,
-    "amendment": "Issue #91 registers PATCH-042 (13 harness AGENTS.md guidance files whose test-path references were repointed to the layered layout by the #85 reference sweep, 222925341; the mirrored CLAUDE.md files stay on PATCH-035) and PATCH-043 (skills/slash.py and subagents/acceptance_checks.py comment/docstring path repoints from the same sweep, no executable semantic change): 46+2 code files = 48, 21+13 documents = 34, total 67->82. The sweep missed both registrations and the document-policy fingerprint refresh, which kept every develop PR red (#88/#90 failure set); see the 2026-10-16 inspection row for issue 91. Re-anchor (2026-10-17, PR #86): the branch merged develop at 16a84139d, so previous_code_files/previous_document_files re-anchor to that base's allocation 48/34 — no reallocation against the re-anchored base; the #91 amendment above remains the originating record for the 67->82 growth."
+    "amendment": "Issue #91 registers PATCH-042 (13 harness AGENTS.md guidance files whose test-path references were repointed to the layered layout by the #85 reference sweep, 222925341; the mirrored CLAUDE.md files stay on PATCH-035) and PATCH-043 (skills/slash.py and subagents/acceptance_checks.py comment/docstring path repoints from the same sweep, no executable semantic change): 46+2 code files = 48, 21+13 documents = 34, total 67->82. The sweep missed both registrations and the document-policy fingerprint refresh, which kept every develop PR red (#88/#90 failure set); see the 2026-10-16 inspection row for issue 91. Re-anchor (2026-10-17, PR #86): the branch merged develop at 16a84139d, so previous_code_files/previous_document_files re-anchor to that base's allocation 48/34 — no reallocation against the re-anchored base; the #91 amendment above remains the originating record for the 67->82 growth. Issue #176 registers PATCH-044 for persistence/scheduled_tasks/sql.py: the existing owner-scoped lookup now includes historical execution threads. Against develop 00105be2e the allocation grows from 48/34 to 49/34, total 82 to 83; previous allocation remains 48/34."
   },
   "patches": [
     {
@@ -1208,6 +1227,18 @@ workflow explicitly installs ripgrep and does not declare Nginx.
       "current_verification": {
         "command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache PYTHONPATH=.:tests uv run --no-sync pytest tests/unit/sandbox/test_acceptance_checks.py tests/contracts/test_slash_skill_contract.py tests/unit/channels/test_slash_skills.py -q",
         "result": "353 passed (contract and import surface of both repointed modules stay green after the comment/docstring path repoints)"
+      }
+    },
+    {
+      "id": "PATCH-044",
+      "paths": [
+        "backend/packages/harness/deerflow/persistence/scheduled_tasks/sql.py"
+      ],
+      "verification_status": "current",
+      "lifecycle_status": "open",
+      "current_verification": {
+        "command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest tests/integration/test_thread_scheduled_tasks.py tests/unit/scheduler/test_scheduled_task_router_behavior.py -q",
+        "result": "50 passed; historical generated threads, deduplication, task ownership, read permission and thread access checks verified."
       }
     }
   ]

@@ -29,6 +29,8 @@ export function useThreadScheduledTasks(threadId: string | null | undefined) {
     queryKey: ["scheduled-tasks", "thread", threadId],
     queryFn: () => fetchThreadScheduledTasks(threadId ?? ""),
     enabled: Boolean(threadId),
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
   });
 }
 

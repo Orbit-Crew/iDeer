@@ -28,6 +28,7 @@ import {
 } from "@/components/workspace/sidecar";
 import { ThreadArchiveStatus } from "@/components/workspace/thread-archive-status";
 import { ThreadBackgroundTasks } from "@/components/workspace/thread-background-tasks";
+import { ThreadScheduledTasksLink } from "@/components/workspace/thread-scheduled-tasks-link";
 import { ThreadSubagentBatches } from "@/components/workspace/thread-subagent-batches";
 import { ThreadTitle } from "@/components/workspace/thread-title";
 import { TodoList } from "@/components/workspace/todo-list";
@@ -204,6 +205,9 @@ export default function AgentChatPage() {
                   env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" && (
                     <ThreadSubagentBatches threadId={threadId} />
                   )}
+                {!isNewThread && !isMock && (
+                  <ThreadScheduledTasksLink threadId={threadId} />
+                )}
                 <Tooltip content={t.agents.newChat}>
                   <Button
                     className="px-2 sm:px-3"

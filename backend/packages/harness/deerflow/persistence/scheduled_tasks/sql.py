@@ -541,11 +541,15 @@ class ScheduledTaskRepository:
             return self._row_to_dict(row)
 
     async def list_by_user_and_thread(self, user_id: str, thread_id: str) -> list[dict[str, Any]]:
+        occurred_in_thread = exists().where(
+            ScheduledTaskRunRow.task_id == ScheduledTaskRow.id,
+            ScheduledTaskRunRow.thread_id == thread_id,
+        )
         stmt = (
             select(ScheduledTaskRow)
             .where(
                 ScheduledTaskRow.user_id == user_id,
-                ScheduledTaskRow.thread_id == thread_id,
+                or_(ScheduledTaskRow.thread_id == thread_id, occurred_in_thread),
             )
             .order_by(ScheduledTaskRow.created_at.desc(), ScheduledTaskRow.id.desc())
         )
