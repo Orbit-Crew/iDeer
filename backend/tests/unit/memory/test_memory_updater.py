@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import threading
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,6 +21,14 @@ from deerflow.agents.memory.backends.deermem.deermem.core.updater import (
 )
 from deerflow.agents.memory.manager import LangfuseMemoryCallbacks
 from deerflow.trace_context import get_current_trace_id, request_trace_context
+
+
+def _iso_days_ago(days: int) -> str:
+    """Clock-relative fixture dates: the hybrid capacity policy scores
+    confirmation freshness against the real clock, so frozen dates rot
+    once the wall clock passes their decay horizon."""
+    moment = datetime.now(UTC) - timedelta(days=days)
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _make_memory(facts: list[dict[str, object]] | None = None) -> dict[str, object]:
@@ -274,7 +283,7 @@ def test_automatic_update_uses_hybrid_capacity_policy() -> None:
                     "content": f"high {index}",
                     "category": "preference",
                     "confidence": 0.99,
-                    "createdAt": "2026-08-12T00:00:00Z",
+                    "createdAt": _iso_days_ago(2),
                 }
                 for index in range(8)
             ],
@@ -283,15 +292,15 @@ def test_automatic_update_uses_hybrid_capacity_policy() -> None:
                 "content": "stale high confidence",
                 "category": "preference",
                 "confidence": 0.9,
-                "createdAt": "2025-01-01T00:00:00Z",
+                "createdAt": _iso_days_ago(400),
             },
             {
                 "id": "confirmed_recently",
                 "content": "recently confirmed preference",
                 "category": "preference",
                 "confidence": 0.7,
-                "createdAt": "2025-01-01T00:00:00Z",
-                "lastConfirmedAt": "2026-08-12T00:00:00Z",
+                "createdAt": _iso_days_ago(400),
+                "lastConfirmedAt": _iso_days_ago(2),
             },
         ]
     )
