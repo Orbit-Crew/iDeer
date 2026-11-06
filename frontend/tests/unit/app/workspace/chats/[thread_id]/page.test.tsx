@@ -100,6 +100,12 @@ vi.mock("@/components/workspace/chats", () => ({
   useThreadChat: () => mockUseThreadChat(),
 }));
 
+vi.mock("@/components/workspace/thread-scheduled-tasks-link", () => ({
+  ThreadScheduledTasksLink: ({ threadId }: { threadId: string }) => (
+    <div data-testid="scheduled-tasks-entry" data-thread-id={threadId} />
+  ),
+}));
+
 vi.mock("@/components/ai-elements/prompt-input", () => ({
   PromptInputProvider: ({ children }: any) => <div>{children}</div>,
 }));
@@ -323,6 +329,10 @@ describe("ChatPage", () => {
       </QueryClientProvider>,
     );
     expect(screen.getByTestId("chat-box")).toBeInTheDocument();
+    expect(screen.getByTestId("scheduled-tasks-entry")).toHaveAttribute(
+      "data-thread-id",
+      "test-thread",
+    );
   });
 
   test("renders message list", () => {
@@ -1267,10 +1277,7 @@ describe("ChatPage", () => {
     await act(async () => {
       await seamArgs.prepare();
     });
-    expect(mockCreateThread).toHaveBeenCalledWith(
-      "client-thread-id",
-      "proj-1",
-    );
+    expect(mockCreateThread).toHaveBeenCalledWith("client-thread-id", "proj-1");
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: mockInfiniteThreadsQueryKey,
     });
@@ -1317,10 +1324,7 @@ describe("ChatPage", () => {
     const seamArgs = mockUseThreadPage.mock.calls.at(-1)![0];
     await expect(seamArgs.prepare()).rejects.toThrow("backend down");
     expect(mockToastError).toHaveBeenCalledWith("会话创建失败，请稍后重试");
-    expect(mockCreateThread).toHaveBeenCalledWith(
-      "client-thread-id",
-      "proj-1",
-    );
+    expect(mockCreateThread).toHaveBeenCalledWith("client-thread-id", "proj-1");
   });
 
   // --- 03-D2: archived-thread status and restore entry in the page header ---
@@ -1343,7 +1347,9 @@ describe("ChatPage", () => {
         <ChatPage />
       </QueryClientProvider>,
     );
-    expect(screen.getByRole("button", { name: "恢复会话" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "恢复会话" }),
+    ).toBeInTheDocument();
   });
 
   test("does not mount the archive header for a new thread", () => {

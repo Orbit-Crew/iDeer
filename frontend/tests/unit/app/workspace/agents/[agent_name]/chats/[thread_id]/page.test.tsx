@@ -112,6 +112,12 @@ vi.mock("@/components/workspace/chats", () => ({
   useSpecificChatMode: () => {},
 }));
 
+vi.mock("@/components/workspace/thread-scheduled-tasks-link", () => ({
+  ThreadScheduledTasksLink: ({ threadId }: { threadId: string }) => (
+    <div data-testid="scheduled-tasks-entry" data-thread-id={threadId} />
+  ),
+}));
+
 vi.mock("@/components/ai-elements/prompt-input", () => ({
   PromptInputProvider: ({ children }: any) => <div>{children}</div>,
 }));
@@ -299,6 +305,10 @@ describe("AgentChatPage", () => {
   test("renders chat box", () => {
     renderPage();
     expect(screen.getByTestId("chat-box")).toBeInTheDocument();
+    expect(screen.getByTestId("scheduled-tasks-entry")).toHaveAttribute(
+      "data-thread-id",
+      "test-thread",
+    );
   });
 
   test("renders message list", () => {
@@ -640,7 +650,9 @@ describe("AgentChatPage", () => {
   test("mounts the archive status header for a persisted archived thread", () => {
     mockUseThreadPage.mockReturnValue(archivedThreadPageFixture());
     renderPage();
-    expect(screen.getByRole("button", { name: "恢复会话" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "恢复会话" }),
+    ).toBeInTheDocument();
   });
 
   test("does not mount the archive header for a new thread", () => {

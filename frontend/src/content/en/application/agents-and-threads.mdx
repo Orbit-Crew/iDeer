@@ -71,6 +71,24 @@ A **thread** is a persistent conversation session. Each thread has:
 
 Threads are listed in the sidebar. Clicking a thread resumes the conversation from where it left off.
 
+### Scheduled tasks in a conversation
+
+The conversation header links to Scheduled tasks. When tasks are associated with
+the conversation, the adjacent clock button shows their count. Open it to see
+each task's schedule and timezone, current status, next run, and latest execution
+result. Execution timestamps use your browser's local timezone. A paused task
+has no active next run, even if its stored schedule still has a timestamp.
+
+Associations include tasks configured to reuse the conversation and tasks whose
+execution records refer to it, including older conversations created by tasks
+that start a fresh thread each time. Only your own tasks are shown. The latest
+execution result belongs to the task and may refer to a newer conversation.
+The service currently distinguishes scheduled and manual execution; it does not
+provide a separate catch-up marker.
+
+The panel is read-only. Use the Scheduled tasks link to open the existing
+management page for this conversation.
+
 ### Thread lifecycle
 
 <Steps>

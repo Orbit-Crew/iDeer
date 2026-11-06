@@ -317,6 +317,14 @@ export const zhCN: Translations = {
   },
   // 定时任务
   scheduledTasks: {
+    threadSummary: {
+      title: "关联定时任务",
+      description: "以下任务配置为使用此会话，或曾在此会话中执行。",
+      localTime: "本地时间",
+      latestResult: "任务最近执行结果",
+      retry: "重试",
+      empty: "暂无关联定时任务",
+    },
     scheduleType: {
       cron: "重复",
       once: "单次",
@@ -1930,7 +1938,8 @@ export const zhCN: Translations = {
           `发布等待内容中：还有 ${missing} 个文件未上传。`,
         readyToComplete: "全部内容已上传并通过校验，等待完成发布。",
         publishing: "正在构建服务端副本...",
-        failed: (code: string) => `发布失败（${code}）。可在桌面端重试，失败状态保持可见。`,
+        failed: (code: string) =>
+          `发布失败（${code}）。可在桌面端重试，失败状态保持可见。`,
         published: (name: string) => `已发布为服务端副本「${name}」。`,
         copyVisibility: (visibility: string) => `副本可见性：${visibility}`,
         governanceNote:

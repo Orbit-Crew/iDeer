@@ -84,6 +84,12 @@ vi.mock("@/components/workspace/chats", () => ({
   }),
 }));
 
+vi.mock("@/components/workspace/thread-scheduled-tasks-link", () => ({
+  ThreadScheduledTasksLink: ({ threadId }: { threadId: string }) => (
+    <div data-testid="scheduled-tasks-entry" data-thread-id={threadId} />
+  ),
+}));
+
 vi.mock("@/components/workspace/messages", () => ({
   MessageList: () => <div data-testid="message-list" />,
   MESSAGE_LIST_DEFAULT_PADDING_BOTTOM: 96,
@@ -242,6 +248,10 @@ describe("ChatPage", () => {
   test("renders chat box", () => {
     renderWithProviders(<ChatPage />);
     expect(screen.getByTestId("chat-box")).toBeInTheDocument();
+    expect(screen.getByTestId("scheduled-tasks-entry")).toHaveAttribute(
+      "data-thread-id",
+      "test-thread-id",
+    );
   });
 
   test("passes threadId to chat box", () => {

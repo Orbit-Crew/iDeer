@@ -33,6 +33,19 @@ The public LangGraph-compatible API follows LangGraph SDK conventions. In the un
 
 ### Threads
 
+#### List associated scheduled tasks
+
+`GET /api/threads/{thread_id}/scheduled-tasks` returns the authenticated user's
+tasks configured for that thread or linked through any persisted task execution
+in that thread. This includes historical threads created by
+`fresh_thread_per_run` tasks, not just the task's latest execution thread.
+Each task appears once. The route retains `threads:read` and thread ownership
+checks, and filters tasks by the authenticated user even for shared threads.
+It returns the existing task representation. Read the latest execution outcome
+through `GET /api/scheduled-tasks/{task_id}/runs?limit=1&offset=0`; task status
+and execution status are distinct. These are native Gateway paths; the standard
+nginx deployment also exposes them beneath `/api/langgraph`.
+
 #### Create Thread
 
 ```http

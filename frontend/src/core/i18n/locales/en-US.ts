@@ -343,6 +343,15 @@ export const enUS = {
   },
   // Scheduled tasks
   scheduledTasks: {
+    threadSummary: {
+      title: "Associated scheduled tasks",
+      description:
+        "These tasks are configured for this conversation or have run in it.",
+      localTime: "Local time",
+      latestResult: "Latest task execution",
+      retry: "Retry",
+      empty: "No associated scheduled tasks",
+    },
     scheduleType: {
       cron: "Recurring",
       once: "One-time",
@@ -2059,9 +2068,11 @@ export const enUS = {
         readyToComplete:
           "All content uploaded and verified; publication completion is pending.",
         publishing: "Publishing the server copy...",
-        failed: (code: string) => `Publication failed (${code}). You can retry from the Desktop; the failed attempt stays visible.`,
+        failed: (code: string) =>
+          `Publication failed (${code}). You can retry from the Desktop; the failed attempt stays visible.`,
         published: (name: string) => `Published as server copy "${name}".`,
-        copyVisibility: (visibility: string) => `copy visibility: ${visibility}`,
+        copyVisibility: (visibility: string) =>
+          `copy visibility: ${visibility}`,
         governanceNote:
           "Team access was granted through the platform visibility application flow; the source device knowledge base stays private.",
       },
