@@ -14,10 +14,7 @@ from pathlib import Path
 
 import yaml
 
-WORKFLOW = (
-    Path(__file__).resolve().parents[4]
-    / ".github/workflows/backend-unit-tests.yml"
-)
+WORKFLOW = Path(__file__).resolve().parents[4] / ".github/workflows/backend-unit-tests.yml"
 
 
 def _combine_steps() -> list[dict]:
@@ -36,7 +33,7 @@ def test_combine_consumes_artifact_relative_data_files():
     # files land under ``.coverage-data/backend/`` with the shard/serial
     # names the upload paths declared.
     assert ".coverage-data/backend/coverage-" in command
-    assert "coverage combine \"${data_files[@]}\"" in command
+    assert 'coverage combine "${data_files[@]}"' in command
     # A bare directory argument can never match (coverage only auto-discovers
     # ``<data_file>.*`` names) and must not come back.
     assert "coverage combine .coverage-data\n" not in command
