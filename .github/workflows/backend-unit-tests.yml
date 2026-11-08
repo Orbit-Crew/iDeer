@@ -166,6 +166,12 @@ jobs:
       - name: Combine diagnostic coverage
         working-directory: backend
         run: |
-          uv run coverage combine .coverage-data
+          shopt -s nullglob
+          data_files=(.coverage-data/backend/coverage-*.dat)
+          if (( ${#data_files[@]} == 0 )); then
+            echo "backend-coverage: no coverage data files under .coverage-data/backend/" >&2
+            exit 1
+          fi
+          uv run coverage combine "${data_files[@]}"
           uv run coverage report --show-missing
           echo "Coverage is diagnostic only."
