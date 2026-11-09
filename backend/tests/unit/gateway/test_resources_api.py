@@ -243,6 +243,31 @@ def test_resource_payload_only_marks_active_non_system_owner_as_modifiable() -> 
 
 
 @pytest.mark.asyncio
+async def test_canonical_run_snapshot_exposes_event_replay_watermark(monkeypatch: pytest.MonkeyPatch) -> None:
+    run = WorkflowV2RunRow(
+        run_id="run-id",
+        workflow_name="review",
+        workflow_resource_id="resource-id",
+        definition_version=2,
+        checkpoint_thread_id="thread-id",
+        status="completed",
+        inputs={},
+        snapshot={},
+        created_by="user",
+        event_seq=17,
+    )
+
+    async def visible_run(resource_id: str, run_id: str, user: UserModel) -> WorkflowV2RunRow:
+        return run
+
+    monkeypatch.setattr(resources, "_get_canonical_run", visible_run)
+    payload = await resources.get_canonical_workflow_run("resource-id", "run-id", _user(UserRole.USER))
+
+    assert payload["status"] == "completed"
+    assert payload["last_event_seq"] == 17
+
+
+@pytest.mark.asyncio
 def test_canonical_resume_roles_are_read_from_the_frozen_interrupt_node() -> None:
     run = WorkflowV2RunRow(
         run_id="run-id",

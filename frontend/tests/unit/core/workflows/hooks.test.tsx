@@ -141,6 +141,44 @@ describe("useRunStatus", () => {
     expect(result.current.runStatus?.action_tokens?.draft).toBe("one");
   });
 
+  test("replays past a historical failure to the snapshot completion", async () => {
+    vi.stubGlobal("EventSource", MockEventSource);
+    const api = await import("@/core/workflows/api");
+    vi.mocked(api.getRunStatus).mockResolvedValue({
+      run_id: "run-1",
+      workflow: "approval",
+      status: "completed",
+      error: null,
+      last_event_seq: 6,
+    });
+    const { useRunStatus } = await import("@/core/workflows/hooks");
+    const { result } = renderHook(() => useRunStatus("approval", "run-1"), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(MockEventSource.instances).toHaveLength(1));
+    const source = MockEventSource.instances[0]!;
+    act(() =>
+      source.emit("run_failed", 3, {
+        summary: "old failure",
+        code: "old_code",
+      }),
+    );
+    expect(source.close).not.toHaveBeenCalled();
+
+    act(() => source.emit("resumed", 4, {}));
+    expect(result.current.runStatus?.error).toBeNull();
+    expect(result.current.runStatus?.error_code).toBeNull();
+    act(() => source.emit("run_completed", 6, {}));
+
+    expect(result.current.runStatus?.status).toBe("completed");
+    expect(result.current.runStatus?.error).toBeNull();
+    expect(result.current.runStatus?.events?.map((event) => event.seq)).toEqual(
+      [3, 4, 6],
+    );
+    expect(source.close).toHaveBeenCalledOnce();
+  });
+
   test("retains only the newest events past the streaming window", async () => {
     vi.stubGlobal("EventSource", MockEventSource);
     const api = await import("@/core/workflows/api");

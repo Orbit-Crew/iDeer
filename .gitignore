@@ -102,6 +102,7 @@ config.yaml.bak
 /frontend/playwright-report/
 .gstack/
 .worktrees
+.worktree/
 backend/data/
 
 # WSL browser profiles

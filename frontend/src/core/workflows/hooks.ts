@@ -264,7 +264,12 @@ export function useRunStatus(
                 : events,
           };
         });
-        if (terminalEventTypes.has(event.type)) {
+        // Replay can include a failure that was subsequently resumed. Drain
+        // through the snapshot's watermark before treating a terminal as final.
+        if (
+          terminalEventTypes.has(event.type) &&
+          event.seq >= (data.last_event_seq ?? 0)
+        ) {
           closed = true;
           source?.close();
           if (retryTimer) clearTimeout(retryTimer);

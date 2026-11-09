@@ -154,14 +154,19 @@ export function applyWorkflowEvent(
           ? textValue(event.payload.summary) ||
             textValue(event.payload.error) ||
             "Workflow failed"
-          : next.error,
+          : event.type === "run_completed"
+            ? null
+            : next.error,
       error_code:
         event.type === "run_failed"
           ? textValue(event.payload.code) || next.error_code
-          : next.error_code,
+          : event.type === "run_completed"
+            ? null
+            : next.error_code,
       steps: reconcileTerminalSteps(next.steps, terminal),
     };
   if (event.type === "interrupted") return { ...next, status: "paused" };
-  if (event.type === "resumed") return { ...next, status: "running" };
+  if (event.type === "resumed")
+    return { ...next, status: "running", error: null, error_code: null };
   return next;
 }

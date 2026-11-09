@@ -525,6 +525,7 @@ def _run_payload(run: WorkflowV2RunRow, resource_id: str) -> dict[str, Any]:
         "workflow": resource_id,
         "workflow_resource_id": run.workflow_resource_id,
         "status": run.status,
+        "last_event_seq": run.event_seq or 0,
         "model_name": run.model_name,
         "definition_version": run.definition_version,
         "snapshot": snapshot,

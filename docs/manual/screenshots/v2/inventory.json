@@ -1,0 +1,171 @@
+{
+  "at": "2026-11-06T07:07:41.851Z",
+  "note": "清单核对文件存在性与尺寸，不证明运行成功或业务验收通过。",
+  "rows": [
+    {
+      "id": "12-01",
+      "name": "登录页面",
+      "file": "12-01-login.png",
+      "clean": "12-01-login-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": ""
+    },
+    {
+      "id": "12-02",
+      "name": "工作区首页",
+      "file": "12-02-workspace.png",
+      "clean": "12-02-workspace-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": ""
+    },
+    {
+      "id": "12-03",
+      "name": "模型选择器",
+      "file": "12-03-model-selector.png",
+      "clean": "12-03-model-selector-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": "当前模型选择器没有搜索框，图示模型入口与列表。"
+    },
+    {
+      "id": "12-04",
+      "name": "场景标签与提示词",
+      "file": "12-04-scenario-tab.png",
+      "clean": "12-04-scenario-tab-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": ""
+    },
+    {
+      "id": "12-05",
+      "name": "智能体画廊",
+      "file": "12-05-agent-gallery.png",
+      "clean": "12-05-agent-gallery-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": ""
+    },
+    {
+      "id": "12-06",
+      "name": "工作流画廊",
+      "file": "12-06-workflow-gallery.png",
+      "clean": "12-06-workflow-gallery-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": ""
+    },
+    {
+      "id": "12-07",
+      "name": "运行参数对话框",
+      "file": "12-07-run-params.png",
+      "clean": "12-07-run-params-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": "资料通过附件选择；上传路径由系统分配。"
+    },
+    {
+      "id": "12-08",
+      "name": "收件检查提示缺一侧",
+      "file": "12-08-intake-check.png",
+      "clean": "12-08-intake-check-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": "真实缺代码侧暂停运行。当前界面仅有继续执行、取消运行，未提供补传按钮和缺侧说明。"
+    },
+    {
+      "id": "12-09",
+      "name": "运行详情页",
+      "file": null,
+      "clean": null,
+      "dimensions": null,
+      "status": "缺图",
+      "note": "运行状态与节点图，事件见补充图，产物见 12-10、12-13。"
+    },
+    {
+      "id": "12-09-events",
+      "name": "运行详情补充：事件时间线",
+      "file": "12-09-events-timeline.png",
+      "clean": "12-09-events-timeline-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": ""
+    },
+    {
+      "id": "12-10",
+      "name": "产物列表与预览",
+      "file": "12-10-artifacts.png",
+      "clean": "12-10-artifacts-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": ""
+    },
+    {
+      "id": "12-11",
+      "name": "技能管理页",
+      "file": "12-11-skills-settings.png",
+      "clean": "12-11-skills-settings-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": "实际分类为官方内置、社区、我的技能、全部技能。"
+    },
+    {
+      "id": "12-12",
+      "name": "可见性变更申请",
+      "file": "12-12-visibility-dialog.png",
+      "clean": "12-12-visibility-dialog-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": "私有手册演示技能，未提交审批。"
+    },
+    {
+      "id": "12-13",
+      "name": "五件套下载入口（回传图的现场替代）",
+      "file": "12-13-suite-return.png",
+      "clean": "12-13-suite-return-clean.png",
+      "dimensions": [
+        2880,
+        1800
+      ],
+      "status": "已采集，待人工排版复核",
+      "note": "工作流入口的五件套下载入口，未验证会话自动回传。"
+    }
+  ]
+}

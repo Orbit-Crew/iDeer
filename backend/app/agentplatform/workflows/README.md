@@ -11,9 +11,17 @@ terminal state.
 
 The public lifecycle endpoints are:
 
-- `POST /api/workflows/{name}/run`
-- `GET /api/workflows/{name}/runs/{run_id}`
-- `GET /api/workflows/{name}/runs/{run_id}/events?after_seq=N`
-- `POST /api/workflows/{name}/runs/{run_id}/commands`
+- `POST /api/resources/{resource_id}/workflow-runs`
+- `GET /api/resources/{resource_id}/workflow-runs/{run_id}`
+- `GET /api/resources/{resource_id}/workflow-runs/{run_id}/events?after_seq=N`
+- `POST /api/resources/{resource_id}/workflow-runs/{run_id}/commands`
 
 Commands are idempotent and currently support `resume` and `cancel`.
+
+
+Run detail and history snapshots expose `last_event_seq`, the durable event
+sequence at the time of the snapshot. Viewers may replay from `after_seq=0`
+to reconstruct node details, but must not close on a historical terminal event
+before that watermark: a failed run may subsequently have been resumed and
+completed. Resume and completion clear the previous run-level error; historical
+failure events remain available in the timeline.

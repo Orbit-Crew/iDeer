@@ -19,3 +19,13 @@ Backend API URLs are optional; the nginx proxy is used by default. Leave `NEXT_P
 Preserve the repository's Rstest/Vitest allocation and run the focused test plus the narrowest relevant check for each local slice. Use the frontend standard lane at implementation completion; use `pr-standard` for cross-stack and high-risk changes. Running a single test file: `pnpm vitest run <file>` for the default Vitest include, `pnpm rstest run <file>` for `*.dom.test.tsx` and the other Rstest-only suites — matching the runner to the file avoids the "No test files found" dead end.
 
 Use `@/*` for `src/*` imports and inline type imports. Keep import groups ordered by the existing ESLint rules, prefix intentionally unused variables with `_`, and use `cn()` from `@/lib/utils` for conditional Tailwind classes. Obtain the LangGraph singleton through `getAPIClient()`; thread hooks own streaming. TanStack Query owns server state, including `core/knowledge-admin/hooks.ts`; localStorage owns user settings. Validate environment variables through `src/env.js`. Auth server code in `src/server/` is active.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
