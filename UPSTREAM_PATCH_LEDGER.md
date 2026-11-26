@@ -30,6 +30,7 @@
 | 2026-10-13 | 批次5整改票 65（04-M3 PATCH-005 退役评估） | reassess 结论：**续期（keep，移除条件改写）**。按 #64 落地后的接缝面逐项复核 receipt→evidence bridge 能否移到扩展边界之后：bridge 三个消费点全在上游 runtime 内部逐调用路径上（`_stamp_message` 的 stamp 时点、`wrap_tool_call`/`awrap_tool_call` 的 handler 包裹、task_tool 子代理终态轮询点），而 #64 三缝（`tool_scopes`/`subagent_middlewares`/`builtin_tools`）均为装配期单 provider 缝（`get_available_tools` 尾端、`_create_agent` 链后 append、bootstrap builtin 绑定），形状不承载逐调用观测，不能承载 bridge。退役所需信息面存在两处硬缺口：① tool-call 身份绑定——`bind_tool_call_evidence` 是企业包内部 `agentplatform_extension/evidence.py` 的 ContextVar 缝，未上 `RuntimeEvidenceHooks` 契约，是全 harness 仅剩的企业包反向 import（04-M3 本体；task_tool 侧 delegation binding/delegated retrieval/verification 三处已全部走注册契约 `bind_delegation_evidence`/`record_delegated_retrieval_receipts`/`record_subagent_verification`，04-M3 方向性风险较 2026-10-01 复评收窄到 middleware 单点）；② 子代理 retrieval receipts——仅经 runtime 内部 `SubagentResult.retrieval_receipts`（executor 终态自 evidence binding 收割）传入 task_tool，从不进入 task ToolMessage additional_kwargs（`make_subagent_additional_kwargs` 无此字段），扩展侧没有任何消息/回调观测面。备选"贡献 middleware 刮消息"路径否决：需在扩展侧重造 `deerflow_tool_meta`/`subagent_receipt_verdict` 消息形状耦合并复制 VERIFIED 派生与 fail-closed adoption 语义，违背 Extension → Adapter → registered minimal runtime patch 归属规则。移除条件按回调形状逐项改写（三条，见详情行）。GitNexus impact：`bind_tool_call_evidence` UNKNOWN（图 0 callers，grep 补证生产消费点仅 middleware :123/:136 与扩展包自身）、`_stamp_message` LOW（直接 caller `_stamp`），无 HIGH/CRITICAL。本地验证：焦点六文件 `tests/unit/agentplatform/test_tool_receipt_middleware.py`+`tests/contracts/test_agentplatform_extension_boundary.py`+registry/loader/injection/api_contracts 合计 168 passed；治理门 `--base f0a33e741 --head HEAD --upstream-baseline 345f08be0` pass（67/67 预算），结构化注册表 PATCH-005 行 `current_verification` 同步刷新。 |
 | 2026-10-16 | 批次7收尾票 70（09-L1 测试侧 conftest 预 mock 债务登记） | 登记 `backend/tests/conftest.py` 的全进程 `sys.modules["deerflow.subagents.executor"] = MagicMock()` 预注入（09-L1）：**原因**——生产代码真实存在循环导入链 `deerflow.subagents.__init__ → .executor → deerflow.agents.thread_state → deerflow.agents.__init__ → lead_agent.agent → subagent_limit_middleware → .executor`，注入发生在任何测试模块触发该导入之前，使 `__init__.py` 的 `from .executor import ...` 直接成功；**备选**——在生产侧打破环（`executor.py` 内延迟导入 `thread_state`，或 `subagent_limit_middleware` 反向解耦）是正解，列为上游收敛顺手项；**影响**——需要真模块的测试必须先 `del sys.modules[...]` 再 importlib 重建并自管保存/恢复（`test_subagent_executor.py` 既有做法），mock 面（`SubagentExecutor`/`SubagentResult`/`SubagentStatus`/`MAX_CONCURRENT_SUBAGENTS=3`/`get_background_task_result`）对全 session 生效；**验证**——backend-standard 及各批次 lane 长期全绿即本适配无回归的运行证据，`test_subagent_executor.py` 以重建方式覆盖真模块；**Owner/移除条件**——测试基建 owner；移除条件=上游 harness 打破该循环导入（延迟导入或结构解耦）并被本仓采纳，届时删除预注入块与对应重建逻辑。属 `backend/tests/` 测试面（非 harness 差异），不进结构化注册表、不占文件预算。 |
 | 2026-10-16 | 集成线 CI 必红修复（票 91 / PR 92） | #85 参考重指 sweep（`222925341`）把 13 个 harness 域 `AGENTS.md` 与 2 个 harness 代码文件（`skills/slash.py`、`subagents/acceptance_checks.py`）文档内的根级测试路径重指到 #85 分层迁移后的规范路径（14 对 CLAUDE.md 镜像同步重指，归属既有 PATCH-035），但漏做两项登记：① `docs/governance/document-policy.json` 的 protected_files 29 条指纹未刷新（`check_documents.py` 29 findings，任何 PR 的 test-contracts 必红，#88/#90 同源）；② 15 个新增上游差异文件未登记（`check_upstream_patches.py` 18 errors，预算 67（46 代码 + 21 文档）→ 82（48 代码 + 34 文档）全线超支）——此前 test-contracts 先死于 check_documents 步骤，本缺陷被遮蔽，develop 顶端（`2ea182ab8`）同样命中。本行补齐：指纹按验证后内容重登记（29 条，15 个唯一 sha256）；新增 PATCH-042（13 个 AGENTS.md，纯指导文档路径重指）与 PATCH-043（2 个代码文件注释/docstring 路径重指，无可执行语义变化），预算修订携修正案（见 budget_basis）。复测：`check_documents.py` 0 findings、`check_doc_hygiene.sh` 3/3 PASS、`check_upstream_patches.py --base 2ea182ab8 --head HEAD --upstream-baseline 345f08be0` pass。同票复核 `protect develop` ruleset：required 列表中的裸名 `backend-unit-tests` 无任何 PR workflow 可上报（shadow 与 push workflow 均为 4 分片矩阵，check 名为 `backend-unit-tests (1..4)`），属孤儿 required check、普通合并永不可满足，已移除该条（保留 4 个分片条目），其余 9 个 required 上下文均与实际会运行的 job 对应。 |
+| 2026-11-26 | feat(models) 接入 Dify 风格应用服务 API（临空智言"档案全文智能检索"） | 新增登记 PATCH-045：`models/dify_app_provider.py`（`DifyAppChatModel`，把 Dify 风格 `/chat-messages` 应用端点包装为 chat model，经模型工厂既有 `use:` 反射缝挂载，无核心改动）。对照 develop `b3366ee3c` 差异 50 代码 + 34 文档全部归属、未登记清零；预算携修正案由 83（49 代码 + 34 文档）修订为 84（50 代码 + 34 文档），previous 分配 49/34。本地验证：`tests/unit/models/test_dify_app_provider.py` 18 条用例先红后绿；backend-standard 全绿 27226 passed / 237 skipped（TEST_LANE_DURATION 1271s status=0，2026-11-25）；`check_documents.py` pass；GitNexus 索引重建后 `detect-changes --scope all` 完整（5 files / 73 symbols / 0 affected processes / risk low）；`check_upstream_patches.py --base b3366ee3c --upstream-baseline 345f08be0` 登记后 pass。 |
 
 ### 2026-09-08 巡检逐项结论（2026-10-01 自历史档案迁入，内容保持原文）
 
@@ -731,6 +732,32 @@
 - **移除条件**: 上游提供等价的完整历史会话关联查询并被同步吸收，或提供可复用
   的 repository 查询扩展接口后迁移并移除此补丁。
 
+### PATCH-045: Dify 风格应用服务 API chat model 适配器
+
+- **文件**: `models/dify_app_provider.py`（新增）。
+- **修改**: 新增 `DifyAppChatModel`（`BaseChatModel` 子类）：把 Dify 风格应用级
+  `POST {base_url}/chat-messages` SSE 端点包装为可选 chat model。消息历史压平为
+  角色标注单条 `query`（不传 `conversation_id`，无状态以兼容 Run/Thread 恢复与
+  分支）；内部固定 streaming（规避 blocking 100s 截断），`message_end` usage 映射
+  `usage_metadata`，`error` 事件抛 `RuntimeError`，workflow/node/ping/tts 事件
+  忽略；`bind_tools` 告警并忽略工具（`create_agent` 无条件绑定，直接抛错会使模型
+  在主聊天不可用）；支持 `X-Email` 头、`user`/`inputs`/`verify_ssl`/`timeout`
+  部署参数。经模型工厂既有 `use:` 反射缝挂载，工厂与核心运行时零改动。
+- **原因**: 接入临空智言（Dify 风格服务 API）"档案全文智能检索" Chatflow 应用
+  作为平台可选模型。该协议无消息列表/模型参数/function calling，无法复用
+  OpenAI 兼容客户端；上游无应用级对话 API 适配器。
+- **上游替代方案**: 上游 langchain 生态与 DeerFlow 均无 Dify 应用服务 API chat
+  model；备选形态是接成 Agent 工具（不满足"作为模型选择"的目标）。适配完全位于
+  `models/` 扩展缝，默认不加载（需 config 显式登记 `use:` 指向），不扩张核心
+  行为面。
+- **测试**: `cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest
+  tests/unit/models/test_dify_app_provider.py -q`，18 passed（先红后绿）；
+  `bash scripts/run-test-lane.sh backend-standard`，27226 passed / 237 skipped
+  （TEST_LANE_DURATION 1271s，2026-11-25）；ruff check/format 通过。
+- **Owner**: models 域维护者
+- **移除条件**: 上游（langchain 社区或 DeerFlow）提供 Dify 应用级 chat model
+  适配器时，迁移 config `use:` 指向并删除此补丁。
+
 ## Enforcement
 
 每次收敛提交前重跑对照命令并更新本台账；存在未登记差异即门禁失败。
@@ -781,13 +808,13 @@ workflow explicitly installs ripgrep and does not declare Nginx.
 {
   "schema_version": 1,
   "upstream_baseline": "345f08be00c8a9495079b732a39b46aa9af1584e",
-  "file_budget": 83,
+  "file_budget": 84,
   "budget_basis": {
-    "code_files": 49,
+    "code_files": 50,
     "document_files": 34,
-    "previous_code_files": 48,
+    "previous_code_files": 49,
     "previous_document_files": 34,
-    "amendment": "Issue #91 registers PATCH-042 (13 harness AGENTS.md guidance files whose test-path references were repointed to the layered layout by the #85 reference sweep, 222925341; the mirrored CLAUDE.md files stay on PATCH-035) and PATCH-043 (skills/slash.py and subagents/acceptance_checks.py comment/docstring path repoints from the same sweep, no executable semantic change): 46+2 code files = 48, 21+13 documents = 34, total 67->82. The sweep missed both registrations and the document-policy fingerprint refresh, which kept every develop PR red (#88/#90 failure set); see the 2026-10-16 inspection row for issue 91. Re-anchor (2026-10-17, PR #86): the branch merged develop at 16a84139d, so previous_code_files/previous_document_files re-anchor to that base's allocation 48/34 — no reallocation against the re-anchored base; the #91 amendment above remains the originating record for the 67->82 growth. Issue #176 registers PATCH-044 for persistence/scheduled_tasks/sql.py: the existing owner-scoped lookup now includes historical execution threads. Against develop 00105be2e the allocation grows from 48/34 to 49/34, total 82 to 83; previous allocation remains 48/34."
+    "amendment": "Issue #91 registers PATCH-042 (13 harness AGENTS.md guidance files whose test-path references were repointed to the layered layout by the #85 reference sweep, 222925341; the mirrored CLAUDE.md files stay on PATCH-035) and PATCH-043 (skills/slash.py and subagents/acceptance_checks.py comment/docstring path repoints from the same sweep, no executable semantic change): 46+2 code files = 48, 21+13 documents = 34, total 67->82. The sweep missed both registrations and the document-policy fingerprint refresh, which kept every develop PR red (#88/#90 failure set); see the 2026-10-16 inspection row for issue 91. Re-anchor (2026-10-17, PR #86): the branch merged develop at 16a84139d, so previous_code_files/previous_document_files re-anchor to that base's allocation 48/34 — no reallocation against the re-anchored base; the #91 amendment above remains the originating record for the 67->82 growth. Issue #176 registers PATCH-044 for persistence/scheduled_tasks/sql.py: the existing owner-scoped lookup now includes historical execution threads. Against develop 00105be2e the allocation grows from 48/34 to 49/34, total 82 to 83; previous allocation remains 48/34. This candidate registers PATCH-045 for models/dify_app_provider.py (new Dify-style app service API chat model adapter, mounted via the factory `use:` reflection seam with no core runtime change). Against develop b3366ee3c the allocation grows from 49/34 to 50/34, total 83 to 84; previous allocation remains 49/34."
   },
   "patches": [
     {
@@ -1239,6 +1266,18 @@ workflow explicitly installs ripgrep and does not declare Nginx.
       "current_verification": {
         "command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest tests/integration/test_thread_scheduled_tasks.py tests/unit/scheduler/test_scheduled_task_router_behavior.py -q",
         "result": "50 passed; historical generated threads, deduplication, task ownership, read permission and thread access checks verified."
+      }
+    },
+    {
+      "id": "PATCH-045",
+      "paths": [
+        "backend/packages/harness/deerflow/models/dify_app_provider.py"
+      ],
+      "verification_status": "current",
+      "lifecycle_status": "open",
+      "current_verification": {
+        "command": "cd backend && UV_CACHE_DIR=/tmp/deer-flow-uv-cache uv run pytest tests/unit/models/test_dify_app_provider.py -q && bash scripts/run-test-lane.sh backend-standard",
+        "result": "18 provider tests pass; backend-standard lane green: 27226 passed, 237 skipped (TEST_LANE_DURATION 1271s, status=0, 2026-11-25); ruff check and format pass"
       }
     }
   ]

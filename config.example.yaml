@@ -740,6 +740,33 @@ models:
   #   write_timeout: 60.0
   #   pool_timeout: 30.0
 
+  # Example: Dify-style app service API (e.g. 临空智言 chatflow "档案全文智能检索")
+  # The endpoint is an orchestrated RAG chat app (POST {base_url}/chat-messages),
+  # not a raw LLM. Protocol notes:
+  #   - The full message history is flattened into one role-labeled `query`;
+  #     `conversation_id` is never sent, so iDeer Run/Thread restore and
+  #     branching always work (the remote conversation state is ignored).
+  #   - No function calling / vision / thinking: `bind_tools` warns and ignores
+  #     bound tools, and the agent degrades to direct answering.
+  #   - `email` feeds the deployment-required `X-Email` header; the body `user`
+  #     defaults to `dify_user` -> `email` -> "deerflow".
+  #   - Internally always streams (Dify blocking mode has a ~100s hard cutoff).
+  #
+  # - name: linkong-archive-qa
+  #   display_name: 档案全文智能检索
+  #   description: 临空智言 chatflow 应用（RAG 档案检索问答），不支持工具调用
+  #   use: deerflow.models.dify_app_provider:DifyAppChatModel
+  #   model: linkong-archive-qa      # informational label only (goes to response metadata)
+  #   base_url: https://10.20.10.88/v1
+  #   api_key: $DIFY_APP_API_KEY     # the app's service API key (服务端保管，勿提交)
+  #   email: $DIFY_APP_EMAIL         # X-Email header required by this deployment
+  #   verify_ssl: false              # internal deployment uses a self-signed certificate
+  #   timeout: 300.0                 # per-chunk read timeout (SSE), not total time
+  #   inputs: {}                     # app-defined variables (对话变量), sent as `inputs`
+  #   supports_thinking: false
+  #   supports_vision: false
+  #   supports_reasoning_effort: false
+
 # ============================================================================
 # Tool Groups Configuration
 # ============================================================================

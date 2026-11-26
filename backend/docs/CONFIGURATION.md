@@ -148,6 +148,30 @@ models:
 - A `CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR` handoff is drained on first use and the token is kept for the life of the process, so every `ClaudeChatModel` instance reuses it
 - On macOS, iDeer does not probe Keychain automatically. Use `scripts/export_claude_code_oauth.py` to export Claude Code auth explicitly when needed
 
+**App-level chat APIs (Dify-style)**:
+
+Some deployments expose an orchestrated chatflow app (e.g. a RAG 检索问答 application on 临空智言/Dify) rather than a raw LLM endpoint. `deerflow.models.dify_app_provider:DifyAppChatModel` wraps `POST {base_url}/chat-messages` as a chat model:
+
+```yaml
+models:
+  - name: linkong-archive-qa
+    display_name: 档案全文智能检索
+    use: deerflow.models.dify_app_provider:DifyAppChatModel
+    model: linkong-archive-qa     # informational label only
+    base_url: https://10.20.10.88/v1
+    api_key: $DIFY_APP_API_KEY    # the app's service API key
+    email: $DIFY_APP_EMAIL        # X-Email header required by that deployment
+    verify_ssl: false             # for self-signed internal certificates
+    supports_thinking: false
+    supports_vision: false
+```
+
+Behavior and limits:
+- The full message history is flattened into one role-labeled `query` (`[系统]`/`[用户]`/`[助手]`/`[工具:*]`) and `conversation_id` is never sent, so every request is stateless and iDeer Run/Thread restore and branching keep working
+- Internally always streams (`response_mode=streaming`) because Dify blocking mode has a ~100s hard cutoff; terminal `message_end` usage maps to `usage_metadata`
+- The endpoint has no function calling or vision: `bind_tools` warns and ignores tools (agent runtimes degrade to direct answering), and non-text content blocks are dropped
+- `user` (required by the API) resolves `dify_user` → `email` → `"deerflow"`; `inputs` passes app-defined variables through
+
 To use OpenAI's `/v1/responses` endpoint with LangChain, keep using `langchain_openai:ChatOpenAI` and set:
 
 ```yaml
